@@ -59,7 +59,7 @@ class ColaboradorController extends Controller
         Colaborador::create($data);
 
         return redirect()
-            ->route('admin.colaboradores.index')
+            ->route($this->colaboradoresRoutePrefix() . '.colaboradores.index')
             ->with('success', 'Colaborador creado correctamente.');
     }
 
@@ -80,7 +80,7 @@ class ColaboradorController extends Controller
         $colaborador->update($data);
 
         return redirect()
-            ->route('admin.colaboradores.index')
+            ->route($this->colaboradoresRoutePrefix() . '.colaboradores.index')
             ->with('success', 'Colaborador actualizado correctamente.');
     }
 
@@ -130,7 +130,12 @@ class ColaboradorController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.colaboradores.index')
+            ->route($this->colaboradoresRoutePrefix() . '.colaboradores.index')
             ->with('success', 'Estado del colaborador actualizado correctamente.');
+    }
+
+    private function colaboradoresRoutePrefix(): string
+    {
+        return auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
     }
 }
