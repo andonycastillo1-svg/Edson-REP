@@ -20,6 +20,12 @@
                 <span class="font-medium text-gray-700">Colaboradores</span>
                 <span class="text-gray-400">›</span>
             </a>
+
+            <a href="{{ route('rrhh.usuarios.index') }}"
+               class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
+                <span class="font-medium text-gray-700">Usuarios</span>
+                <span class="text-gray-400">›</span>
+            </a>
         </div>
 
         <div class="mt-8 pt-6 border-t text-center">
