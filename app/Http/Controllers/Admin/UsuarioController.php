@@ -51,7 +51,7 @@ class UsuarioController extends Controller
             'bodega_id' => $data['bodega_id'] ?? null,
         ]);
 
-        return redirect()->route('admin.usuarios.index')
+        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok','Usuario creado correctamente.');
     }
 
@@ -86,7 +86,7 @@ class UsuarioController extends Controller
             'bodega_id' => $data['bodega_id'] ?? null,
         ]);
 
-        return redirect()->route('admin.usuarios.index')
+        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok','Usuario actualizado correctamente.');
     }
 
@@ -94,7 +94,12 @@ class UsuarioController extends Controller
     {
         $usuario->delete();
 
-        return redirect()->route('admin.usuarios.index')
+        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok','Usuario eliminado correctamente.');
+    }
+
+    private function usuariosRoutePrefix(): string
+    {
+        return auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
     }
 }
