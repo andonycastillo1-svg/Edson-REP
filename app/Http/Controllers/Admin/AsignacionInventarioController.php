@@ -78,8 +78,10 @@ class AsignacionInventarioController extends Controller
         // Guardar
         AsignacionInventario::create($data);
 
+        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+
         return redirect()
-            ->route('admin.asignaciones.create')
+            ->route($routePrefix . '.asignaciones.create')
             ->with('success', 'Asignación realizada correctamente');
     }
 
