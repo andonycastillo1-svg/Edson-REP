@@ -25,7 +25,22 @@ class AsignacionInventarioController extends Controller
             $query->where('user_id', auth()->id());
         }
 
-        $asignaciones = $query->paginate(15);
+        $asignaciones = $query->get();
+        $asignacionesPorColaborador = $asignaciones
+            ->groupBy('colaborador_codigo')
+            ->map(function ($items) {
+                $ordenadas = $items->sortByDesc('fecha')->values();
+                $colaborador = optional($ordenadas->first())->colaborador;
+
+                return [
+                    'colaborador_codigo' => $ordenadas->first()->colaborador_codigo,
+                    'colaborador_nombre' => $colaborador->nombre ?? 'Sin nombre',
+                    'asignaciones' => $ordenadas,
+                    'total_activo' => $ordenadas->where('estado', 'Activa')->sum('cantidad_asignada'),
+                ];
+            })
+            ->values();
+
         $movimientos = collect();
         if (Schema::hasTable('asignacion_movimientos')) {
             $movimientos = AsignacionMovimiento::with(['asignacion.colaborador', 'user'])
@@ -34,7 +49,7 @@ class AsignacionInventarioController extends Controller
                 ->get();
         }
 
-        return view('admin.asignaciones.index', compact('asignaciones', 'routePrefix', 'movimientos'));
+        return view('admin.asignaciones.index', compact('asignacionesPorColaborador', 'routePrefix', 'movimientos'));
     }
 
     public function create()
@@ -61,79 +76,111 @@ class AsignacionInventarioController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'producto_codigo' => 'required|exists:productos,codigo',
             'colaborador_codigo' => 'required|exists:colaboradores,codigo',
-            'bodega_id' => 'required|exists:bodegas,id',
-            'cantidad_asignada' => 'required|integer|min:1',
             'fecha' => 'required|date',
             'costo_unitario' => 'nullable|numeric',
             'aprobado_por' => 'required|string',
             'medio_solicitud' => 'required|in:WhatsApp,Correo',
             'imagen' => 'nullable|image',
-            'observaciones' => 'nullable|string'
+            'observaciones' => 'nullable|string',
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.producto_codigo' => ['required', 'exists:productos,codigo'],
+            'items.*.bodega_id' => ['required', 'exists:bodegas,id'],
+            'items.*.cantidad_asignada' => ['required', 'integer', 'min:1'],
         ]);
 
-        // Buscar inventario
-        $inventario = Inventario::where('producto_codigo', $data['producto_codigo'])
-            ->where('bodega_id', $data['bodega_id'])
-            ->first();
-
-        // Control por stock: un mismo código puede asignarse a varios colaboradores
-        // siempre que exista cantidad disponible en inventario.
-        if (!$inventario || $inventario->cantidad < $data['cantidad_asignada']) {
-            return back()->with('error', 'Stock insuficiente');
-        }
-
-        // Si no viene costo, tomarlo del producto
-        if (empty($data['costo_unitario'])) {
-            $ultimoCosto = DB::table('compra_detalles as cd')
-                ->join('compras as c', 'c.id', '=', 'cd.compra_id')
-                ->where('cd.producto_codigo', $data['producto_codigo'])
-                ->orderByDesc('c.fecha_compra')
-                ->orderByDesc('cd.id')
-                ->value('cd.precio_unitario');
-
-            $data['costo_unitario'] = $ultimoCosto ?? $inventario->producto->costo ?? 0;
-        }
-
-        // Descontar stock
-        $inventario->decrement('cantidad', $data['cantidad_asignada']);
-
-        // Vida útil
-        $producto = $inventario->producto;
-
-        if ($producto->vida_util_meses) {
-            $data['fecha_vencimiento'] = now()->addMonths($producto->vida_util_meses);
-        }
-
-        // Imagen
+        // Imagen compartida en todos los ítems enviados
+        $imagenPath = null;
         if ($request->hasFile('imagen')) {
-            $data['imagen'] = $request->file('imagen')->store('asignaciones', 'public');
+            $imagenPath = $request->file('imagen')->store('asignaciones', 'public');
         }
 
-        // Guardar
-        $payload = $data;
-        if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
-            $payload['user_id'] = auth()->id();
-        }
+        $items = collect($data['items'])->values();
 
-        $asignacion = AsignacionInventario::create($payload);
-
-        if (Schema::hasTable('asignacion_movimientos')) {
-            AsignacionMovimiento::create([
-                'asignacion_inventario_id' => $asignacion->id,
-                'tipo' => 'Asignacion',
-                'cantidad' => $asignacion->cantidad_asignada,
-                'detalle' => 'Asignación inicial del producto.',
-                'user_id' => auth()->id(),
+        // Validación de stock consolidada por producto + bodega para evitar sobreasignación en lote.
+        $solicitudesAgrupadas = $items
+            ->groupBy(fn ($item) => $item['producto_codigo'] . '|' . $item['bodega_id'])
+            ->map(fn ($grupo) => [
+                'producto_codigo' => $grupo->first()['producto_codigo'],
+                'bodega_id' => (int) $grupo->first()['bodega_id'],
+                'cantidad_total' => (int) $grupo->sum('cantidad_asignada'),
             ]);
+
+        foreach ($solicitudesAgrupadas as $solicitud) {
+            $inventario = Inventario::query()
+                ->where('producto_codigo', $solicitud['producto_codigo'])
+                ->where('bodega_id', $solicitud['bodega_id'])
+                ->first();
+
+            if (!$inventario || (int) $inventario->cantidad < $solicitud['cantidad_total']) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'Stock insuficiente para uno o más productos.');
+            }
         }
+
+        DB::transaction(function () use ($data, $items, $imagenPath) {
+            foreach ($items as $item) {
+                $inventario = Inventario::with('producto')
+                    ->where('producto_codigo', $item['producto_codigo'])
+                    ->where('bodega_id', $item['bodega_id'])
+                    ->firstOrFail();
+
+                $inventario->decrement('cantidad', (int) $item['cantidad_asignada']);
+
+                $costoUnitario = $data['costo_unitario'];
+                if (empty($costoUnitario)) {
+                    $ultimoCosto = DB::table('compra_detalles as cd')
+                        ->join('compras as c', 'c.id', '=', 'cd.compra_id')
+                        ->where('cd.producto_codigo', $item['producto_codigo'])
+                        ->orderByDesc('c.fecha_compra')
+                        ->orderByDesc('cd.id')
+                        ->value('cd.precio_unitario');
+
+                    $costoUnitario = $ultimoCosto ?? $inventario->producto->costo ?? 0;
+                }
+
+                $payload = [
+                    'colaborador_codigo' => $data['colaborador_codigo'],
+                    'producto_codigo' => $item['producto_codigo'],
+                    'bodega_id' => (int) $item['bodega_id'],
+                    'cantidad_asignada' => (int) $item['cantidad_asignada'],
+                    'fecha' => $data['fecha'],
+                    'costo_unitario' => $costoUnitario,
+                    'aprobado_por' => $data['aprobado_por'],
+                    'medio_solicitud' => $data['medio_solicitud'],
+                    'imagen' => $imagenPath,
+                    'observaciones' => $data['observaciones'] ?? null,
+                    'estado' => 'Activa',
+                ];
+
+                if (!empty($inventario->producto?->vida_util_meses)) {
+                    $payload['fecha_vencimiento'] = now()->addMonths($inventario->producto->vida_util_meses);
+                }
+
+                if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
+                    $payload['user_id'] = auth()->id();
+                }
+
+                $asignacion = AsignacionInventario::create($payload);
+
+                if (Schema::hasTable('asignacion_movimientos')) {
+                    AsignacionMovimiento::create([
+                        'asignacion_inventario_id' => $asignacion->id,
+                        'tipo' => 'Asignacion',
+                        'cantidad' => $asignacion->cantidad_asignada,
+                        'detalle' => 'Asignación inicial del producto.',
+                        'user_id' => auth()->id(),
+                    ]);
+                }
+            }
+        });
 
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
         return redirect()
-            ->route($routePrefix . '.asignaciones.pdf', $asignacion->colaborador_codigo)
-            ->with('success', 'Asignación realizada correctamente');
+            ->route($routePrefix . '.asignaciones.pdf', $data['colaborador_codigo'])
+            ->with('success', 'Asignaciones registradas correctamente.');
     }
 
     // 🔥 NUEVO: GENERAR HOJA PDF / IMPRIMIBLE
@@ -235,5 +282,125 @@ class AsignacionInventarioController extends Controller
 
         return redirect()->route($routePrefix . '.asignaciones.index')
             ->with('success', 'Devolución registrada correctamente.');
+    }
+
+    public function devolverLote(Request $request)
+    {
+        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+
+        $data = $request->validate([
+            'devoluciones' => ['required', 'array', 'min:1'],
+            'devoluciones.*' => ['required', 'integer', 'min:1'],
+            'detalle_devolucion' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $ids = collect(array_keys($data['devoluciones']))->map(fn ($id) => (int) $id)->filter()->values();
+        $asignaciones = AsignacionInventario::query()->whereIn('id', $ids)->get()->keyBy('id');
+
+        if ($asignaciones->isEmpty()) {
+            return redirect()->route($routePrefix . '.asignaciones.index')
+                ->with('error', 'No se encontraron asignaciones para devolver.');
+        }
+
+        DB::transaction(function () use ($data, $asignaciones) {
+            foreach ($data['devoluciones'] as $id => $cantidadSolicitada) {
+                $id = (int) $id;
+                $cantidadSolicitada = (int) $cantidadSolicitada;
+                $asignacion = $asignaciones->get($id);
+
+                if (!$asignacion || $asignacion->estado !== 'Activa') {
+                    continue;
+                }
+
+                if ((int) auth()->user()->role_id !== 1 && (int) $asignacion->user_id !== (int) auth()->id()) {
+                    continue;
+                }
+
+                $cantidadDevuelta = min($cantidadSolicitada, (int) $asignacion->cantidad_asignada);
+                if ($cantidadDevuelta <= 0) {
+                    continue;
+                }
+
+                $asignacion->cantidad_asignada = (int) $asignacion->cantidad_asignada - $cantidadDevuelta;
+                if ((int) $asignacion->cantidad_asignada <= 0) {
+                    $asignacion->cantidad_asignada = 0;
+                    $asignacion->estado = 'Devuelta';
+                }
+                $asignacion->save();
+
+                Inventario::query()
+                    ->where('bodega_id', $asignacion->bodega_id)
+                    ->where('producto_codigo', $asignacion->producto_codigo)
+                    ->increment('cantidad', $cantidadDevuelta);
+
+                if (Schema::hasTable('asignacion_movimientos')) {
+                    AsignacionMovimiento::create([
+                        'asignacion_inventario_id' => $asignacion->id,
+                        'tipo' => 'Devolucion',
+                        'cantidad' => $cantidadDevuelta,
+                        'detalle' => $data['detalle_devolucion'] ?? 'Devolución múltiple.',
+                        'user_id' => auth()->id(),
+                    ]);
+                }
+            }
+        });
+
+        return redirect()->route($routePrefix . '.asignaciones.index')
+            ->with('success', 'Devolución múltiple registrada correctamente.');
+    }
+
+    public function devolverTodoColaborador(Request $request, string $colaboradorCodigo)
+    {
+        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+
+        $data = $request->validate([
+            'detalle_devolucion' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $query = AsignacionInventario::query()
+            ->where('colaborador_codigo', $colaboradorCodigo)
+            ->where('estado', 'Activa');
+
+        if ((int) auth()->user()->role_id !== 1 && Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
+            $query->where('user_id', auth()->id());
+        }
+
+        $asignaciones = $query->get();
+
+        if ($asignaciones->isEmpty()) {
+            return redirect()->route($routePrefix . '.asignaciones.index')
+                ->with('error', 'No hay asignaciones activas para devolver.');
+        }
+
+        DB::transaction(function () use ($asignaciones, $data) {
+            foreach ($asignaciones as $asignacion) {
+                $cantidadDevuelta = (int) $asignacion->cantidad_asignada;
+                if ($cantidadDevuelta <= 0) {
+                    continue;
+                }
+
+                $asignacion->cantidad_asignada = 0;
+                $asignacion->estado = 'Devuelta';
+                $asignacion->save();
+
+                Inventario::query()
+                    ->where('bodega_id', $asignacion->bodega_id)
+                    ->where('producto_codigo', $asignacion->producto_codigo)
+                    ->increment('cantidad', $cantidadDevuelta);
+
+                if (Schema::hasTable('asignacion_movimientos')) {
+                    AsignacionMovimiento::create([
+                        'asignacion_inventario_id' => $asignacion->id,
+                        'tipo' => 'Devolucion',
+                        'cantidad' => $cantidadDevuelta,
+                        'detalle' => $data['detalle_devolucion'] ?? 'Devolución total por colaborador.',
+                        'user_id' => auth()->id(),
+                    ]);
+                }
+            }
+        });
+
+        return redirect()->route($routePrefix . '.asignaciones.index')
+            ->with('success', 'Se devolvió todo el inventario activo del colaborador.');
     }
 }
