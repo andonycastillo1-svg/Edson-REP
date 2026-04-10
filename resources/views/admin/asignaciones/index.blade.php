@@ -66,7 +66,9 @@
                 </form>
               </div>
 
-              @php($bulkFormId = 'bulk-return-' . $grupo['colaborador_codigo'])
+              @php
+                $bulkFormId = 'bulk-return-' . $grupo['colaborador_codigo'];
+              @endphp
               <div class="overflow-x-auto rounded-xl border border-slate-200">
                   <table class="w-full text-sm">
                     <thead class="bg-slate-50 text-slate-600">

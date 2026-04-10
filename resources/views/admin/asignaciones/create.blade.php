@@ -4,7 +4,9 @@
 @endsection
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+@php
+  $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+@endphp
 @php
   $inventarioOptions = $inventarios->map(function ($i) {
       return [
