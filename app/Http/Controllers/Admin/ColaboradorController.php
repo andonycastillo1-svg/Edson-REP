@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
 use App\Models\AsignacionInventario;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class ColaboradorController extends Controller
 {
@@ -96,6 +97,13 @@ class ColaboradorController extends Controller
 
             $costoUnitario = $a->costo_unitario ?? 0;
             $total = $costoUnitario * $a->cantidad_asignada;
+            $fechaAsignacion = $a->fecha ? Carbon::parse($a->fecha) : null;
+            $fechaVencimiento = $a->fecha_vencimiento ? Carbon::parse($a->fecha_vencimiento) : null;
+
+            $estadoVidaUtil = 'Sin vida útil';
+            if ($fechaVencimiento) {
+                $estadoVidaUtil = now()->greaterThan($fechaVencimiento) ? 'Vencido' : 'Vigente';
+            }
 
             $totalGeneral += $total;
 
@@ -105,7 +113,9 @@ class ColaboradorController extends Controller
                 'cantidad' => $a->cantidad_asignada,
                 'costo_unitario' => $costoUnitario,
                 'total' => $total,
-                'fecha' => $a->fecha,
+                'fecha_asignacion' => $fechaAsignacion?->format('d/m/Y'),
+                'fecha_vencimiento' => $fechaVencimiento?->format('d/m/Y'),
+                'estado_vida_util' => $estadoVidaUtil,
             ];
         });
 

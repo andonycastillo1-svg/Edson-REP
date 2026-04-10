@@ -131,10 +131,16 @@ th {
                     <th>Cantidad</th>
                     <th>Costo Unitario</th>
                     <th>Total</th>
+                    <th>Vence</th>
+                    <th>Estado</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($asignaciones as $a)
+                @php
+                    $vencimiento = $a->fecha_vencimiento ? \Illuminate\Support\Carbon::parse($a->fecha_vencimiento) : null;
+                    $estadoVidaUtil = !$vencimiento ? 'Sin vida útil' : (now()->gt($vencimiento) ? 'Vencido' : 'Vigente');
+                @endphp
                 <tr>
                     <td>{{ $a->producto->nombre }}</td>
                     <td>{{ $a->bodega->nombre }}</td>
@@ -143,6 +149,8 @@ th {
                     <td>
                         Q {{ number_format(($a->costo_unitario ?? 0) * $a->cantidad_asignada, 2) }}
                     </td>
+                    <td>{{ $vencimiento?->format('d/m/Y') ?? '—' }}</td>
+                    <td>{{ $estadoVidaUtil }}</td>
                 </tr>
                 @endforeach
             </tbody>
