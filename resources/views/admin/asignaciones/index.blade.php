@@ -53,7 +53,10 @@
                     {{ $a->colaborador->nombre ?? '—' }}
                     <div class="text-xs text-slate-500">{{ $a->colaborador_codigo }}</div>
                   </td>
-                  <td class="px-4 py-3">{{ optional($a->producto)->nombre ?? $a->producto_codigo }}</td>
+                  <td class="px-4 py-3">
+                    <div>{{ optional($a->producto)->nombre ?? $a->producto_codigo }}</div>
+                    <div class="text-xs text-slate-500">COD: {{ $a->producto_codigo }}</div>
+                  </td>
                   <td class="px-4 py-3">{{ optional($a->bodega)->nombre ?? '—' }}</td>
                   <td class="px-4 py-3 text-right font-semibold">{{ $a->cantidad_asignada }}</td>
                   <td class="px-4 py-3">
