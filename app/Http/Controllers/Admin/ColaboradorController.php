@@ -90,6 +90,11 @@ class ColaboradorController extends Controller
     {
         $asignaciones = AsignacionInventario::with('producto', 'bodega')
             ->where('colaborador_codigo', $colaborador->codigo)
+            ->where('cantidad_asignada', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('estado')
+                    ->orWhere('estado', 'Activa');
+            })
             ->get();
 
         $codigosProducto = $asignaciones->pluck('producto_codigo')->filter()->unique()->values();
