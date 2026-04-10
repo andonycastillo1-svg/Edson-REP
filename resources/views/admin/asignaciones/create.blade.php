@@ -55,7 +55,7 @@
                   class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:ring-2 focus:ring-blue-500">
             @foreach($inventarios as $i)
               <option value="{{ $i->producto_codigo }}">
-                {{ $i->producto->nombre }} ({{ $i->bodega->nombre }}) - Stock: {{ $i->cantidad }}
+                [{{ $i->producto_codigo }}] {{ $i->producto->nombre }} ({{ $i->bodega->nombre }}) - Stock: {{ $i->cantidad }}
               </option>
             @endforeach
           </select>

@@ -127,6 +127,7 @@ class ColaboradorController extends Controller
 
             return [
                 'producto' => $a->producto->nombre ?? '—',
+                'producto_codigo' => $a->producto_codigo,
                 'bodega' => $a->bodega->nombre ?? '—',
                 'cantidad' => $a->cantidad_asignada,
                 'costo_unitario' => $costoUnitario,

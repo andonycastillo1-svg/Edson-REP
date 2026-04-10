@@ -241,7 +241,10 @@
               <tbody>
                 <template x-for="item in asignaciones">
                   <tr class="border-t">
-                    <td class="p-2" x-text="item.producto"></td>
+                    <td class="p-2">
+                      <div x-text="item.producto"></div>
+                      <div class="text-xs text-slate-500" x-text="'COD: ' + (item.producto_codigo ?? '—')"></div>
+                    </td>
                     <td class="p-2" x-text="item.bodega"></td>
                     <td class="p-2" x-text="item.cantidad"></td>
                     <td class="p-2" x-text="'Q ' + Number(item.costo_unitario).toFixed(2)"></td>
