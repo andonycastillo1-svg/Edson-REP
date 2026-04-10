@@ -76,12 +76,35 @@ th {
     font-size: 10px;
     margin-top: 10px;
 }
+
+.acciones {
+    text-align: right;
+    margin-bottom: 10px;
+}
+
+.btn-print {
+    border: 1px solid #444;
+    background: #fff;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+@media print {
+    .acciones {
+        display: none;
+    }
+}
 </style>
 </head>
 
-<body onload="window.print()">
+<body>
 
 <div class="container">
+
+    <div class="acciones">
+        <button type="button" onclick="window.print()" class="btn-print">🖨️ Imprimir ficha</button>
+    </div>
 
     {{-- ENCABEZADO --}}
     <div class="header">
@@ -93,7 +116,9 @@ th {
     <div class="box">
         <strong>Colaborador:</strong> {{ $colaborador->nombre }} <br>
         <strong>Código:</strong> {{ $colaborador->codigo }} <br>
-        <strong>Fecha de asignación:</strong> {{ now()->format('d/m/Y') }}
+        <strong>Fecha de asignación:</strong> {{ now()->format('d/m/Y') }} <br>
+        <strong>Asignado por (Almacenista):</strong> {{ $asignadorNombre }} <br>
+        <strong>Bodega del asignador:</strong> {{ $bodegaAsignador }}
     </div>
 
     {{-- TABLA --}}
@@ -106,10 +131,16 @@ th {
                     <th>Cantidad</th>
                     <th>Costo Unitario</th>
                     <th>Total</th>
+                    <th>Vence</th>
+                    <th>Estado</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($asignaciones as $a)
+                @php
+                    $vencimiento = $a->fecha_vencimiento ? \Illuminate\Support\Carbon::parse($a->fecha_vencimiento) : null;
+                    $estadoVidaUtil = !$vencimiento ? 'Sin vida útil' : (now()->gt($vencimiento) ? 'Vencido' : 'Vigente');
+                @endphp
                 <tr>
                     <td>{{ $a->producto->nombre }}</td>
                     <td>{{ $a->bodega->nombre }}</td>
@@ -118,6 +149,8 @@ th {
                     <td>
                         Q {{ number_format(($a->costo_unitario ?? 0) * $a->cantidad_asignada, 2) }}
                     </td>
+                    <td>{{ $vencimiento?->format('d/m/Y') ?? '—' }}</td>
+                    <td>{{ $estadoVidaUtil }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -144,12 +177,14 @@ th {
 
         <div class="firma">
             <div class="linea"></div>
-            Firma Colaborador
+            <strong>Firma Trabajador</strong><br>
+            {{ $colaborador->nombre }}
         </div>
 
         <div class="firma">
             <div class="linea"></div>
-            Firma Autorizado
+            <strong>Firma Almacenista (quien asigna)</strong><br>
+            {{ $asignadorNombre }}
         </div>
 
     </div>
