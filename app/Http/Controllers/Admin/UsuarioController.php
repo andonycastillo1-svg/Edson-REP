@@ -22,14 +22,14 @@ class UsuarioController extends Controller
         $roles = $this->rolesPermitidosParaGestion();
         $bodegas = Bodega::orderBy('nombre')->get();
 
-        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
+        $rolEncargadoId = $this->rolObjetivoRrhhId();
 
         return view('admin.usuarios.create', compact('roles','bodegas','rolEncargadoId'));
     }
 
     public function store(Request $request)
     {
-        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
+        $rolEncargadoId = $this->rolObjetivoRrhhId();
         $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
 
         $data = $request->validate([
@@ -60,14 +60,14 @@ class UsuarioController extends Controller
     {
         $roles = $this->rolesPermitidosParaGestion();
         $bodegas = Bodega::orderBy('nombre')->get();
-        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
+        $rolEncargadoId = $this->rolObjetivoRrhhId();
 
         return view('admin.usuarios.edit', compact('usuario','roles','bodegas','rolEncargadoId'));
     }
 
     public function update(Request $request, User $usuario)
     {
-        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
+        $rolEncargadoId = $this->rolObjetivoRrhhId();
         $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
 
         $data = $request->validate([
@@ -117,9 +117,25 @@ class UsuarioController extends Controller
         $query = Role::query()->orderBy('nombre');
 
         if ((int) auth()->user()->role_id === 4) {
-            $query->where('nombre', 'Encargado');
+            $rolId = $this->rolObjetivoRrhhId();
+            if ($rolId) {
+                $query->where('id', $rolId);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
         }
 
         return $query->get();
+    }
+
+    private function rolObjetivoRrhhId(): ?int
+    {
+        $rolOperadorId = Role::where('nombre', 'Operador')->value('id');
+        if ($rolOperadorId) {
+            return (int) $rolOperadorId;
+        }
+
+        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
+        return $rolEncargadoId ? (int) $rolEncargadoId : null;
     }
 }

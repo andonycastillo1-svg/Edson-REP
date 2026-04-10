@@ -65,7 +65,7 @@
                 <p class="text-xs text-gray-400 mt-1">Define el acceso del usuario.</p>
             </div>
 
-            <!-- Bodega (solo Encargado) -->
+            <!-- Bodega (según rol habilitado) -->
             <div id="bodega_wrap" class="hidden">
                 <label class="block text-sm font-medium text-gray-700">Bodega</label>
                 <select name="bodega_id" id="bodega_id"
@@ -77,7 +77,7 @@
                         </option>
                     @endforeach
                 </select>
-                <p class="text-xs text-gray-400 mt-1">Asigna la bodega que administrará el encargado.</p>
+                <p class="text-xs text-gray-400 mt-1">Asigna la bodega que administrará este usuario.</p>
             </div>
 
             <!-- Password -->
@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const wrap = document.getElementById('bodega_wrap');
     const bodegaSelect = document.getElementById('bodega_id');
 
-    // ID del rol "Encargado" viene desde el controller
+    // ID del rol habilitado (Operador / fallback Encargado) viene desde el controller
     const ROL_ENCARGADO_ID = {{ $rolEncargadoId ?? 2 }};
 
     function toggleBodega() {

@@ -67,7 +67,7 @@
                 </select>
             </div>
 
-            <!-- Bodega (solo Encargado) -->
+            <!-- Bodega (según rol habilitado) -->
             <div id="bodega_wrap" class="hidden">
                 <label class="block text-sm font-medium text-gray-700">Bodega</label>
                 <select name="bodega_id" id="bodega_id"
@@ -80,7 +80,7 @@
                         </option>
                     @endforeach
                 </select>
-                <p class="text-xs text-gray-400 mt-1">Asigna la bodega que administrará el encargado.</p>
+                <p class="text-xs text-gray-400 mt-1">Asigna la bodega que administrará este usuario.</p>
             </div>
 
             <!-- Nueva contraseña -->
