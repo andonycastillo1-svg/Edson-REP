@@ -233,6 +233,9 @@
                   <th class="p-2 text-left">Cantidad</th>
                   <th class="p-2 text-left">Costo</th>
                   <th class="p-2 text-left">Total</th>
+                  <th class="p-2 text-left">F. Asignación</th>
+                  <th class="p-2 text-left">F. Vencimiento</th>
+                  <th class="p-2 text-left">Estado vida útil</th>
                 </tr>
               </thead>
               <tbody>
@@ -241,8 +244,19 @@
                     <td class="p-2" x-text="item.producto"></td>
                     <td class="p-2" x-text="item.bodega"></td>
                     <td class="p-2" x-text="item.cantidad"></td>
-                    <td class="p-2" x-text="Number(item.costo_unitario).toFixed(2)"></td>
-                    <td class="p-2 font-semibold" x-text="Number(item.total).toFixed(2)"></td>
+                    <td class="p-2" x-text="'Q ' + Number(item.costo_unitario).toFixed(2)"></td>
+                    <td class="p-2 font-semibold" x-text="'Q ' + Number(item.total).toFixed(2)"></td>
+                    <td class="p-2" x-text="item.fecha_asignacion ?? '—'"></td>
+                    <td class="p-2" x-text="item.fecha_vencimiento ?? '—'"></td>
+                    <td class="p-2">
+                      <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
+                            :class="item.estado_vida_util === 'Vencido'
+                              ? 'bg-red-100 text-red-700'
+                              : (item.estado_vida_util === 'Vigente'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-slate-100 text-slate-700')"
+                            x-text="item.estado_vida_util"></span>
+                    </td>
                   </tr>
                 </template>
               </tbody>

@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
+@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 <div class="min-h-[calc(100vh-120px)] px-6 py-10">
   <div class="max-w-6xl mx-auto">
 
@@ -17,13 +18,13 @@
       </div>
 
       <div class="flex items-center gap-2">
-  <a href="{{ route('admin.bodegas.index') }}"
+  <a href="{{ route($routePrefix . '.bodegas.index') }}"
      class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
     ← Volver
   </a>
 
         @if(!$user->isEncargado())
-          <a href="{{ route('admin.operaciones.traslados.create') }}"
+          <a href="{{ route($routePrefix . '.operaciones.traslados.create') }}"
              class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
             + Nueva solicitud
           </a>
@@ -81,7 +82,7 @@
         </div>
 
         <div class="md:col-span-12 flex justify-end pt-2">
-          <a href="{{ route('admin.operaciones.traslados.index') }}"
+          <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}"
              class="text-xs font-semibold text-blue-700 hover:underline">Limpiar filtros</a>
         </div>
       </form>
@@ -127,7 +128,7 @@
                   <div class="text-xs text-slate-500">Por: {{ $op->creador?->name ?? '—' }}</div>
                 </td>
                 <td class="px-5 py-4 text-right">
-                  <a href="{{ route('admin.operaciones.traslados.show', $op) }}"
+                  <a href="{{ route($routePrefix . '.operaciones.traslados.show', $op) }}"
                      class="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
                     Ver
                   </a>
