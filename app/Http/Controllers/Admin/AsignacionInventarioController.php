@@ -89,6 +89,7 @@ class AsignacionInventarioController extends Controller
     public function pdf($codigo)
     {
         $colaborador = Colaborador::findOrFail($codigo);
+        $usuario = auth()->user();
 
         $asignaciones = AsignacionInventario::with('producto', 'bodega')
             ->where('colaborador_codigo', $codigo)
@@ -98,10 +99,17 @@ class AsignacionInventarioController extends Controller
             return ($a->costo_unitario ?? 0) * $a->cantidad_asignada;
         });
 
+        $asignadorNombre = $usuario?->name ?? 'No identificado';
+        $bodegaAsignador = $usuario?->bodega?->nombre
+            ?? optional($asignaciones->first()?->bodega)->nombre
+            ?? 'No definida';
+
         return view('admin.asignaciones.pdf', compact(
             'colaborador',
             'asignaciones',
-            'total'
+            'total',
+            'asignadorNombre',
+            'bodegaAsignador'
         ));
     }
 }
