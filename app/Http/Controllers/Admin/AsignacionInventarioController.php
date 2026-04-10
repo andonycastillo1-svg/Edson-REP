@@ -9,6 +9,7 @@ use App\Models\Colaborador;
 use App\Models\Bodega;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 
 class AsignacionInventarioController extends Controller
 {
@@ -16,10 +17,13 @@ class AsignacionInventarioController extends Controller
     {
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
-        $asignaciones = AsignacionInventario::with(['colaborador', 'producto', 'bodega'])
-            ->where('user_id', auth()->id())
-            ->latest()
-            ->paginate(15);
+        $query = AsignacionInventario::with(['colaborador', 'producto', 'bodega'])->latest();
+
+        if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
+            $query->where('user_id', auth()->id());
+        }
+
+        $asignaciones = $query->paginate(15);
 
         return view('admin.asignaciones.index', compact('asignaciones', 'routePrefix'));
     }
@@ -90,9 +94,12 @@ class AsignacionInventarioController extends Controller
         }
 
         // Guardar
-        $asignacion = AsignacionInventario::create($data + [
-            'user_id' => auth()->id(),
-        ]);
+        $payload = $data;
+        if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
+            $payload['user_id'] = auth()->id();
+        }
+
+        $asignacion = AsignacionInventario::create($payload);
 
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
@@ -131,7 +138,8 @@ class AsignacionInventarioController extends Controller
 
     public function uploadPdfFirmado(Request $request, AsignacionInventario $asignacion)
     {
-        if ((int) $asignacion->user_id !== (int) auth()->id()) {
+        if (Schema::hasColumn('asignaciones_inventarios', 'user_id')
+            && (int) $asignacion->user_id !== (int) auth()->id()) {
             abort(403);
         }
 
