@@ -10,6 +10,7 @@ use App\Models\Bodega;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class AsignacionInventarioController extends Controller
 {
@@ -75,7 +76,14 @@ class AsignacionInventarioController extends Controller
 
         // Si no viene costo, tomarlo del producto
         if (empty($data['costo_unitario'])) {
-            $data['costo_unitario'] = $inventario->producto->costo ?? 0;
+            $ultimoCosto = DB::table('compra_detalles as cd')
+                ->join('compras as c', 'c.id', '=', 'cd.compra_id')
+                ->where('cd.producto_codigo', $data['producto_codigo'])
+                ->orderByDesc('c.fecha_compra')
+                ->orderByDesc('cd.id')
+                ->value('cd.precio_unitario');
+
+            $data['costo_unitario'] = $ultimoCosto ?? $inventario->producto->costo ?? 0;
         }
 
         // Descontar stock

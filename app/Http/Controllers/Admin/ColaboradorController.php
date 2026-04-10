@@ -7,6 +7,7 @@ use App\Models\Colaborador;
 use App\Models\AsignacionInventario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ColaboradorController extends Controller
 {
@@ -91,11 +92,28 @@ class ColaboradorController extends Controller
             ->where('colaborador_codigo', $colaborador->codigo)
             ->get();
 
+        $codigosProducto = $asignaciones->pluck('producto_codigo')->filter()->unique()->values();
+        $ultimosCostos = collect();
+
+        if ($codigosProducto->isNotEmpty()) {
+            $ultimosCostos = DB::table('compra_detalles as cd')
+                ->join('compras as c', 'c.id', '=', 'cd.compra_id')
+                ->whereIn('cd.producto_codigo', $codigosProducto)
+                ->orderByDesc('c.fecha_compra')
+                ->orderByDesc('cd.id')
+                ->get(['cd.producto_codigo', 'cd.precio_unitario'])
+                ->unique('producto_codigo')
+                ->pluck('precio_unitario', 'producto_codigo');
+        }
+
         $totalGeneral = 0;
 
-        $dataAsignaciones = $asignaciones->map(function ($a) use (&$totalGeneral) {
+        $dataAsignaciones = $asignaciones->map(function ($a) use (&$totalGeneral, $ultimosCostos) {
 
             $costoUnitario = $a->costo_unitario ?? 0;
+            if ((float) $costoUnitario <= 0 && isset($ultimosCostos[$a->producto_codigo])) {
+                $costoUnitario = (float) $ultimosCostos[$a->producto_codigo];
+            }
             $total = $costoUnitario * $a->cantidad_asignada;
             $fechaAsignacion = $a->fecha ? Carbon::parse($a->fecha) : null;
             $fechaVencimiento = $a->fecha_vencimiento ? Carbon::parse($a->fecha_vencimiento) : null;
