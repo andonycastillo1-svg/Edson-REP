@@ -128,7 +128,7 @@ class AsignacionInventarioController extends Controller
 
                 $inventario->decrement('cantidad', (int) $item['cantidad_asignada']);
 
-                $costoUnitario = $data['costo_unitario'];
+                $costoUnitario = $data['costo_unitario'] ?? null;
                 if (empty($costoUnitario)) {
                     $ultimoCosto = DB::table('compra_detalles as cd')
                         ->join('compras as c', 'c.id', '=', 'cd.compra_id')
