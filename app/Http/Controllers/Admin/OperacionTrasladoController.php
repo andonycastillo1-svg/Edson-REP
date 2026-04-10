@@ -239,7 +239,9 @@ class OperacionTrasladoController extends Controller
             $operacion->save();
         });
 
-        return redirect()->route('admin.operaciones.traslados.show', $operacion)
+        $routePrefix = $user->role_id == 2 ? 'operador' : 'admin';
+
+        return redirect()->route($routePrefix . '.operaciones.traslados.show', $operacion)
             ->with('ok', 'Solicitud aprobada. Inventario actualizado.');
     }
 
@@ -265,7 +267,9 @@ class OperacionTrasladoController extends Controller
         $operacion->motivo_rechazo = $data['motivo_rechazo'];
         $operacion->save();
 
-        return redirect()->route('admin.operaciones.traslados.show', $operacion)
+        $routePrefix = $user->role_id == 2 ? 'operador' : 'admin';
+
+        return redirect()->route($routePrefix . '.operaciones.traslados.show', $operacion)
             ->with('ok', 'Solicitud rechazada.');
     }
 

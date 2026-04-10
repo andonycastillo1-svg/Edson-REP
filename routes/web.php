@@ -113,11 +113,17 @@ Route::middleware(['auth', 'role:1'])
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
+        Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
+            ->name('asignaciones.index');
+
         Route::post('asignaciones', [AsignacionInventarioController::class, 'store'])
             ->name('asignaciones.store');
 
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
+
+        Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
+            ->name('asignaciones.upload_pdf_firmado');
     });
 
 /*
@@ -139,11 +145,17 @@ Route::middleware(['auth', 'role:2'])
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
+        Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
+            ->name('asignaciones.index');
+
         Route::post('asignaciones', [AsignacionInventarioController::class, 'store'])
             ->name('asignaciones.store');
 
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
+
+        Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
+            ->name('asignaciones.upload_pdf_firmado');
 
         Route::get('operaciones/traslados', [OperacionTrasladoController::class, 'index'])
             ->name('operaciones.traslados.index');
@@ -178,6 +190,8 @@ Route::middleware(['auth', 'role:4'])
     ->group(function () {
 
         Route::view('/dashboard', 'consultas.dashboard')->name('dashboard');
+
+        Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
