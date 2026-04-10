@@ -8,9 +8,22 @@ use App\Models\Inventario;
 use App\Models\Colaborador;
 use App\Models\Bodega;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AsignacionInventarioController extends Controller
 {
+    public function index()
+    {
+        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+
+        $asignaciones = AsignacionInventario::with(['colaborador', 'producto', 'bodega'])
+            ->where('user_id', auth()->id())
+            ->latest()
+            ->paginate(15);
+
+        return view('admin.asignaciones.index', compact('asignaciones', 'routePrefix'));
+    }
+
     public function create()
     {
         $inventarios = Inventario::with('producto', 'bodega')->get();
@@ -77,11 +90,16 @@ class AsignacionInventarioController extends Controller
         }
 
         // Guardar
-        AsignacionInventario::create($data);
+        $asignacion = AsignacionInventario::create($data + [
+            'user_id' => auth()->id(),
+        ]);
+
+        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
         return redirect()
+            ->route($routePrefix . '.asignaciones.pdf', $asignacion->colaborador_codigo)
             ->route($routePrefix . '.asignaciones.pdf', $data['colaborador_codigo'])
             ->with('success', 'Asignación realizada correctamente');
     }
@@ -112,5 +130,29 @@ class AsignacionInventarioController extends Controller
             'asignadorNombre',
             'bodegaAsignador'
         ));
+    }
+
+    public function uploadPdfFirmado(Request $request, AsignacionInventario $asignacion)
+    {
+        if ((int) $asignacion->user_id !== (int) auth()->id()) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'pdf_firmado' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+        ]);
+
+        if ($asignacion->pdf_firmado) {
+            Storage::disk('public')->delete($asignacion->pdf_firmado);
+        }
+
+        $path = $data['pdf_firmado']->store('asignaciones/firmados', 'public');
+        $asignacion->update(['pdf_firmado' => $path]);
+
+        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+
+        return redirect()
+            ->route($routePrefix . '.asignaciones.index')
+            ->with('success', 'Documento firmado cargado correctamente.');
     }
 }

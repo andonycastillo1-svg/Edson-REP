@@ -21,6 +21,10 @@
            class="rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
           ← Volver
         </a>
+        <a href="{{ route($routePrefix . '.asignaciones.index') }}"
+           class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          Ver mis asignaciones
+        </a>
       </div>
 
       {{-- Alerts --}}
