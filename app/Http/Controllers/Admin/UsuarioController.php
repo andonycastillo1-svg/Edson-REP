@@ -51,7 +51,7 @@ class UsuarioController extends Controller
             'bodega_id' => $data['bodega_id'] ?? null,
         ]);
 
-        return redirect()->route('admin.usuarios.index')
+        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok','Usuario creado correctamente.');
     }
 
@@ -72,6 +72,7 @@ class UsuarioController extends Controller
             'name' => ['required','string','max:255'],
             'email' => ['required','email','max:255',Rule::unique('users','email')->ignore($usuario->id)],
             'role_id' => ['required','exists:roles,id'],
+            'password' => ['nullable','string','min:6','confirmed'],
             'bodega_id' => [
                 Rule::requiredIf(fn() => (int)$request->role_id === (int)$rolEncargadoId),
                 'nullable',
@@ -79,14 +80,20 @@ class UsuarioController extends Controller
             ],
         ]);
 
-        $usuario->update([
+        $payload = [
             'name' => $data['name'],
             'email' => $data['email'],
             'role_id' => $data['role_id'],
             'bodega_id' => $data['bodega_id'] ?? null,
-        ]);
+        ];
 
-        return redirect()->route('admin.usuarios.index')
+        if (!empty($data['password'])) {
+            $payload['password'] = bcrypt($data['password']);
+        }
+
+        $usuario->update($payload);
+
+        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok','Usuario actualizado correctamente.');
     }
 
@@ -94,7 +101,12 @@ class UsuarioController extends Controller
     {
         $usuario->delete();
 
-        return redirect()->route('admin.usuarios.index')
+        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok','Usuario eliminado correctamente.');
+    }
+
+    private function usuariosRoutePrefix(): string
+    {
+        return auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
     }
 }
