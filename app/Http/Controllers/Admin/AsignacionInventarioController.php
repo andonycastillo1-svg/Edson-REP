@@ -26,10 +26,13 @@ class AsignacionInventarioController extends Controller
         }
 
         $asignaciones = $query->paginate(15);
-        $movimientos = AsignacionMovimiento::with(['asignacion.colaborador', 'user'])
-            ->latest()
-            ->limit(30)
-            ->get();
+        $movimientos = collect();
+        if (Schema::hasTable('asignacion_movimientos')) {
+            $movimientos = AsignacionMovimiento::with(['asignacion.colaborador', 'user'])
+                ->latest()
+                ->limit(30)
+                ->get();
+        }
 
         return view('admin.asignaciones.index', compact('asignaciones', 'routePrefix', 'movimientos'));
     }
@@ -116,13 +119,15 @@ class AsignacionInventarioController extends Controller
 
         $asignacion = AsignacionInventario::create($payload);
 
-        AsignacionMovimiento::create([
-            'asignacion_inventario_id' => $asignacion->id,
-            'tipo' => 'Asignacion',
-            'cantidad' => $asignacion->cantidad_asignada,
-            'detalle' => 'Asignación inicial del producto.',
-            'user_id' => auth()->id(),
-        ]);
+        if (Schema::hasTable('asignacion_movimientos')) {
+            AsignacionMovimiento::create([
+                'asignacion_inventario_id' => $asignacion->id,
+                'tipo' => 'Asignacion',
+                'cantidad' => $asignacion->cantidad_asignada,
+                'detalle' => 'Asignación inicial del producto.',
+                'user_id' => auth()->id(),
+            ]);
+        }
 
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
@@ -217,13 +222,15 @@ class AsignacionInventarioController extends Controller
                 ->where('producto_codigo', $asignacion->producto_codigo)
                 ->increment('cantidad', $cantidadDevuelta);
 
-            AsignacionMovimiento::create([
-                'asignacion_inventario_id' => $asignacion->id,
-                'tipo' => 'Devolucion',
-                'cantidad' => $cantidadDevuelta,
-                'detalle' => $data['detalle_devolucion'] ?? 'Devolución de producto.',
-                'user_id' => auth()->id(),
-            ]);
+            if (Schema::hasTable('asignacion_movimientos')) {
+                AsignacionMovimiento::create([
+                    'asignacion_inventario_id' => $asignacion->id,
+                    'tipo' => 'Devolucion',
+                    'cantidad' => $cantidadDevuelta,
+                    'detalle' => $data['detalle_devolucion'] ?? 'Devolución de producto.',
+                    'user_id' => auth()->id(),
+                ]);
+            }
         });
 
         return redirect()->route($routePrefix . '.asignaciones.index')
