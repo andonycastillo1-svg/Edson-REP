@@ -75,17 +75,10 @@ class AsignacionInventarioController extends Controller
             ->where('bodega_id', $data['bodega_id'])
             ->first();
 
+        // Control por stock: un mismo código puede asignarse a varios colaboradores
+        // siempre que exista cantidad disponible en inventario.
         if (!$inventario || $inventario->cantidad < $data['cantidad_asignada']) {
             return back()->with('error', 'Stock insuficiente');
-        }
-
-        $yaAsignado = AsignacionInventario::where('producto_codigo', $data['producto_codigo'])
-            ->where('estado', 'Activa')
-            ->where('colaborador_codigo', '!=', $data['colaborador_codigo'])
-            ->exists();
-
-        if ($yaAsignado) {
-            return back()->with('error', 'Este producto ya está asignado a otro colaborador.');
         }
 
         // Si no viene costo, tomarlo del producto
