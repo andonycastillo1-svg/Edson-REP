@@ -45,4 +45,9 @@ class AsignacionInventario extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function movimientos()
+    {
+        return $this->hasMany(AsignacionMovimiento::class, 'asignacion_inventario_id');
+    }
 }

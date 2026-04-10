@@ -32,6 +32,11 @@
             {{ session('success') }}
           </div>
         @endif
+        @if(session('error'))
+          <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm">
+            {{ session('error') }}
+          </div>
+        @endif
 
         <div class="overflow-x-auto rounded-xl border border-slate-200">
           <table class="w-full text-sm">
@@ -42,6 +47,7 @@
                 <th class="px-4 py-3 text-left font-semibold">Producto</th>
                 <th class="px-4 py-3 text-left font-semibold">Bodega</th>
                 <th class="px-4 py-3 text-right font-semibold">Cantidad</th>
+                <th class="px-4 py-3 text-left font-semibold">Estado</th>
                 <th class="px-4 py-3 text-right font-semibold">Acciones</th>
               </tr>
             </thead>
@@ -59,6 +65,7 @@
                   </td>
                   <td class="px-4 py-3">{{ optional($a->bodega)->nombre ?? '—' }}</td>
                   <td class="px-4 py-3 text-right font-semibold">{{ $a->cantidad_asignada }}</td>
+                  <td class="px-4 py-3">{{ $a->estado ?? 'Activa' }}</td>
                   <td class="px-4 py-3">
                     <div class="flex flex-col md:flex-row gap-2 justify-end">
                       <a href="{{ route($routePrefix . '.asignaciones.pdf', $a->colaborador_codigo) }}"
@@ -81,6 +88,29 @@
                           Subir firmado
                         </button>
                       </form>
+
+                      @if(($a->estado ?? 'Activa') === 'Activa')
+                        <form method="POST"
+                              action="{{ route($routePrefix . '.asignaciones.devolver', $a) }}"
+                              class="flex items-center gap-2">
+                          @csrf
+                          <input type="number"
+                                 name="cantidad_devuelta"
+                                 min="1"
+                                 max="{{ $a->cantidad_asignada }}"
+                                 value="1"
+                                 class="text-xs w-20 border border-slate-200 rounded-lg p-1"
+                                 required>
+                          <input type="text"
+                                 name="detalle_devolucion"
+                                 placeholder="Motivo (opcional)"
+                                 class="text-xs w-[150px] border border-slate-200 rounded-lg p-1">
+                          <button type="submit"
+                                  class="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100">
+                            Devolver
+                          </button>
+                        </form>
+                      @endif
                     </div>
 
                     @if($a->pdf_firmado)
@@ -96,7 +126,7 @@
                 </tr>
               @empty
                 <tr>
-                  <td colspan="6" class="px-4 py-10 text-center text-slate-500">
+                  <td colspan="7" class="px-4 py-10 text-center text-slate-500">
                     Aún no tienes asignaciones registradas.
                   </td>
                 </tr>
@@ -107,6 +137,42 @@
 
         <div class="mt-4">
           {{ $asignaciones->links() }}
+        </div>
+
+        <div class="mt-8 rounded-xl border border-slate-200">
+          <div class="px-4 py-3 bg-slate-50 border-b border-slate-200">
+            <h2 class="font-semibold text-slate-800">Historial de movimientos</h2>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 text-slate-600">
+                <tr>
+                  <th class="px-4 py-2 text-left">Fecha</th>
+                  <th class="px-4 py-2 text-left">Tipo</th>
+                  <th class="px-4 py-2 text-left">Colaborador</th>
+                  <th class="px-4 py-2 text-left">Cantidad</th>
+                  <th class="px-4 py-2 text-left">Detalle</th>
+                  <th class="px-4 py-2 text-left">Usuario</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @forelse($movimientos as $m)
+                  <tr>
+                    <td class="px-4 py-2">{{ $m->created_at?->format('d/m/Y H:i') }}</td>
+                    <td class="px-4 py-2">{{ $m->tipo }}</td>
+                    <td class="px-4 py-2">{{ optional(optional($m->asignacion)->colaborador)->nombre ?? '—' }}</td>
+                    <td class="px-4 py-2">{{ $m->cantidad }}</td>
+                    <td class="px-4 py-2">{{ $m->detalle ?? '—' }}</td>
+                    <td class="px-4 py-2">{{ optional($m->user)->name ?? '—' }}</td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="6" class="px-4 py-6 text-center text-slate-500">Sin movimientos registrados.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
