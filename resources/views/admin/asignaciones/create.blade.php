@@ -4,6 +4,7 @@
 @endsection
 
 @section('content')
+@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 <div class="min-h-screen bg-slate-50">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
@@ -16,7 +17,7 @@
           <p class="text-sm text-slate-600">Asignar productos a colaboradores.</p>
         </div>
 
-        <a href="{{ route('admin.dashboard') }}"
+        <a href="{{ route('dashboard') }}"
            class="rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
           ← Volver
         </a>
@@ -38,7 +39,7 @@
       </div>
 
       {{-- Form --}}
-      <form method="POST" action="{{ route('admin.asignaciones.store') }}"
+      <form method="POST" action="{{ route($routePrefix . '.asignaciones.store') }}"
             enctype="multipart/form-data"
             class="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         @csrf

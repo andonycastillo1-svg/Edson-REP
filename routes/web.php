@@ -179,6 +179,8 @@ Route::middleware(['auth', 'role:4'])
 
         Route::view('/dashboard', 'consultas.dashboard')->name('dashboard');
 
+        Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
+
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
 
