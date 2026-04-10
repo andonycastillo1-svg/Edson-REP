@@ -48,13 +48,13 @@
             <tbody class="divide-y divide-slate-100">
               @forelse($asignaciones as $a)
                 <tr class="hover:bg-slate-50">
-                  <td class="px-4 py-3">{{ $a->fecha ? \Illuminate\Support\Carbon::parse($a->fecha)->format('d/m/Y') : '—' }}</td>
+                  <td class="px-4 py-3">{{ $a->fecha ? date('d/m/Y', strtotime($a->fecha)) : '—' }}</td>
                   <td class="px-4 py-3">
                     {{ $a->colaborador->nombre ?? '—' }}
                     <div class="text-xs text-slate-500">{{ $a->colaborador_codigo }}</div>
                   </td>
-                  <td class="px-4 py-3">{{ $a->producto->nombre ?? $a->producto_codigo }}</td>
-                  <td class="px-4 py-3">{{ $a->bodega->nombre ?? '—' }}</td>
+                  <td class="px-4 py-3">{{ optional($a->producto)->nombre ?? $a->producto_codigo }}</td>
+                  <td class="px-4 py-3">{{ optional($a->bodega)->nombre ?? '—' }}</td>
                   <td class="px-4 py-3 text-right font-semibold">{{ $a->cantidad_asignada }}</td>
                   <td class="px-4 py-3">
                     <div class="flex flex-col md:flex-row gap-2 justify-end">
@@ -82,7 +82,7 @@
 
                     @if($a->pdf_firmado)
                       <div class="mt-2 text-right">
-                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($a->pdf_firmado) }}"
+                        <a href="{{ asset('storage/' . $a->pdf_firmado) }}"
                            target="_blank"
                            class="text-xs text-emerald-700 hover:underline">
                           Ver documento firmado

@@ -96,11 +96,8 @@ class AsignacionInventarioController extends Controller
 
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
-
         return redirect()
             ->route($routePrefix . '.asignaciones.pdf', $asignacion->colaborador_codigo)
-            ->route($routePrefix . '.asignaciones.pdf', $data['colaborador_codigo'])
             ->with('success', 'Asignación realizada correctamente');
     }
 
