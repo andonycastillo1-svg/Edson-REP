@@ -51,13 +51,14 @@ class AsignacionInventarioController extends Controller
         $inventario = Inventario::where('producto_codigo', $data['producto_codigo'])
             ->where('bodega_id', $data['bodega_id'])
             ->first();
-            // Si no viene costo, tomarlo del producto
-            if (empty($data['costo_unitario'])) {
-                $data['costo_unitario'] = $inventario->producto->costo ?? 0;
-            }
 
         if (!$inventario || $inventario->cantidad < $data['cantidad_asignada']) {
             return back()->with('error', 'Stock insuficiente');
+        }
+
+        // Si no viene costo, tomarlo del producto
+        if (empty($data['costo_unitario'])) {
+            $data['costo_unitario'] = $inventario->producto->costo ?? 0;
         }
 
         // Descontar stock
@@ -81,14 +82,14 @@ class AsignacionInventarioController extends Controller
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
         return redirect()
-            ->route($routePrefix . '.asignaciones.create')
+            ->route($routePrefix . '.asignaciones.pdf', $data['colaborador_codigo'])
             ->with('success', 'Asignación realizada correctamente');
     }
 
     // 🔥 NUEVO: GENERAR HOJA PDF / IMPRIMIBLE
     public function pdf($codigo)
     {
-        $colaborador = Colaborador::findOrFail($codigo);
+        $colaborador = Colaborador::where('codigo', $codigo)->firstOrFail();
         $usuario = auth()->user();
 
         $asignaciones = AsignacionInventario::with('producto', 'bodega')
