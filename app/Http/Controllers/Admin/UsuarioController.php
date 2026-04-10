@@ -19,7 +19,7 @@ class UsuarioController extends Controller
 
     public function create()
     {
-        $roles = Role::orderBy('nombre')->get();
+        $roles = $this->rolesPermitidosParaGestion();
         $bodegas = Bodega::orderBy('nombre')->get();
 
         $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
@@ -30,12 +30,13 @@ class UsuarioController extends Controller
     public function store(Request $request)
     {
         $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
+        $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
 
         $data = $request->validate([
             'name' => ['required','string','max:255'],
             'email' => ['required','email','max:255','unique:users,email'],
             'password' => ['required','string','min:6','confirmed'],
-            'role_id' => ['required','exists:roles,id'],
+            'role_id' => ['required','exists:roles,id', Rule::in($rolesPermitidos)],
             'bodega_id' => [
                 Rule::requiredIf(fn() => (int)$request->role_id === (int)$rolEncargadoId),
                 'nullable',
@@ -51,13 +52,13 @@ class UsuarioController extends Controller
             'bodega_id' => $data['bodega_id'] ?? null,
         ]);
 
-        return redirect()->route('admin.usuarios.index')
+        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok','Usuario creado correctamente.');
     }
 
     public function edit(User $usuario)
     {
-        $roles = Role::orderBy('nombre')->get();
+        $roles = $this->rolesPermitidosParaGestion();
         $bodegas = Bodega::orderBy('nombre')->get();
         $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
 
@@ -67,11 +68,13 @@ class UsuarioController extends Controller
     public function update(Request $request, User $usuario)
     {
         $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
+        $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
 
         $data = $request->validate([
             'name' => ['required','string','max:255'],
             'email' => ['required','email','max:255',Rule::unique('users','email')->ignore($usuario->id)],
-            'role_id' => ['required','exists:roles,id'],
+            'role_id' => ['required','exists:roles,id', Rule::in($rolesPermitidos)],
+            'password' => ['nullable','string','min:6','confirmed'],
             'bodega_id' => [
                 Rule::requiredIf(fn() => (int)$request->role_id === (int)$rolEncargadoId),
                 'nullable',
@@ -79,14 +82,20 @@ class UsuarioController extends Controller
             ],
         ]);
 
-        $usuario->update([
+        $payload = [
             'name' => $data['name'],
             'email' => $data['email'],
             'role_id' => $data['role_id'],
             'bodega_id' => $data['bodega_id'] ?? null,
-        ]);
+        ];
 
-        return redirect()->route('admin.usuarios.index')
+        if (!empty($data['password'])) {
+            $payload['password'] = bcrypt($data['password']);
+        }
+
+        $usuario->update($payload);
+
+        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok','Usuario actualizado correctamente.');
     }
 
@@ -94,7 +103,23 @@ class UsuarioController extends Controller
     {
         $usuario->delete();
 
-        return redirect()->route('admin.usuarios.index')
+        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok','Usuario eliminado correctamente.');
+    }
+
+    private function usuariosRoutePrefix(): string
+    {
+        return auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+    }
+
+    private function rolesPermitidosParaGestion()
+    {
+        $query = Role::query()->orderBy('nombre');
+
+        if ((int) auth()->user()->role_id === 4) {
+            $query->where('nombre', 'Encargado');
+        }
+
+        return $query->get();
     }
 }
