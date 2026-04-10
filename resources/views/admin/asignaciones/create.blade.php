@@ -72,7 +72,7 @@
             <select name="colaborador_codigo"
               class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:ring-2 focus:ring-blue-500" required>
               @foreach($colaboradores as $c)
-                <option value="{{ $c->codigo }}" @selected(old('colaborador_codigo') === $c->codigo)>{{ $c->nombre }}</option>
+                <option value="{{ $c->codigo }}" {{ old('colaborador_codigo') === $c->codigo ? 'selected' : '' }}>{{ $c->nombre }}</option>
               @endforeach
             </select>
           </div>
@@ -89,7 +89,7 @@
             <select name="aprobado_por"
               class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:ring-2 focus:ring-blue-500" required>
               @foreach($aprobadores as $a)
-                <option value="{{ $a }}" @selected(old('aprobado_por') === $a)>{{ $a }}</option>
+                <option value="{{ $a }}" {{ old('aprobado_por') === $a ? 'selected' : '' }}>{{ $a }}</option>
               @endforeach
             </select>
           </div>
@@ -98,8 +98,8 @@
             <label class="text-sm font-medium text-slate-700">Medio de solicitud</label>
             <select name="medio_solicitud"
               class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:ring-2 focus:ring-blue-500" required>
-              <option value="WhatsApp" @selected(old('medio_solicitud') === 'WhatsApp')>WhatsApp</option>
-              <option value="Correo" @selected(old('medio_solicitud') === 'Correo')>Correo</option>
+              <option value="WhatsApp" {{ old('medio_solicitud') === 'WhatsApp' ? 'selected' : '' }}>WhatsApp</option>
+              <option value="Correo" {{ old('medio_solicitud') === 'Correo' ? 'selected' : '' }}>Correo</option>
             </select>
           </div>
 
