@@ -3,7 +3,7 @@
 @section('title', 'Encargado - Inicio')
 
 @section('content')
-<div class="w-full max-w-lg bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
+<div class="w-full max-w-4xl bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
     <div class="flex items-center gap-4 mb-8">
         <img src="{{ asset('img/logo1.png') }}" alt="Logo"
              class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 p-1">
@@ -20,7 +20,7 @@
         ];
     @endphp
 
-    <div class="space-y-3">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         @foreach($menu as $item)
             <a href="{{ route($item['route']) }}"
                class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
