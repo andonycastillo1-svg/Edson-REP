@@ -1,18 +1,19 @@
 @extends('layouts.admin')
 
 @section('content')
+@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 <div class="min-h-[calc(100vh-120px)] px-6 py-10">
   <div class="max-w-5xl mx-auto">
 
     <div class="flex items-center justify-between gap-3 mb-6">
       <div>
-        <a href="{{ route('admin.operaciones.traslados.index') }}" class="text-sm text-blue-700 hover:underline">← Volver</a>
+        <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}" class="text-sm text-blue-700 hover:underline">← Volver</a>
         <h1 class="text-3xl font-bold text-slate-900 mt-2">Solicitud #{{ $operacion->id }}</h1>
         <p class="text-sm text-slate-500">Tipo: {{ $operacion->tipo }}</p>
       </div>
 
       <div class="flex items-center gap-2">
-        <a href="{{ route('admin.operaciones.traslados.hoja', $operacion) }}"
+        <a href="{{ route($routePrefix . '.operaciones.traslados.hoja', $operacion) }}"
            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           🧾 Hoja
         </a>
@@ -93,14 +94,14 @@
       @if($puedeDecidir)
         <div class="mt-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-end">
 
-          <form method="POST" action="{{ route('admin.operaciones.traslados.aprobar', $operacion) }}">
+          <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.aprobar', $operacion) }}">
             @csrf
             <button class="rounded-xl bg-green-600 px-4 py-2 text-white text-sm font-semibold hover:bg-green-700">
               ✅ Aprobar
             </button>
           </form>
 
-          <form method="POST" action="{{ route('admin.operaciones.traslados.rechazar', $operacion) }}"
+          <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.rechazar', $operacion) }}"
                 class="w-full md:max-w-md">
             @csrf
             <div class="flex gap-2">
