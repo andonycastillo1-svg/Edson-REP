@@ -34,10 +34,16 @@ class OperacionTrasladoController extends Controller
             $q->where('creado_por', $user->id);
         }
 
-        $q->when($estado, fn($qq) => $qq->where('estado', $estado))
-          ->when($origen, fn($qq) => $qq->where('bodega_origen_id', $origen))
-          ->when($destino, fn($qq) => $qq->where('bodega_destino_id', $destino))
-          ->orderByDesc('created_at');
+        $q->when($estado, function ($qq) use ($estado) {
+                $qq->where('estado', $estado);
+            })
+            ->when($origen, function ($qq) use ($origen) {
+                $qq->where('bodega_origen_id', $origen);
+            })
+            ->when($destino, function ($qq) use ($destino) {
+                $qq->where('bodega_destino_id', $destino);
+            })
+            ->orderByDesc('created_at');
 
         $operaciones = $q->paginate(20)->withQueryString();
         $bodegas = Bodega::orderBy('nombre')->get();
