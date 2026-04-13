@@ -104,7 +104,7 @@ class OperacionTrasladoController extends Controller
             ->where('bodega_id', $origenId)
             ->first();
 
-        $disponible = (int)($inv?->cantidad ?? 0);
+        $disponible = (int) (optional($inv)->cantidad ?? 0);
 
         if ($disponible < $cantidad) {
             throw ValidationException::withMessages([
@@ -199,7 +199,7 @@ class OperacionTrasladoController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                $stock = (int)($invOrigen?->cantidad ?? 0);
+                $stock = (int) (optional($invOrigen)->cantidad ?? 0);
 
                 if ($stock < $cantidad) {
                     throw ValidationException::withMessages([

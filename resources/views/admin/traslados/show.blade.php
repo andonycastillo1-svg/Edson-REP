@@ -34,18 +34,21 @@
     <div class="rounded-2xl bg-white shadow-sm border border-slate-200 p-6">
       <div class="flex items-center justify-between flex-wrap gap-2">
         <div class="text-sm text-slate-700">
-          <span class="font-semibold">Origen:</span> {{ $operacion->bodegaOrigen?->nombre }}
+          <span class="font-semibold">Origen:</span> {{ optional($operacion->bodegaOrigen)->nombre }}
           <span class="text-slate-400 mx-2">→</span>
-          <span class="font-semibold">Destino:</span> {{ $operacion->bodegaDestino?->nombre }}
+          <span class="font-semibold">Destino:</span> {{ optional($operacion->bodegaDestino)->nombre }}
         </div>
 
         @php
-          $badge = match($operacion->estado) {
-            'PENDIENTE' => 'bg-amber-50 text-amber-700',
-            'APROBADO'  => 'bg-green-50 text-green-700',
-            'RECHAZADO' => 'bg-red-50 text-red-700',
-            default     => 'bg-slate-100 text-slate-700',
-          };
+          if ($operacion->estado === 'PENDIENTE') {
+              $badge = 'bg-amber-50 text-amber-700';
+          } elseif ($operacion->estado === 'APROBADO') {
+              $badge = 'bg-green-50 text-green-700';
+          } elseif ($operacion->estado === 'RECHAZADO') {
+              $badge = 'bg-red-50 text-red-700';
+          } else {
+              $badge = 'bg-slate-100 text-slate-700';
+          }
         @endphp
         <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold {{ $badge }}">
           {{ $operacion->estado }}
@@ -53,7 +56,7 @@
       </div>
 
       <div class="mt-3 text-xs text-slate-500">
-        Creado por: <span class="font-semibold text-slate-700">{{ $operacion->creador?->name ?? '—' }}</span>
+        Creado por: <span class="font-semibold text-slate-700">{{ optional($operacion->creador)->name ?? '—' }}</span>
         • {{ $operacion->created_at->format('d/m/Y H:i') }}
       </div>
 
@@ -82,7 +85,7 @@
               <tr>
                 <td class="px-4 py-3">
                   <div class="font-semibold text-slate-900">{{ $d->producto_codigo }}</div>
-                  <div class="text-xs text-slate-500">{{ $d->producto?->nombre ?? '—' }}</div>
+                  <div class="text-xs text-slate-500">{{ optional($d->producto)->nombre ?? '—' }}</div>
                 </td>
                 <td class="px-4 py-3 text-right font-bold">{{ $d->cantidad }}</td>
               </tr>
