@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
+@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 <div class="min-h-[calc(100vh-120px)] px-6 py-10">
   <div class="max-w-6xl mx-auto">
 
@@ -17,13 +18,13 @@
       </div>
 
       <div class="flex items-center gap-2">
-  <a href="{{ route('admin.bodegas.index') }}"
+  <a href="{{ route($routePrefix . '.bodegas.index') }}"
      class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
     ← Volver
   </a>
 
         @if(!$user->isEncargado())
-          <a href="{{ route('admin.operaciones.traslados.create') }}"
+          <a href="{{ route($routePrefix . '.operaciones.traslados.create') }}"
              class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
             + Nueva solicitud
           </a>
@@ -48,9 +49,9 @@
           <label class="text-sm font-semibold text-slate-700">Estado</label>
           <select name="estado" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
             <option value="">Todos</option>
-            <option value="PENDIENTE" @selected($estado==='PENDIENTE')>PENDIENTE</option>
-            <option value="APROBADO" @selected($estado==='APROBADO')>APROBADO</option>
-            <option value="RECHAZADO" @selected($estado==='RECHAZADO')>RECHAZADO</option>
+            <option value="PENDIENTE" {{ $estado === 'PENDIENTE' ? 'selected' : '' }}>PENDIENTE</option>
+            <option value="APROBADO" {{ $estado === 'APROBADO' ? 'selected' : '' }}>APROBADO</option>
+            <option value="RECHAZADO" {{ $estado === 'RECHAZADO' ? 'selected' : '' }}>RECHAZADO</option>
           </select>
         </div>
 
@@ -59,7 +60,7 @@
           <select name="origen" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
             <option value="">Todas</option>
             @foreach($bodegas as $b)
-              <option value="{{ $b->id }}" @selected((string)$origen === (string)$b->id)>{{ $b->nombre }}</option>
+              <option value="{{ $b->id }}" {{ (string) $origen === (string) $b->id ? 'selected' : '' }}>{{ $b->nombre }}</option>
             @endforeach
           </select>
         </div>
@@ -69,7 +70,7 @@
           <select name="destino" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
             <option value="">Todas</option>
             @foreach($bodegas as $b)
-              <option value="{{ $b->id }}" @selected((string)$destino === (string)$b->id)>{{ $b->nombre }}</option>
+              <option value="{{ $b->id }}" {{ (string) $destino === (string) $b->id ? 'selected' : '' }}>{{ $b->nombre }}</option>
             @endforeach
           </select>
         </div>
@@ -81,7 +82,7 @@
         </div>
 
         <div class="md:col-span-12 flex justify-end pt-2">
-          <a href="{{ route('admin.operaciones.traslados.index') }}"
+          <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}"
              class="text-xs font-semibold text-blue-700 hover:underline">Limpiar filtros</a>
         </div>
       </form>
@@ -105,29 +106,32 @@
                 <td class="px-5 py-4 font-semibold text-slate-900">#{{ $op->id }}</td>
                 <td class="px-5 py-4">
                   @php
-                    $estado = $op->estado;
-                    $badge = match($estado) {
-                      'PENDIENTE' => 'bg-amber-50 text-amber-700',
-                      'APROBADO'  => 'bg-green-50 text-green-700',
-                      'RECHAZADO' => 'bg-red-50 text-red-700',
-                      default     => 'bg-slate-100 text-slate-700',
-                    };
+                    $estadoItem = $op->estado;
+                    if ($estadoItem === 'PENDIENTE') {
+                        $badge = 'bg-amber-50 text-amber-700';
+                    } elseif ($estadoItem === 'APROBADO') {
+                        $badge = 'bg-green-50 text-green-700';
+                    } elseif ($estadoItem === 'RECHAZADO') {
+                        $badge = 'bg-red-50 text-red-700';
+                    } else {
+                        $badge = 'bg-slate-100 text-slate-700';
+                    }
                   @endphp
                   <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold {{ $badge }}">
                     {{ $op->estado }}
                   </span>
                 </td>
                 <td class="px-5 py-4 text-slate-700">
-                  <span class="font-semibold">{{ $op->bodegaOrigen?->nombre ?? '—' }}</span>
+                  <span class="font-semibold">{{ optional($op->bodegaOrigen)->nombre ?? '—' }}</span>
                   <span class="text-slate-400">→</span>
-                  <span class="font-semibold">{{ $op->bodegaDestino?->nombre ?? '—' }}</span>
+                  <span class="font-semibold">{{ optional($op->bodegaDestino)->nombre ?? '—' }}</span>
                 </td>
                 <td class="px-5 py-4 text-slate-700">
                   <div class="font-semibold">{{ $op->created_at->format('d/m/Y H:i') }}</div>
-                  <div class="text-xs text-slate-500">Por: {{ $op->creador?->name ?? '—' }}</div>
+                  <div class="text-xs text-slate-500">Por: {{ optional($op->creador)->name ?? '—' }}</div>
                 </td>
                 <td class="px-5 py-4 text-right">
-                  <a href="{{ route('admin.operaciones.traslados.show', $op) }}"
+                  <a href="{{ route($routePrefix . '.operaciones.traslados.show', $op) }}"
                      class="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
                     Ver
                   </a>

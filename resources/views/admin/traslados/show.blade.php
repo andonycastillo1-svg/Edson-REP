@@ -1,18 +1,19 @@
 @extends('layouts.admin')
 
 @section('content')
+@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 <div class="min-h-[calc(100vh-120px)] px-6 py-10">
   <div class="max-w-5xl mx-auto">
 
     <div class="flex items-center justify-between gap-3 mb-6">
       <div>
-        <a href="{{ route('admin.operaciones.traslados.index') }}" class="text-sm text-blue-700 hover:underline">← Volver</a>
+        <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}" class="text-sm text-blue-700 hover:underline">← Volver</a>
         <h1 class="text-3xl font-bold text-slate-900 mt-2">Solicitud #{{ $operacion->id }}</h1>
         <p class="text-sm text-slate-500">Tipo: {{ $operacion->tipo }}</p>
       </div>
 
       <div class="flex items-center gap-2">
-        <a href="{{ route('admin.operaciones.traslados.hoja', $operacion) }}"
+        <a href="{{ route($routePrefix . '.operaciones.traslados.hoja', $operacion) }}"
            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           🧾 Hoja
         </a>
@@ -33,18 +34,21 @@
     <div class="rounded-2xl bg-white shadow-sm border border-slate-200 p-6">
       <div class="flex items-center justify-between flex-wrap gap-2">
         <div class="text-sm text-slate-700">
-          <span class="font-semibold">Origen:</span> {{ $operacion->bodegaOrigen?->nombre }}
+          <span class="font-semibold">Origen:</span> {{ optional($operacion->bodegaOrigen)->nombre }}
           <span class="text-slate-400 mx-2">→</span>
-          <span class="font-semibold">Destino:</span> {{ $operacion->bodegaDestino?->nombre }}
+          <span class="font-semibold">Destino:</span> {{ optional($operacion->bodegaDestino)->nombre }}
         </div>
 
         @php
-          $badge = match($operacion->estado) {
-            'PENDIENTE' => 'bg-amber-50 text-amber-700',
-            'APROBADO'  => 'bg-green-50 text-green-700',
-            'RECHAZADO' => 'bg-red-50 text-red-700',
-            default     => 'bg-slate-100 text-slate-700',
-          };
+          if ($operacion->estado === 'PENDIENTE') {
+              $badge = 'bg-amber-50 text-amber-700';
+          } elseif ($operacion->estado === 'APROBADO') {
+              $badge = 'bg-green-50 text-green-700';
+          } elseif ($operacion->estado === 'RECHAZADO') {
+              $badge = 'bg-red-50 text-red-700';
+          } else {
+              $badge = 'bg-slate-100 text-slate-700';
+          }
         @endphp
         <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold {{ $badge }}">
           {{ $operacion->estado }}
@@ -52,7 +56,7 @@
       </div>
 
       <div class="mt-3 text-xs text-slate-500">
-        Creado por: <span class="font-semibold text-slate-700">{{ $operacion->creador?->name ?? '—' }}</span>
+        Creado por: <span class="font-semibold text-slate-700">{{ optional($operacion->creador)->name ?? '—' }}</span>
         • {{ $operacion->created_at->format('d/m/Y H:i') }}
       </div>
 
@@ -81,7 +85,7 @@
               <tr>
                 <td class="px-4 py-3">
                   <div class="font-semibold text-slate-900">{{ $d->producto_codigo }}</div>
-                  <div class="text-xs text-slate-500">{{ $d->producto?->nombre ?? '—' }}</div>
+                  <div class="text-xs text-slate-500">{{ optional($d->producto)->nombre ?? '—' }}</div>
                 </td>
                 <td class="px-4 py-3 text-right font-bold">{{ $d->cantidad }}</td>
               </tr>
@@ -93,14 +97,14 @@
       @if($puedeDecidir)
         <div class="mt-6 flex flex-col md:flex-row gap-3 md:items-center md:justify-end">
 
-          <form method="POST" action="{{ route('admin.operaciones.traslados.aprobar', $operacion) }}">
+          <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.aprobar', $operacion) }}">
             @csrf
             <button class="rounded-xl bg-green-600 px-4 py-2 text-white text-sm font-semibold hover:bg-green-700">
               ✅ Aprobar
             </button>
           </form>
 
-          <form method="POST" action="{{ route('admin.operaciones.traslados.rechazar', $operacion) }}"
+          <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.rechazar', $operacion) }}"
                 class="w-full md:max-w-md">
             @csrf
             <div class="flex gap-2">
