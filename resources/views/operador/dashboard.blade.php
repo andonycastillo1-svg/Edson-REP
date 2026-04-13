@@ -15,10 +15,10 @@
 
     @php
         $menu = [
-            ['route' => 'operador.bodegas.index', 'label' => 'Bodegas', 'icon' => '🏬'],
-            ['route' => 'operador.compras.index', 'label' => 'Compras', 'icon' => '🧾'],
-            ['route' => 'operador.asignaciones.create', 'label' => 'Asignaciones', 'icon' => '📦'],
-            ['route' => 'operador.operaciones.traslados.index', 'label' => 'Traslados', 'icon' => '🔁'],
+            ['route' => 'operador.bodegas.index', 'label' => 'Bodegas', 'icon' => '🏬', 'desc' => 'Inventario por bodega'],
+            ['route' => 'operador.compras.index', 'label' => 'Compras', 'icon' => '🧾', 'desc' => 'Registro de compras'],
+            ['route' => 'operador.asignaciones.create', 'label' => 'Asignaciones', 'icon' => '📦', 'desc' => 'Entrega de equipo'],
+            ['route' => 'operador.operaciones.traslados.index', 'label' => 'Traslados', 'icon' => '🔁', 'desc' => 'Solicitudes entre bodegas'],
         ];
     @endphp
 
@@ -29,7 +29,10 @@
                 <div class="flex items-center justify-between">
                     <span class="flex items-center gap-3">
                         <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">{{ $item['icon'] }}</span>
-                        <span class="font-semibold text-slate-800">{{ $item['label'] }}</span>
+                        <span>
+                            <div class="font-semibold text-slate-800">{{ $item['label'] }}</div>
+                            <div class="text-xs text-slate-500">{{ $item['desc'] }}</div>
+                        </span>
                     </span>
                     <span class="text-slate-400 group-hover:text-blue-600">›</span>
                 </div>

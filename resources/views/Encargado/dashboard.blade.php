@@ -13,28 +13,29 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <a href="{{ route('admin.bodegas.index') }}"
-           class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
-            <div class="flex items-center justify-between">
-                <span class="flex items-center gap-3">
-                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🏬</span>
-                    <span class="font-semibold text-slate-800">Bodegas</span>
-                </span>
-                <span class="text-slate-400 group-hover:text-blue-600">›</span>
-            </div>
-        </a>
+    @php
+        $menu = [
+            ['route' => 'admin.bodegas.index', 'label' => 'Bodegas', 'icon' => '🏬', 'desc' => 'Consulta de inventario'],
+            ['route' => 'admin.operaciones.traslados.index', 'label' => 'Traslados', 'icon' => '🔁', 'desc' => 'Aprobar o rechazar solicitudes'],
+        ];
+    @endphp
 
-        <a href="{{ route('admin.operaciones.traslados.index') }}"
-           class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
-            <div class="flex items-center justify-between">
-                <span class="flex items-center gap-3">
-                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🔁</span>
-                    <span class="font-semibold text-slate-800">Traslados</span>
-                </span>
-                <span class="text-slate-400 group-hover:text-blue-600">›</span>
-            </div>
-        </a>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        @foreach($menu as $item)
+            <a href="{{ route($item['route']) }}"
+               class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+                <div class="flex items-center justify-between">
+                    <span class="flex items-center gap-3">
+                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">{{ $item['icon'] }}</span>
+                        <span>
+                            <div class="font-semibold text-slate-800">{{ $item['label'] }}</div>
+                            <div class="text-xs text-slate-500">{{ $item['desc'] }}</div>
+                        </span>
+                    </span>
+                    <span class="text-slate-400 group-hover:text-blue-600">›</span>
+                </div>
+            </a>
+        @endforeach
     </div>
 
     <div class="mt-8 pt-6 border-t text-center">
