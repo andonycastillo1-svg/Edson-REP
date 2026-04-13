@@ -34,10 +34,16 @@ class OperacionTrasladoController extends Controller
             $q->where('creado_por', $user->id);
         }
 
-        $q->when($estado, fn($qq) => $qq->where('estado', $estado))
-          ->when($origen, fn($qq) => $qq->where('bodega_origen_id', $origen))
-          ->when($destino, fn($qq) => $qq->where('bodega_destino_id', $destino))
-          ->orderByDesc('created_at');
+        $q->when($estado, function ($qq) use ($estado) {
+                $qq->where('estado', $estado);
+            })
+            ->when($origen, function ($qq) use ($origen) {
+                $qq->where('bodega_origen_id', $origen);
+            })
+            ->when($destino, function ($qq) use ($destino) {
+                $qq->where('bodega_destino_id', $destino);
+            })
+            ->orderByDesc('created_at');
 
         $operaciones = $q->paginate(20)->withQueryString();
         $bodegas = Bodega::orderBy('nombre')->get();
@@ -239,7 +245,9 @@ class OperacionTrasladoController extends Controller
             $operacion->save();
         });
 
-        return redirect()->route('admin.operaciones.traslados.show', $operacion)
+        $routePrefix = $user->role_id == 2 ? 'operador' : 'admin';
+
+        return redirect()->route($routePrefix . '.operaciones.traslados.show', $operacion)
             ->with('ok', 'Solicitud aprobada. Inventario actualizado.');
     }
 
@@ -265,7 +273,9 @@ class OperacionTrasladoController extends Controller
         $operacion->motivo_rechazo = $data['motivo_rechazo'];
         $operacion->save();
 
-        return redirect()->route('admin.operaciones.traslados.show', $operacion)
+        $routePrefix = $user->role_id == 2 ? 'operador' : 'admin';
+
+        return redirect()->route($routePrefix . '.operaciones.traslados.show', $operacion)
             ->with('ok', 'Solicitud rechazada.');
     }
 

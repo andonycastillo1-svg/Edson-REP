@@ -3,53 +3,75 @@
 @section('title', 'Operador - Inicio')
 
 @section('content')
-<div class="w-full max-w-lg bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-8">
-
-    <div class="text-center mb-8">
-        <h1 class="text-2xl font-semibold text-gray-800">
-            Bienvenido, {{ auth()->user()->name }}
-        </h1>
-        <p class="text-sm text-gray-500 mt-1">
-            Panel de operador
-        </p>
+<div class="w-full max-w-lg bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
+    <div class="flex items-center gap-4 mb-8">
+        <img src="{{ asset('img/logo1.png') }}" alt="Logo"
+             class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 p-1">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-800">Bienvenido, {{ auth()->user()->name }}</h1>
+            <p class="text-sm text-gray-500 mt-1">Panel de operador</p>
+        </div>
     </div>
 
     <div class="space-y-3">
-
-        <a href="{{ route('operador.bodegas.index') }}"
-           class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-            <span class="font-medium text-gray-700">Bodegas</span>
-            <span class="text-gray-400">›</span>
+        <a href="{{ route('operador.bodegas.index') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🏬</span>
+                    <span>
+                        <div class="font-semibold text-slate-800">Bodegas</div>
+                        <div class="text-xs text-slate-500">Inventario por bodega</div>
+                    </span>
+                </span>
+                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+            </div>
         </a>
 
-        <a href="{{ route('operador.compras.index') }}"
-           class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-            <span class="font-medium text-gray-700">Compras</span>
-            <span class="text-gray-400">›</span>
+        <a href="{{ route('operador.compras.index') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🧾</span>
+                    <span>
+                        <div class="font-semibold text-slate-800">Compras</div>
+                        <div class="text-xs text-slate-500">Registro de compras</div>
+                    </span>
+                </span>
+                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+            </div>
         </a>
 
-        <a href="{{ route('operador.asignaciones.create') }}"
-           class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-            <span class="font-medium text-gray-700">Asignaciones</span>
-            <span class="text-gray-400">›</span>
+        <a href="{{ route('operador.asignaciones.create') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">📦</span>
+                    <span>
+                        <div class="font-semibold text-slate-800">Asignaciones</div>
+                        <div class="text-xs text-slate-500">Entrega de equipo</div>
+                    </span>
+                </span>
+                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+            </div>
         </a>
 
-        <a href="{{ route('operador.operaciones.traslados.index') }}"
-           class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-            <span class="font-medium text-gray-700">Traslados</span>
-            <span class="text-gray-400">›</span>
+        <a href="{{ route('operador.operaciones.traslados.index') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🔁</span>
+                    <span>
+                        <div class="font-semibold text-slate-800">Traslados</div>
+                        <div class="text-xs text-slate-500">Solicitudes entre bodegas</div>
+                    </span>
+                </span>
+                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+            </div>
         </a>
-
     </div>
 
     <div class="mt-8 pt-6 border-t text-center">
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-            <button class="text-sm text-red-600 hover:underline">
-                Cerrar sesión
-            </button>
+            <button class="text-sm text-red-600 hover:underline">Cerrar sesión</button>
         </form>
     </div>
-
 </div>
 @endsection

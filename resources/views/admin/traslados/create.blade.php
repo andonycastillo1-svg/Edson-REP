@@ -4,6 +4,7 @@
 @php
   $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
   $esOperador = auth()->user()->role_id == 2;
+  $origenSeleccionado = old('bodega_origen_id', $origenId ?? ($esOperador ? auth()->user()->bodega_id : null));
 @endphp
 
 <div class="min-h-[calc(100vh-120px)] px-6 py-10">
@@ -49,7 +50,7 @@
               <option value="">Selecciona...</option>
               @foreach($bodegas as $b)
                 <option value="{{ $b->id }}"
-                  @selected((string)old('bodega_origen_id', $origenId) === (string)$b->id)>
+                  {{ (string) old('bodega_origen_id', $origenId) === (string) $b->id ? 'selected' : '' }}>
                   {{ $b->nombre }}
                 </option>
               @endforeach
@@ -59,12 +60,14 @@
 
         <div>
           <label class="text-sm font-semibold text-slate-700">Bodega destino</label>
-          <select name="bodega_destino_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+          <select id="bodega_destino_id" name="bodega_destino_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
             <option value="">Selecciona...</option>
             @foreach($bodegas as $b)
-              <option value="{{ $b->id }}" @selected((string)old('bodega_destino_id') === (string)$b->id)>
-                {{ $b->nombre }}
-              </option>
+              @if((string)$b->id !== (string)$origenSeleccionado)
+                <option value="{{ $b->id }}" {{ (string) old('bodega_destino_id') === (string) $b->id ? 'selected' : '' }}>
+                  {{ $b->nombre }}
+                </option>
+              @endif
             @endforeach
           </select>
         </div>
@@ -111,7 +114,7 @@
                       <option value="">Selecciona...</option>
                       @foreach($productos as $p)
                         <option value="{{ $p->codigo }}"
-                          @selected(($line['producto_codigo'] ?? '') === $p->codigo)>
+                          {{ ($line['producto_codigo'] ?? '') === $p->codigo ? 'selected' : '' }}>
                           {{ $p->codigo }} — {{ $p->nombre }}
                         </option>
                       @endforeach
@@ -137,7 +140,8 @@
               <tr class="bg-slate-50">
                 <td colspan="3" class="px-3 py-3">
                   <button type="button" id="btnAddLine"
-                          class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-white text-sm font-semibold hover:bg-slate-800">
+                          class="inline-flex items-center gap-2 rounded-xl border border-blue-700 bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700"
+                          style="background-color:#2563eb;color:#fff;">
                     + Agregar línea
                   </button>
                 </td>
@@ -185,6 +189,8 @@
         const body = document.getElementById('linesBody');
         const tpl  = document.getElementById('lineTemplate');
         const btn  = document.getElementById('btnAddLine');
+        const origenSelect = document.querySelector('select[name=\"bodega_origen_id\"]');
+        const destinoSelect = document.getElementById('bodega_destino_id');
 
         function reindex() {
           const rows = body.querySelectorAll('.line-row');
@@ -219,6 +225,26 @@
         });
 
         reindex();
+
+        function syncDestinoOptions() {
+          if (!origenSelect || !destinoSelect) return;
+          const origenId = (origenSelect.value || '').toString();
+
+          Array.from(destinoSelect.options).forEach((opt) => {
+            if (!opt.value) return;
+            opt.hidden = opt.value === origenId;
+            opt.disabled = opt.value === origenId;
+          });
+
+          if (destinoSelect.value === origenId) {
+            destinoSelect.value = '';
+          }
+        }
+
+        if (origenSelect && destinoSelect) {
+          origenSelect.addEventListener('change', syncDestinoOptions);
+          syncDestinoOptions();
+        }
       })();
     </script>
 
