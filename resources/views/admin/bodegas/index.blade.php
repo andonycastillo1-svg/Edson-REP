@@ -8,32 +8,33 @@
     $bodegaOperadorId = auth()->user()->bodega_id;
 @endphp
 
-<div class="w-full max-w-7xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl md:p-8">
-    <div class="mb-6 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-sky-50 p-6">
+<div class="w-full max-w-7xl rounded-3xl border border-white/60 bg-white/90 p-6 shadow-2xl backdrop-blur md:p-8">
+    <div class="mb-6 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 p-6 text-white shadow-lg">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Panel de Bodegas</h1>
-                <p class="mt-1 text-sm text-slate-600">Visualiza inventario por sede y gestiona movimientos rápidamente.</p>
-                <div class="mt-3 inline-flex items-center gap-2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
-                    <span class="inline-block h-2 w-2 rounded-full bg-emerald-300"></span>
-                    {{ $bodegas->count() }} bodegas registradas
-                </div>
+                <h1 class="text-2xl font-bold tracking-tight md:text-3xl">Panel de Bodegas</h1>
+                <p class="mt-1 text-sm text-white/90">Visualiza inventario por sede y gestiona movimientos rápidamente.</p>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
                 <a href="{{ route('dashboard') }}"
-                   class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                   class="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 py-2 text-sm font-semibold text-white hover:bg-white/25">
                     ← Volver al menú
                 </a>
 
                 @if(auth()->user()->role_id == 1)
                     <a href="{{ route('admin.bodegas.create') }}"
-                       class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                       class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
                         <span class="text-base">＋</span>
                         Nueva bodega
                     </a>
                 @endif
             </div>
+        </div>
+
+        <div class="mt-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-sm font-semibold">
+            <span class="inline-block h-2 w-2 rounded-full bg-emerald-300"></span>
+            {{ $bodegas->count() }} bodegas registradas
         </div>
     </div>
 
@@ -56,7 +57,7 @@
                 $isPrincipal = ($bodega->tipo === 'Principal');
             @endphp
 
-            <div class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+            <div class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                 <div class="p-5">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
@@ -64,7 +65,7 @@
                                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700">🏬</span>
                                 <h2 class="truncate text-lg font-bold text-slate-900">{{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}</h2>
                             </div>
-                            <p class="mt-2 truncate text-sm text-slate-600">{{ $bodega->ubicacion ?? 'Sin ubicación registrada' }}</p>
+                            <p class="mt-2 truncate text-sm text-slate-500">{{ $bodega->ubicacion ?? 'Sin ubicación registrada' }}</p>
                         </div>
 
                         <span class="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold {{ $isPrincipal ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-blue-700' }}">
