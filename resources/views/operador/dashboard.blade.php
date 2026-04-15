@@ -13,30 +13,58 @@
         </div>
     </div>
 
-    @php
-        $menu = [
-            ['route' => 'operador.bodegas.index', 'label' => 'Bodegas', 'icon' => '🏬', 'desc' => 'Inventario por bodega'],
-            ['route' => 'operador.compras.index', 'label' => 'Compras', 'icon' => '🧾', 'desc' => 'Registro de compras'],
-            ['route' => 'operador.asignaciones.create', 'label' => 'Asignaciones', 'icon' => '📦', 'desc' => 'Entrega de equipo'],
-            ['route' => 'operador.operaciones.traslados.index', 'label' => 'Traslados', 'icon' => '🔁', 'desc' => 'Solicitudes entre bodegas'],
-        ];
-    @endphp
-
     <div class="space-y-3">
-        @foreach($menu as $item)
-            <a href="{{ route($item['route']) }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
-                <div class="flex items-center justify-between">
-                    <span class="flex items-center gap-3">
-                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">{{ $item['icon'] }}</span>
-                        <span>
-                            <div class="font-semibold text-slate-800">{{ $item['label'] }}</div>
-                            <div class="text-xs text-slate-500">{{ $item['desc'] }}</div>
-                        </span>
+        <a href="{{ route('operador.bodegas.index') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🏬</span>
+                    <span>
+                        <div class="font-semibold text-slate-800">Bodegas</div>
+                        <div class="text-xs text-slate-500">Inventario por bodega</div>
                     </span>
-                    <span class="text-slate-400 group-hover:text-blue-600">›</span>
-                </div>
-            </a>
-        @endforeach
+                </span>
+                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+            </div>
+        </a>
+
+        <a href="{{ route('operador.compras.index') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🧾</span>
+                    <span>
+                        <div class="font-semibold text-slate-800">Compras</div>
+                        <div class="text-xs text-slate-500">Registro de compras</div>
+                    </span>
+                </span>
+                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+            </div>
+        </a>
+
+        <a href="{{ route('operador.asignaciones.create') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">📦</span>
+                    <span>
+                        <div class="font-semibold text-slate-800">Asignaciones</div>
+                        <div class="text-xs text-slate-500">Entrega de equipo</div>
+                    </span>
+                </span>
+                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+            </div>
+        </a>
+
+        <a href="{{ route('operador.operaciones.traslados.index') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🔁</span>
+                    <span>
+                        <div class="font-semibold text-slate-800">Traslados</div>
+                        <div class="text-xs text-slate-500">Solicitudes entre bodegas</div>
+                    </span>
+                </span>
+                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+            </div>
+        </a>
     </div>
 
     <div class="mt-8 pt-6 border-t text-center">
