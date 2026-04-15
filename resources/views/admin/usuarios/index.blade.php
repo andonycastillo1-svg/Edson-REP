@@ -3,7 +3,6 @@
 @section('title', 'Usuarios')
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin')
 <div class="w-full max-w-6xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
 
     <!-- Header -->
@@ -13,7 +12,7 @@
             <p class="text-sm text-gray-500">Gestión de usuarios del sistema</p>
         </div>
 
-        <a href="{{ route($routePrefix . '.usuarios.create') }}"
+        <a href="{{ route('admin.usuarios.create') }}"
            class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-white font-semibold shadow hover:bg-blue-700 transition">
             + Nuevo usuario
         </a>
@@ -49,18 +48,18 @@
 
                         <td class="px-5 py-4">
                             <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                                {{ $u->role->nombre ?? 'Sin rol' }}
+                                {{ $u->rol->nombre ?? $u->role->name ?? 'Administrador' }}
                             </span>
                         </td>
 
                         <td class="px-5 py-4">
                             <div class="flex justify-end gap-2">
-                                <a href="{{ route($routePrefix . '.usuarios.edit', $u->id) }}"
+                                <a href="{{ route('admin.usuarios.edit', $u->id) }}"
                                    class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
                                     Editar
                                 </a>
 
-                                <form action="{{ route($routePrefix . '.usuarios.destroy', $u->id) }}" method="POST"
+                                <form action="{{ route('admin.usuarios.destroy', $u->id) }}" method="POST"
                                       onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
                                     @csrf
                                     @method('DELETE')
@@ -85,7 +84,7 @@
 
     <!-- Footer -->
     <div class="mt-6 flex items-center justify-between text-sm text-gray-500">
-        <a href="{{ route($routePrefix . '.dashboard') }}" class="text-blue-600 hover:underline">← Volver al menú</a>
+        <a href="{{ route('admin.dashboard') }}" class="text-blue-600 hover:underline">← Volver al menú</a>
 
         <form method="POST" action="{{ route('logout') }}">
             @csrf

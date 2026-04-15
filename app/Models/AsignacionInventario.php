@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
 
 class AsignacionInventario extends Model
 {
@@ -13,7 +12,6 @@ class AsignacionInventario extends Model
         'colaborador_codigo',
         'producto_codigo',
         'bodega_id',
-        'user_id',
         'cantidad_asignada',
         'fecha',
         'costo_unitario',
@@ -39,15 +37,5 @@ class AsignacionInventario extends Model
     public function bodega()
     {
         return $this->belongsTo(Bodega::class);
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function movimientos()
-    {
-        return $this->hasMany(AsignacionMovimiento::class, 'asignacion_inventario_id');
     }
 }

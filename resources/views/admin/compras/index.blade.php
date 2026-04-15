@@ -3,7 +3,6 @@
 @section('title', 'Compras')
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 <div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
 
     {{-- HEADER --}}
@@ -61,7 +60,7 @@
                         </td>
                         <td class="px-4 py-3 text-right">
                             <a class="px-3 py-2 rounded-xl border border-blue-200 text-blue-700 font-semibold hover:bg-blue-50 transition"
-                               href="{{ route($routePrefix . '.compras.show', $c->id) }}">
+                               href="{{ route('admin.compras.show', $c->id) }}">
                                 Ver
                             </a>
                         </td>
@@ -78,7 +77,7 @@
     </div>
 
     <div class="mt-6 text-sm text-gray-500">
-        <a href="{{ route('dashboard') }}"
+        <a href="{{ route('admin.dashboard') }}"
            class="text-blue-600 hover:underline">
             ← Volver al menú
         </a>

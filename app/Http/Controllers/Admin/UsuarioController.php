@@ -19,24 +19,23 @@ class UsuarioController extends Controller
 
     public function create()
     {
-        $roles = $this->rolesPermitidosParaGestion();
+        $roles = Role::orderBy('nombre')->get();
         $bodegas = Bodega::orderBy('nombre')->get();
 
-        $rolEncargadoId = $this->rolObjetivoRrhhId();
+        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
 
         return view('admin.usuarios.create', compact('roles','bodegas','rolEncargadoId'));
     }
 
     public function store(Request $request)
     {
-        $rolEncargadoId = $this->rolObjetivoRrhhId();
-        $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
+        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
 
         $data = $request->validate([
             'name' => ['required','string','max:255'],
             'email' => ['required','email','max:255','unique:users,email'],
             'password' => ['required','string','min:6','confirmed'],
-            'role_id' => ['required','exists:roles,id', Rule::in($rolesPermitidos)],
+            'role_id' => ['required','exists:roles,id'],
             'bodega_id' => [
                 Rule::requiredIf(fn() => (int)$request->role_id === (int)$rolEncargadoId),
                 'nullable',
@@ -52,29 +51,27 @@ class UsuarioController extends Controller
             'bodega_id' => $data['bodega_id'] ?? null,
         ]);
 
-        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
+        return redirect()->route('admin.usuarios.index')
             ->with('ok','Usuario creado correctamente.');
     }
 
     public function edit(User $usuario)
     {
-        $roles = $this->rolesPermitidosParaGestion();
+        $roles = Role::orderBy('nombre')->get();
         $bodegas = Bodega::orderBy('nombre')->get();
-        $rolEncargadoId = $this->rolObjetivoRrhhId();
+        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
 
         return view('admin.usuarios.edit', compact('usuario','roles','bodegas','rolEncargadoId'));
     }
 
     public function update(Request $request, User $usuario)
     {
-        $rolEncargadoId = $this->rolObjetivoRrhhId();
-        $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
+        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
 
         $data = $request->validate([
             'name' => ['required','string','max:255'],
             'email' => ['required','email','max:255',Rule::unique('users','email')->ignore($usuario->id)],
-            'role_id' => ['required','exists:roles,id', Rule::in($rolesPermitidos)],
-            'password' => ['nullable','string','min:6','confirmed'],
+            'role_id' => ['required','exists:roles,id'],
             'bodega_id' => [
                 Rule::requiredIf(fn() => (int)$request->role_id === (int)$rolEncargadoId),
                 'nullable',
@@ -82,20 +79,14 @@ class UsuarioController extends Controller
             ],
         ]);
 
-        $payload = [
+        $usuario->update([
             'name' => $data['name'],
             'email' => $data['email'],
             'role_id' => $data['role_id'],
             'bodega_id' => $data['bodega_id'] ?? null,
-        ];
+        ]);
 
-        if (!empty($data['password'])) {
-            $payload['password'] = bcrypt($data['password']);
-        }
-
-        $usuario->update($payload);
-
-        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
+        return redirect()->route('admin.usuarios.index')
             ->with('ok','Usuario actualizado correctamente.');
     }
 
@@ -103,39 +94,7 @@ class UsuarioController extends Controller
     {
         $usuario->delete();
 
-        return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
+        return redirect()->route('admin.usuarios.index')
             ->with('ok','Usuario eliminado correctamente.');
-    }
-
-    private function usuariosRoutePrefix(): string
-    {
-        return auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
-    }
-
-    private function rolesPermitidosParaGestion()
-    {
-        $query = Role::query()->orderBy('nombre');
-
-        if ((int) auth()->user()->role_id === 4) {
-            $rolId = $this->rolObjetivoRrhhId();
-            if ($rolId) {
-                $query->where('id', $rolId);
-            } else {
-                $query->whereRaw('1 = 0');
-            }
-        }
-
-        return $query->get();
-    }
-
-    private function rolObjetivoRrhhId(): ?int
-    {
-        $rolOperadorId = Role::where('nombre', 'Operador')->value('id');
-        if ($rolOperadorId) {
-            return (int) $rolOperadorId;
-        }
-
-        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
-        return $rolEncargadoId ? (int) $rolEncargadoId : null;
     }
 }

@@ -34,14 +34,14 @@ Route::get('/dashboard', function () {
         4 => redirect()->route('rrhh.dashboard'),
         default => redirect()->route('login'),
     };
-})->middleware(['auth', 'auto.logout'])->name('dashboard');
+})->middleware(['auth'])->name('dashboard');
 
 /*
 |--------------------------------------------------------------------------
 | Dashboards base por rol
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'auto.logout'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::view('/coordinador/dashboard', 'coordinador.dashboard')->name('coordinador.dashboard');
 });
 
@@ -50,7 +50,7 @@ Route::middleware(['auth', 'auto.logout'])->group(function () {
 | Perfil (Breeze)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'auto.logout'])->group(function () {
+Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -61,7 +61,7 @@ Route::middleware(['auth', 'auto.logout'])->group(function () {
 | Rutas Admin (solo role_id = 1)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'auto.logout', 'role:1'])
+Route::middleware(['auth', 'role:1'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
@@ -113,24 +113,11 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
-        Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
-            ->name('asignaciones.index');
-
         Route::post('asignaciones', [AsignacionInventarioController::class, 'store'])
             ->name('asignaciones.store');
 
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
-
-        Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
-            ->name('asignaciones.upload_pdf_firmado');
-
-        Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'devolver'])
-            ->name('asignaciones.devolver');
-        Route::post('asignaciones/devolver-lote', [AsignacionInventarioController::class, 'devolverLote'])
-            ->name('asignaciones.devolver_lote');
-        Route::post('asignaciones/colaborador/{codigo}/devolver-todo', [AsignacionInventarioController::class, 'devolverTodoColaborador'])
-            ->name('asignaciones.devolver_todo_colaborador');
     });
 
 /*
@@ -138,7 +125,7 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 | Rutas Operador (solo role_id = 2)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'auto.logout', 'role:2'])
+Route::middleware(['auth', 'role:2'])
     ->prefix('operador')
     ->name('operador.')
     ->group(function () {
@@ -152,24 +139,11 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
-        Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
-            ->name('asignaciones.index');
-
         Route::post('asignaciones', [AsignacionInventarioController::class, 'store'])
             ->name('asignaciones.store');
 
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
-
-        Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
-            ->name('asignaciones.upload_pdf_firmado');
-
-        Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'devolver'])
-            ->name('asignaciones.devolver');
-        Route::post('asignaciones/devolver-lote', [AsignacionInventarioController::class, 'devolverLote'])
-            ->name('asignaciones.devolver_lote');
-        Route::post('asignaciones/colaborador/{codigo}/devolver-todo', [AsignacionInventarioController::class, 'devolverTodoColaborador'])
-            ->name('asignaciones.devolver_todo_colaborador');
 
         Route::get('operaciones/traslados', [OperacionTrasladoController::class, 'index'])
             ->name('operaciones.traslados.index');
@@ -198,14 +172,12 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 | Rutas RRHH (solo role_id = 4)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'auto.logout', 'role:4'])
+Route::middleware(['auth', 'role:4'])
     ->prefix('rrhh')
     ->name('rrhh.')
     ->group(function () {
 
         Route::view('/dashboard', 'consultas.dashboard')->name('dashboard');
-
-        Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');

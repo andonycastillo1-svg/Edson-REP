@@ -301,9 +301,7 @@ class CompraController extends Controller
             }
         });
 
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
-
-        return redirect()->route($routePrefix . '.compras.index')
+        return redirect()->route('admin.compras.index')
             ->with('success', 'Compra registrada y entrada aplicada a inventario (Bodega Principal).');
     }
 
