@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 <div class="min-h-[calc(100vh-64px)] flex items-center justify-center p-6"
      style="background: linear-gradient(180deg, #36a2ff 0%, #2b7dff 100%);">
 
@@ -14,7 +15,7 @@
             Al guardar, se crea la compra + entradas automáticas al inventario (bodega principal).
           </p>
         </div>
-        <a href="{{ route('admin.compras.index') }}"
+        <a href="{{ route($routePrefix . '.compras.index') }}"
            class="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm">
           ← Volver
         </a>
@@ -36,7 +37,7 @@
         </div>
       @endif
 
-      <form action="{{ route('admin.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+      <form action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
         @csrf
 
         {{-- ENCABEZADO --}}
@@ -177,7 +178,7 @@
         </div>
 
         <div class="flex justify-end gap-3">
-          <a href="{{ route('admin.compras.index') }}"
+          <a href="{{ route($routePrefix . '.compras.index') }}"
              class="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50">
             Cancelar
           </a>
