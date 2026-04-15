@@ -3,7 +3,7 @@
 @section('title', 'RRHH - Inicio')
 
 @section('content')
-<div class="w-full max-w-4xl bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
+<div class="w-full max-w-lg bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
     <div class="flex items-center gap-4 mb-8">
         <img src="{{ asset('img/logo1.png') }}" alt="Logo"
              class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 p-1">
@@ -13,29 +13,32 @@
         </div>
     </div>
 
-    @php
-        $menu = [
-            ['route' => 'rrhh.colaboradores.index', 'label' => 'Colaboradores', 'icon' => '🧑‍💼', 'desc' => 'Gestión de personal'],
-            ['route' => 'rrhh.usuarios.index', 'label' => 'Usuarios', 'icon' => '👥', 'desc' => 'Cuentas y acceso del sistema'],
-        ];
-    @endphp
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        @foreach($menu as $item)
-            <a href="{{ route($item['route']) }}"
-               class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
-                <div class="flex items-center justify-between">
-                    <span class="flex items-center gap-3">
-                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">{{ $item['icon'] }}</span>
-                        <span>
-                            <div class="font-semibold text-slate-800">{{ $item['label'] }}</div>
-                            <div class="text-xs text-slate-500">{{ $item['desc'] }}</div>
-                        </span>
+    <div class="space-y-3">
+        <a href="{{ route('rrhh.colaboradores.index') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🧑‍💼</span>
+                    <span>
+                        <div class="font-semibold text-slate-800">Colaboradores</div>
+                        <div class="text-xs text-slate-500">Gestión de personal</div>
                     </span>
-                    <span class="text-slate-400 group-hover:text-blue-600">›</span>
-                </div>
-            </a>
-        @endforeach
+                </span>
+                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+            </div>
+        </a>
+
+        <a href="{{ route('rrhh.usuarios.index') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-3">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">👥</span>
+                    <span>
+                        <div class="font-semibold text-slate-800">Usuarios</div>
+                        <div class="text-xs text-slate-500">Cuentas y acceso del sistema</div>
+                    </span>
+                </span>
+                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+            </div>
+        </a>
     </div>
 
     <div class="mt-8 pt-6 border-t text-center">

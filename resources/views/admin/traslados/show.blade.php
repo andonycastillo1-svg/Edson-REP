@@ -1,7 +1,9 @@
 @extends('layouts.admin')
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+@php
+  $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+@endphp
 <div class="min-h-[calc(100vh-120px)] px-6 py-10">
   <div class="max-w-5xl mx-auto">
 
