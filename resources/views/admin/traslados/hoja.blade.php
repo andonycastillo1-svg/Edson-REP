@@ -28,17 +28,17 @@
 
   <div class="row" style="margin-top:14px;">
     <div class="box" style="flex:1;">
-      <div><b>Origen:</b> {{ $operacion->bodegaOrigen?->nombre }}</div>
+      <div><b>Origen:</b> {{ optional($operacion->bodegaOrigen)->nombre }}</div>
       <div class="muted">ID: {{ $operacion->bodega_origen_id }}</div>
     </div>
     <div class="box" style="flex:1;">
-      <div><b>Destino:</b> {{ $operacion->bodegaDestino?->nombre }}</div>
+      <div><b>Destino:</b> {{ optional($operacion->bodegaDestino)->nombre }}</div>
       <div class="muted">ID: {{ $operacion->bodega_destino_id }}</div>
     </div>
   </div>
 
   <div class="box" style="margin-top:14px;">
-    <div><b>Creado por:</b> {{ $operacion->creador?->name ?? '—' }}</div>
+    <div><b>Creado por:</b> {{ optional($operacion->creador)->name ?? '—' }}</div>
     @if($operacion->observacion)
       <div style="margin-top:8px;"><b>Observación:</b> {{ $operacion->observacion }}</div>
     @endif
@@ -55,7 +55,7 @@
     <tbody>
       @foreach($operacion->detalles as $d)
         <tr>
-          <td>{{ $d->producto?->nombre ?? '—' }}</td>
+          <td>{{ optional($d->producto)->nombre ?? '—' }}</td>
           <td>{{ $d->producto_codigo }}</td>
           <td>{{ $d->cantidad }}</td>
         </tr>
