@@ -3,49 +3,29 @@
 @section('title', 'RRHH - Inicio')
 
 @section('content')
-<div class="w-full max-w-lg bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
-    <div class="flex items-center gap-4 mb-8">
-        <img src="{{ asset('img/logo1.png') }}" alt="Logo"
-             class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 p-1">
-        <div>
-            <h1 class="text-2xl font-semibold text-gray-800">Bienvenido, {{ auth()->user()->name }}</h1>
-            <p class="text-sm text-gray-500 mt-1">Panel de RRHH</p>
+<div class="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+    <div class="bg-emerald-700 px-6 py-5 text-white">
+        <h1 class="text-2xl font-bold">Panel RRHH</h1>
+        <p class="text-sm text-emerald-100">Gestión de personal y cuentas del sistema.</p>
+    </div>
+
+    <div class="p-6 grid gap-3 bg-slate-50">
+        <a href="{{ route('rrhh.colaboradores.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-800 hover:border-emerald-300 hover:bg-emerald-50">
+            <div class="font-semibold">🧑‍💼 Colaboradores</div>
+            <div class="text-xs text-slate-500">Altas, bajas y gestión de personal</div>
+        </a>
+
+        <a href="{{ route('rrhh.usuarios.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-800 hover:border-emerald-300 hover:bg-emerald-50">
+            <div class="font-semibold">👥 Usuarios</div>
+            <div class="text-xs text-slate-500">Cuentas y permisos</div>
+        </a>
+
+        <div class="pt-3 text-center border-t border-slate-200">
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button class="text-sm font-medium text-rose-600 hover:underline">Cerrar sesión</button>
+            </form>
         </div>
-    </div>
-
-    <div class="space-y-3">
-        <a href="{{ route('rrhh.colaboradores.index') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
-            <div class="flex items-center justify-between">
-                <span class="flex items-center gap-3">
-                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🧑‍💼</span>
-                    <span>
-                        <div class="font-semibold text-slate-800">Colaboradores</div>
-                        <div class="text-xs text-slate-500">Gestión de personal</div>
-                    </span>
-                </span>
-                <span class="text-slate-400 group-hover:text-blue-600">›</span>
-            </div>
-        </a>
-
-        <a href="{{ route('rrhh.usuarios.index') }}" class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
-            <div class="flex items-center justify-between">
-                <span class="flex items-center gap-3">
-                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">👥</span>
-                    <span>
-                        <div class="font-semibold text-slate-800">Usuarios</div>
-                        <div class="text-xs text-slate-500">Cuentas y acceso del sistema</div>
-                    </span>
-                </span>
-                <span class="text-slate-400 group-hover:text-blue-600">›</span>
-            </div>
-        </a>
-    </div>
-
-    <div class="mt-8 pt-6 border-t text-center">
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button class="text-sm text-red-600 hover:underline">Cerrar sesión</button>
-        </form>
     </div>
 </div>
 @endsection
