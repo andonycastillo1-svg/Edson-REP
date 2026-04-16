@@ -3,6 +3,7 @@
 @section('title', 'Detalle Compra')
 
 @section('content')
+@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 <div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
 
     <div class="flex items-start justify-between gap-4 mb-6">
@@ -15,7 +16,7 @@
             </p>
         </div>
 
-        <a href="{{ route('admin.compras.index') }}"
+        <a href="{{ route($routePrefix . '.compras.index') }}"
            class="px-4 py-2 rounded-xl border border-slate-200 font-semibold hover:bg-slate-50 transition">
             ← Volver
         </a>

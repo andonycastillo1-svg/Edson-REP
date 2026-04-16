@@ -3,33 +3,29 @@
 @section('title', 'RRHH - Inicio')
 
 @section('content')
-    <div class="w-full max-w-lg bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-8">
+<div class="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+    <div class="bg-emerald-700 px-6 py-5 text-white">
+        <h1 class="text-2xl font-bold">Panel RRHH</h1>
+        <p class="text-sm text-emerald-100">Gestión de personal y cuentas del sistema.</p>
+    </div>
 
-        <div class="text-center mb-8">
-            <h1 class="text-2xl font-semibold text-gray-800">
-                Bienvenido, {{ auth()->user()->name }}
-            </h1>
-            <p class="text-sm text-gray-500 mt-1">
-                Panel de RRHH
-            </p>
-        </div>
+    <div class="p-6 grid gap-3 bg-slate-50">
+        <a href="{{ route('rrhh.colaboradores.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-800 hover:border-emerald-300 hover:bg-emerald-50">
+            <div class="font-semibold">🧑‍💼 Colaboradores</div>
+            <div class="text-xs text-slate-500">Altas, bajas y gestión de personal</div>
+        </a>
 
-        <div class="space-y-3">
-            <a href="{{ route('rrhh.colaboradores.index') }}"
-               class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-                <span class="font-medium text-gray-700">Colaboradores</span>
-                <span class="text-gray-400">›</span>
-            </a>
-        </div>
+        <a href="{{ route('rrhh.usuarios.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-800 hover:border-emerald-300 hover:bg-emerald-50">
+            <div class="font-semibold">👥 Usuarios</div>
+            <div class="text-xs text-slate-500">Cuentas y permisos</div>
+        </a>
 
-        <div class="mt-8 pt-6 border-t text-center">
+        <div class="pt-3 text-center border-t border-slate-200">
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button class="text-sm text-red-600 hover:underline">
-                    Cerrar sesión
-                </button>
+                <button class="text-sm font-medium text-rose-600 hover:underline">Cerrar sesión</button>
             </form>
         </div>
-
     </div>
+</div>
 @endsection
