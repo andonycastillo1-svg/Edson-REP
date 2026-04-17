@@ -63,6 +63,9 @@
                         </td>
 
                         <td class="px-5 py-4">
+                            @php
+                                $rrhhBloqueado = auth()->user()->role_id == 4 && (int) optional(optional($u->creator)->role)->id !== 4;
+                            @endphp
                             <div class="flex justify-end gap-2">
                                 @if(auth()->user()->role_id != 4 || (int) optional(optional($u->creator)->role)->id === 4)
                                     <a href="{{ route($routePrefix . '.usuarios.edit', $u->id) }}"
