@@ -18,7 +18,7 @@
 
         <div class="flex gap-2 flex-wrap">
             <a href="{{ route('dashboard') }}"
-               class="px-4 py-2 rounded-xl bg-white border border-slate-200 font-semibold hover:bg-slate-50 transition">
+               class="px-4 py-2 rounded-xl bg-sky-600 text-white font-semibold shadow-sm transition hover:bg-sky-700">
                 ← Volver
             </a>
 
@@ -27,7 +27,7 @@
             </button>
 
             <a href="{{ route('admin.bodegas.entrada', $bodega->id) }}"
-               class="px-4 py-2 rounded-xl border border-blue-200 text-blue-700 font-semibold hover:bg-blue-50 transition">
+               class="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm transition hover:bg-indigo-700">
                 + Agregar al inventario
             </a>
         </div>
