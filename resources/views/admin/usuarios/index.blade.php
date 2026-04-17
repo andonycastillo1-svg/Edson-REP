@@ -6,6 +6,13 @@
 @php($routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin')
 <div class="w-full max-w-6xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
 
+    @if(session('error'))
+        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {{ session('error') }}
+        </div>
+    @endif
+
+
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
@@ -54,21 +61,28 @@
                         </td>
 
                         <td class="px-5 py-4">
+                            @php
+                                $rrhhBloqueado = auth()->user()->role_id == 4 && (int) optional(optional($u->creator)->role)->id !== 4;
+                            @endphp
                             <div class="flex justify-end gap-2">
-                                <a href="{{ route($routePrefix . '.usuarios.edit', $u->id) }}"
-                                   class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                                    Editar
-                                </a>
+                                @if(!$rrhhBloqueado)
+                                    <a href="{{ route($routePrefix . '.usuarios.edit', $u->id) }}"
+                                       class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
+                                        Editar
+                                    </a>
 
-                                <form action="{{ route($routePrefix . '.usuarios.destroy', $u->id) }}" method="POST"
-                                      onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                            class="inline-flex items-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 transition">
-                                        Eliminar
-                                    </button>
-                                </form>
+                                    <form action="{{ route($routePrefix . '.usuarios.destroy', $u->id) }}" method="POST"
+                                          onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                                class="inline-flex items-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700 transition">
+                                            Eliminar
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">Solo lectura (creado por Admin)</span>
+                                @endif
                             </div>
                         </td>
                     </tr>

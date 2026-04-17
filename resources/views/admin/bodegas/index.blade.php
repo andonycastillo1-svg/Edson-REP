@@ -16,9 +16,9 @@
                 <p class="mt-1 text-sm text-slate-300">Diseño renovado con enfoque corporativo y mejor legibilidad.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('dashboard') }}" class="inline-flex items-center rounded-lg border border-slate-500 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">← Volver al menú</a>
+                <a href="{{ route('dashboard') }}" class="inline-flex items-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700">← Volver al menú</a>
                 @if(auth()->user()->role_id == 1)
-                    <a href="{{ route('admin.bodegas.create') }}" class="inline-flex items-center rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600">+ Nueva bodega</a>
+                    <a href="{{ route('admin.bodegas.create') }}" class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">+ Nueva bodega</a>
                 @endif
             </div>
         </div>
@@ -47,23 +47,23 @@
                     @endif
 
                     <div class="mt-4 grid grid-cols-2 gap-2">
-                        <a href="{{ $esOperador ? route('operador.bodegas.show', $bodega->id) : route('admin.bodegas.show', $bodega->id) }}" class="{{ ($esOperador && !$esMiBodega) ? 'col-span-2' : '' }} rounded-lg bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-indigo-700">Ver inventario</a>
+                        <a href="{{ $esOperador ? route('operador.bodegas.show', $bodega->id) : route('admin.bodegas.show', $bodega->id) }}" class="{{ ($esOperador && !$esMiBodega) ? 'col-span-2' : '' }} rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-blue-700">Ver inventario</a>
 
                         @if(auth()->user()->role_id == 1)
-                            <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="rounded-lg bg-slate-900 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-black">Trasladar</a>
+                            <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="rounded-lg bg-slate-800 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900">Trasladar</a>
                         @endif
 
                         @if($esOperador && $esMiBodega)
-                            <a href="{{ route('operador.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="rounded-lg bg-slate-900 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-black">Trasladar</a>
+                            <a href="{{ route('operador.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="rounded-lg bg-slate-800 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900">Trasladar</a>
                         @endif
 
                         @if(auth()->user()->role_id == 1)
-                            <a href="{{ route('admin.operaciones.traslados.index') }}" class="col-span-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-sm font-semibold text-indigo-700 hover:bg-indigo-100">Aprobación de traslados</a>
-                            <a href="{{ route('admin.bodegas.edit', $bodega->id) }}" class="rounded-lg bg-slate-100 px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-200">Editar</a>
+                            <a href="{{ route('admin.operaciones.traslados.index') }}" class="col-span-2 rounded-lg bg-cyan-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700">Aprobación de traslados</a>
+                            <a href="{{ route('admin.bodegas.edit', $bodega->id) }}" class="rounded-lg bg-amber-500 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600">Editar</a>
                             <form method="POST" action="{{ route('admin.bodegas.destroy', $bodega->id) }}" onsubmit="return confirm('¿Eliminar esta bodega?')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="w-full rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100">Eliminar</button>
+                                <button type="submit" class="w-full rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700">Eliminar</button>
                             </form>
                         @endif
                     </div>
