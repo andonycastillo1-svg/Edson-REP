@@ -17,6 +17,7 @@ class User extends Authenticatable
         'password',
         'role_id',
         'bodega_id',
+        'created_by',
     ];
 
     protected $hidden = [
@@ -36,6 +37,11 @@ class User extends Authenticatable
     public function bodega()
     {
         return $this->belongsTo(Bodega::class, 'bodega_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     /**

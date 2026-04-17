@@ -13,7 +13,7 @@ class UsuarioController extends Controller
 {
     public function index()
     {
-        $usuarios = User::with(['role','bodega'])->orderBy('name')->paginate(15);
+        $usuarios = User::with(['role','bodega','creator.role'])->orderBy('name')->paginate(15);
         return view('admin.usuarios.index', compact('usuarios'));
     }
 
@@ -50,6 +50,7 @@ class UsuarioController extends Controller
             'password' => bcrypt($data['password']),
             'role_id' => $data['role_id'],
             'bodega_id' => $data['bodega_id'] ?? null,
+            'created_by' => auth()->id(),
         ]);
 
         return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
@@ -58,6 +59,11 @@ class UsuarioController extends Controller
 
     public function edit(User $usuario)
     {
+        if (!$this->puedeEditarUsuario($usuario)) {
+            return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
+                ->with('error', 'No tienes permiso para editar este usuario.');
+        }
+
         $roles = $this->rolesPermitidosParaGestion();
         $bodegas = Bodega::orderBy('nombre')->get();
         $rolEncargadoId = $this->rolObjetivoRrhhId();
@@ -67,6 +73,11 @@ class UsuarioController extends Controller
 
     public function update(Request $request, User $usuario)
     {
+        if (!$this->puedeEditarUsuario($usuario)) {
+            return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
+                ->with('error', 'No tienes permiso para actualizar este usuario.');
+        }
+
         $rolEncargadoId = $this->rolObjetivoRrhhId();
         $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
 
@@ -101,6 +112,11 @@ class UsuarioController extends Controller
 
     public function destroy(User $usuario)
     {
+        if (!$this->puedeEditarUsuario($usuario)) {
+            return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
+                ->with('error', 'No tienes permiso para eliminar este usuario.');
+        }
+
         $usuario->delete();
 
         return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
@@ -126,6 +142,19 @@ class UsuarioController extends Controller
         }
 
         return $query->get();
+    }
+
+
+
+    private function puedeEditarUsuario(User $usuario): bool
+    {
+        if ((int) auth()->user()->role_id !== 4) {
+            return true;
+        }
+
+        $usuario->loadMissing('creator.role');
+
+        return (int) optional(optional($usuario->creator)->role)->id === 4;
     }
 
     private function rolObjetivoRrhhId(): ?int
