@@ -3,7 +3,9 @@
 @section('title', 'Crear usuario')
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin')
+@php
+    $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+@endphp
 <div class="w-full max-w-3xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
 
     <!-- Header -->

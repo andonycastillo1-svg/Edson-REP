@@ -3,7 +3,9 @@
 @section('title', 'Usuarios')
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin')
+@php
+    $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+@endphp
 <div class="w-full max-w-6xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
 
     @if(session('error'))
@@ -65,7 +67,7 @@
                                 $rrhhBloqueado = auth()->user()->role_id == 4 && (int) optional(optional($u->creator)->role)->id !== 4;
                             @endphp
                             <div class="flex justify-end gap-2">
-                                @if(!$rrhhBloqueado)
+                                @if(auth()->user()->role_id != 4 || (int) optional(optional($u->creator)->role)->id === 4)
                                     <a href="{{ route($routePrefix . '.usuarios.edit', $u->id) }}"
                                        class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
                                         Editar
