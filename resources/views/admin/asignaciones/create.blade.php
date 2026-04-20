@@ -145,6 +145,16 @@
                 <label class="text-xs font-medium text-slate-600">Cantidad</label>
                 <input type="number" min="1" data-name="cantidad_asignada" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" value="1" required>
               </div>
+              <div class="md:col-span-6">
+                <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-700 mt-2">
+                  <input type="checkbox" value="1" data-name="es_reemplazo" class="rounded border-slate-300 text-blue-600">
+                  Reemplazo por daño
+                </label>
+              </div>
+              <div class="md:col-span-6">
+                <label class="text-xs font-medium text-slate-600">Fecha daño/reemplazo (opcional)</label>
+                <input type="date" data-name="fecha_dano" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+              </div>
               <div class="md:col-span-12 flex justify-end">
                 <button type="button" class="remove-item rounded-lg border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100">Quitar</button>
               </div>
@@ -183,6 +193,9 @@
     rows.forEach((row, index) => {
       row.querySelectorAll('[data-name]').forEach((field) => {
         field.name = `items[${index}][${field.dataset.name}]`;
+        if (field.type === 'checkbox') {
+          field.value = 1;
+        }
       });
     });
   }
@@ -192,12 +205,16 @@
     const productoSelect = clone.querySelector('[data-name="producto_codigo"]');
     const bodegaSelect = clone.querySelector('[data-name="bodega_id"]');
     const cantidadInput = clone.querySelector('[data-name="cantidad_asignada"]');
+    const reemplazoInput = clone.querySelector('[data-name="es_reemplazo"]');
+    const fechaDanioInput = clone.querySelector('[data-name="fecha_dano"]');
 
     buildProductoOptions(productoSelect);
 
     if (defaults.producto_codigo) productoSelect.value = defaults.producto_codigo;
     if (defaults.bodega_id) bodegaSelect.value = defaults.bodega_id;
     if (defaults.cantidad_asignada) cantidadInput.value = defaults.cantidad_asignada;
+    if (typeof defaults.es_reemplazo !== 'undefined') reemplazoInput.checked = defaults.es_reemplazo == 1 || defaults.es_reemplazo === true;
+    if (defaults.fecha_dano) fechaDanioInput.value = defaults.fecha_dano;
 
     clone.querySelector('.remove-item').addEventListener('click', () => {
       clone.remove();

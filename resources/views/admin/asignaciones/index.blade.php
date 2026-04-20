@@ -78,6 +78,7 @@
                         <th class="px-3 py-2 text-left">Producto</th>
                         <th class="px-3 py-2 text-left">Bodega</th>
                         <th class="px-3 py-2 text-left">Estado</th>
+                        <th class="px-3 py-2 text-left">Vida útil</th>
                         <th class="px-3 py-2 text-right">Cant. activa</th>
                         <th class="px-3 py-2 text-left">Cantidad a devolver</th>
                         <th class="px-3 py-2 text-left">Documento firmado</th>
@@ -98,6 +99,18 @@
                           </td>
                           <td class="px-3 py-2">{{ optional($a->bodega)->nombre ?? '—' }}</td>
                           <td class="px-3 py-2">{{ $a->estado ?? 'Activa' }}</td>
+                          <td class="px-3 py-2">
+                            @php
+                              $fechaVenc = !empty($a->fecha_vencimiento) ? \Carbon\Carbon::parse($a->fecha_vencimiento) : null;
+                            @endphp
+                            @if($fechaVenc && $fechaVenc->isFuture())
+                              <span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Dentro de vida útil</span>
+                            @elseif($fechaVenc)
+                              <span class="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">Depreciado</span>
+                            @else
+                              <span class="text-xs text-slate-500">Sin dato</span>
+                            @endif
+                          </td>
                           <td class="px-3 py-2 text-right font-semibold">{{ $a->cantidad_asignada }}</td>
                           <td class="px-3 py-2">
                             @if(($a->estado ?? 'Activa') === 'Activa' && (int) $a->cantidad_asignada > 0)

@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use App\Services\AsignacionVidaUtilService;
+use Carbon\Carbon;
 
 class AsignacionInventarioController extends Controller
 {
@@ -87,6 +89,8 @@ class AsignacionInventarioController extends Controller
             'items.*.producto_codigo' => ['required', 'exists:productos,codigo'],
             'items.*.bodega_id' => ['required', 'exists:bodegas,id'],
             'items.*.cantidad_asignada' => ['required', 'integer', 'min:1'],
+            'items.*.es_reemplazo' => ['nullable', 'boolean'],
+            'items.*.fecha_dano' => ['nullable', 'date'],
         ]);
 
         // Imagen compartida en todos los ítems enviados
@@ -119,7 +123,28 @@ class AsignacionInventarioController extends Controller
             }
         }
 
+        foreach ($items as $item) {
+            if (empty($item['es_reemplazo'])) {
+                continue;
+            }
+
+            $asignacionActiva = AsignacionInventario::query()
+                ->where('colaborador_codigo', $data['colaborador_codigo'])
+                ->where('producto_codigo', $item['producto_codigo'])
+                ->where('estado', 'Activa')
+                ->where('cantidad_asignada', '>', 0)
+                ->latest('fecha')
+                ->first();
+
+            if (!$asignacionActiva) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'Marcaste reemplazo por daño pero no existe una asignación activa previa para el producto seleccionado.');
+            }
+        }
+
         DB::transaction(function () use ($data, $items, $imagenPath) {
+            $vidaUtilService = app(AsignacionVidaUtilService::class);
             foreach ($items as $item) {
                 $inventario = Inventario::with('producto')
                     ->where('producto_codigo', $item['producto_codigo'])
@@ -155,7 +180,7 @@ class AsignacionInventarioController extends Controller
                 ];
 
                 if (!empty($inventario->producto?->vida_util_meses)) {
-                    $payload['fecha_vencimiento'] = now()->addMonths($inventario->producto->vida_util_meses);
+$payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($inventario->producto->vida_util_meses);
                 }
 
                 if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
@@ -172,6 +197,37 @@ class AsignacionInventarioController extends Controller
                         'detalle' => 'Asignación inicial del producto.',
                         'user_id' => auth()->id(),
                     ]);
+                }
+
+                $vidaUtilService->registrarEstado($asignacion, 'activo', 'Producto asignado al colaborador.');
+
+                if (!empty($item['es_reemplazo'])) {
+                    $anterior = AsignacionInventario::with('producto')
+                        ->where('colaborador_codigo', $data['colaborador_codigo'])
+                        ->where('producto_codigo', $item['producto_codigo'])
+                        ->where('estado', 'Activa')
+                        ->where('id', '!=', $asignacion->id)
+                        ->where('cantidad_asignada', '>', 0)
+                        ->latest('fecha')
+                        ->first();
+
+                    if ($anterior) {
+                        $fechaDanio = !empty($item['fecha_dano'])
+                            ? Carbon::parse($item['fecha_dano'])
+                            : Carbon::parse($data['fecha']);
+
+                        $vidaUtilService->procesarReemplazoPorDanio($anterior, $asignacion, $fechaDanio);
+
+                        if (Schema::hasTable('asignacion_movimientos')) {
+                            AsignacionMovimiento::create([
+                                'asignacion_inventario_id' => $anterior->id,
+                                'tipo' => 'Reemplazo',
+                                'cantidad' => $anterior->cantidad_asignada,
+                                'detalle' => 'Reemplazo por daño registrado al asignar nuevo producto.',
+                                'user_id' => auth()->id(),
+                            ]);
+                        }
+                    }
                 }
             }
         });

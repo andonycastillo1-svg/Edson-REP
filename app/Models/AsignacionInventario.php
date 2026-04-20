@@ -50,4 +50,9 @@ class AsignacionInventario extends Model
     {
         return $this->hasMany(AsignacionMovimiento::class, 'asignacion_inventario_id');
     }
+
+    public function estadoHistorial()
+    {
+        return $this->hasMany(AsignacionEstadoHistorial::class, 'asignacion_inventario_id');
+    }
 }
