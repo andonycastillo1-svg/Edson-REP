@@ -215,6 +215,8 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
 
+        Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
+
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
 
