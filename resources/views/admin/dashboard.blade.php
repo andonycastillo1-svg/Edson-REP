@@ -3,66 +3,52 @@
 @section('title', 'Admin - Inicio')
 
 @section('content')
-    <div class="w-full max-w-lg bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-8">
-
-        <div class="text-center mb-8">
-            <h1 class="text-2xl font-semibold text-gray-800">
-                Bienvenido, {{ auth()->user()->name }}
-            </h1>
-            <p class="text-sm text-gray-500 mt-1">
-                Selecciona una opción para continuar
-            </p>
+<div class="w-full max-w-5xl bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div class="flex items-center gap-4">
+            <img src="{{ asset('img/logo1.png') }}" alt="Logo"
+                 class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 p-1">
+            <div>
+                <h1 class="text-2xl font-semibold text-gray-800">Bienvenido, {{ auth()->user()->name }}</h1>
+                <p class="text-sm text-gray-500 mt-1">Panel administrativo · selecciona una opción</p>
+            </div>
         </div>
-
-        <!-- Menú vertical centrado -->
-        <div class="space-y-3">
-            <a href="{{ route('admin.usuarios.index') }}"
-               class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-                <span class="font-medium text-gray-700">Usuarios</span>
-                <span class="text-gray-400">›</span>
-            </a>
-
-            <a href="{{ route('admin.bodegas.index') }}"
-               class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-                <span class="font-medium text-gray-700">Bodegas</span>
-                <span class="text-gray-400">›</span>
-            </a>
-
-            <a href="{{ route('admin.compras.index') }}"
-               class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-                <span class="font-medium text-gray-700">Compras</span>
-                <span class="text-gray-400">›</span>
-            </a>
-
-            <a href="{{ route('admin.colaboradores.index') }}"
-               class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-                <span class="font-medium text-gray-700">Colaboradores</span>
-                <span class="text-gray-400">›</span>
-            </a>
-
-            <a href="{{ route('admin.asignaciones.create') }}"
-               class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-                <span class="font-medium text-gray-700">Asignaciones</span>
-                <span class="text-gray-400">›</span>
-            </a>
-
-            <a href="{{ route('admin.vehiculos.index') }}"
-               class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-                <span class="font-medium text-gray-700">Vehículos</span>
-                <span class="text-gray-400">›</span>
-            </a>
-        </div>
-
-        <div class="mt-8 pt-6 border-t text-center">
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button class="text-sm text-red-600 hover:underline">
-                    Cerrar sesión
-                </button>
-            </form>
-        </div>
-
-
-
     </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        @php
+            $menu = [
+                ['route' => 'admin.usuarios.index', 'label' => 'Usuarios', 'icon' => '👤', 'desc' => 'Gestiona accesos y roles'],
+                ['route' => 'admin.bodegas.index', 'label' => 'Bodegas', 'icon' => '🏬', 'desc' => 'Consulta y administra bodegas'],
+                ['route' => 'admin.compras.index', 'label' => 'Compras', 'icon' => '🧾', 'desc' => 'Registra y revisa compras'],
+                ['route' => 'admin.colaboradores.index', 'label' => 'Colaboradores', 'icon' => '🧑‍🤝‍🧑', 'desc' => 'Personal y detalle de asignaciones'],
+                ['route' => 'admin.asignaciones.create', 'label' => 'Asignaciones', 'icon' => '📦', 'desc' => 'Entrega de inventario'],
+                ['route' => 'admin.vehiculos.index', 'label' => 'Vehículos', 'icon' => '🚚', 'desc' => 'Control de flota'],
+            ];
+        @endphp
+
+        @foreach($menu as $item)
+            <a href="{{ route($item['route']) }}"
+               class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">{{ $item['icon'] }}</span>
+                        <div>
+                            <div class="font-semibold text-slate-800">{{ $item['label'] }}</div>
+                            <div class="text-xs text-slate-500">{{ $item['desc'] }}</div>
+                        </div>
+                    </div>
+                    <span class="text-slate-400 group-hover:text-blue-600">›</span>
+                </div>
+            </a>
+        @endforeach
+    </div>
+
+    <div class="mt-8 pt-6 border-t text-center">
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button class="text-sm text-red-600 hover:underline">Cerrar sesión</button>
+        </form>
+    </div>
+</div>
 @endsection
