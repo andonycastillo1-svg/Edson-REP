@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\OperacionTrasladoController;
 use App\Http\Controllers\Admin\ColaboradorController;
 use App\Http\Controllers\Admin\AsignacionInventarioController;
 use App\Models\AlertaReemplazo;
+use Illuminate\Support\Facades\Schema;
 
 /*
 |--------------------------------------------------------------------------
@@ -205,15 +206,21 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
     ->group(function () {
 
         Route::get('/dashboard', function () {
-            $alertas = AlertaReemplazo::query()
-                ->latest()
-                ->limit(8)
-                ->get();
+            $alertas = collect();
+
+            if (Schema::hasTable('alertas_reemplazos_rrhh')) {
+                try {
+                    $alertas = AlertaReemplazo::query()
+                        ->latest()
+                        ->limit(8)
+                        ->get();
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
 
             return view('consultas.dashboard', compact('alertas'));
         })->name('dashboard');
-
-        Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
 
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
 
