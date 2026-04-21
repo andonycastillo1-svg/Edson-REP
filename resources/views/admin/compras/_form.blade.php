@@ -1,4 +1,5 @@
-<form action="{{ route('admin.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+<form action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
 @csrf
 
 {{-- ENCABEZADO --}}

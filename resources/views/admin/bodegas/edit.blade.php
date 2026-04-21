@@ -40,7 +40,7 @@
 
         <div class="flex gap-2 justify-end pt-4">
             <a href="{{ route('admin.bodegas.index') }}"
-               class="px-4 py-2 rounded-xl border border-slate-200 font-semibold hover:bg-slate-50 transition">
+               class="px-4 py-2 rounded-xl bg-slate-700 text-white font-semibold shadow-sm transition hover:bg-slate-800">
                 Cancelar
             </a>
             <button class="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
