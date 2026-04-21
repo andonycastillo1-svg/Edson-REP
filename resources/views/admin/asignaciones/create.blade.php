@@ -19,7 +19,7 @@
 <div class="min-h-screen bg-slate-50">
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="ui-panel">
       <div class="px-6 py-5 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
         <div>
           <h1 class="text-xl font-semibold text-slate-900">Nueva asignación</h1>
@@ -28,11 +28,11 @@
 
         <div class="flex gap-2">
           <a href="{{ route('dashboard') }}"
-            class="rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
+            class="ui-btn-primary">
             ← Volver
           </a>
           <a href="{{ route($routePrefix . '.asignaciones.index') }}"
-            class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            class="ui-btn-secondary">
             Ver mis asignaciones
           </a>
         </div>
@@ -65,7 +65,7 @@
 
       <form method="POST" action="{{ route($routePrefix . '.asignaciones.store') }}"
         enctype="multipart/form-data"
-        class="px-6 pb-6 space-y-5">
+        class="ui-form px-6 pb-6 space-y-6">
         @csrf
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -163,7 +163,7 @@
         </div>
 
         <div class="flex justify-end">
-          <button class="rounded-xl bg-blue-600 px-6 py-2 text-white text-sm font-semibold hover:bg-blue-700">
+          <button class="ui-btn-primary px-6">
             Guardar asignación
           </button>
         </div>

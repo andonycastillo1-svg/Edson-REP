@@ -3,7 +3,7 @@
 @section('title', 'Admin - Inicio')
 
 @section('content')
-<div class="w-full max-w-5xl bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
+<div class="ui-panel w-full max-w-5xl p-8">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div class="flex items-center gap-4">
             <img src="{{ asset('img/logo1.png') }}" alt="Logo"
@@ -29,7 +29,7 @@
 
         @foreach($menu as $item)
             <a href="{{ route($item['route']) }}"
-               class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+               class="ui-card group p-4 hover:border-blue-300 hover:bg-blue-50/60">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">{{ $item['icon'] }}</span>

@@ -7,7 +7,7 @@
 <div class="min-h-screen bg-slate-50">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="ui-panel">
       <div class="px-6 py-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 class="text-xl font-semibold text-slate-900">Mis asignaciones</h1>
@@ -16,11 +16,11 @@
 
         <div class="flex gap-2">
           <a href="{{ route($routePrefix . '.asignaciones.create') }}"
-             class="rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
+             class="ui-btn-primary">
             + Nueva asignación
           </a>
           <a href="{{ route('dashboard') }}"
-             class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+             class="ui-btn-secondary">
             ← Volver
           </a>
         </div>
@@ -69,8 +69,8 @@
               @php
                 $bulkFormId = 'bulk-return-' . $grupo['colaborador_codigo'];
               @endphp
-              <div class="overflow-x-auto rounded-xl border border-slate-200">
-                  <table class="w-full text-sm">
+              <div class="overflow-x-auto ui-table">
+                  <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                       <tr>
                         <th class="px-3 py-2 text-left">Sel.</th>
@@ -165,7 +165,7 @@
             <h2 class="font-semibold text-slate-800">Historial de movimientos</h2>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="min-w-full text-sm">
               <thead class="bg-slate-50 text-slate-600">
                 <tr>
                   <th class="px-4 py-2 text-left">Fecha</th>

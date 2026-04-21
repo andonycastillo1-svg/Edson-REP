@@ -8,7 +8,7 @@
     $bodegaOperadorId = auth()->user()->bodega_id;
 @endphp
 
-<div class="w-full max-w-7xl rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+<div class="ui-panel w-full max-w-7xl overflow-hidden">
     <div class="bg-slate-900 text-white px-6 py-5 md:px-8">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -33,7 +33,7 @@
                     $isPrincipal = ($bodega->tipo === 'Principal');
                 @endphp
 
-                <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
+                <article class="ui-card p-4">
                     <div class="flex items-start justify-between gap-2">
                         <div>
                             <h2 class="text-lg font-semibold text-slate-900">{{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}</h2>

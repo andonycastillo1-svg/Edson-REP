@@ -3,7 +3,7 @@
 @section('title', 'Operador - Inicio')
 
 @section('content')
-<div class="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+<div class="ui-panel w-full max-w-3xl overflow-hidden">
     <div class="bg-gradient-to-r from-blue-700 to-indigo-700 px-6 py-6 text-white">
         <div class="flex items-center gap-4">
             <img src="{{ asset('img/logo1.png') }}" alt="Logo" class="h-14 w-14 rounded-xl border border-white/30 bg-white p-1 object-contain">
@@ -15,7 +15,7 @@
     </div>
 
     <div class="grid gap-3 bg-slate-50 p-6">
-        <a href="{{ route('operador.bodegas.index') }}" class="group rounded-xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50">
+        <a href="{{ route('operador.bodegas.index') }}" class="ui-card group p-4 hover:border-blue-300 hover:bg-blue-50">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
@@ -30,7 +30,7 @@
             </div>
         </a>
 
-        <a href="{{ route('operador.compras.index') }}" class="group rounded-xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50">
+        <a href="{{ route('operador.compras.index') }}" class="ui-card group p-4 hover:border-blue-300 hover:bg-blue-50">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700">🧾</span>
@@ -43,7 +43,7 @@
             </div>
         </a>
 
-        <a href="{{ route('operador.asignaciones.create') }}" class="group rounded-xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50">
+        <a href="{{ route('operador.asignaciones.create') }}" class="ui-card group p-4 hover:border-blue-300 hover:bg-blue-50">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700">📦</span>
@@ -56,7 +56,7 @@
             </div>
         </a>
 
-        <a href="{{ route('operador.operaciones.traslados.index') }}" class="group rounded-xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50">
+        <a href="{{ route('operador.operaciones.traslados.index') }}" class="ui-card group p-4 hover:border-blue-300 hover:bg-blue-50">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700">🔁</span>
