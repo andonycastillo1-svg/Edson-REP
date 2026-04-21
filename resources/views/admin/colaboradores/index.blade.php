@@ -11,7 +11,7 @@
 <div x-data="colaboradoresPage('{{ $routePrefix }}')" class="min-h-screen bg-slate-50">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="ui-panel">
 
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-6 py-5 border-b border-slate-200">
         <div>
@@ -21,12 +21,12 @@
 
         <div class="flex items-center gap-3">
           <a href="{{ route($routePrefix . '.colaboradores.create') }}"
-             class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
+             class="ui-btn-primary">
             <span class="text-base leading-none">+</span>
             Nuevo colaborador
           </a>
           <a href="{{ route($routePrefix . '.dashboard') }}"
-             class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
+             class="ui-btn-primary">
             ← Volver al menú
           </a>
         </div>
@@ -72,7 +72,7 @@
 
         {{-- ACTIVOS --}}
         <div x-show="tab==='activos'">
-          <table class="w-full text-sm">
+          <table class="ui-table text-sm">
             <thead class="bg-slate-50 text-slate-600">
               <tr>
                 <th class="px-6 py-3 text-left font-semibold">Código</th>
@@ -103,7 +103,7 @@
                       </button>
 
                       <a href="{{ route($routePrefix . '.colaboradores.edit', $c) }}"
-                         class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                         class="ui-btn-secondary text-xs px-3 py-2">
                         Editar
                       </a>
 
@@ -112,7 +112,7 @@
                         @csrf
                         @method('PATCH')
                         <button type="submit"
-                                class="rounded-xl bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700">
+                                class="ui-btn-danger text-xs px-3 py-2">
                           Inactivar
                         </button>
                       </form>
@@ -135,7 +135,7 @@
 
         {{-- INACTIVOS --}}
         <div x-show="tab==='inactivos'" x-cloak>
-          <table class="w-full text-sm">
+          <table class="ui-table text-sm">
             <thead class="bg-slate-50 text-slate-600">
               <tr>
                 <th class="px-6 py-3 text-left font-semibold">Código</th>
@@ -166,7 +166,7 @@
                       </button>
 
                       <a href="{{ route($routePrefix . '.colaboradores.edit', $c) }}"
-                         class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                         class="ui-btn-secondary text-xs px-3 py-2">
                         Editar
                       </a>
 
@@ -175,7 +175,7 @@
                         @csrf
                         @method('PATCH')
                         <button type="submit"
-                                class="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700">
+                                class="ui-btn text-xs px-3 py-2 bg-emerald-600 text-white hover:bg-emerald-700">
                           Activar
                         </button>
                       </form>
@@ -225,7 +225,7 @@
 
         <template x-if="asignaciones.length > 0">
           <div>
-            <table class="w-full text-sm">
+            <table class="ui-table text-sm">
               <thead class="bg-slate-100">
                 <tr>
                   <th class="p-2 text-left">Producto</th>
@@ -233,16 +233,33 @@
                   <th class="p-2 text-left">Cantidad</th>
                   <th class="p-2 text-left">Costo</th>
                   <th class="p-2 text-left">Total</th>
+                  <th class="p-2 text-left">F. Asignación</th>
+                  <th class="p-2 text-left">F. Vencimiento</th>
+                  <th class="p-2 text-left">Estado vida útil</th>
                 </tr>
               </thead>
               <tbody>
                 <template x-for="item in asignaciones">
                   <tr class="border-t">
-                    <td class="p-2" x-text="item.producto"></td>
+                    <td class="p-2">
+                      <div x-text="item.producto"></div>
+                      <div class="text-xs text-slate-500" x-text="'COD: ' + (item.producto_codigo ?? '—')"></div>
+                    </td>
                     <td class="p-2" x-text="item.bodega"></td>
                     <td class="p-2" x-text="item.cantidad"></td>
-                    <td class="p-2" x-text="Number(item.costo_unitario).toFixed(2)"></td>
-                    <td class="p-2 font-semibold" x-text="Number(item.total).toFixed(2)"></td>
+                    <td class="p-2" x-text="'Q ' + Number(item.costo_unitario).toFixed(2)"></td>
+                    <td class="p-2 font-semibold" x-text="'Q ' + Number(item.total).toFixed(2)"></td>
+                    <td class="p-2" x-text="item.fecha_asignacion ?? '—'"></td>
+                    <td class="p-2" x-text="item.fecha_vencimiento ?? '—'"></td>
+                    <td class="p-2">
+                      <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
+                            :class="item.estado_vida_util === 'Vencido'
+                              ? 'bg-red-100 text-red-700'
+                              : (item.estado_vida_util === 'Vigente'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-slate-100 text-slate-700')"
+                            x-text="item.estado_vida_util"></span>
+                    </td>
                   </tr>
                 </template>
               </tbody>
