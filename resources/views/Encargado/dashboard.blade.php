@@ -3,41 +3,29 @@
 @section('title', 'Encargado - Inicio')
 
 @section('content')
-<div class="w-full max-w-lg bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-8">
-
-    <div class="text-center mb-8">
-        <h1 class="text-2xl font-semibold text-gray-800">
-            Bienvenido, {{ auth()->user()->name }}
-        </h1>
-        <p class="text-sm text-gray-500 mt-1">
-            Panel de encargado
-        </p>
+<div class="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+    <div class="bg-indigo-700 px-6 py-5 text-white">
+        <h1 class="text-2xl font-bold">Panel Encargado</h1>
+        <p class="text-sm text-indigo-100">Accesos rápidos para control de bodega y traslados.</p>
     </div>
 
-    <div class="space-y-3">
-
-        <a href="{{ route('admin.bodegas.index') }}"
-           class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-            <span class="font-medium text-gray-700">Bodegas</span>
-            <span class="text-gray-400">›</span>
+    <div class="p-6 grid gap-3 bg-slate-50">
+        <a href="{{ route('admin.bodegas.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-800 hover:border-indigo-300 hover:bg-indigo-50">
+            <div class="font-semibold">🏬 Bodegas</div>
+            <div class="text-xs text-slate-500">Inventario por sede</div>
         </a>
 
-        <a href="{{ route('admin.operaciones.traslados.index') }}"
-           class="w-full flex items-center justify-between px-5 py-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition">
-            <span class="font-medium text-gray-700">Traslados</span>
-            <span class="text-gray-400">›</span>
+        <a href="{{ route('admin.operaciones.traslados.index') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-800 hover:border-indigo-300 hover:bg-indigo-50">
+            <div class="font-semibold">🔁 Traslados</div>
+            <div class="text-xs text-slate-500">Solicitudes y aprobaciones</div>
         </a>
 
+        <div class="pt-3 text-center border-t border-slate-200">
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button class="text-sm font-medium text-rose-600 hover:underline">Cerrar sesión</button>
+            </form>
+        </div>
     </div>
-
-    <div class="mt-8 pt-6 border-t text-center">
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button class="text-sm text-red-600 hover:underline">
-                Cerrar sesión
-            </button>
-        </form>
-    </div>
-
 </div>
 @endsection
