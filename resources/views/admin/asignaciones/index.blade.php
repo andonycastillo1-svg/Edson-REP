@@ -69,9 +69,7 @@
               @php
                 $bulkFormId = 'bulk-return-' . $grupo['colaborador_codigo'];
               @endphp
-              <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}">
-                @csrf
-                <div class="overflow-x-auto ui-table">
+              <div class="overflow-x-auto ui-table">
                   <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                       <tr>
@@ -91,12 +89,7 @@
                         <tr>
                           <td class="px-3 py-2">
                             @if(($a->estado ?? 'Activa') === 'Activa' && (int) $a->cantidad_asignada > 0)
-                              <input type="checkbox"
-                                     name="seleccionadas[]"
-                                     value="{{ $a->id }}"
-                                     form="{{ $bulkFormId }}"
-                                     class="selector"
-                                     data-target="devolucion_{{ $a->id }}">
+                              <input type="checkbox" class="selector" data-target="devolucion_{{ $a->id }}">
                             @endif
                           </td>
                           <td class="px-3 py-2">{{ $a->fecha ? date('d/m/Y', strtotime($a->fecha)) : '—' }}</td>
@@ -124,6 +117,7 @@
                               <input type="number"
                                      id="devolucion_{{ $a->id }}"
                                      name="devoluciones[{{ $a->id }}]"
+                                     form="{{ $bulkFormId }}"
                                      min="1"
                                      max="{{ $a->cantidad_asignada }}"
                                      value="1"
@@ -152,14 +146,14 @@
                   </table>
                 </div>
 
-                <div class="flex flex-wrap gap-2 justify-end items-center mt-3">
-                  <input type="text" name="detalle_devolucion" placeholder="Detalle de devolución múltiple (opcional)"
+                <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}" class="flex flex-wrap gap-2 justify-end items-center mt-3">
+                  @csrf
+                  <input type="text" name="detalle_devolucion" form="{{ $bulkFormId }}" placeholder="Detalle de devolución múltiple (opcional)"
                     class="text-xs w-72 border border-slate-200 rounded-lg p-2">
                   <button type="submit" class="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100">
                     Devolver seleccionados
                   </button>
-                </div>
-              </form>
+                </form>
             </div>
           </details>
         @empty
@@ -214,16 +208,6 @@
       if (!input) return;
       input.disabled = !this.checked;
       if (!this.checked) input.value = 1;
-    });
-  });
-
-  document.querySelectorAll('form[id^="bulk-return-"]').forEach((form) => {
-    form.addEventListener('submit', function (event) {
-      const selected = form.querySelectorAll('.selector:checked');
-      if (!selected.length) {
-        event.preventDefault();
-        alert('Selecciona al menos una asignación para devolver.');
-      }
     });
   });
 </script>

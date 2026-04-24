@@ -345,18 +345,12 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
         $data = $request->validate([
-            'seleccionadas' => ['required', 'array', 'min:1'],
-            'seleccionadas.*' => ['required', 'integer', 'exists:asignaciones_inventarios,id'],
             'devoluciones' => ['required', 'array', 'min:1'],
-            'devoluciones.*' => ['nullable', 'integer', 'min:1'],
+            'devoluciones.*' => ['required', 'integer', 'min:1'],
             'detalle_devolucion' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $ids = collect($data['seleccionadas'])
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
-
+        $ids = collect(array_keys($data['devoluciones']))->map(fn ($id) => (int) $id)->filter()->values();
         $asignaciones = AsignacionInventario::query()->whereIn('id', $ids)->get()->keyBy('id');
 
         if ($asignaciones->isEmpty()) {
@@ -364,24 +358,17 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
                 ->with('error', 'No se encontraron asignaciones para devolver.');
         }
 
-        $totalProcesadas = 0;
-
-        DB::transaction(function () use ($data, $ids, $asignaciones, &$totalProcesadas) {
-            foreach ($ids as $id) {
-                $asignacion = $asignaciones->get((int) $id);
+        DB::transaction(function () use ($data, $asignaciones) {
+            foreach ($data['devoluciones'] as $id => $cantidadSolicitada) {
+                $id = (int) $id;
+                $cantidadSolicitada = (int) $cantidadSolicitada;
+                $asignacion = $asignaciones->get($id);
 
                 if (!$asignacion || $asignacion->estado !== 'Activa') {
                     continue;
                 }
 
-                if ((int) auth()->user()->role_id !== 1
-                    && Schema::hasColumn('asignaciones_inventarios', 'user_id')
-                    && (int) $asignacion->user_id !== (int) auth()->id()) {
-                    continue;
-                }
-
-                $cantidadSolicitada = (int) ($data['devoluciones'][$id] ?? 0);
-                if ($cantidadSolicitada <= 0) {
+                if ((int) auth()->user()->role_id !== 1 && (int) $asignacion->user_id !== (int) auth()->id()) {
                     continue;
                 }
 
@@ -411,18 +398,11 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
                         'user_id' => auth()->id(),
                     ]);
                 }
-
-                $totalProcesadas++;
             }
         });
 
-        if ($totalProcesadas <= 0) {
-            return redirect()->route($routePrefix . '.asignaciones.index')
-                ->with('error', 'No se devolvió ninguna asignación. Verifica que estén activas y con cantidad válida.');
-        }
-
         return redirect()->route($routePrefix . '.asignaciones.index')
-            ->with('success', 'Devolución múltiple registrada correctamente. Asignaciones devueltas: ' . $totalProcesadas . '.');
+            ->with('success', 'Devolución múltiple registrada correctamente.');
     }
 
     public function devolverTodoColaborador(Request $request, string $colaboradorCodigo)
