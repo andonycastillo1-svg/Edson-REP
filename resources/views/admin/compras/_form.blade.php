@@ -1,4 +1,9 @@
 @php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+@if(isset($puedeRegistrarCompra) && !$puedeRegistrarCompra)
+    <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        Tu usuario no tiene permiso para registrar entradas en la bodega principal.
+    </div>
+@else
 <form action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
 @csrf
 
@@ -125,6 +130,7 @@
 </div>
 
 </form>
+@endif
 
 
 {{-- TEMPLATE FILA --}}

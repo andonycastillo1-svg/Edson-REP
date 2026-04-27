@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Colaborador;
 use App\Models\AsignacionInventario;
+use App\Services\BodegaAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ColaboradorController extends Controller
 {
+    public function __construct(private BodegaAccessService $bodegaAccess)
+    {
+    }
+
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
@@ -88,12 +93,22 @@ class ColaboradorController extends Controller
 
     public function detalle(Colaborador $colaborador)
     {
+        $user = auth()->user();
+
         $asignaciones = AsignacionInventario::with('producto', 'bodega')
             ->where('colaborador_codigo', $colaborador->codigo)
             ->where('cantidad_asignada', '>', 0)
             ->where(function ($q) {
                 $q->whereNull('estado')
                     ->orWhere('estado', 'Activa');
+            })
+            ->when((int) $user->role_id !== 1 && (int) $user->role_id !== 4, function ($query) use ($user) {
+                $visibleBodegaIds = $this->bodegaAccess->visibleBodegaIds($user);
+                if ($visibleBodegaIds === []) {
+                    $query->whereRaw('1 = 0');
+                } elseif (is_array($visibleBodegaIds)) {
+                    $query->whereIn('bodega_id', $visibleBodegaIds);
+                }
             })
             ->get();
 

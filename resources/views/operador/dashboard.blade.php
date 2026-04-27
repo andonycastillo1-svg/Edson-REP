@@ -6,7 +6,7 @@
 <div class="ui-panel w-full max-w-3xl overflow-hidden">
     <div class="bg-gradient-to-r from-blue-700 to-indigo-700 px-6 py-6 text-white">
         <div class="flex items-center gap-4">
-            <img src="{{ asset('img/logo1.png') }}" alt="Logo" class="h-14 w-14 rounded-xl border border-white/30 bg-white p-1 object-contain">
+            <x-logo-image variant="logo1" class="h-14 w-14 rounded-xl border border-white/30 bg-white p-1 object-contain" />
             <div>
                 <h1 class="text-3xl font-bold">Bienvenido, {{ auth()->user()->name }}</h1>
                 <p class="text-sm text-blue-100">Panel de operador</p>

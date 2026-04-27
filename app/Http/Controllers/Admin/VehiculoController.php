@@ -25,15 +25,15 @@ class VehiculoController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $data = $request->validate([
             'vin' => 'required|max:50|unique:vehiculos,vin',
             'placa' => 'required|max:20|unique:vehiculos,placa',
             'marca' => 'nullable|max:50',
             'modelo' => 'nullable|max:50',
-            'estado' => 'required'
+            'estado' => 'required|in:Disponible,En uso,Mantenimiento'
         ]);
 
-        Vehiculo::create($request->all());
+        Vehiculo::create($data);
 
         return redirect()
             ->route('admin.vehiculos.index')
@@ -61,14 +61,14 @@ class VehiculoController extends Controller
     {
         $vehiculo = Vehiculo::findOrFail($vin);
 
-        $request->validate([
+        $data = $request->validate([
             'placa' => 'required|max:20|unique:vehiculos,placa,' . $vin . ',vin',
             'marca' => 'nullable|max:50',
             'modelo' => 'nullable|max:50',
-            'estado' => 'required'
+            'estado' => 'required|in:Disponible,En uso,Mantenimiento'
         ]);
 
-        $vehiculo->update($request->all());
+        $vehiculo->update($data);
 
         return redirect()
             ->route('admin.vehiculos.index')

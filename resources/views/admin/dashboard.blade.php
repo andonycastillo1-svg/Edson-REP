@@ -6,8 +6,7 @@
 <div class="ui-panel w-full max-w-5xl p-8">
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div class="flex items-center gap-4">
-            <img src="{{ asset('img/logo1.png') }}" alt="Logo"
-                 class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 p-1">
+            <x-logo-image class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 p-1" />
             <div>
                 <h1 class="text-2xl font-semibold text-gray-800">Bienvenido, {{ auth()->user()->name }}</h1>
                 <p class="text-sm text-gray-500 mt-1">Panel administrativo · selecciona una opción</p>

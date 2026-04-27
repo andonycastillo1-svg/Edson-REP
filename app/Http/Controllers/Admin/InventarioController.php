@@ -4,14 +4,26 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bodega;
+use App\Services\BodegaAccessService;
+use App\Services\InventarioStockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class InventarioController extends Controller
 {
+    public function __construct(
+        private BodegaAccessService $bodegaAccess,
+        private InventarioStockService $stockService
+    ) {
+    }
+
     public function createEntrada(Bodega $bodega)
     {
+        if (!$this->bodegaAccess->canModifyStock(auth()->user(), (int) $bodega->id)) {
+            abort(403);
+        }
+
         $productos = DB::table('productos')
             ->orderBy('nombre')
             ->get();
@@ -21,6 +33,10 @@ class InventarioController extends Controller
 
     public function storeEntrada(Request $request, Bodega $bodega)
     {
+        if (!$this->bodegaAccess->canModifyStock(auth()->user(), (int) $bodega->id)) {
+            abort(403);
+        }
+
         $data = $request->validate([
             'producto_codigo' => ['required', 'exists:productos,codigo'],
             'cantidad' => ['required', 'integer', 'min:1'],
@@ -42,32 +58,13 @@ class InventarioController extends Controller
                 'updated_at'        => now(),
             ]);
 
-            // 2) Sumar a inventarios (o crear si no existe)
-            $inv = DB::table('inventarios')
-                ->where('bodega_id', $bodega->id)
-                ->where('producto_codigo', $data['producto_codigo'])
-                ->first();
-
-            if ($inv) {
-                DB::table('inventarios')
-                    ->where('id', $inv->id)
-                    ->update([
-                        'cantidad'   => $inv->cantidad + $data['cantidad'],
-                        'updated_at' => now(),
-                    ]);
-            } else {
-                DB::table('inventarios')->insert([
-                    'bodega_id'       => $bodega->id,
-                    'producto_codigo' => $data['producto_codigo'],
-                    'cantidad'        => $data['cantidad'],
-                    'created_at'      => now(),
-                    'updated_at'      => now(),
-                ]);
-            }
+            $this->stockService->incrementar((int) $bodega->id, $data['producto_codigo'], (int) $data['cantidad']);
         });
 
+        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+
         return redirect()
-            ->route('admin.bodegas.show', $bodega->id)
+            ->route($routePrefix . '.bodegas.show', $bodega->id)
             ->with('success', 'Entrada registrada correctamente.');
     }
 }

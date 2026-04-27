@@ -1,7 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+@php
+  $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+  $canCreatePurchase = $canCreatePurchase ?? true;
+@endphp
 <div class="min-h-[calc(100vh-64px)] flex items-center justify-center p-6"
      style="background: linear-gradient(180deg, #36a2ff 0%, #2b7dff 100%);">
 
@@ -37,6 +40,11 @@
         </div>
       @endif
 
+      @if(!$canCreatePurchase)
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          No tienes permiso para registrar compras porque las entradas se aplican a la bodega principal.
+        </div>
+      @else
       <form action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
         @csrf
 
@@ -188,6 +196,7 @@
         </div>
 
       </form>
+      @endif
 
     </div>
   </div>
