@@ -3,19 +3,21 @@
 @section('title', 'Operador - Inicio')
 
 @section('content')
-<div class="ui-panel w-full max-w-4xl overflow-hidden">
-    <div class="ui-hero">
-        <div class="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <x-logo-image variant="logo1" class="h-20 w-20 rounded-2xl border border-white/40 bg-white p-2 object-contain shadow-lg" />
-            <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.25em] text-blue-100">Panel de operador</p>
-                <h1 class="mt-1 text-3xl font-extrabold tracking-tight text-white">Bienvenido, {{ auth()->user()->name }}</h1>
-                <p class="mt-2 text-sm text-blue-50">Gestiona compras, asignaciones y movimientos de bodega con accesos rápidos.</p>
+<div class="ui-panel w-full max-w-2xl overflow-hidden">
+    <div class="ui-dashboard-hero">
+        <div class="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+            <div class="ui-logo-card">
+                <x-logo-image variant="logo1" class="ui-dashboard-logo" />
+            </div>
+            <div class="min-w-0">
+                <p class="text-xs font-bold uppercase tracking-[0.22em] text-sky-600">Panel de operador</p>
+                <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Bienvenido, {{ auth()->user()->name }}</h1>
+                <p class="mt-2 max-w-xl text-sm font-medium text-slate-600">Gestiona compras, asignaciones y movimientos de bodega con accesos rápidos.</p>
             </div>
         </div>
     </div>
 
-    <div class="grid gap-4 bg-slate-50/90 p-6 md:grid-cols-2">
+    <div class="grid gap-3 bg-sky-50/70 p-5">
         <a href="{{ route('operador.bodegas.index') }}" class="ui-card group p-4 hover:border-blue-300 hover:bg-blue-50">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -70,7 +72,7 @@
             </div>
         </a>
 
-        <div class="border-t border-slate-200 pt-3 text-center md:col-span-2">
+        <div class="border-t border-slate-200 pt-3 text-center">
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button class="ui-btn-danger">Cerrar sesión</button>

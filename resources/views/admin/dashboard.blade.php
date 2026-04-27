@@ -3,18 +3,18 @@
 @section('title', 'Admin - Inicio')
 
 @section('content')
-<div class="ui-panel w-full max-w-5xl p-6 md:p-8">
-    <div class="mb-8 rounded-3xl bg-gradient-to-r from-sky-700 via-blue-700 to-indigo-800 p-6 text-white shadow-lg">
-        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div class="flex items-center gap-4">
-            <x-logo-image class="h-20 w-20 rounded-2xl object-contain bg-white/95 border border-white/40 p-2 shadow-md" />
-            <div>
-                <p class="text-sm font-semibold uppercase tracking-[0.25em] text-sky-100">Inventario de bodegas</p>
-                <h1 class="mt-1 text-2xl font-bold md:text-3xl">Bienvenido, {{ auth()->user()->name }}</h1>
-                <p class="mt-1 text-sm text-blue-100">Panel administrativo · selecciona una opción</p>
+<div class="ui-panel w-full max-w-5xl p-5 md:p-7">
+    <div class="ui-dashboard-hero mb-7">
+        <div class="flex flex-col items-center gap-4 text-center md:flex-row md:text-left">
+            <div class="ui-logo-card shrink-0">
+                <x-logo-image class="ui-dashboard-logo" />
             </div>
-        </div>
-        <span class="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/25">Administrador</span>
+            <div class="min-w-0 flex-1">
+                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-sky-100">Inventario de bodegas</p>
+                <h1 class="mt-1 text-2xl font-bold leading-tight text-white md:text-3xl">Bienvenido, {{ auth()->user()->name }}</h1>
+                <p class="mt-2 max-w-2xl text-sm leading-6 text-blue-50">Panel administrativo · selecciona una opción para gestionar el sistema.</p>
+            </div>
+            <span class="shrink-0 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/25">Administrador</span>
         </div>
     </div>
 

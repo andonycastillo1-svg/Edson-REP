@@ -51,24 +51,24 @@
                         <div class="mt-3 text-xs {{ $esMiBodega ? 'text-emerald-700' : 'text-slate-500' }}">{{ $esMiBodega ? 'Tu bodega asignada' : 'Solo consulta' }}</div>
                     @endif
 
-                    <div class="mt-5 grid grid-cols-2 gap-2">
-                        <a href="{{ route($routePrefix . '.bodegas.show', $bodega->id) }}" class="{{ ($esOperador && !$esMiBodega) ? 'col-span-2' : '' }} ui-btn-dark">Ver inventario</a>
+                    <div class="mt-4 grid grid-cols-2 gap-2">
+                        <a href="{{ route($routePrefix . '.bodegas.show', $bodega->id) }}" class="{{ ($esOperador && !$esMiBodega) ? 'col-span-2' : '' }} ui-btn-dark ui-btn-compact">Ver</a>
 
                         @if(auth()->user()->role_id == 1)
-                            <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="ui-btn-transfer">Trasladar</a>
+                            <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="ui-btn-transfer ui-btn-compact">Trasladar</a>
                         @endif
 
                         @if($esOperador && $esMiBodega)
-                            <a href="{{ route('operador.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="ui-btn-transfer">Trasladar</a>
+                            <a href="{{ route('operador.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="ui-btn-transfer ui-btn-compact">Trasladar</a>
                         @endif
 
                         @if(auth()->user()->role_id == 1)
-                            <a href="{{ route('admin.operaciones.traslados.index') }}" class="ui-btn-download col-span-2">Aprobación de traslados</a>
-                            <a href="{{ route('admin.bodegas.edit', $bodega->id) }}" class="ui-btn-edit">Editar</a>
+                            <a href="{{ route('admin.operaciones.traslados.index') }}" class="ui-btn-download ui-btn-compact col-span-2">Aprobación</a>
+                            <a href="{{ route('admin.bodegas.edit', $bodega->id) }}" class="ui-btn-edit ui-btn-compact">Editar</a>
                             <form method="POST" action="{{ route('admin.bodegas.destroy', $bodega->id) }}" onsubmit="return confirm('¿Eliminar esta bodega?')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="ui-btn-danger w-full">Eliminar</button>
+                                <button type="submit" class="ui-btn-danger ui-btn-compact w-full">Eliminar</button>
                             </form>
                         @endif
                     </div>

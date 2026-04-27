@@ -3,17 +3,21 @@
 @section('title', 'Coordinador - Inicio')
 
 @section('content')
-<div class="ui-panel w-full max-w-xl overflow-hidden">
+<div class="ui-panel w-full max-w-2xl overflow-hidden">
     <div class="ui-hero">
-        <x-logo-image class="h-20 w-20 rounded-2xl border border-white/40 bg-white p-2 object-contain shadow-lg" />
-        <div>
-            <p class="text-sm font-semibold uppercase tracking-wide text-blue-100">Panel de coordinador</p>
-            <h1 class="mt-1 text-3xl font-extrabold text-white">Bienvenido, {{ auth()->user()->name }}</h1>
-            <p class="mt-1 text-sm text-blue-50">Consulta rápida y control visual de tu bodega.</p>
+        <div class="flex flex-col items-center gap-4 text-center">
+            <div class="dashboard-logo-card">
+                <x-logo-image class="dashboard-logo" />
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-blue-100">Panel de coordinador</p>
+                <h1 class="mt-1 text-2xl font-extrabold text-white md:text-3xl">Bienvenido, {{ auth()->user()->name }}</h1>
+                <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-blue-50">Consulta rápida y control visual de tu bodega.</p>
+            </div>
         </div>
     </div>
 
-    <div class="grid gap-4 p-6">
+    <div class="dashboard-menu-list">
         <a href="{{ route('coordinador.bodegas.index') }}"
            class="ui-card group p-5 hover:border-blue-300 hover:bg-blue-50/70">
             <div class="flex items-center justify-between">
