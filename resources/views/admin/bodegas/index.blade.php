@@ -5,6 +5,11 @@
 @section('content')
 @php
     $esOperador = auth()->user()->role_id == 2;
+    $routePrefix = match ((int) auth()->user()->role_id) {
+        2 => 'operador',
+        3 => 'coordinador',
+        default => 'admin',
+    };
     $bodegaOperadorId = auth()->user()->bodega_id;
 @endphp
 
@@ -47,7 +52,7 @@
                     @endif
 
                     <div class="mt-4 grid grid-cols-2 gap-2">
-                        <a href="{{ $esOperador ? route('operador.bodegas.show', $bodega->id) : route('admin.bodegas.show', $bodega->id) }}" class="{{ ($esOperador && !$esMiBodega) ? 'col-span-2' : '' }} rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-blue-700">Ver inventario</a>
+                        <a href="{{ route($routePrefix . '.bodegas.show', $bodega->id) }}" class="{{ ($esOperador && !$esMiBodega) ? 'col-span-2' : '' }} rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-blue-700">Ver inventario</a>
 
                         @if(auth()->user()->role_id == 1)
                             <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="rounded-lg bg-slate-800 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900">Trasladar</a>

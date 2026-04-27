@@ -3,6 +3,15 @@
 @section('title', 'Inventario')
 
 @section('content')
+@php
+    $routePrefix = match ((int) auth()->user()->role_id) {
+        2 => 'operador',
+        3 => 'coordinador',
+        default => 'admin',
+    };
+    $canAddInventory = auth()->user()->role_id == 1
+        || ((int) auth()->user()->role_id === 2 && (int) auth()->user()->bodega_id === (int) $bodega->id);
+@endphp
 <div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
 
     <div class="flex items-start justify-between gap-4 mb-6">
@@ -26,10 +35,12 @@
                 Descargar inventario
             </button>
 
-            <a href="{{ route('admin.bodegas.entrada', $bodega->id) }}"
-               class="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm transition hover:bg-indigo-700">
-                + Agregar al inventario
-            </a>
+            @if($canAddInventory)
+                <a href="{{ route($routePrefix . '.bodegas.entrada', $bodega->id) }}"
+                   class="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm transition hover:bg-indigo-700">
+                    + Agregar al inventario
+                </a>
+            @endif
         </div>
     </div>
 

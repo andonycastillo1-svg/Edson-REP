@@ -15,10 +15,12 @@
             </p>
         </div>
 
-        <button onclick="abrirModal()"
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">
-            + Nueva compra
-        </button>
+        @if($canCreateCompra)
+            <button onclick="abrirModal()"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">
+                + Nueva compra
+            </button>
+        @endif
     </div>
 
     {{-- MENSAJES --}}
@@ -87,9 +89,7 @@
 </div>
 
 
-{{-- =========================
-     MODAL NUEVA COMPRA
-========================= --}}
+@if($canCreateCompra)
 <div id="modalCompra" class="fixed inset-0 z-50 hidden">
 
     {{-- FONDO OSCURO --}}
@@ -115,6 +115,7 @@
     </div>
 
 </div>
+@endif
 
 
 {{-- =========================

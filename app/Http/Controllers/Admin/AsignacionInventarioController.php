@@ -13,18 +13,32 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use App\Services\AsignacionVidaUtilService;
+use App\Services\BodegaAccessService;
+use App\Services\InventarioStockService;
 use Carbon\Carbon;
 
 class AsignacionInventarioController extends Controller
 {
+    public function __construct(
+        private BodegaAccessService $bodegaAccess,
+        private InventarioStockService $stockService
+    ) {
+    }
+
     public function index()
     {
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+        $user = auth()->user();
+        $routePrefix = $user->role_id == 2 ? 'operador' : 'admin';
 
         $query = AsignacionInventario::with(['colaborador', 'producto', 'bodega'])->latest();
 
-        if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
-            $query->where('user_id', auth()->id());
+        if ((int) $user->role_id !== 1) {
+            $visibleBodegaIds = $this->bodegaAccess->visibleBodegaIds($user);
+            if ($visibleBodegaIds === []) {
+                $query->whereRaw('1 = 0');
+            } elseif (is_array($visibleBodegaIds)) {
+                $query->whereIn('bodega_id', $visibleBodegaIds);
+            }
         }
 
         $asignaciones = $query->get();
@@ -46,6 +60,14 @@ class AsignacionInventarioController extends Controller
         $movimientos = collect();
         if (Schema::hasTable('asignacion_movimientos')) {
             $movimientos = AsignacionMovimiento::with(['asignacion.colaborador', 'user'])
+                ->when((int) $user->role_id !== 1, function ($query) use ($user) {
+                    $visibleBodegaIds = $this->bodegaAccess->visibleBodegaIds($user);
+                    if ($visibleBodegaIds === []) {
+                        $query->whereRaw('1 = 0');
+                    } elseif (is_array($visibleBodegaIds)) {
+                        $query->whereHas('asignacion', fn ($q) => $q->whereIn('bodega_id', $visibleBodegaIds));
+                    }
+                })
                 ->latest()
                 ->limit(30)
                 ->get();
@@ -56,9 +78,23 @@ class AsignacionInventarioController extends Controller
 
     public function create()
     {
-        $inventarios = Inventario::with('producto', 'bodega')->get();
+        $user = auth()->user();
+        $editableBodegaIds = (int) $user->role_id === 1
+            ? null
+            : ($user->bodega_id ? [(int) $user->bodega_id] : []);
+
+        $inventarios = Inventario::with('producto', 'bodega')
+            ->when(is_array($editableBodegaIds), fn ($q) => $editableBodegaIds === []
+                ? $q->whereRaw('1 = 0')
+                : $q->whereIn('bodega_id', $editableBodegaIds))
+            ->get();
         $colaboradores = Colaborador::where('estado', 'Activo')->get();
-        $bodegas = Bodega::all();
+        $bodegas = Bodega::query()
+            ->when(is_array($editableBodegaIds), fn ($q) => $editableBodegaIds === []
+                ? $q->whereRaw('1 = 0')
+                : $q->whereIn('id', $editableBodegaIds))
+            ->orderBy('nombre')
+            ->get();
 
         $aprobadores = [
             'Gerencia',
@@ -111,6 +147,10 @@ class AsignacionInventarioController extends Controller
             ]);
 
         foreach ($solicitudesAgrupadas as $solicitud) {
+            if (!$this->bodegaAccess->canModifyStock(auth()->user(), (int) $solicitud['bodega_id'])) {
+                abort(403);
+            }
+
             $inventario = Inventario::query()
                 ->where('producto_codigo', $solicitud['producto_codigo'])
                 ->where('bodega_id', $solicitud['bodega_id'])
@@ -133,6 +173,7 @@ class AsignacionInventarioController extends Controller
                 ->where('producto_codigo', $item['producto_codigo'])
                 ->where('estado', 'Activa')
                 ->where('cantidad_asignada', '>', 0)
+                ->when((int) auth()->user()->role_id !== 1, fn ($query) => $query->where('bodega_id', auth()->user()->bodega_id))
                 ->latest('fecha')
                 ->first();
 
@@ -146,12 +187,16 @@ class AsignacionInventarioController extends Controller
         DB::transaction(function () use ($data, $items, $imagenPath) {
             $vidaUtilService = app(AsignacionVidaUtilService::class);
             foreach ($items as $item) {
+                $this->stockService->descontar(
+                    (int) $item['bodega_id'],
+                    $item['producto_codigo'],
+                    (int) $item['cantidad_asignada']
+                );
+
                 $inventario = Inventario::with('producto')
                     ->where('producto_codigo', $item['producto_codigo'])
                     ->where('bodega_id', $item['bodega_id'])
                     ->firstOrFail();
-
-                $inventario->decrement('cantidad', (int) $item['cantidad_asignada']);
 
                 $costoUnitario = $data['costo_unitario'] ?? null;
                 if (empty($costoUnitario)) {
@@ -180,7 +225,7 @@ class AsignacionInventarioController extends Controller
                 ];
 
                 if (!empty($inventario->producto?->vida_util_meses)) {
-$payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($inventario->producto->vida_util_meses);
+                    $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($inventario->producto->vida_util_meses);
                 }
 
                 if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
@@ -208,6 +253,7 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
                         ->where('estado', 'Activa')
                         ->where('id', '!=', $asignacion->id)
                         ->where('cantidad_asignada', '>', 0)
+                        ->when((int) auth()->user()->role_id !== 1, fn ($query) => $query->where('bodega_id', auth()->user()->bodega_id))
                         ->latest('fecha')
                         ->first();
 
@@ -247,7 +293,19 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
 
         $asignaciones = AsignacionInventario::with('producto', 'bodega')
             ->where('colaborador_codigo', $codigo)
+            ->when((int) $usuario->role_id !== 1, function ($query) use ($usuario) {
+                $visibleBodegaIds = $this->bodegaAccess->visibleBodegaIds($usuario);
+                if ($visibleBodegaIds === []) {
+                    $query->whereRaw('1 = 0');
+                } elseif (is_array($visibleBodegaIds)) {
+                    $query->whereIn('bodega_id', $visibleBodegaIds);
+                }
+            })
             ->get();
+
+        if ($asignaciones->isEmpty()) {
+            abort(403);
+        }
 
         $total = $asignaciones->sum(function ($a) {
             return ($a->costo_unitario ?? 0) * $a->cantidad_asignada;
@@ -269,8 +327,7 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
 
     public function uploadPdfFirmado(Request $request, AsignacionInventario $asignacion)
     {
-        if (Schema::hasColumn('asignaciones_inventarios', 'user_id')
-            && (int) $asignacion->user_id !== (int) auth()->id()) {
+        if (!$this->bodegaAccess->canModifyStock(auth()->user(), (int) $asignacion->bodega_id)) {
             abort(403);
         }
 
@@ -296,7 +353,7 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
     {
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
-        if ((int) auth()->user()->role_id !== 1 && (int) $asignacion->user_id !== (int) auth()->id()) {
+        if (!$this->bodegaAccess->canModifyStock(auth()->user(), (int) $asignacion->bodega_id)) {
             abort(403);
         }
 
@@ -310,9 +367,17 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
             'detalle_devolucion' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $cantidadDevuelta = min((int) $data['cantidad_devuelta'], (int) $asignacion->cantidad_asignada);
+        DB::transaction(function () use ($asignacion, $data) {
+            $asignacion = AsignacionInventario::query()
+                ->whereKey($asignacion->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        DB::transaction(function () use ($asignacion, $cantidadDevuelta, $data) {
+            $cantidadDevuelta = min((int) $data['cantidad_devuelta'], (int) $asignacion->cantidad_asignada);
+            if ($cantidadDevuelta <= 0) {
+                return;
+            }
+
             $asignacion->cantidad_asignada = (int) $asignacion->cantidad_asignada - $cantidadDevuelta;
             if ((int) $asignacion->cantidad_asignada <= 0) {
                 $asignacion->cantidad_asignada = 0;
@@ -320,10 +385,11 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
             }
             $asignacion->save();
 
-            Inventario::query()
-                ->where('bodega_id', $asignacion->bodega_id)
-                ->where('producto_codigo', $asignacion->producto_codigo)
-                ->increment('cantidad', $cantidadDevuelta);
+            $this->stockService->incrementar(
+                (int) $asignacion->bodega_id,
+                $asignacion->producto_codigo,
+                $cantidadDevuelta
+            );
 
             if (Schema::hasTable('asignacion_movimientos')) {
                 AsignacionMovimiento::create([
@@ -351,7 +417,11 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
         ]);
 
         $ids = collect(array_keys($data['devoluciones']))->map(fn ($id) => (int) $id)->filter()->values();
-        $asignaciones = AsignacionInventario::query()->whereIn('id', $ids)->get()->keyBy('id');
+        $asignaciones = AsignacionInventario::query()
+            ->whereIn('id', $ids)
+            ->when((int) auth()->user()->role_id !== 1, fn ($query) => $query->where('bodega_id', auth()->user()->bodega_id))
+            ->get()
+            ->keyBy('id');
 
         if ($asignaciones->isEmpty()) {
             return redirect()->route($routePrefix . '.asignaciones.index')
@@ -362,13 +432,20 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
             foreach ($data['devoluciones'] as $id => $cantidadSolicitada) {
                 $id = (int) $id;
                 $cantidadSolicitada = (int) $cantidadSolicitada;
-                $asignacion = $asignaciones->get($id);
+                if (!$asignaciones->has($id)) {
+                    continue;
+                }
+
+                $asignacion = AsignacionInventario::query()
+                    ->whereKey($id)
+                    ->lockForUpdate()
+                    ->first();
 
                 if (!$asignacion || $asignacion->estado !== 'Activa') {
                     continue;
                 }
 
-                if ((int) auth()->user()->role_id !== 1 && (int) $asignacion->user_id !== (int) auth()->id()) {
+                if (!$this->bodegaAccess->canModifyStock(auth()->user(), (int) $asignacion->bodega_id)) {
                     continue;
                 }
 
@@ -384,10 +461,11 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
                 }
                 $asignacion->save();
 
-                Inventario::query()
-                    ->where('bodega_id', $asignacion->bodega_id)
-                    ->where('producto_codigo', $asignacion->producto_codigo)
-                    ->increment('cantidad', $cantidadDevuelta);
+                $this->stockService->incrementar(
+                    (int) $asignacion->bodega_id,
+                    $asignacion->producto_codigo,
+                    $cantidadDevuelta
+                );
 
                 if (Schema::hasTable('asignacion_movimientos')) {
                     AsignacionMovimiento::create([
@@ -417,8 +495,8 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
             ->where('colaborador_codigo', $colaboradorCodigo)
             ->where('estado', 'Activa');
 
-        if ((int) auth()->user()->role_id !== 1 && Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
-            $query->where('user_id', auth()->id());
+        if ((int) auth()->user()->role_id !== 1) {
+            $query->where('bodega_id', auth()->user()->bodega_id);
         }
 
         $asignaciones = $query->get();
@@ -429,7 +507,20 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
         }
 
         DB::transaction(function () use ($asignaciones, $data) {
-            foreach ($asignaciones as $asignacion) {
+            foreach ($asignaciones as $asignacionPendiente) {
+                $asignacion = AsignacionInventario::query()
+                    ->whereKey($asignacionPendiente->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$asignacion || $asignacion->estado !== 'Activa') {
+                    continue;
+                }
+
+                if (!$this->bodegaAccess->canModifyStock(auth()->user(), (int) $asignacion->bodega_id)) {
+                    continue;
+                }
+
                 $cantidadDevuelta = (int) $asignacion->cantidad_asignada;
                 if ($cantidadDevuelta <= 0) {
                     continue;
@@ -439,10 +530,11 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
                 $asignacion->estado = 'Devuelta';
                 $asignacion->save();
 
-                Inventario::query()
-                    ->where('bodega_id', $asignacion->bodega_id)
-                    ->where('producto_codigo', $asignacion->producto_codigo)
-                    ->increment('cantidad', $cantidadDevuelta);
+                $this->stockService->incrementar(
+                    (int) $asignacion->bodega_id,
+                    $asignacion->producto_codigo,
+                    $cantidadDevuelta
+                );
 
                 if (Schema::hasTable('asignacion_movimientos')) {
                     AsignacionMovimiento::create([
