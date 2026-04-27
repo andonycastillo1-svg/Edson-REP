@@ -6,6 +6,7 @@
     <title>@yield('title', 'Login - Inventario')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="{{ asset('css/admin-theme.css') }}">
 </head>
 
 <body class="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-400 to-blue-600 px-4">

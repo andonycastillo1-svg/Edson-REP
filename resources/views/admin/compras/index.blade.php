@@ -121,9 +121,7 @@
 @endif
 
 
-{{-- =========================
-     SCRIPT MODAL
-========================= --}}
+{{-- Script del modal de compra --}}
 <script>
 function abrirModal() {
     const modal = document.getElementById('modalCompra');

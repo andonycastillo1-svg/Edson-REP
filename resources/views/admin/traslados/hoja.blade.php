@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Hoja de Traslado #{{ $operacion->id }}</title>
+  <link rel="stylesheet" href="{{ asset('css/admin-theme.css') }}">
   <style>
     body { font-family: Arial, sans-serif; margin: 24px; color: #111; }
     .row { display:flex; justify-content:space-between; gap:16px; }
