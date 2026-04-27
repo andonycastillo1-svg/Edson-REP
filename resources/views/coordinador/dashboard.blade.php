@@ -3,35 +3,36 @@
 @section('title', 'Coordinador - Inicio')
 
 @section('content')
-<div class="w-full max-w-lg bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
-    <div class="flex items-center gap-4 mb-8">
-        <x-logo-image class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 p-1" />
+<div class="ui-panel w-full max-w-xl overflow-hidden">
+    <div class="ui-hero">
+        <x-logo-image class="h-20 w-20 rounded-2xl border border-white/40 bg-white p-2 object-contain shadow-lg" />
         <div>
-            <h1 class="text-2xl font-semibold text-gray-800">Bienvenido, {{ auth()->user()->name }}</h1>
-            <p class="text-sm text-gray-500 mt-1">Panel de coordinador</p>
+            <p class="text-sm font-semibold uppercase tracking-wide text-blue-100">Panel de coordinador</p>
+            <h1 class="mt-1 text-3xl font-extrabold text-white">Bienvenido, {{ auth()->user()->name }}</h1>
+            <p class="mt-1 text-sm text-blue-50">Consulta rápida y control visual de tu bodega.</p>
         </div>
     </div>
 
-    <div class="space-y-3">
+    <div class="grid gap-4 p-6">
         <a href="{{ route('coordinador.bodegas.index') }}"
-           class="group rounded-2xl border border-slate-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/60 transition">
+           class="ui-card group p-5 hover:border-blue-300 hover:bg-blue-50/70">
             <div class="flex items-center justify-between">
                 <span class="flex items-center gap-3">
-                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">🏬</span>
+                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-2xl text-blue-700">🏬</span>
                     <span>
-                        <div class="font-semibold text-slate-800">Mi bodega</div>
-                        <div class="text-xs text-slate-500">Consulta rápida de inventario</div>
+                        <div class="font-bold text-slate-900">Mi bodega</div>
+                        <div class="text-sm text-slate-600">Consulta rápida de inventario</div>
                     </span>
                 </span>
-                <span class="text-slate-400 group-hover:text-blue-600">›</span>
+                <span class="text-2xl text-slate-300 group-hover:text-blue-600">›</span>
             </div>
         </a>
     </div>
 
-    <div class="mt-8 pt-6 border-t text-center">
+    <div class="border-t border-slate-200 bg-slate-50 px-6 py-4 text-center">
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-            <button class="text-sm text-red-600 hover:underline">Cerrar sesión</button>
+            <button class="ui-btn-danger">Cerrar sesión</button>
         </form>
     </div>
 </div>

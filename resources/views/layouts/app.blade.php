@@ -14,8 +14,8 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased">
-        <div class="min-h-screen bg-[#EAF4FF]">
+    <body class="font-sans antialiased text-slate-900">
+        <div class="min-h-screen bg-app">
             @if (!View::hasSection('no_nav'))
     @include('layouts.navigation')
 @endif
@@ -23,7 +23,7 @@
             <!-- Page Heading -->
             @if (!View::hasSection('no_header'))
                 @isset($header)
-                    <header class="bg-white shadow">
+                    <header class="border-b border-white/70 bg-white/85 shadow-sm backdrop-blur">
                         <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                             {{ $header }}
                         </div>

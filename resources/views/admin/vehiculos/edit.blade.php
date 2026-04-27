@@ -3,12 +3,15 @@
 @section('title', 'Editar Vehículo')
 
 @section('content')
-<div class="w-full max-w-3xl bg-white/90 rounded-2xl shadow-2xl p-8">
-    <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-slate-800">Editar Vehículo</h1>
+<div class="ui-panel w-full max-w-3xl p-8">
+    <div class="mb-6 flex items-center justify-between gap-4">
+        <div>
+            <p class="text-xs font-bold uppercase tracking-[0.22em] text-sky-600">Flota</p>
+            <h1 class="mt-1 text-2xl font-bold text-slate-900">Editar vehículo</h1>
+        </div>
 
         <a href="{{ route('admin.vehiculos.index') }}"
-           class="px-4 py-2 rounded-xl bg-slate-200 text-slate-700 font-semibold hover:bg-slate-300">
+           class="ui-btn-secondary">
             Volver
         </a>
     </div>
@@ -23,7 +26,7 @@
         </div>
     @endif
 
-    <form action="{{ route('admin.vehiculos.update', $vehiculo->vin) }}" method="POST" class="space-y-6">
+    <form action="{{ route('admin.vehiculos.update', $vehiculo->vin) }}" method="POST" class="ui-form space-y-6">
         @csrf
         @method('PUT')
 
@@ -68,14 +71,14 @@
             </select>
         </div>
 
-        <div class="pt-4 flex justify-end gap-3">
+        <div class="pt-4 flex justify-end gap-3 border-t border-slate-100">
             <a href="{{ route('admin.vehiculos.index') }}"
-               class="px-5 py-3 rounded-xl bg-slate-200 text-slate-700 font-semibold hover:bg-slate-300">
+               class="ui-btn-secondary">
                 Cancelar
             </a>
 
             <button type="submit"
-                    class="px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">
+                    class="ui-btn-success">
                 Guardar cambios
             </button>
         </div>

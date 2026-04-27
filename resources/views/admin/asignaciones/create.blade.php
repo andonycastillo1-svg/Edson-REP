@@ -16,23 +16,24 @@
       ];
   });
 @endphp
-<div class="min-h-screen bg-slate-50">
+<div class="min-h-screen bg-transparent">
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <div class="ui-panel">
-      <div class="px-6 py-5 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
+    <div class="ui-panel overflow-hidden">
+      <div class="ui-section-header flex flex-wrap justify-between items-center gap-3">
         <div>
-          <h1 class="text-xl font-semibold text-slate-900">Nueva asignación</h1>
-          <p class="text-sm text-slate-600">Asignar uno o varios productos a un colaborador.</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">Entrega de inventario</p>
+          <h1 class="mt-1 text-2xl font-bold text-white">Nueva asignación</h1>
+          <p class="text-sm text-blue-100">Asignar uno o varios productos a un colaborador.</p>
         </div>
 
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <a href="{{ route('dashboard') }}"
-            class="ui-btn-primary">
+            class="ui-btn-secondary">
             ← Volver
           </a>
           <a href="{{ route($routePrefix . '.asignaciones.index') }}"
-            class="ui-btn-secondary">
+            class="ui-btn-download">
             Ver mis asignaciones
           </a>
         </div>
@@ -68,7 +69,7 @@
         class="ui-form px-6 pb-6 space-y-6">
         @csrf
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div>
             <label class="text-sm font-medium text-slate-700">Colaborador</label>
             <select name="colaborador_codigo"
@@ -116,11 +117,11 @@
           </div>
         </div>
 
-        <div class="rounded-xl border border-slate-200 p-4">
+        <div class="rounded-2xl border border-blue-100 bg-blue-50/40 p-4 shadow-sm">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-semibold text-slate-800">Productos a asignar</h2>
             <button type="button" id="add-item"
-              class="rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100">
+              class="ui-btn-edit px-3 py-1.5">
               + Agregar producto
             </button>
           </div>
@@ -128,7 +129,7 @@
           <div id="items-wrapper" class="space-y-3"></div>
 
           <template id="item-template">
-            <div class="item-row grid grid-cols-1 md:grid-cols-12 gap-3 border border-slate-200 rounded-xl p-3">
+            <div class="item-row grid grid-cols-1 md:grid-cols-12 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div class="md:col-span-7">
                 <label class="text-xs font-medium text-slate-600">Producto</label>
                 <select data-name="producto_codigo" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required></select>
@@ -156,14 +157,14 @@
                 <input type="date" data-name="fecha_dano" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
               </div>
               <div class="md:col-span-12 flex justify-end">
-                <button type="button" class="remove-item rounded-lg border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100">Quitar</button>
+                <button type="button" class="remove-item ui-btn-danger px-3 py-1 text-xs">Quitar</button>
               </div>
             </div>
           </template>
         </div>
 
         <div class="flex justify-end">
-          <button class="ui-btn-primary px-6">
+          <button class="ui-btn-success px-6">
             Guardar asignación
           </button>
         </div>
