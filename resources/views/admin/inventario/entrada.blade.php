@@ -13,15 +13,16 @@
         : 'admin.bodegas.entrada.store';
 @endphp
 
-<div class="w-full max-w-3xl rounded-2xl bg-white/90 p-8 shadow-2xl">
-    <div class="mb-6 flex items-center justify-between gap-4">
+<div class="ui-panel w-full max-w-3xl p-6 md:p-8">
+    <div class="mb-6 flex flex-col gap-4 border-b border-slate-100 pb-5 md:flex-row md:items-center md:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-slate-800">Agregar al inventario</h1>
+            <span class="ui-kicker">Entrada manual</span>
+            <h1 class="mt-1 text-2xl font-bold text-slate-900">Agregar al inventario</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $bodega->nombre }} · {{ $bodega->ubicacion ?? 'Sin ubicación' }}</p>
         </div>
 
         <a href="{{ route($showRoute, $bodega->id) }}"
-           class="rounded-xl bg-slate-200 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-300">
+           class="ui-btn-secondary">
             Volver
         </a>
     </div>
@@ -43,13 +44,13 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route($storeRoute, $bodega->id) }}" class="space-y-5">
+    <form method="POST" action="{{ route($storeRoute, $bodega->id) }}" class="ui-form space-y-5">
         @csrf
 
         <div>
             <label for="producto_codigo" class="mb-2 block text-sm font-semibold text-slate-700">Producto</label>
             <select id="producto_codigo" name="producto_codigo" required
-                    class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-4 py-3">
                 <option value="">Selecciona un producto</option>
                 @foreach($productos as $producto)
                     <option value="{{ $producto->codigo }}" {{ old('producto_codigo') === $producto->codigo ? 'selected' : '' }}>
@@ -62,15 +63,15 @@
         <div>
             <label for="cantidad" class="mb-2 block text-sm font-semibold text-slate-700">Cantidad</label>
             <input id="cantidad" type="number" name="cantidad" min="1" required value="{{ old('cantidad', 1) }}"
-                   class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                   class="w-full px-4 py-3">
         </div>
 
-        <div class="flex justify-end gap-3 pt-4">
+        <div class="flex flex-col justify-end gap-3 pt-4 sm:flex-row">
             <a href="{{ route($showRoute, $bodega->id) }}"
-               class="rounded-xl bg-slate-200 px-5 py-3 font-semibold text-slate-700 hover:bg-slate-300">
+               class="ui-btn-secondary">
                 Cancelar
             </a>
-            <button type="submit" class="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">
+            <button type="submit" class="ui-btn-success">
                 Registrar entrada
             </button>
         </div>

@@ -4,7 +4,7 @@
         Tu usuario no tiene permiso para registrar entradas en la bodega principal.
     </div>
 @else
-<form action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+<form action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="ui-form space-y-6">
 @csrf
 
 {{-- ENCABEZADO --}}
@@ -14,17 +14,17 @@
     <div>
         <label class="block text-sm font-medium mb-1">Fecha de compra</label>
         <input type="date" name="fecha_compra" value="{{ old('fecha_compra') }}"
-               class="w-full border rounded-lg p-2" required>
+               class="w-full rounded-xl border-slate-200 p-2.5" required>
     </div>
 
     <div>
         <label class="block text-sm font-medium mb-1">No. Factura</label>
-        <input name="no_factura" value="{{ old('no_factura') }}" class="w-full border rounded-lg p-2" required>
+        <input name="no_factura" value="{{ old('no_factura') }}" class="w-full rounded-xl border-slate-200 p-2.5" required>
     </div>
 
     <div>
         <label class="block text-sm font-medium mb-1">Forma de pago</label>
-        <select name="forma_pago" class="w-full border rounded-lg p-2" required>
+        <select name="forma_pago" class="w-full rounded-xl border-slate-200 p-2.5" required>
             <option value="">Seleccione...</option>
             <option value="Al contado" {{ old('forma_pago')=='Al contado' ? 'selected' : '' }}>Al contado</option>
             <option value="Crédito 30 días" {{ old('forma_pago')=='Crédito 30 días' ? 'selected' : '' }}>Crédito 30 días</option>
@@ -36,7 +36,7 @@
     {{-- PROVEEDOR --}}
     <div>
         <label class="block text-sm font-medium mb-1">Proveedor</label>
-        <select id="proveedor_tipo" name="proveedor_tipo" class="w-full border rounded-lg p-2" required>
+        <select id="proveedor_tipo" name="proveedor_tipo" class="w-full rounded-xl border-slate-200 p-2.5" required>
             <option value="existente" {{ old('proveedor_tipo','existente')=='existente' ? 'selected' : '' }}>Existente</option>
             <option value="nuevo" {{ old('proveedor_tipo')=='nuevo' ? 'selected' : '' }}>Nuevo</option>
         </select>
@@ -44,7 +44,7 @@
 
     <div id="wrap_existente" class="md:col-span-2">
         <label class="block text-sm font-medium mb-1">Seleccionar proveedor</label>
-        <select name="proveedor_id" id="proveedor_id" class="w-full border rounded-lg p-2">
+        <select name="proveedor_id" id="proveedor_id" class="w-full rounded-xl border-slate-200 p-2.5">
             <option value="">Seleccione...</option>
             @foreach($proveedores as $p)
                 <option value="{{ $p->id }}" {{ old('proveedor_id') == $p->id ? 'selected' : '' }}>
@@ -59,51 +59,52 @@
         <label class="block text-sm font-medium mb-1">Nombre del proveedor</label>
         <input type="text" name="proveedor_nombre" id="proveedor_nombre"
                value="{{ old('proveedor_nombre') }}"
-               class="w-full border rounded-lg p-2"
+               class="w-full rounded-xl border-slate-200 p-2.5"
                placeholder="Ej: LIBRERIA CENTRAL">
     </div>
 
     <div>
         <label class="block text-sm font-medium mb-1">Proyecto</label>
-        <input name="proyecto" value="{{ old('proyecto') }}" class="w-full border rounded-lg p-2" placeholder="Opcional">
+        <input name="proyecto" value="{{ old('proyecto') }}" class="w-full rounded-xl border-slate-200 p-2.5" placeholder="Opcional">
     </div>
 
     <div>
         <label class="block text-sm font-medium mb-1">Solicitado por</label>
-        <input name="solicitado_por" value="{{ old('solicitado_por') }}" class="w-full border rounded-lg p-2" placeholder="Opcional">
+        <input name="solicitado_por" value="{{ old('solicitado_por') }}" class="w-full rounded-xl border-slate-200 p-2.5" placeholder="Opcional">
     </div>
 
     <div>
         <label class="block text-sm font-medium mb-1">Autorizado por</label>
-        <input name="autorizado_por" value="{{ old('autorizado_por') }}" class="w-full border rounded-lg p-2" placeholder="Opcional">
+        <input name="autorizado_por" value="{{ old('autorizado_por') }}" class="w-full rounded-xl border-slate-200 p-2.5" placeholder="Opcional">
     </div>
 
     <div class="md:col-span-2">
         <label class="block text-sm font-medium mb-1">A utilizarse</label>
-        <input name="a_utilizarse" value="{{ old('a_utilizarse') }}" class="w-full border rounded-lg p-2">
+        <input name="a_utilizarse" value="{{ old('a_utilizarse') }}" class="w-full rounded-xl border-slate-200 p-2.5">
     </div>
 
     {{-- PDFs --}}
     <div>
         <label class="block text-sm font-medium mb-1">PDF(s) Factura</label>
-        <input type="file" name="pdfs[]" multiple accept="application/pdf" class="w-full border rounded-lg p-2">
+        <input type="file" name="pdfs[]" multiple accept="application/pdf" class="w-full rounded-xl border border-slate-200 bg-white p-2.5">
         <p class="text-xs text-gray-500 mt-1">Puedes subir varios PDFs.</p>
     </div>
 </div>
 
 
 {{-- DETALLE DE PRODUCTOS --}}
-<div class="border rounded-xl p-4 bg-gray-50">
+<div class="rounded-2xl border border-slate-200 bg-sky-50/60 p-4">
 
     <div class="flex justify-between mb-3">
         <h3 class="font-semibold">Detalle de productos</h3>
         <button type="button" id="btnAddLinea"
-                class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">
+                class="ui-btn-edit px-3 py-2 text-sm">
             + Agregar línea
         </button>
     </div>
 
-    <table class="w-full text-sm">
+    <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+    <table class="min-w-full text-sm">
         <thead>
             <tr>
                 <th class="text-left">Tipo</th>
@@ -116,6 +117,7 @@
         </thead>
         <tbody id="detalleBody"></tbody>
     </table>
+    </div>
 
     <div class="text-right mt-4">
         <div class="text-sm text-gray-600">Total factura</div>
@@ -124,7 +126,7 @@
 </div>
 
 <div class="text-right">
-    <button class="bg-blue-600 text-white px-5 py-2 rounded-lg">
+    <button class="ui-btn-success px-5">
         Guardar compra
     </button>
 </div>

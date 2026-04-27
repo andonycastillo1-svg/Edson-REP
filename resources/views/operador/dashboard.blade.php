@@ -3,18 +3,19 @@
 @section('title', 'Operador - Inicio')
 
 @section('content')
-<div class="ui-panel w-full max-w-3xl overflow-hidden">
-    <div class="bg-gradient-to-r from-blue-700 to-indigo-700 px-6 py-6 text-white">
-        <div class="flex items-center gap-4">
-            <x-logo-image variant="logo1" class="h-14 w-14 rounded-xl border border-white/30 bg-white p-1 object-contain" />
+<div class="ui-panel w-full max-w-4xl overflow-hidden">
+    <div class="ui-hero">
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-center">
+            <x-logo-image variant="logo1" class="h-20 w-20 rounded-2xl border border-white/40 bg-white p-2 object-contain shadow-lg" />
             <div>
-                <h1 class="text-3xl font-bold">Bienvenido, {{ auth()->user()->name }}</h1>
-                <p class="text-sm text-blue-100">Panel de operador</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.25em] text-blue-100">Panel de operador</p>
+                <h1 class="mt-1 text-3xl font-extrabold tracking-tight text-white">Bienvenido, {{ auth()->user()->name }}</h1>
+                <p class="mt-2 text-sm text-blue-50">Gestiona compras, asignaciones y movimientos de bodega con accesos rápidos.</p>
             </div>
         </div>
     </div>
 
-    <div class="grid gap-3 bg-slate-50 p-6">
+    <div class="grid gap-4 bg-slate-50/90 p-6 md:grid-cols-2">
         <a href="{{ route('operador.bodegas.index') }}" class="ui-card group p-4 hover:border-blue-300 hover:bg-blue-50">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -69,10 +70,10 @@
             </div>
         </a>
 
-        <div class="pt-3 border-t border-slate-200 text-center">
+        <div class="border-t border-slate-200 pt-3 text-center md:col-span-2">
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button class="text-sm font-medium text-rose-600 hover:underline">Cerrar sesión</button>
+                <button class="ui-btn-danger">Cerrar sesión</button>
             </form>
         </div>
     </div>

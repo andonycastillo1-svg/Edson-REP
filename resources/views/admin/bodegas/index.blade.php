@@ -14,31 +14,31 @@
 @endphp
 
 <div class="ui-panel w-full max-w-7xl overflow-hidden">
-    <div class="bg-slate-900 text-white px-6 py-5 md:px-8">
+    <div class="bg-gradient-to-r from-sky-700 via-blue-700 to-indigo-800 px-6 py-6 text-white md:px-8">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight">Bodegas · Vista Empresarial</h1>
-                <p class="mt-1 text-sm text-slate-300">Diseño renovado con enfoque corporativo y mejor legibilidad.</p>
+                <p class="mt-1 text-sm text-sky-100">Inventario por sede con lectura clara y acciones rápidas.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('dashboard') }}" class="inline-flex items-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700">← Volver al menú</a>
+                <a href="{{ route('dashboard') }}" class="ui-btn-secondary border-white/30 bg-white/95">← Volver al menú</a>
                 @if(auth()->user()->role_id == 1)
-                    <a href="{{ route('admin.bodegas.create') }}" class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">+ Nueva bodega</a>
+                    <a href="{{ route('admin.bodegas.create') }}" class="ui-btn-success">+ Nueva bodega</a>
                 @endif
             </div>
         </div>
-        <div class="mt-3 text-xs text-slate-300">Total: <span class="font-semibold text-white">{{ $bodegas->count() }}</span> bodegas</div>
+        <div class="mt-4 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-sky-50">Total: <span class="ml-1 text-white">{{ $bodegas->count() }}</span> bodegas</div>
     </div>
 
-    <div class="p-6 md:p-8 bg-slate-50">
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div class="bg-sky-50/70 p-6 md:p-8">
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             @forelse($bodegas as $bodega)
                 @php
                     $esMiBodega = (int) $bodega->id === (int) $bodegaOperadorId;
                     $isPrincipal = ($bodega->tipo === 'Principal');
                 @endphp
 
-                <article class="ui-card p-4">
+                <article class="ui-card p-5">
                     <div class="flex items-start justify-between gap-2">
                         <div>
                             <h2 class="text-lg font-semibold text-slate-900">{{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}</h2>
@@ -51,24 +51,24 @@
                         <div class="mt-3 text-xs {{ $esMiBodega ? 'text-emerald-700' : 'text-slate-500' }}">{{ $esMiBodega ? 'Tu bodega asignada' : 'Solo consulta' }}</div>
                     @endif
 
-                    <div class="mt-4 grid grid-cols-2 gap-2">
-                        <a href="{{ route($routePrefix . '.bodegas.show', $bodega->id) }}" class="{{ ($esOperador && !$esMiBodega) ? 'col-span-2' : '' }} rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-blue-700">Ver inventario</a>
+                    <div class="mt-5 grid grid-cols-2 gap-2">
+                        <a href="{{ route($routePrefix . '.bodegas.show', $bodega->id) }}" class="{{ ($esOperador && !$esMiBodega) ? 'col-span-2' : '' }} ui-btn-dark">Ver inventario</a>
 
                         @if(auth()->user()->role_id == 1)
-                            <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="rounded-lg bg-slate-800 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900">Trasladar</a>
+                            <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="ui-btn-transfer">Trasladar</a>
                         @endif
 
                         @if($esOperador && $esMiBodega)
-                            <a href="{{ route('operador.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="rounded-lg bg-slate-800 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900">Trasladar</a>
+                            <a href="{{ route('operador.operaciones.traslados.create', ['origen' => $bodega->id]) }}" class="ui-btn-transfer">Trasladar</a>
                         @endif
 
                         @if(auth()->user()->role_id == 1)
-                            <a href="{{ route('admin.operaciones.traslados.index') }}" class="col-span-2 rounded-lg bg-cyan-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700">Aprobación de traslados</a>
-                            <a href="{{ route('admin.bodegas.edit', $bodega->id) }}" class="rounded-lg bg-amber-500 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600">Editar</a>
+                            <a href="{{ route('admin.operaciones.traslados.index') }}" class="ui-btn-download col-span-2">Aprobación de traslados</a>
+                            <a href="{{ route('admin.bodegas.edit', $bodega->id) }}" class="ui-btn-edit">Editar</a>
                             <form method="POST" action="{{ route('admin.bodegas.destroy', $bodega->id) }}" onsubmit="return confirm('¿Eliminar esta bodega?')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="w-full rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700">Eliminar</button>
+                                <button type="submit" class="ui-btn-danger w-full">Eliminar</button>
                             </form>
                         @endif
                     </div>

@@ -4,29 +4,30 @@
 @endsection
 
 @section('content')
-<div class="min-h-screen bg-slate-50">
+<div class="min-h-screen bg-transparent">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-    <div class="ui-panel">
-      <div class="px-6 py-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div class="ui-panel overflow-hidden">
+      <div class="bg-gradient-to-r from-sky-900 via-blue-800 to-indigo-800 px-6 py-6 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h1 class="text-xl font-semibold text-slate-900">Mis asignaciones</h1>
-          <p class="text-sm text-slate-600">Agrupadas por colaborador, incluyendo asignaciones de fechas distintas.</p>
+          <p class="text-xs font-bold uppercase tracking-[0.2em] text-sky-200">Control de entregas</p>
+          <h1 class="mt-1 text-2xl font-bold">Mis asignaciones</h1>
+          <p class="text-sm text-sky-100">Agrupadas por colaborador, incluyendo asignaciones de fechas distintas.</p>
         </div>
 
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <a href="{{ route($routePrefix . '.asignaciones.create') }}"
-             class="ui-btn-primary">
+             class="ui-btn-success">
             + Nueva asignación
           </a>
           <a href="{{ route('dashboard') }}"
-             class="ui-btn-secondary">
+             class="ui-btn-secondary bg-white/95">
             ← Volver
           </a>
         </div>
       </div>
 
-      <div class="px-6 py-4">
+      <div class="space-y-5 bg-white/80 px-6 py-5">
         @if(session('success'))
           <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm">
             {{ session('success') }}
@@ -39,27 +40,27 @@
         @endif
 
         @forelse($asignacionesPorColaborador as $grupo)
-          <details class="mb-4 rounded-xl border border-slate-200" @if($loop->first) open @endif>
-            <summary class="cursor-pointer list-none px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+          <details class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" @if($loop->first) open @endif>
+            <summary class="cursor-pointer list-none px-5 py-4 bg-gradient-to-r from-slate-50 to-sky-50 border-b border-slate-200 flex items-center justify-between gap-3">
               <div>
                 <h2 class="font-semibold text-slate-800">{{ $grupo['colaborador_nombre'] }}</h2>
                 <p class="text-xs text-slate-500">Código: {{ $grupo['colaborador_codigo'] }} · Asignaciones: {{ $grupo['asignaciones']->count() }}</p>
               </div>
-              <span class="text-xs font-semibold rounded-full bg-blue-100 text-blue-700 px-3 py-1">Activas: {{ $grupo['total_activo'] }}</span>
+              <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Activas: {{ $grupo['total_activo'] }}</span>
             </summary>
 
-            <div class="p-4">
+            <div class="p-5">
               <div class="flex flex-wrap gap-2 mb-3 justify-end">
                 <a href="{{ route($routePrefix . '.asignaciones.pdf', $grupo['colaborador_codigo']) }}"
-                   class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
+                   class="ui-btn-download px-3 py-2 text-xs">
                   Ver PDF / Imprimir
                 </a>
 
                 <form method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}" class="flex items-center gap-2">
                   @csrf
                   <input type="text" name="detalle_devolucion" placeholder="Motivo devolución total (opcional)"
-                    class="text-xs w-64 border border-slate-200 rounded-lg p-2">
-                  <button type="submit" class="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                    class="text-xs w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-sm focus:border-amber-400 focus:ring-amber-300">
+                  <button type="submit" class="ui-btn-warning px-3 py-2 text-xs"
                     onclick="return confirm('¿Devolver todo lo activo de este colaborador?')">
                     Devolver todo
                   </button>
@@ -69,7 +70,7 @@
               @php
                 $bulkFormId = 'bulk-return-' . $grupo['colaborador_codigo'];
               @endphp
-              <div class="overflow-x-auto ui-table">
+              <div class="ui-table overflow-x-auto">
                   <table class="min-w-full text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                       <tr>
@@ -86,19 +87,19 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                       @foreach($grupo['asignaciones'] as $a)
-                        <tr>
+                        <tr class="hover:bg-sky-50/60">
                           <td class="px-3 py-2">
                             @if(($a->estado ?? 'Activa') === 'Activa' && (int) $a->cantidad_asignada > 0)
-                              <input type="checkbox" class="selector" data-target="devolucion_{{ $a->id }}">
+                              <input type="checkbox" class="selector rounded border-slate-300 text-amber-600 focus:ring-amber-500" data-target="devolucion_{{ $a->id }}">
                             @endif
                           </td>
                           <td class="px-3 py-2">{{ $a->fecha ? date('d/m/Y', strtotime($a->fecha)) : '—' }}</td>
                           <td class="px-3 py-2">
-                            <div>{{ optional($a->producto)->nombre ?? $a->producto_codigo }}</div>
+                            <div class="font-semibold text-slate-800">{{ optional($a->producto)->nombre ?? $a->producto_codigo }}</div>
                             <div class="text-xs text-slate-500">COD: {{ $a->producto_codigo }}</div>
                           </td>
                           <td class="px-3 py-2">{{ optional($a->bodega)->nombre ?? '—' }}</td>
-                          <td class="px-3 py-2">{{ $a->estado ?? 'Activa' }}</td>
+                          <td class="px-3 py-2"><span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">{{ $a->estado ?? 'Activa' }}</span></td>
                           <td class="px-3 py-2">
                             @php
                               $fechaVenc = !empty($a->fecha_vencimiento) ? \Carbon\Carbon::parse($a->fecha_vencimiento) : null;
@@ -122,7 +123,7 @@
                                      max="{{ $a->cantidad_asignada }}"
                                      value="1"
                                      disabled
-                                     class="text-xs w-24 border border-slate-200 rounded-lg p-1.5">
+                                     class="text-xs w-24 rounded-lg border border-slate-200 p-1.5 focus:border-amber-400 focus:ring-amber-300">
                             @else
                               <span class="text-xs text-slate-400">No aplica</span>
                             @endif
@@ -131,12 +132,12 @@
                             <div class="flex flex-col md:flex-row md:items-center gap-2">
                               <form method="POST" action="{{ route($routePrefix . '.asignaciones.upload_pdf_firmado', $a) }}" enctype="multipart/form-data" class="flex items-center gap-2">
                                 @csrf
-                                <input type="file" name="pdf_firmado" accept=".pdf,.jpg,.jpeg,.png" required class="text-xs w-[170px] border border-slate-200 rounded-lg p-1">
-                                <button type="submit" class="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">Subir firmado</button>
+                                <input type="file" name="pdf_firmado" accept=".pdf,.jpg,.jpeg,.png" required class="text-xs w-[170px] rounded-lg border border-slate-200 bg-white p-1">
+                                <button type="submit" class="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100">Subir firmado</button>
                               </form>
 
                               @if($a->pdf_firmado)
-                                <a href="{{ asset('storage/' . $a->pdf_firmado) }}" target="_blank" class="text-xs text-emerald-700 hover:underline">Ver archivo</a>
+                                <a href="{{ asset('storage/' . $a->pdf_firmado) }}" target="_blank" class="text-xs font-semibold text-indigo-700 hover:underline">Ver archivo</a>
                               @endif
                             </div>
                           </td>
@@ -149,8 +150,8 @@
                 <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}" class="flex flex-wrap gap-2 justify-end items-center mt-3">
                   @csrf
                   <input type="text" name="detalle_devolucion" form="{{ $bulkFormId }}" placeholder="Detalle de devolución múltiple (opcional)"
-                    class="text-xs w-72 border border-slate-200 rounded-lg p-2">
-                  <button type="submit" class="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100">
+                    class="text-xs w-72 rounded-lg border border-slate-200 p-2 focus:border-amber-400 focus:ring-amber-300">
+                  <button type="submit" class="ui-btn-warning px-3 py-2 text-xs">
                     Devolver seleccionados
                   </button>
                 </form>
@@ -160,11 +161,11 @@
           <div class="rounded-xl border border-slate-200 p-6 text-center text-slate-500">Aún no tienes asignaciones registradas.</div>
         @endforelse
 
-        <div class="mt-8 rounded-xl border border-slate-200">
-          <div class="px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div class="px-4 py-3 bg-gradient-to-r from-slate-50 to-sky-50 border-b border-slate-200">
             <h2 class="font-semibold text-slate-800">Historial de movimientos</h2>
           </div>
-          <div class="overflow-x-auto">
+          <div class="ui-table overflow-x-auto rounded-none border-0">
             <table class="min-w-full text-sm">
               <thead class="bg-slate-50 text-slate-600">
                 <tr>

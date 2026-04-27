@@ -6,7 +6,7 @@
 @php
     $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
 @endphp
-<div class="w-full max-w-3xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
+<div class="ui-panel w-full max-w-3xl p-6 md:p-8">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
@@ -16,7 +16,7 @@
         </div>
 
         <a href="{{ route($routePrefix . '.usuarios.index') }}"
-           class="text-sm text-blue-600 hover:underline">
+           class="ui-btn-secondary">
             ← Volver
         </a>
     </div>
@@ -43,7 +43,7 @@
                 <label class="block text-sm font-medium text-gray-700">Nombre</label>
                 <input type="text" name="name"
                        value="{{ old('name', $usuario->name) }}" required
-                       class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    class="mt-1 w-full rounded-xl border-gray-300 focus:border-sky-500 focus:ring-sky-500">
             </div>
 
             <!-- Correo -->
@@ -51,14 +51,14 @@
                 <label class="block text-sm font-medium text-gray-700">Correo</label>
                 <input type="email" name="email"
                        value="{{ old('email', $usuario->email) }}" required
-                       class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                       class="mt-1 w-full rounded-xl border-gray-300 focus:border-sky-500 focus:ring-sky-500">
             </div>
 
             <!-- Rol -->
             <div>
                 <label class="block text-sm font-medium text-gray-700">Rol</label>
                 <select name="role_id" id="role_id" required
-                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-sky-500 focus:ring-sky-500">
 
                     @foreach($roles as $rol)
                         <option value="{{ $rol->id }}" {{ (int) old('role_id', $usuario->role_id) === (int) $rol->id ? 'selected' : '' }}>
@@ -73,7 +73,7 @@
             <div id="bodega_wrap" class="hidden">
                 <label class="block text-sm font-medium text-gray-700">Bodega</label>
                 <select name="bodega_id" id="bodega_id"
-                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-sky-500 focus:ring-sky-500">
                     <option value="">Seleccione...</option>
                     @foreach($bodegas as $b)
                         <option value="{{ $b->id }}"
@@ -91,7 +91,7 @@
                     Nueva contraseña <span class="text-gray-400">(opcional)</span>
                 </label>
                 <input type="password" name="password"
-                       class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                       class="mt-1 w-full rounded-xl border-gray-300 focus:border-sky-500 focus:ring-sky-500">
             </div>
 
             <!-- Confirmación -->
@@ -100,7 +100,7 @@
                     Confirmar nueva contraseña
                 </label>
                 <input type="password" name="password_confirmation"
-                       class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                       class="mt-1 w-full rounded-xl border-gray-300 focus:border-sky-500 focus:ring-sky-500">
             </div>
 
         </div>
@@ -108,12 +108,12 @@
         <!-- Botones -->
         <div class="pt-4 border-t flex flex-col sm:flex-row gap-3 justify-end">
             <a href="{{ route($routePrefix . '.usuarios.index') }}"
-               class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-gray-700 font-semibold hover:bg-gray-50 transition">
+               class="ui-btn-secondary">
                 Cancelar
             </a>
 
             <button type="submit"
-                    class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-white font-semibold shadow hover:bg-blue-700 transition">
+                    class="ui-btn-save">
                 Actualizar
             </button>
         </div>

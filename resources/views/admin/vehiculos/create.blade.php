@@ -3,13 +3,12 @@
 @section('title', 'Nuevo Vehículo')
 
 @section('content')
-<div class="w-full max-w-3xl bg-white/90 rounded-2xl shadow-2xl p-8">
+<div class="ui-panel w-full max-w-3xl p-6 md:p-8">
 
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Nuevo Vehículo</h1>
 
-        <a href="{{ route('admin.vehiculos.index') }}"
-           class="px-4 py-2 rounded-xl bg-slate-200 text-slate-700 font-semibold hover:bg-slate-300">
+        <a href="{{ route('admin.vehiculos.index') }}" class="ui-btn-secondary">
             Volver
         </a>
     </div>
@@ -24,7 +23,7 @@
         </div>
     @endif
 
-    <form action="{{ route('admin.vehiculos.store') }}" method="POST" class="space-y-6">
+    <form action="{{ route('admin.vehiculos.store') }}" method="POST" class="ui-form space-y-6">
         @csrf
 
         <div>
@@ -68,13 +67,11 @@
         </div>
 
         <div class="pt-4 flex justify-end gap-3">
-            <a href="{{ route('admin.vehiculos.index') }}"
-               class="px-5 py-3 rounded-xl bg-slate-200 text-slate-700 font-semibold hover:bg-slate-300">
+            <a href="{{ route('admin.vehiculos.index') }}" class="ui-btn-secondary">
                 Cancelar
             </a>
 
-            <button type="submit"
-                    class="px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">
+            <button type="submit" class="ui-btn-success">
                 Guardar
             </button>
         </div>
