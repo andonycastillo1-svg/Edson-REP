@@ -3,14 +3,17 @@
 @section('title', 'RRHH - Inicio')
 
 @section('content')
-<div class="ui-panel w-full max-w-5xl overflow-hidden">
-    <div class="ui-section-header from-emerald-700 to-teal-700">
-        <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-100">Recursos Humanos</p>
-        <h1 class="mt-2 text-3xl font-black text-white">Panel RRHH</h1>
-        <p class="mt-1 text-sm font-medium text-emerald-50">Gestión de personal, cuentas y alertas por reemplazo antes de vida útil.</p>
+<div class="ui-panel w-full max-w-3xl overflow-hidden">
+    <div class="ui-hero">
+        <div class="mx-auto mb-4 w-fit rounded-3xl bg-white/95 p-3 shadow-md ring-1 ring-white/70">
+            <x-logo-image class="dashboard-logo object-contain" />
+        </div>
+        <p class="text-center text-xs font-bold uppercase tracking-[0.22em] text-sky-100">Recursos Humanos</p>
+        <h1 class="mt-2 text-center text-2xl font-black text-white md:text-3xl">Panel RRHH</h1>
+        <p class="mx-auto mt-2 max-w-xl text-center text-sm font-medium text-blue-50">Gestión de personal, cuentas y alertas por reemplazo antes de vida útil.</p>
     </div>
 
-    <div class="grid gap-4 bg-slate-50/80 p-6">
+    <div class="grid grid-cols-1 gap-3 bg-sky-50/80 p-5 md:p-6">
         <a href="{{ route('rrhh.colaboradores.index') }}" class="ui-card group p-5 hover:border-emerald-300 hover:bg-emerald-50/70">
             <div class="font-bold text-slate-900">🧑‍💼 Colaboradores</div>
             <div class="mt-1 text-sm text-slate-600">Altas, bajas y gestión de personal</div>

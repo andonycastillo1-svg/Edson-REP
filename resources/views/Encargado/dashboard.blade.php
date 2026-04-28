@@ -3,13 +3,18 @@
 @section('title', 'Encargado - Inicio')
 
 @section('content')
-<div class="ui-panel w-full max-w-3xl overflow-hidden">
-    <div class="section-hero">
+<div class="ui-panel w-full max-w-xl overflow-hidden">
+    <div class="section-hero compact-hero text-center">
+        <div class="mx-auto mb-4 flex w-full justify-center">
+            <div class="dashboard-logo-card">
+                <x-logo-image />
+            </div>
+        </div>
         <h1 class="text-2xl font-extrabold text-slate-950">Panel Encargado</h1>
-        <p class="mt-1 text-sm font-medium text-slate-600">Accesos rápidos para control de bodega y traslados.</p>
+        <p class="mx-auto mt-1 max-w-md text-sm font-medium text-slate-600">Accesos rápidos para control de bodega y traslados.</p>
     </div>
 
-    <div class="grid gap-3 bg-sky-50/70 p-6">
+    <div class="dashboard-stack">
         <a href="{{ route('admin.bodegas.index') }}" class="dashboard-card">
             <div class="font-bold text-slate-900">🏬 Bodegas</div>
             <div class="text-xs font-medium text-slate-500">Inventario por sede</div>

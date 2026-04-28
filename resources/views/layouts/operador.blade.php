@@ -10,9 +10,9 @@
 <body class="app-shell min-h-screen text-slate-900">
 
     <header class="sticky top-0 z-20 border-b border-sky-100 bg-white/85 shadow-sm backdrop-blur-xl">
-        <div class="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 md:px-6">
+        <div class="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 py-2 md:px-6">
             <div class="flex items-center gap-3 text-slate-700">
-                <x-logo-image variant="logo1" class="h-16 w-16 rounded-2xl border border-sky-100 bg-white p-1 object-contain shadow-sm md:h-20 md:w-20" />
+                <x-logo-image variant="logo1" class="h-12 w-12 rounded-2xl border border-sky-100 bg-white p-1 object-contain shadow-sm md:h-14 md:w-14" />
                 <div>
                     <span class="block text-base font-extrabold tracking-wide text-sky-950 md:text-lg">Grupo NetSolutions</span>
                     <span class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-500">Inventario</span>
@@ -25,7 +25,7 @@
         </div>
     </header>
 
-    <main class="mx-auto flex min-h-[calc(100vh-80px)] w-full max-w-7xl items-center justify-center px-4 py-10 md:px-6">
+    <main class="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-7xl items-center justify-center px-4 py-8 md:px-6">
         @yield('content')
     </main>
 

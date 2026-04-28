@@ -29,17 +29,17 @@
 
         <div class="flex gap-2 flex-wrap">
             <a href="{{ route('dashboard') }}"
-               class="ui-btn bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25">
+               class="ui-btn bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25 compact-action">
                 ← Volver
             </a>
 
-            <button class="ui-btn-download opacity-70" disabled>
+            <button class="ui-btn-download compact-action opacity-70" disabled>
                 Descargar inventario
             </button>
 
             @if($canAddInventory)
                 <a href="{{ route($routePrefix . '.bodegas.entrada', $bodega->id) }}"
-                   class="ui-btn-create">
+                   class="ui-btn-create compact-action">
                     + Agregar al inventario
                 </a>
             @endif

@@ -12,7 +12,7 @@
     <header class="sticky top-0 z-20 border-b border-sky-200/80 bg-white/90 shadow-sm backdrop-blur-xl">
         <div class="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6">
             <div class="flex items-center gap-3 text-slate-700">
-                <x-logo-image class="h-16 w-16 rounded-2xl border border-sky-200 bg-white p-1.5 object-contain shadow-sm md:h-20 md:w-20" />
+                <x-logo-image class="h-14 w-14 rounded-2xl border border-sky-200 bg-white p-1.5 object-contain shadow-sm md:h-16 md:w-16" />
                 <span class="text-lg font-extrabold tracking-tight text-sky-950 md:text-xl">Grupo NetSolutions</span>
             </div>
             <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm md:text-base">
