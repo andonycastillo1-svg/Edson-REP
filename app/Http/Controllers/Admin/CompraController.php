@@ -8,9 +8,17 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use App\Services\BodegaAccessService;
+use App\Services\InventarioStockService;
 
 class CompraController extends Controller
 {
+    public function __construct(
+        private BodegaAccessService $bodegaAccess,
+        private InventarioStockService $stockService
+    ) {
+    }
+
     public function index()
     {
         $compras = DB::table('compras as c')
@@ -255,26 +263,7 @@ class CompraController extends Controller
                     'updated_at'        => now(),
                 ]);
 
-                // inventario
-                $inv = DB::table('inventarios')
-                    ->where('bodega_id', $bodegaPrincipalId)
-                    ->where('producto_codigo', $codigoFinal)
-                    ->first();
-
-                if ($inv) {
-                    DB::table('inventarios')->where('id', $inv->id)->update([
-                        'cantidad'   => $inv->cantidad + (int)$cant[$i],
-                        'updated_at' => now(),
-                    ]);
-                } else {
-                    DB::table('inventarios')->insert([
-                        'bodega_id'       => $bodegaPrincipalId,
-                        'producto_codigo' => $codigoFinal,
-                        'cantidad'        => (int)$cant[$i],
-                        'created_at'      => now(),
-                        'updated_at'      => now(),
-                    ]);
-                }
+                $this->stockService->incrementar((int) $bodegaPrincipalId, $codigoFinal, (int) $cant[$i]);
             }
 
             // total factura

@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bodega;
+use App\Services\BodegaAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class BodegaController extends Controller
 {
+    public function __construct(private BodegaAccessService $bodegaAccess)
+    {
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -16,37 +21,14 @@ class BodegaController extends Controller
     {
         $user = auth()->user();
 
-        // ADMIN ve todas
-        if ($user->role_id == 1) {
-
-            $bodegas = Bodega::query()
-                ->orderByRaw("CASE WHEN tipo = 'Principal' THEN 0 ELSE 1 END")
-                ->orderBy('nombre')
-                ->get();
-
-        } else {
-
-            // Encargados / coordinadores / consultas
-            $bodegaUsuario = $user->bodega_id;
-
-            $bodegaPrincipal = Bodega::where('id', $bodegaUsuario)
-                ->where('tipo', 'Principal')
-                ->exists();
-
-            // Encargado de central puede ver todas
-            if ($user->role_id == 2 && $bodegaPrincipal) {
-
-                $bodegas = Bodega::query()
-                    ->orderByRaw("CASE WHEN tipo = 'Principal' THEN 0 ELSE 1 END")
-                    ->orderBy('nombre')
-                    ->get();
-
-            } else {
-
-                // Solo su bodega
-                $bodegas = Bodega::where('id', $bodegaUsuario)->get();
-            }
-        }
+        $visibleBodegaIds = $this->bodegaAccess->visibleBodegaIds($user);
+        $bodegas = Bodega::query()
+            ->when(is_array($visibleBodegaIds), fn ($query) => $visibleBodegaIds === []
+                ? $query->whereRaw('1 = 0')
+                : $query->whereIn('id', $visibleBodegaIds))
+            ->orderByRaw("CASE WHEN tipo = 'Principal' THEN 0 ELSE 1 END")
+            ->orderBy('nombre')
+            ->get();
 
         // Totales por bodega (items y stock)
         $resumen = DB::table('inventarios')
@@ -87,6 +69,10 @@ class BodegaController extends Controller
      */
     public function create()
     {
+        if ((int) auth()->user()->role_id !== 1) {
+            abort(403);
+        }
+
         return view('admin.bodegas.create');
     }
 
@@ -95,6 +81,10 @@ class BodegaController extends Controller
      */
     public function store(Request $request)
     {
+        if ((int) auth()->user()->role_id !== 1) {
+            abort(403);
+        }
+
         $data = $request->validate([
             'nombre' => ['required', 'string', 'max:150'],
             'ubicacion' => ['nullable', 'string', 'max:150'],
@@ -113,6 +103,10 @@ class BodegaController extends Controller
      */
     public function show(string $id)
     {
+        if (!$this->bodegaAccess->canView(auth()->user(), (int) $id)) {
+            abort(403);
+        }
+
         $bodega = Bodega::findOrFail($id);
 
         $ultFechaSub = DB::table('compra_detalles as cd')
@@ -176,12 +170,20 @@ class BodegaController extends Controller
 
     public function edit(string $id)
     {
+        if ((int) auth()->user()->role_id !== 1) {
+            abort(403);
+        }
+
         $bodega = Bodega::findOrFail($id);
         return view('admin.bodegas.edit', compact('bodega'));
     }
 
     public function update(Request $request, string $id)
     {
+        if ((int) auth()->user()->role_id !== 1) {
+            abort(403);
+        }
+
         $bodega = Bodega::findOrFail($id);
 
         $data = $request->validate([
@@ -198,6 +200,10 @@ class BodegaController extends Controller
 
     public function destroy(string $id)
     {
+        if ((int) auth()->user()->role_id !== 1) {
+            abort(403);
+        }
+
         $bodega = Bodega::findOrFail($id);
 
         $tieneInventario = DB::table('inventarios')

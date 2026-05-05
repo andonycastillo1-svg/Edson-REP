@@ -4,24 +4,24 @@
 
 @section('content')
 
-<div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
+<div class="ui-panel w-full max-w-6xl p-6 md:p-8">
 
-    <div class="flex justify-between mb-6">
-        <h1 class="text-2xl font-bold text-slate-800">
-            Vehículos
-        </h1>
+    <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+            <div class="section-kicker">Flota</div>
+            <h1 class="text-2xl font-bold text-slate-900">Vehículos</h1>
+            <p class="text-sm text-slate-600">Control visual de vehículos disponibles, en uso o mantenimiento.</p>
+        </div>
 
         <a href="{{ route('admin.vehiculos.create') }}"
-           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">
-           Nuevo vehículo
+           class="ui-btn-success">
+           + Nuevo vehículo
         </a>
     </div>
 
-    <div class="overflow-x-auto">
-
-        <table class="w-full border border-slate-200">
-
-            <thead class="bg-slate-100">
+    <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table class="min-w-full text-sm">
+            <thead class="bg-slate-100 text-slate-700">
                 <tr>
                     <th class="p-3 text-left">VIN</th>
                     <th class="p-3 text-left">Placa</th>
@@ -32,11 +32,11 @@
                 </tr>
             </thead>
 
-            <tbody>
+            <tbody class="divide-y divide-slate-100">
 
                 @foreach($vehiculos as $vehiculo)
 
-                <tr class="border-t hover:bg-slate-50">
+                <tr class="hover:bg-sky-50/60">
 
                     <td class="p-3">{{ $vehiculo->vin }}</td>
 
@@ -46,12 +46,15 @@
 
                     <td class="p-3">{{ $vehiculo->modelo }}</td>
 
-                    <td class="p-3">{{ $vehiculo->estado }}</td>
+                    <td class="p-3">
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ $vehiculo->estado }}</span>
+                    </td>
 
-                    <td class="p-3 text-center flex gap-2 justify-center">
+                    <td class="p-3">
+                        <div class="flex justify-center gap-2">
 
                         <a href="{{ route('admin.vehiculos.edit',$vehiculo->vin) }}"
-                           class="px-3 py-1 bg-blue-500 text-white rounded">
+                           class="ui-btn-edit px-3 py-1.5 text-xs">
                            Editar
                         </a>
 
@@ -60,10 +63,11 @@
                             @csrf
                             @method('DELETE')
 
-                            <button class="px-3 py-1 bg-red-500 text-white rounded">
+                            <button class="ui-btn-danger px-3 py-1.5 text-xs">
                                 Eliminar
                             </button>
                         </form>
+                        </div>
 
                     </td>
 

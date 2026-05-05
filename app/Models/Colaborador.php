@@ -11,7 +11,7 @@ class Colaborador extends Model
     // PK = codigo
     protected $primaryKey = 'codigo';
     public $incrementing = false;
-    protected $keyType = 'int'; // si codigo es INT
+    protected $keyType = 'string';
 
     protected $fillable = [
         'codigo',

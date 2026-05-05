@@ -7,7 +7,7 @@
 
     <!-- Header con logo -->
     <div class="p-8 flex flex-col items-center">
-        <img src="{{ asset('img/logo.png') }}" class="w-[180px] mb-4" alt="Logo">
+        <x-logo-image class="w-[180px] mb-4" />
         <h2 class="text-xl font-semibold text-gray-800">Iniciar sesión</h2>
         <p class="text-sm text-gray-500 mt-1">Accede al sistema de inventario</p>
     </div>
@@ -60,7 +60,7 @@
             </div>
 
             <button type="submit"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition">
+                    class="w-full rounded-xl bg-emerald-600 py-2.5 font-semibold text-white shadow-sm transition hover:bg-emerald-700">
                 Ingresar
             </button>
         </form>

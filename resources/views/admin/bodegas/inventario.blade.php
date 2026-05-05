@@ -10,6 +10,7 @@
 @endphp
 
 @section('content')
+<div class="ui-panel w-full p-6 md:p-8">
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
         <h4 class="mb-1">Inventario — {{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}</h4>
@@ -119,4 +120,5 @@
         *En modo consulta no se permiten entradas/salidas; solo ver y descargar.
     </div>
 @endif
+</div>
 @endsection
