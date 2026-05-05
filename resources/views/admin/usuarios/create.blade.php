@@ -6,7 +6,7 @@
 @php
     $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
 @endphp
-<div class="ui-panel w-full max-w-3xl p-6 md:p-8">
+<div class="w-full max-w-3xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
@@ -16,7 +16,7 @@
         </div>
 
         <a href="{{ route($routePrefix . '.usuarios.index') }}"
-           class="ui-btn-secondary">
+           class="text-sm text-blue-600 hover:underline">
             ← Volver
         </a>
     </div>
@@ -100,12 +100,12 @@
         <!-- Botones -->
         <div class="pt-4 border-t flex flex-col sm:flex-row gap-3 justify-end">
             <a href="{{ route($routePrefix . '.usuarios.index') }}"
-               class="ui-btn-secondary">
+               class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-gray-700 font-semibold hover:bg-gray-50 transition">
                 Cancelar
             </a>
 
             <button type="submit"
-                    class="ui-btn-success">
+                    class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-white font-semibold shadow hover:bg-blue-700 transition">
                 Guardar
             </button>
         </div>

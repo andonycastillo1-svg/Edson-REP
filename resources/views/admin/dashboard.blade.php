@@ -3,18 +3,15 @@
 @section('title', 'Admin - Inicio')
 
 @section('content')
-<div class="ui-panel w-full max-w-5xl p-5 md:p-7">
-    <div class="ui-dashboard-hero mb-7">
-        <div class="flex flex-col items-center gap-4 text-center md:flex-row md:text-left">
-            <div class="ui-logo-card shrink-0">
-                <x-logo-image class="ui-dashboard-logo" />
+<div class="ui-panel w-full max-w-5xl p-8">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div class="flex items-center gap-4">
+            <img src="{{ asset('img/logo1.png') }}" alt="Logo"
+                 class="h-14 w-14 rounded-xl object-contain bg-white border border-slate-200 p-1">
+            <div>
+                <h1 class="text-2xl font-semibold text-gray-800">Bienvenido, {{ auth()->user()->name }}</h1>
+                <p class="text-sm text-gray-500 mt-1">Panel administrativo · selecciona una opción</p>
             </div>
-            <div class="min-w-0 flex-1">
-                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-sky-100">Inventario de bodegas</p>
-                <h1 class="mt-1 text-2xl font-bold leading-tight text-white md:text-3xl">Bienvenido, {{ auth()->user()->name }}</h1>
-                <p class="mt-2 max-w-2xl text-sm leading-6 text-blue-50">Panel administrativo · selecciona una opción para gestionar el sistema.</p>
-            </div>
-            <span class="shrink-0 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/25">Administrador</span>
         </div>
     </div>
 
@@ -32,16 +29,16 @@
 
         @foreach($menu as $item)
             <a href="{{ route($item['route']) }}"
-               class="ui-card group p-5 hover:border-blue-300 hover:bg-blue-50/70">
+               class="ui-card group p-4 hover:border-blue-300 hover:bg-blue-50/60">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-sky-50 text-2xl ring-1 ring-blue-100">{{ $item['icon'] }}</span>
+                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-xl">{{ $item['icon'] }}</span>
                         <div>
-                            <div class="font-bold text-slate-900">{{ $item['label'] }}</div>
-                            <div class="text-sm text-slate-600">{{ $item['desc'] }}</div>
+                            <div class="font-semibold text-slate-800">{{ $item['label'] }}</div>
+                            <div class="text-xs text-slate-500">{{ $item['desc'] }}</div>
                         </div>
                     </div>
-                    <span class="text-2xl text-slate-300 group-hover:text-blue-600">›</span>
+                    <span class="text-slate-400 group-hover:text-blue-600">›</span>
                 </div>
             </a>
         @endforeach
@@ -50,7 +47,7 @@
     <div class="mt-8 pt-6 border-t text-center">
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-            <button class="ui-btn-danger">Cerrar sesión</button>
+            <button class="text-sm text-red-600 hover:underline">Cerrar sesión</button>
         </form>
     </div>
 </div>

@@ -8,7 +8,7 @@
   $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
 @endphp
 
-<div x-data="colaboradoresPage('{{ $routePrefix }}')" class="min-h-screen bg-transparent">
+<div x-data="colaboradoresPage('{{ $routePrefix }}')" class="min-h-screen bg-slate-50">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
     <div class="ui-panel">
@@ -21,12 +21,12 @@
 
         <div class="flex items-center gap-3">
           <a href="{{ route($routePrefix . '.colaboradores.create') }}"
-             class="ui-btn-success">
+             class="ui-btn-primary">
             <span class="text-base leading-none">+</span>
             Nuevo colaborador
           </a>
           <a href="{{ route($routePrefix . '.dashboard') }}"
-             class="ui-btn-secondary">
+             class="ui-btn-primary">
             ← Volver al menú
           </a>
         </div>
@@ -97,13 +97,13 @@
                     <div class="flex justify-end gap-2">
 
                       <button type="button"
-                              class="ui-btn-edit px-3 py-2 text-xs"
+                              class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
                               @click="openDetalle('{{ $c->codigo }}')">
                         Detalle
                       </button>
 
                       <a href="{{ route($routePrefix . '.colaboradores.edit', $c) }}"
-                         class="ui-btn-edit text-xs px-3 py-2">
+                         class="ui-btn-secondary text-xs px-3 py-2">
                         Editar
                       </a>
 
@@ -160,13 +160,13 @@
                     <div class="flex justify-end gap-2">
 
                       <button type="button"
-                              class="ui-btn-edit px-3 py-2 text-xs"
+                              class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
                               @click="openDetalle('{{ $c->codigo }}')">
                         Detalle
                       </button>
 
                       <a href="{{ route($routePrefix . '.colaboradores.edit', $c) }}"
-                         class="ui-btn-edit text-xs px-3 py-2">
+                         class="ui-btn-secondary text-xs px-3 py-2">
                         Editar
                       </a>
 

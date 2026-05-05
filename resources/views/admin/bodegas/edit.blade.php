@@ -3,19 +3,19 @@
 @section('title', 'Editar Bodega')
 
 @section('content')
-<div class="ui-panel w-full max-w-xl p-8">
+<div class="w-full max-w-xl bg-white/90 rounded-2xl shadow-2xl p-8">
 
     <h1 class="text-2xl font-bold text-slate-800 mb-1">Editar bodega</h1>
     <p class="text-slate-500 text-sm mb-6">Actualiza la información de la bodega.</p>
 
-    <form method="POST" action="{{ route('admin.bodegas.update', $bodega->id) }}" class="ui-form space-y-4">
+    <form method="POST" action="{{ route('admin.bodegas.update', $bodega->id) }}" class="space-y-4">
         @csrf
         @method('PUT')
 
         <div>
             <label class="text-sm font-semibold text-slate-700">Nombre</label>
             <input name="nombre" value="{{ old('nombre', $bodega->nombre) }}"
-                   class="mt-1 w-full px-4 py-2"
+                   class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
                    required>
             @error('nombre') <div class="text-rose-600 text-sm mt-1">{{ $message }}</div> @enderror
         </div>
@@ -23,14 +23,14 @@
         <div>
             <label class="text-sm font-semibold text-slate-700">Ubicación</label>
             <input name="ubicacion" value="{{ old('ubicacion', $bodega->ubicacion) }}"
-                   class="mt-1 w-full px-4 py-2">
+                   class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
             @error('ubicacion') <div class="text-rose-600 text-sm mt-1">{{ $message }}</div> @enderror
         </div>
 
         <div>
             <label class="text-sm font-semibold text-slate-700">Tipo</label>
             <select name="tipo"
-                    class="mt-1 w-full px-4 py-2"
+                    class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     required>
                 <option value="Principal" @selected(old('tipo', $bodega->tipo) === 'Principal')>Principal</option>
                 <option value="Regional" @selected(old('tipo', $bodega->tipo) === 'Regional')>Regional</option>
@@ -40,10 +40,10 @@
 
         <div class="flex gap-2 justify-end pt-4">
             <a href="{{ route('admin.bodegas.index') }}"
-               class="ui-btn-secondary">
+               class="px-4 py-2 rounded-xl bg-slate-700 text-white font-semibold shadow-sm transition hover:bg-slate-800">
                 Cancelar
             </a>
-            <button class="ui-btn-success">
+            <button class="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
                 Guardar cambios
             </button>
         </div>

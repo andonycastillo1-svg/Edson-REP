@@ -4,12 +4,12 @@
 @section('title', 'Nueva Bodega')
 
 @section('content')
-<div class="ui-panel w-full max-w-xl p-8">
+<div class="w-full max-w-xl bg-white/90 rounded-2xl shadow-2xl p-8">
 
     <h1 class="text-2xl font-bold text-slate-800 mb-1">Crear bodega</h1>
     <p class="text-slate-500 text-sm mb-6">Agrega una nueva bodega al sistema.</p>
 
-    <form method="POST" action="{{ route('admin.bodegas.store') }}" class="ui-form space-y-4">
+    <form method="POST" action="{{ route('admin.bodegas.store') }}" class="space-y-4">
         @csrf
 
         <div>
@@ -40,10 +40,10 @@
 
         <div class="flex gap-2 justify-end pt-4">
             <a href="{{ route('admin.bodegas.index') }}"
-               class="ui-btn-secondary">
+               class="px-4 py-2 rounded-xl bg-slate-700 text-white font-semibold shadow-sm transition hover:bg-slate-800">
                 Cancelar
             </a>
-            <button class="ui-btn-success">
+            <button class="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
                 Guardar
             </button>
         </div>

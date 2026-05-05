@@ -4,14 +4,13 @@
 @php
   $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 @endphp
-<div class="w-full px-4 py-8 md:px-6">
+<div class="min-h-[calc(100vh-120px)] px-6 py-10">
   <div class="max-w-6xl mx-auto">
 
-    <div class="ui-page-header">
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
       <div>
-        <p class="text-xs font-bold uppercase tracking-[0.25em] text-blue-100">Movimientos entre bodegas</p>
-        <h1 class="mt-2 text-3xl font-extrabold tracking-tight text-white">Solicitudes de traslado</h1>
-        <p class="mt-1 text-sm text-blue-100">
+        <h1 class="text-3xl font-bold text-slate-900">Solicitudes de traslado</h1>
+        <p class="text-sm text-slate-500">
           @if($user->isEncargado())
             Bandeja de solicitudes para tu bodega (destino).
           @else
@@ -22,13 +21,13 @@
 
       <div class="flex items-center gap-2">
   <a href="{{ route('dashboard') }}"
-     class="ui-btn-secondary">
+     class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
     ← Volver
   </a>
 
         @if(!$user->isEncargado())
           <a href="{{ route($routePrefix . '.operaciones.traslados.create') }}"
-             class="ui-btn-success">
+             class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
             + Nueva solicitud
           </a>
         @endif
@@ -46,7 +45,7 @@
       </div>
     @endif
 
-    <div class="mt-6 ui-card p-5">
+    <div class="mt-6 rounded-2xl bg-white shadow-sm border border-slate-200 p-5">
       <form method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
         <div class="md:col-span-3">
           <label class="text-sm font-semibold text-slate-700">Estado</label>
@@ -79,7 +78,7 @@
         </div>
 
         <div class="md:col-span-1">
-          <button class="w-full ui-btn-download">
+          <button class="w-full rounded-xl bg-slate-900 px-4 py-2 text-white text-sm font-semibold hover:bg-slate-800">
             Filtrar
           </button>
         </div>
@@ -91,10 +90,10 @@
       </form>
     </div>
 
-    <div class="mt-6 ui-table">
+    <div class="mt-6 rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
-          <thead>
+          <thead class="bg-slate-50 text-slate-600">
             <tr>
               <th class="text-left px-5 py-3 font-semibold">#</th>
               <th class="text-left px-5 py-3 font-semibold">Estado</th>
@@ -135,7 +134,7 @@
                 </td>
                 <td class="px-5 py-4 text-right">
                   <a href="{{ route($routePrefix . '.operaciones.traslados.show', $op) }}"
-                     class="ui-btn-edit">
+                     class="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
                     Ver
                   </a>
                 </td>

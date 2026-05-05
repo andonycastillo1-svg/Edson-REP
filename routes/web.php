@@ -43,7 +43,7 @@ Route::get('/dashboard', function () {
 | Dashboards base por rol
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'auto.logout', 'role:3'])->group(function () {
+Route::middleware(['auth', 'auto.logout'])->group(function () {
     Route::view('/coordinador/dashboard', 'coordinador.dashboard')->name('coordinador.dashboard');
 });
 
@@ -149,12 +149,6 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::resource('bodegas', \App\Http\Controllers\Admin\BodegaController::class)->only(['index', 'show']);
 
-        Route::get('bodegas/{bodega}/entrada', [InventarioController::class, 'createEntrada'])
-            ->name('bodegas.entrada');
-
-        Route::post('bodegas/{bodega}/entrada', [InventarioController::class, 'storeEntrada'])
-            ->name('bodegas.entrada.store');
-
         Route::resource('compras', \App\Http\Controllers\Admin\CompraController::class);
 
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
@@ -199,18 +193,6 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::get('operaciones/traslados/{operacion}/hoja', [OperacionTrasladoController::class, 'hoja'])
             ->name('operaciones.traslados.hoja');
-    });
-
-/*
-|--------------------------------------------------------------------------
-| Rutas Coordinador (solo role_id = 3)
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth', 'auto.logout', 'role:3'])
-    ->prefix('coordinador')
-    ->name('coordinador.')
-    ->group(function () {
-        Route::resource('bodegas', \App\Http\Controllers\Admin\BodegaController::class)->only(['index', 'show']);
     });
 
 /*

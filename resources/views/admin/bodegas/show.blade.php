@@ -3,66 +3,51 @@
 @section('title', 'Inventario')
 
 @section('content')
-@php
-    $routePrefix = match ((int) auth()->user()->role_id) {
-        2 => 'operador',
-        3 => 'coordinador',
-        default => 'admin',
-    };
-    $canAddInventory = auth()->user()->role_id == 1
-        || ((int) auth()->user()->role_id === 2 && (int) auth()->user()->bodega_id === (int) $bodega->id);
-@endphp
-<div class="ui-panel w-full max-w-7xl overflow-hidden">
+<div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
 
-    <div class="bg-gradient-to-r from-slate-900 via-sky-900 to-blue-800 px-6 py-6 text-white md:px-8">
-    <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+    <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-            <p class="text-xs font-bold uppercase tracking-[0.28em] text-sky-200">Inventario por bodega</p>
-            <h1 class="mt-2 text-2xl font-extrabold tracking-tight md:text-3xl">
+            <h1 class="text-2xl font-bold text-slate-800">
                 Inventario — {{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}
             </h1>
-            <p class="mt-2 text-sm text-sky-100">
-                Tipo: <span class="font-semibold text-white">{{ $bodega->tipo }}</span>
-                · Ubicación: <span class="font-semibold text-white">{{ $bodega->ubicacion ?? '—' }}</span>
+            <p class="text-slate-500 text-sm">
+                Tipo: <span class="font-semibold text-slate-700">{{ $bodega->tipo }}</span>
+                · Ubicación: <span class="font-semibold text-slate-700">{{ $bodega->ubicacion ?? '—' }}</span>
             </p>
         </div>
 
         <div class="flex gap-2 flex-wrap">
             <a href="{{ route('dashboard') }}"
-               class="ui-btn bg-white/15 text-white ring-1 ring-white/25 hover:bg-white/25 compact-action">
+               class="px-4 py-2 rounded-xl bg-sky-600 text-white font-semibold shadow-sm transition hover:bg-sky-700">
                 ← Volver
             </a>
 
-            <button class="ui-btn-download compact-action opacity-70" disabled>
+            <button class="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition" disabled>
                 Descargar inventario
             </button>
 
-            @if($canAddInventory)
-                <a href="{{ route($routePrefix . '.bodegas.entrada', $bodega->id) }}"
-                   class="ui-btn-create compact-action">
-                    + Agregar al inventario
-                </a>
-            @endif
+            <a href="{{ route('admin.bodegas.entrada', $bodega->id) }}"
+               class="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold shadow-sm transition hover:bg-indigo-700">
+                + Agregar al inventario
+            </a>
         </div>
-    </div>
     </div>
 
     {{-- RESUMEN --}}
-    <div class="bg-slate-50/80 p-6 md:p-8">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="ui-stat-card">
-            <div class="text-slate-500 text-sm font-semibold">Productos</div>
-            <div class="mt-2 text-3xl font-extrabold text-slate-900">{{ $productosTotal }}</div>
+        <div class="p-4 rounded-2xl bg-white border border-slate-200">
+            <div class="text-slate-500 text-sm">Productos</div>
+            <div class="text-2xl font-bold text-slate-800">{{ $productosTotal }}</div>
         </div>
 
-        <div class="ui-stat-card">
-            <div class="text-slate-500 text-sm font-semibold">Stock total</div>
-            <div class="mt-2 text-3xl font-extrabold text-emerald-700">{{ number_format($stockTotal) }}</div>
+        <div class="p-4 rounded-2xl bg-white border border-slate-200">
+            <div class="text-slate-500 text-sm">Stock total</div>
+            <div class="text-2xl font-bold text-slate-800">{{ number_format($stockTotal) }}</div>
         </div>
 
-        <div class="ui-stat-card">
-            <div class="text-slate-500 text-sm font-semibold">Costo total (inventario)</div>
-            <div class="mt-2 text-3xl font-extrabold text-indigo-700">
+        <div class="p-4 rounded-2xl bg-white border border-slate-200">
+            <div class="text-slate-500 text-sm">Costo total (inventario)</div>
+            <div class="text-2xl font-bold text-slate-800">
                 Q {{ number_format((float)($costoTotalInventario ?? 0), 2) }}
             </div>
             <div class="text-xs text-slate-500 mt-1">
@@ -72,10 +57,10 @@
     </div>
 
     {{-- TABLA --}}
-    <div class="ui-table overflow-x-auto">
+    <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table class="min-w-full text-sm">
-            <thead>
-                <tr>
+            <thead class="bg-slate-50">
+                <tr class="text-left text-slate-600">
                     <th class="px-4 py-3">Código</th>
                     <th class="px-4 py-3">Producto</th>
                     <th class="px-4 py-3">Unidad</th>
@@ -88,7 +73,7 @@
 
             <tbody class="divide-y divide-slate-100">
                 @forelse($inventarios as $inv)
-                    <tr>
+                    <tr class="hover:bg-slate-50">
                         <td class="px-4 py-3 font-semibold text-slate-800">
                             {{ $inv->producto_codigo }}
                         </td>
@@ -146,7 +131,6 @@
         <div>
             {{ $inventarios->links() }}
         </div>
-    </div>
     </div>
 
 </div>

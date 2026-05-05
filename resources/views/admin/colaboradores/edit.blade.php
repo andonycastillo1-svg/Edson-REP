@@ -5,7 +5,7 @@
 
 @section('content')
 @php($routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin')
-<div class="min-h-screen bg-transparent">
+<div class="min-h-screen bg-slate-50">
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
     <div class="flex items-center justify-between">
@@ -13,13 +13,13 @@
         <h1 class="text-2xl font-semibold text-slate-900">Editar colaborador</h1>
         <p class="text-sm text-slate-600">Actualiza datos y estado.</p>
       </div>
-      <a href="{{ route($routePrefix . '.colaboradores.index') }}" class="ui-btn-secondary">
+      <a href="{{ route($routePrefix . '.colaboradores.index') }}" class="text-sm font-medium text-blue-700 hover:underline">
         ← Volver
       </a>
     </div>
 
     <form method="POST" action="{{ route($routePrefix . '.colaboradores.update', $colaborador) }}"
-          class="ui-panel mt-6 p-6">
+          class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       @csrf
       @method('PUT')
 
@@ -76,12 +76,12 @@
 
       <div class="mt-6 flex items-center justify-end gap-2">
         <a href="{{ route($routePrefix . '.colaboradores.index') }}"
-           class="ui-btn-secondary">
+           class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
           Cancelar
         </a>
 
         <button type="submit"
-                class="ui-btn-save">
+                class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
           Guardar cambios
         </button>
       </div>

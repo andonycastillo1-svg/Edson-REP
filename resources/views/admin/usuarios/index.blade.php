@@ -23,7 +23,7 @@
         </div>
 
         <a href="{{ route($routePrefix . '.usuarios.create') }}"
-           class="ui-btn-success">
+           class="ui-btn-primary">
             + Nuevo usuario
         </a>
     </div>
@@ -31,7 +31,7 @@
     <!-- Tabla -->
     <div class="overflow-x-auto ui-table">
         <table class="min-w-full">
-            <thead class="bg-slate-50">
+            <thead class="bg-gray-50">
                 <tr>
                     <th class="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-5 py-3">ID</th>
                     <th class="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider px-5 py-3">Nombre</th>
@@ -44,7 +44,7 @@
             <tbody class="divide-y divide-gray-100">
                 @if($usuarios->count() > 0)
                     @foreach($usuarios as $u)
-                        <tr class="hover:bg-slate-50/80 transition">
+                        <tr class="hover:bg-gray-50/70 transition">
                             <td class="px-5 py-4 text-sm text-gray-700">{{ $u->id }}</td>
 
                             <td class="px-5 py-4">
@@ -67,7 +67,7 @@
                                 <div class="flex justify-end gap-2">
                                     @if(auth()->user()->role_id != 4 || (int) optional(optional($u->creator)->role)->id === 4)
                                         <a href="{{ route($routePrefix . '.usuarios.edit', $u->id) }}"
-                                           class="ui-btn-edit">
+                                           class="ui-btn-secondary">
                                             Editar
                                         </a>
 
@@ -76,7 +76,7 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit"
-                                                    class="ui-btn-delete">
+                                                    class="ui-btn-danger">
                                                 Eliminar
                                             </button>
                                         </form>

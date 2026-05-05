@@ -1,25 +1,22 @@
 @extends('layouts.app')
 
 @section('content')
-@php
-  $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
-  $canCreatePurchase = $canCreatePurchase ?? true;
-@endphp
-<div class="min-h-[calc(100vh-64px)] px-4 py-8 sm:px-6 lg:px-8">
+@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+<div class="min-h-[calc(100vh-64px)] flex items-center justify-center p-6"
+     style="background: linear-gradient(180deg, #36a2ff 0%, #2b7dff 100%);">
 
-  <div class="ui-panel mx-auto w-full max-w-5xl overflow-hidden">
+  <div class="w-full max-w-5xl bg-white/90 backdrop-blur rounded-2xl shadow-xl border border-white/40">
     <div class="p-6 md:p-8">
 
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-          <p class="ui-section-kicker">Compras</p>
-          <h2 class="text-2xl font-bold text-slate-950">Registrar compra</h2>
-          <p class="text-sm text-slate-600">
+          <h2 class="text-2xl font-bold">Registrar compra</h2>
+          <p class="text-sm text-gray-600">
             Al guardar, se crea la compra + entradas automáticas al inventario (bodega principal).
           </p>
         </div>
         <a href="{{ route($routePrefix . '.compras.index') }}"
-           class="ui-btn-secondary">
+           class="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm">
           ← Volver
         </a>
       </div>
@@ -40,11 +37,6 @@
         </div>
       @endif
 
-      @if(!$canCreatePurchase)
-        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          No tienes permiso para registrar compras porque las entradas se aplican a la bodega principal.
-        </div>
-      @else
       <form action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
         @csrf
 
@@ -151,11 +143,11 @@
         </div>
 
         {{-- DETALLE DE PRODUCTOS --}}
-        <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 md:p-5">
+        <div class="bg-white rounded-2xl border border-gray-200 p-4 md:p-5">
           <div class="flex items-center justify-between mb-3">
             <h3 class="font-semibold text-gray-800">Detalle de productos</h3>
             <button type="button" id="btnAddLinea"
-                    class="ui-btn-secondary px-3 py-2">
+                    class="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm shadow">
               + Agregar línea
             </button>
           </div>
@@ -178,25 +170,24 @@
           </div>
 
           <div class="flex justify-end mt-4">
-            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-right">
-              <div class="text-sm font-semibold text-emerald-700">Total factura</div>
-              <div class="text-2xl font-bold text-emerald-900" id="totalFactura">0.00</div>
+            <div class="text-right">
+              <div class="text-sm text-gray-600">Total factura</div>
+              <div class="text-2xl font-bold" id="totalFactura">0.00</div>
             </div>
           </div>
         </div>
 
         <div class="flex justify-end gap-3">
           <a href="{{ route($routePrefix . '.compras.index') }}"
-             class="ui-btn-secondary">
+             class="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50">
             Cancelar
           </a>
-          <button class="ui-btn-success px-5">
+          <button class="px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow">
             Guardar compra
           </button>
         </div>
 
       </form>
-      @endif
 
     </div>
   </div>

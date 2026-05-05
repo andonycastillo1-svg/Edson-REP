@@ -4,19 +4,19 @@
 @php
   $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 @endphp
-<div class="px-4 py-8 sm:px-6">
+<div class="min-h-[calc(100vh-120px)] px-6 py-10">
   <div class="max-w-5xl mx-auto">
 
-    <div class="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+    <div class="flex items-center justify-between gap-3 mb-6">
       <div>
-        <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}" class="text-sm font-semibold text-blue-700 hover:underline">← Volver a traslados</a>
-        <h1 class="mt-2 text-3xl font-bold text-slate-950">Solicitud #{{ $operacion->id }}</h1>
-        <p class="text-sm text-slate-600">Tipo: {{ $operacion->tipo }}</p>
+        <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}" class="text-sm text-blue-700 hover:underline">← Volver</a>
+        <h1 class="text-3xl font-bold text-slate-900 mt-2">Solicitud #{{ $operacion->id }}</h1>
+        <p class="text-sm text-slate-500">Tipo: {{ $operacion->tipo }}</p>
       </div>
 
       <div class="flex items-center gap-2">
         <a href="{{ route($routePrefix . '.operaciones.traslados.hoja', $operacion) }}"
-           class="ui-btn-download">
+           class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           🧾 Hoja
         </a>
       </div>
@@ -33,12 +33,7 @@
       </div>
     @endif
 
-    <div class="ui-panel overflow-hidden">
-      <div class="border-b border-slate-200 bg-gradient-to-r from-blue-900 to-indigo-800 px-6 py-5 text-white">
-        <h2 class="text-lg font-bold">Detalle de traslado</h2>
-        <p class="mt-1 text-sm text-blue-100">Revisa origen, destino, productos y decisión de aprobación.</p>
-      </div>
-      <div class="p-6">
+    <div class="rounded-2xl bg-white shadow-sm border border-slate-200 p-6">
       <div class="flex items-center justify-between flex-wrap gap-2">
         <div class="text-sm text-slate-700">
           <span class="font-semibold">Origen:</span> {{ optional($operacion->bodegaOrigen)->nombre }}
@@ -79,8 +74,8 @@
         </div>
       @endif
 
-      <div class="mt-6 overflow-x-auto ui-table">
-        <table class="min-w-full text-sm">
+      <div class="mt-6 overflow-x-auto">
+        <table class="w-full text-sm">
           <thead class="bg-slate-50 text-slate-600">
             <tr>
               <th class="text-left px-4 py-3 font-semibold">Producto</th>
@@ -106,7 +101,7 @@
 
           <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.aprobar', $operacion) }}">
             @csrf
-            <button class="ui-btn-success">
+            <button class="rounded-xl bg-green-600 px-4 py-2 text-white text-sm font-semibold hover:bg-green-700">
               ✅ Aprobar
             </button>
           </form>
@@ -118,7 +113,7 @@
               <input name="motivo_rechazo" required
                      class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                      placeholder="Motivo de rechazo...">
-              <button class="ui-btn-danger">
+              <button class="rounded-xl bg-red-600 px-4 py-2 text-white text-sm font-semibold hover:bg-red-700">
                 ❌ Rechazar
               </button>
             </div>
@@ -127,7 +122,6 @@
         </div>
       @endif
 
-      </div>
     </div>
 
   </div>

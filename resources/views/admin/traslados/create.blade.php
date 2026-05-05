@@ -7,13 +7,13 @@
   $origenSeleccionado = old('bodega_origen_id', $origenId ?? ($esOperador ? auth()->user()->bodega_id : null));
 @endphp
 
-<div class="min-h-[calc(100vh-120px)] px-4 py-8 md:px-6">
-  <div class="mx-auto max-w-4xl">
+<div class="min-h-[calc(100vh-120px)] px-6 py-10">
+  <div class="max-w-4xl mx-auto">
 
-    <div class="mb-6 rounded-3xl border border-white/70 bg-white/90 p-6 shadow-soft backdrop-blur">
-      <a href="{{ route($routePrefix . '.bodegas.index') }}" class="text-sm font-semibold text-blue-700 hover:underline">← Volver</a>
-      <h1 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">Nueva solicitud de traslado</h1>
-      <p class="mt-1 text-sm text-slate-600">El encargado de la bodega destino debe aprobar o rechazar.</p>
+    <div class="mb-6">
+      <a href="{{ route($routePrefix . '.bodegas.index') }}" class="text-sm text-blue-700 hover:underline">← Volver</a>
+      <h1 class="text-3xl font-bold text-slate-900 mt-2">Nueva solicitud de traslado</h1>
+      <p class="text-sm text-slate-50000">El encargado de la bodega destino debe aprobar o rechazar.</p>
     </div>
 
     @if ($errors->any())
@@ -28,12 +28,12 @@
     @endif
 
     <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.store') }}"
-          class="ui-form overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-soft">
+          class="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
       @csrf
 
-      <div class="border-b border-blue-100 bg-blue-50/70 px-6 py-4">
-        <div class="text-sm font-bold uppercase tracking-wide text-blue-900">Origen y destino</div>
-        <div class="text-xs text-slate-600">Tip: si entraste desde bodegas, el origen viene precargado.</div>
+      <div class="px-6 py-4 border-b border-slate-100">
+        <div class="text-sm font-semibold text-slate-800">Origen y destino</div>
+        <div class="text-xs text-slate-500">Tip: si entraste desde bodegas, el origen viene precargado.</div>
       </div>
 
       <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -42,7 +42,7 @@
 
           @if($esOperador)
             <input type="hidden" name="bodega_origen_id" value="{{ auth()->user()->bodega_id }}">
-            <div class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-700">
+            <div class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-slate-100">
               {{ optional($bodegas->firstWhere('id', auth()->user()->bodega_id))->nombre }}
             </div>
           @else
@@ -80,7 +80,7 @@
           placeholder="Ej: Enviar con guía #123, frágil, etc.">{{ old('observacion') }}</textarea>
       </div>
 
-      <div class="flex items-center justify-between border-y border-slate-100 bg-slate-50/80 px-6 py-4">
+      <div class="px-6 py-4 border-t border-b border-slate-100 flex items-center justify-between">
         <div>
           <div class="text-sm font-semibold text-slate-800">Productos</div>
           <div class="text-xs text-slate-500">Agrega una o varias líneas.</div>
@@ -88,9 +88,9 @@
       </div>
 
       <div class="p-6">
-        <div class="overflow-x-auto rounded-2xl border border-slate-200">
+        <div class="overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="bg-slate-100 text-slate-700">
+            <thead class="bg-slate-50 text-slate-600">
               <tr>
                 <th class="text-left px-3 py-2 font-semibold">Producto</th>
                 <th class="text-left px-3 py-2 font-semibold w-40">Cantidad</th>
@@ -106,7 +106,7 @@
               @endphp
 
               @foreach($oldLines as $i => $line)
-                <tr class="line-row hover:bg-slate-50">
+                <tr class="line-row">
                   <td class="px-3 py-3">
                     <select required
                             name="lineas[{{ $i }}][producto_codigo]"
@@ -130,7 +130,7 @@
 
                   <td class="px-3 py-3 text-right">
                     <button type="button"
-                            class="btnRemove inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100">
+                            class="btnRemove inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                       ✕
                     </button>
                   </td>
@@ -140,7 +140,8 @@
               <tr class="bg-slate-50">
                 <td colspan="3" class="px-3 py-3">
                   <button type="button" id="btnAddLine"
-                          class="ui-btn-edit">
+                          class="inline-flex items-center gap-2 rounded-xl border border-blue-700 bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700"
+                          style="background-color:#2563eb;color:#fff;">
                     + Agregar línea
                   </button>
                 </td>
@@ -150,13 +151,13 @@
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/80 px-6 py-4">
+      <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
         <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}"
-           class="ui-btn-secondary">
+           class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           Cancelar
         </a>
 
-        <button class="ui-btn-success">
+        <button class="rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
           Crear solicitud
         </button>
       </div>
