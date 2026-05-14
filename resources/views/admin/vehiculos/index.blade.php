@@ -6,10 +6,17 @@
 
 <div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
 
-    <div class="flex justify-between mb-6">
-        <h1 class="text-2xl font-bold text-slate-800">
-            Vehículos
-        </h1>
+    <div class="flex items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">
+                Vehículos
+            </h1>
+
+            <a href="/admin/dashboard"
+               class="inline-block mt-2 text-sm font-semibold text-blue-600 hover:underline">
+                ← Volver al menú principal
+            </a>
+        </div>
 
         <a href="{{ route('admin.vehiculos.create') }}"
            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">
