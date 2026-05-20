@@ -10,6 +10,13 @@ use Illuminate\Support\Facades\Schema;
 
 class AsignacionVidaUtilService
 {
+    public function calcularMesesUsados(AsignacionInventario $asignacion, ?Carbon $fechaCorte = null): int
+    {
+        $fechaCorte = $fechaCorte ?: now();
+        $fechaAsignacion = Carbon::parse($asignacion->fecha);
+        return max(0, $fechaAsignacion->diffInMonths($fechaCorte, false));
+    }
+
     public function mesesRestantes(AsignacionInventario $asignacion, ?Carbon $fechaCorte = null): int
     {
         $fechaCorte = $fechaCorte ?: now();
@@ -20,9 +27,32 @@ class AsignacionVidaUtilService
         }
 
         $fechaAsignacion = Carbon::parse($asignacion->fecha);
-        $mesesTranscurridos = $fechaAsignacion->diffInMonths($fechaCorte, false);
+        $mesesTranscurridos = $this->calcularMesesUsados($asignacion, $fechaCorte);
 
         return $vidaMeses - max(0, $mesesTranscurridos);
+    }
+
+    public function fechaVencimientoParaNuevaAsignacion(string $productoCodigo, Carbon $fechaAsignacion, int $vidaMesesProducto): ?Carbon
+    {
+        if ($vidaMesesProducto <= 0) {
+            return null;
+        }
+
+        $ultimaAsignacion = AsignacionInventario::query()
+            ->where('producto_codigo', $productoCodigo)
+            ->whereNotNull('fecha_vencimiento')
+            ->orderByDesc('fecha')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($ultimaAsignacion?->fecha_vencimiento) {
+            $vencimientoPrevio = Carbon::parse($ultimaAsignacion->fecha_vencimiento);
+            return $vencimientoPrevio->greaterThan($fechaAsignacion)
+                ? $vencimientoPrevio
+                : $fechaAsignacion->copy();
+        }
+
+        return $fechaAsignacion->copy()->addMonths($vidaMesesProducto);
     }
 
     public function registrarEstado(AsignacionInventario $asignacion, string $estado, ?string $detalle = null): void
@@ -47,6 +77,11 @@ class AsignacionVidaUtilService
     ): void {
         $vidaMeses = (int) ($asignacionAnterior->producto->vida_util_meses ?? 0);
         $mesesRestantes = $this->mesesRestantes($asignacionAnterior, $fechaDanio);
+        $mesesUsados = $this->calcularMesesUsados($asignacionAnterior, $fechaDanio);
+        $costo = (float) ($asignacionAnterior->costo_unitario ?? 0);
+        $descuentoSugerido = $vidaMeses > 0 && $mesesRestantes > 0
+            ? round(($mesesRestantes / $vidaMeses) * $costo, 2)
+            : 0;
 
         if ($mesesRestantes > 0) {
             $asignacionAnterior->estado = 'Dañada';
@@ -56,12 +91,17 @@ class AsignacionVidaUtilService
                 AlertaReemplazo::create([
                     'colaborador_codigo' => $asignacionAnterior->colaborador_codigo,
                     'producto_codigo' => $asignacionAnterior->producto_codigo,
+                    'producto_nombre' => $asignacionAnterior->producto->nombre ?? null,
                     'asignacion_anterior_id' => $asignacionAnterior->id,
                     'asignacion_nueva_id' => $asignacionNueva->id,
                     'fecha_asignacion_anterior' => $asignacionAnterior->fecha,
                     'fecha_dano_reemplazo' => $fechaDanio,
                     'vida_util_meses' => $vidaMeses,
                     'meses_restantes' => $mesesRestantes,
+                    'meses_usados' => $mesesUsados,
+                    'costo_producto' => $costo,
+                    'descuento_proporcional_sugerido' => $descuentoSugerido,
+                    'motivo_alerta' => 'reemplazo_danio',
                     'descuento_aplicable' => true,
                     'estado' => 'pendiente',
                     'detalle' => 'Reemplazo antes de vida útil; aplica revisión de descuento proporcional RRHH.',

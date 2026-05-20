@@ -34,11 +34,15 @@
                         <thead>
                             <tr class="text-left text-amber-900">
                                 <th class="py-1 pr-3">Colaborador</th>
-                                <th class="py-1 pr-3">Producto</th>
+                                <th class="py-1 pr-3">ID producto</th>
+                                <th class="py-1 pr-3">Descripción</th>
                                 <th class="py-1 pr-3">Asignación</th>
                                 <th class="py-1 pr-3">Daño/Reemplazo</th>
                                 <th class="py-1 pr-3">Vida útil</th>
                                 <th class="py-1 pr-3">Restante</th>
+                                <th class="py-1 pr-3">Usado</th>
+                                <th class="py-1 pr-3">Costo</th>
+                                <th class="py-1 pr-3">Descuento sugerido</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -46,10 +50,14 @@
                                 <tr class="border-t border-amber-200 text-amber-900">
                                     <td class="py-1 pr-3">{{ $a->colaborador_codigo }}</td>
                                     <td class="py-1 pr-3">{{ $a->producto_codigo }}</td>
+                                    <td class="py-1 pr-3">{{ $a->producto_nombre ?? '—' }}</td>
                                     <td class="py-1 pr-3">{{ optional($a->fecha_asignacion_anterior)->format('d/m/Y') }}</td>
                                     <td class="py-1 pr-3">{{ optional($a->fecha_dano_reemplazo)->format('d/m/Y') }}</td>
                                     <td class="py-1 pr-3">{{ $a->vida_util_meses }} meses</td>
                                     <td class="py-1 pr-3 font-semibold">{{ $a->meses_restantes }} meses</td>
+                                    <td class="py-1 pr-3">{{ $a->meses_usados ?? 0 }} meses</td>
+                                    <td class="py-1 pr-3">${{ number_format((float) ($a->costo_producto ?? 0), 2) }}</td>
+                                    <td class="py-1 pr-3 font-semibold text-rose-700">${{ number_format((float) ($a->descuento_proporcional_sugerido ?? 0), 2) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

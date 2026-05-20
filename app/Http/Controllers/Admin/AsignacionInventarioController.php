@@ -56,7 +56,9 @@ class AsignacionInventarioController extends Controller
 
     public function create()
     {
-        $inventarios = Inventario::with('producto', 'bodega')->get();
+        $inventarios = Inventario::with('producto', 'bodega')
+            ->get()
+            ->sortBy(fn ($i) => mb_strtolower((string) optional($i->producto)->nombre));
         $colaboradores = Colaborador::where('estado', 'Activo')->get();
         $bodegas = Bodega::all();
 
@@ -180,7 +182,12 @@ class AsignacionInventarioController extends Controller
                 ];
 
                 if (!empty($inventario->producto?->vida_util_meses)) {
-$payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($inventario->producto->vida_util_meses);
+                    $payload['fecha_vencimiento'] = $vidaUtilService
+                        ->fechaVencimientoParaNuevaAsignacion(
+                            (string) $item['producto_codigo'],
+                            Carbon::parse($data['fecha']),
+                            (int) $inventario->producto->vida_util_meses
+                        );
                 }
 
                 if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
@@ -308,11 +315,14 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
         $data = $request->validate([
             'cantidad_devuelta' => ['required', 'integer', 'min:1'],
             'detalle_devolucion' => ['nullable', 'string', 'max:1000'],
+            'estado_producto' => ['nullable', 'in:bueno,danado'],
+            'aplica_descuento' => ['nullable', 'boolean'],
         ]);
 
         $cantidadDevuelta = min((int) $data['cantidad_devuelta'], (int) $asignacion->cantidad_asignada);
 
         DB::transaction(function () use ($asignacion, $cantidadDevuelta, $data) {
+            $vidaUtilService = app(AsignacionVidaUtilService::class);
             $asignacion->cantidad_asignada = (int) $asignacion->cantidad_asignada - $cantidadDevuelta;
             if ((int) $asignacion->cantidad_asignada <= 0) {
                 $asignacion->cantidad_asignada = 0;
@@ -332,6 +342,35 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
                     'cantidad' => $cantidadDevuelta,
                     'detalle' => $data['detalle_devolucion'] ?? 'Devolución de producto.',
                     'user_id' => auth()->id(),
+                ]);
+            }
+
+            $aplicaDescuento = (bool) ($data['aplica_descuento'] ?? false);
+            $estadoProducto = (string) ($data['estado_producto'] ?? 'bueno');
+            $mesesRestantes = $vidaUtilService->mesesRestantes($asignacion, now());
+            $vidaTotal = (int) ($asignacion->producto->vida_util_meses ?? 0);
+
+            if ($aplicaDescuento && $estadoProducto === 'danado' && $mesesRestantes > 0 && Schema::hasTable('alertas_reemplazos_rrhh')) {
+                $mesesUsados = $vidaUtilService->calcularMesesUsados($asignacion, now());
+                $costo = (float) ($asignacion->costo_unitario ?? 0);
+                $descuento = $vidaTotal > 0 ? round(($mesesRestantes / $vidaTotal) * $costo, 2) : 0;
+
+                \App\Models\AlertaReemplazo::create([
+                    'colaborador_codigo' => $asignacion->colaborador_codigo,
+                    'producto_codigo' => $asignacion->producto_codigo,
+                    'producto_nombre' => $asignacion->producto->nombre ?? null,
+                    'asignacion_anterior_id' => $asignacion->id,
+                    'fecha_asignacion_anterior' => $asignacion->fecha,
+                    'fecha_dano_reemplazo' => now(),
+                    'vida_util_meses' => $vidaTotal,
+                    'meses_restantes' => $mesesRestantes,
+                    'meses_usados' => $mesesUsados,
+                    'costo_producto' => $costo,
+                    'descuento_proporcional_sugerido' => $descuento,
+                    'motivo_alerta' => 'devolucion_danio',
+                    'descuento_aplicable' => true,
+                    'estado' => 'pendiente',
+                    'detalle' => $data['detalle_devolucion'] ?? 'Devolución con daño antes de finalizar vida útil.',
                 ]);
             }
         });
