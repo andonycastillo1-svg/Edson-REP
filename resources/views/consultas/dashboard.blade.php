@@ -39,17 +39,25 @@
                                 <th class="py-1 pr-3">Daño/Reemplazo</th>
                                 <th class="py-1 pr-3">Vida útil</th>
                                 <th class="py-1 pr-3">Restante</th>
+                                <th class="py-1 pr-3">Descuento</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($alertas as $a)
                                 <tr class="border-t border-amber-200 text-amber-900">
-                                    <td class="py-1 pr-3">{{ $a->colaborador_codigo }}</td>
-                                    <td class="py-1 pr-3">{{ $a->producto_codigo }}</td>
+                                    <td class="py-1 pr-3">{{ $a->colaborador_codigo }} - {{ $a->colaborador_nombre ?? 'Sin nombre' }}</td>
+                                    <td class="py-1 pr-3">{{ $a->producto_descripcion ?: ($a->producto_nombre ?: $a->producto_codigo) }}</td>
                                     <td class="py-1 pr-3">{{ optional($a->fecha_asignacion_anterior)->format('d/m/Y') }}</td>
                                     <td class="py-1 pr-3">{{ optional($a->fecha_dano_reemplazo)->format('d/m/Y') }}</td>
                                     <td class="py-1 pr-3">{{ $a->vida_util_meses }} meses</td>
-                                    <td class="py-1 pr-3 font-semibold">{{ $a->meses_restantes }} meses</td>
+                                    <td class="py-1 pr-3 font-semibold">{{ $a->meses_restantes_reales }} meses</td>
+                                    <td class="py-1 pr-3 font-semibold">
+                                        @if(!$a->descuento_aplicable)
+                                            No aplica
+                                        @else
+                                            Q {{ number_format($a->descuento_calculado, 2) }}
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
