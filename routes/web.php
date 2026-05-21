@@ -240,7 +240,7 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
                 }
             }
 
-            return view('consultas.dashboard', compact('alertas'));
+            return view('rrhh.dashboard', compact('alertas'));
         })->name('dashboard');
 
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
