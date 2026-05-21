@@ -12,7 +12,7 @@
       return [
           'producto_codigo' => $i->producto_codigo,
           'bodega_id' => $i->bodega_id,
-          'label' => '[' . $i->producto_codigo . '] ' . optional($i->producto)->nombre . ' (' . optional($i->bodega)->nombre . ') - Stock: ' . $i->cantidad,
+          'label' => (optional($i->producto)->descripcion ?: optional($i->producto)->nombre) . ' - ' . $i->producto_codigo . ' (' . optional($i->bodega)->nombre . ') - Stock: ' . $i->cantidad,
       ];
   });
 @endphp
@@ -71,7 +71,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="text-sm font-medium text-slate-700">Colaborador</label>
-            <select name="colaborador_codigo"
+            <select name="colaborador_codigo" data-searchable="true" data-search-placeholder="Buscar colaborador..."
               class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:ring-2 focus:ring-blue-500" required>
               @foreach($colaboradores as $c)
                 <option value="{{ $c->codigo }}" {{ old('colaborador_codigo') === $c->codigo ? 'selected' : '' }}>{{ $c->nombre }}</option>
@@ -131,7 +131,7 @@
             <div class="item-row grid grid-cols-1 md:grid-cols-12 gap-3 border border-slate-200 rounded-xl p-3">
               <div class="md:col-span-7">
                 <label class="text-xs font-medium text-slate-600">Producto</label>
-                <select data-name="producto_codigo" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required></select>
+                <select data-name="producto_codigo" data-searchable="true" data-search-placeholder="Buscar producto..." class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required></select>
               </div>
               <div class="md:col-span-3">
                 <label class="text-xs font-medium text-slate-600">Bodega</label>
@@ -209,6 +209,7 @@
     const fechaDanioInput = clone.querySelector('[data-name="fecha_dano"]');
 
     buildProductoOptions(productoSelect);
+    if (window.enhanceSearchableSelect) window.enhanceSearchableSelect(productoSelect);
 
     if (defaults.producto_codigo) productoSelect.value = defaults.producto_codigo;
     if (defaults.bodega_id) bodegaSelect.value = defaults.bodega_id;

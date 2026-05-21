@@ -211,15 +211,36 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
             if (Schema::hasTable('alertas_reemplazos_rrhh')) {
                 try {
                     $alertas = AlertaReemplazo::query()
+                        ->leftJoin('colaboradores as c', 'c.codigo', '=', 'alertas_reemplazos_rrhh.colaborador_codigo')
+                        ->leftJoin('productos as p', 'p.codigo', '=', 'alertas_reemplazos_rrhh.producto_codigo')
+                        ->addSelect('alertas_reemplazos_rrhh.*')
+                        ->addSelect('c.nombre as colaborador_nombre')
+                        ->addSelect('p.nombre as producto_nombre')
+                        ->addSelect('p.descripcion as producto_descripcion')
+                        ->selectRaw("GREATEST(alertas_reemplazos_rrhh.vida_util_meses - TIMESTAMPDIFF(MONTH, alertas_reemplazos_rrhh.fecha_asignacion_anterior, alertas_reemplazos_rrhh.fecha_dano_reemplazo), 0) as meses_restantes_reales")
+                        ->selectRaw("COALESCE((SELECT cd.precio_unitario FROM compra_detalles cd WHERE cd.producto_codigo = alertas_reemplazos_rrhh.producto_codigo ORDER BY cd.id DESC LIMIT 1), 0) as costo_producto")
                         ->latest()
                         ->limit(8)
                         ->get();
+
+                    $alertas->transform(function ($alerta) {
+                        $vidaUtilMeses = (int) ($alerta->vida_util_meses ?? 0);
+                        $mesesRestantes = max(0, (int) ($alerta->meses_restantes_reales ?? 0));
+                        $costoProducto = (float) ($alerta->costo_producto ?? 0);
+
+                        $alerta->meses_restantes_reales = $mesesRestantes;
+                        $alerta->descuento_calculado = ($alerta->descuento_aplicable && $vidaUtilMeses > 0)
+                            ? round($costoProducto * ($mesesRestantes / $vidaUtilMeses), 2)
+                            : 0;
+
+                        return $alerta;
+                    });
                 } catch (\Throwable $e) {
                     report($e);
                 }
             }
 
-            return view('consultas.dashboard', compact('alertas'));
+            return view('rrhh.dashboard', compact('alertas'));
         })->name('dashboard');
 
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);

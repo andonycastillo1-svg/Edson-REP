@@ -197,11 +197,11 @@
 <template id="tplLinea">
   <tr class="border-t">
     <td class="py-2 pr-3">
-      <select name="producto_codigo[]"
+      <select name="producto_codigo[]" data-searchable="true" data-search-placeholder="Buscar producto por nombre o código..."
               class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-200" required>
         <option value="">Seleccione...</option>
         @foreach($productos as $pr)
-          <option value="{{ $pr->codigo }}">{{ $pr->nombre }} ({{ $pr->codigo }})</option>
+          <option value="{{ $pr->codigo }}">{{ $pr->descripcion ?: $pr->nombre }} - {{ $pr->codigo }}</option>
         @endforeach
       </select>
     </td>
@@ -273,6 +273,8 @@
     });
 
     body.appendChild(clone);
+    const productoSelect = tr.querySelector('select[name="producto_codigo[]"]');
+    if (productoSelect && window.enhanceSearchableSelect) window.enhanceSearchableSelect(productoSelect);
     recalcular();
   }
 
