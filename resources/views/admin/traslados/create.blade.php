@@ -110,12 +110,14 @@
                   <td class="px-3 py-3">
                     <select required
                             name="lineas[{{ $i }}][producto_codigo]"
+                            data-searchable="true"
+                            data-search-placeholder="Buscar producto..."
                             class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                       <option value="">Selecciona...</option>
                       @foreach($productos as $p)
                         <option value="{{ $p->codigo }}"
                           {{ ($line['producto_codigo'] ?? '') === $p->codigo ? 'selected' : '' }}>
-                          {{ $p->codigo }} — {{ $p->nombre }}
+                          {{ $p->descripcion ?: $p->nombre }} — {{ $p->codigo }}
                         </option>
                       @endforeach
                     </select>
@@ -166,10 +168,10 @@
     <template id="lineTemplate">
       <tr class="line-row">
         <td class="px-3 py-3">
-          <select required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+          <select required data-searchable="true" data-search-placeholder="Buscar producto..." class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
             <option value="">Selecciona...</option>
             @foreach($productos as $p)
-              <option value="{{ $p->codigo }}">{{ $p->codigo }} — {{ $p->nombre }}</option>
+              <option value="{{ $p->codigo }}">{{ $p->descripcion ?: $p->nombre }} — {{ $p->codigo }}</option>
             @endforeach
           </select>
         </td>
@@ -212,6 +214,9 @@
         }
 
         body.querySelectorAll('.line-row').forEach(bindRemove);
+        body.querySelectorAll('.line-row select[data-searchable="true"]').forEach((sel) => {
+          if (window.enhanceSearchableSelect) window.enhanceSearchableSelect(sel);
+        });
 
         btn.addEventListener('click', () => {
           const fragment = tpl.content.cloneNode(true);
@@ -221,6 +226,10 @@
           addRow.parentNode.insertBefore(row, addRow);
 
           bindRemove(row);
+          const productSelect = row.querySelector('select[data-searchable="true"]');
+          if (productSelect && window.enhanceSearchableSelect) {
+            window.enhanceSearchableSelect(productSelect);
+          }
           reindex();
         });
 

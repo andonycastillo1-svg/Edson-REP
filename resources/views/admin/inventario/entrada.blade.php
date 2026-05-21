@@ -49,12 +49,12 @@
 
         <div>
             <label for="producto_codigo" class="mb-2 block text-sm font-semibold text-slate-700">Producto</label>
-            <select id="producto_codigo" name="producto_codigo" required
+            <select id="producto_codigo" name="producto_codigo" required data-searchable="true" data-search-placeholder="Buscar producto por nombre o código..."
                     class="w-full px-4 py-3">
                 <option value="">Selecciona un producto</option>
                 @foreach($productos as $producto)
                     <option value="{{ $producto->codigo }}" {{ old('producto_codigo') === $producto->codigo ? 'selected' : '' }}>
-                        {{ $producto->codigo }} - {{ $producto->nombre }}
+                        {{ $producto->descripcion ?: $producto->nombre }} - {{ $producto->codigo }}
                     </option>
                 @endforeach
             </select>
