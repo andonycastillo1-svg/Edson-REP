@@ -1,251 +1,291 @@
+@php
+    $primerAsignacion = $primerMovimiento->asignacion ?? null;
+    $colaborador = $primerAsignacion?->colaborador;
+    $usuarioRecibe = $primerMovimiento->user;
+
+    $fechaAsignacion = $primerAsignacion?->fecha
+        ? \Carbon\Carbon::parse($primerAsignacion->fecha)->format('d/m/Y')
+        : '____/____/________';
+
+    $fechaDevolucion = $primerMovimiento->created_at
+        ? $primerMovimiento->created_at->format('d/m/Y')
+        : now()->format('d/m/Y');
+
+    $detalleGeneral = $movimientos
+        ->pluck('detalle')
+        ->filter()
+        ->unique()
+        ->implode(' / ');
+
+    $nombreColaborador = $colaborador->nombre ?? '____________________________';
+    $codigoColaborador = $colaborador->codigo ?? $primerAsignacion?->colaborador_codigo ?? '__________';
+
+    $unidad = $colaborador->unidad
+        ?? $colaborador->departamento
+        ?? $colaborador->area
+        ?? '____________________________';
+
+    $region = $colaborador->region
+        ?? $colaborador->zona
+        ?? '____________________________';
+
+    $responsableRecibe = $usuarioRecibe?->name ?? '____________________________';
+
+    /*
+      Ajusta aquí la ruta si tu logo está en otra carpeta.
+      El código intenta encontrarlo en varias rutas comunes.
+    */
+    $logoCandidates = [
+        'images/logo.png',
+        'img/logo.png',
+        'assets/logo.png',
+        'logos/logo.png',
+        'images/grupo-net-solutions.png',
+        'img/grupo-net-solutions.png',
+    ];
+
+    $logoPath = null;
+
+    foreach ($logoCandidates as $candidate) {
+        if (file_exists(public_path($candidate))) {
+            $logoPath = asset($candidate);
+            break;
+        }
+    }
+@endphp
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Hoja de devolución</title>
+    <title>Acta de devolución de herramienta / descargue de responsabilidad</title>
 
     <style>
+        @page {
+            size: letter;
+            margin: 16mm 14mm;
+        }
+
         * {
             box-sizing: border-box;
         }
 
         body {
-            font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
             margin: 0;
-            padding: 28px;
-            background: #f8fafc;
-            color: #0f172a;
+            background: #e5e7eb;
+            color: #111827;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 12px;
+            line-height: 1.35;
         }
 
         .page {
-            width: 900px;
+            width: 216mm;
+            min-height: 279mm;
             margin: 0 auto;
             background: #ffffff;
-            border: 1px solid #dbe3ea;
-            padding: 30px 38px;
+            padding: 20px 26px 24px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .print-actions {
-            width: 900px;
-            margin: 0 auto 14px auto;
-            text-align: right;
+        .page::after {
+            content: "NS";
+            position: absolute;
+            right: -35px;
+            top: 120px;
+            font-size: 210px;
+            font-weight: 800;
+            color: rgba(146, 196, 125, 0.10);
+            transform: rotate(-8deg);
+            z-index: 0;
+            letter-spacing: -18px;
         }
 
-        .print-actions button {
-            background: #0f172a;
-            color: #ffffff;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
+        .content {
+            position: relative;
+            z-index: 1;
         }
 
         .header {
-            display: table;
-            width: 100%;
-            border-bottom: 3px solid #0f172a;
-            padding-bottom: 14px;
-            margin-bottom: 18px;
+            display: grid;
+            grid-template-columns: 120px 1fr 120px;
+            align-items: start;
+            margin-bottom: 16px;
         }
 
-        .header-left,
-        .header-center,
-        .header-right {
-            display: table-cell;
-            vertical-align: middle;
-        }
-
-        .header-left {
-            width: 150px;
-        }
-
-        .header-right {
-            width: 150px;
-            text-align: right;
+        .logo-wrap {
+            min-height: 58px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
         }
 
         .logo {
-            width: 120px;
-            max-height: 65px;
-            object-fit: contain;
+            width: 74px;
+            height: auto;
+        }
+
+        .logo-text {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 700;
+            line-height: 1.1;
         }
 
         .title {
             text-align: center;
-        }
-
-        .title h1 {
-            margin: 0;
-            font-size: 18px;
+            font-weight: 800;
+            font-size: 15px;
+            letter-spacing: 1px;
             text-transform: uppercase;
-            letter-spacing: .5px;
+            margin-top: 20px;
+            line-height: 1.45;
         }
 
-        .title p {
-            margin: 4px 0 0;
-            font-size: 11px;
-            color: #475569;
+        .company-block {
+            margin-top: 8px;
+            margin-bottom: 22px;
+            font-weight: 700;
         }
 
-        .badge {
-            display: inline-block;
-            border: 1px solid #cbd5e1;
-            background: #f8fafc;
-            border-radius: 6px;
-            padding: 6px 8px;
-            font-size: 10px;
-            font-weight: bold;
-        }
-
-        .info-box {
-            border: 1px solid #dbe3ea;
-            background: #f8fafc;
-            border-radius: 6px;
-            padding: 12px 14px;
-            margin-bottom: 16px;
-        }
-
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .info-table td {
-            border: none;
-            padding: 4px 0;
-            font-size: 12px;
-        }
-
-        .label {
-            width: 130px;
-            font-weight: bold;
-            color: #0f172a;
+        .company-block div {
+            margin-bottom: 2px;
         }
 
         .section-title {
-            background: #0f172a;
-            color: #ffffff;
-            padding: 8px 10px;
-            font-size: 12px;
-            font-weight: bold;
+            margin-top: 18px;
+            margin-bottom: 6px;
+            font-weight: 800;
             text-transform: uppercase;
-            border-radius: 5px 5px 0 0;
         }
 
-        .items-table {
+        .paragraph {
+            text-align: justify;
+            margin: 0 0 10px;
+        }
+
+        table {
             width: 100%;
             border-collapse: collapse;
-            border: 1px solid #cbd5e1;
-            margin-bottom: 16px;
         }
 
-        .items-table th {
-            background: #e5e7eb;
-            color: #111827;
-            border: 1px solid #cbd5e1;
-            padding: 8px 6px;
-            font-size: 11px;
-            text-align: center;
+        .products-table {
+            margin-top: 8px;
+            margin-bottom: 24px;
         }
 
-        .items-table td {
-            border: 1px solid #cbd5e1;
-            padding: 8px 6px;
-            font-size: 11px;
-            text-align: center;
+        .products-table th,
+        .products-table td {
+            border: 1px solid #75c96b;
+            padding: 5px 6px;
+            vertical-align: top;
         }
 
-        .items-table .left {
+        .products-table th {
+            font-weight: 800;
             text-align: left;
         }
 
-        .terms {
-            border: 1px solid #cbd5e1;
-            border-top: none;
-            padding: 12px 14px;
-            line-height: 1.45;
-            text-align: justify;
-            margin-bottom: 22px;
-        }
-
-        .signatures {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 30px;
-        }
-
-        .signatures td {
-            width: 50%;
-            border: none;
-            vertical-align: top;
-            padding: 0 18px;
-        }
-
-        .signature-box {
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            padding: 14px;
-        }
-
-        .signature-title {
+        .products-table .item-col {
+            width: 34px;
             text-align: center;
-            font-weight: bold;
-            font-size: 12px;
-            margin-bottom: 20px;
-            text-transform: uppercase;
         }
 
-        .line-row {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 12px;
+        .products-table .cantidad-col {
+            width: 58px;
+            text-align: center;
         }
 
-        .line-row td {
-            border: none;
-            padding: 0;
-            vertical-align: bottom;
+        .products-table .costo-col {
+            width: 210px;
         }
 
-        .line-label {
-            width: 55px;
-            font-weight: bold;
-            font-size: 11px;
+        .observaciones {
+            margin-top: 24px;
+            margin-bottom: 18px;
         }
 
         .line {
-            border-bottom: 1px solid #111827 !important;
-            height: 20px;
-            padding-left: 5px !important;
-            font-size: 11px;
+            border-bottom: 1px solid #8b8b8b;
+            height: 28px;
+            margin-bottom: 4px;
         }
 
-        .footer {
-            margin-top: 22px;
-            padding-top: 8px;
-            border-top: 1px solid #e5e7eb;
-            text-align: center;
-            font-size: 9px;
-            color: #64748b;
+        .declaracion {
+            margin-top: 10px;
+            margin-bottom: 34px;
+        }
+
+        .signature-table {
+            margin-top: 16px;
+        }
+
+        .signature-table th,
+        .signature-table td {
+            border: 1px solid #75c96b;
+            padding: 5px 7px;
+            height: 22px;
+            vertical-align: middle;
+        }
+
+        .signature-table th {
+            text-align: left;
+            font-weight: 400;
+        }
+
+        .signature-table .half {
+            width: 50%;
+        }
+
+        .signature-space {
+            height: 38px;
+        }
+
+        .print-actions {
+            width: 216mm;
+            margin: 12px auto;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .btn {
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #0f172a;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #0f172a;
+            color: #ffffff;
+            border-color: #0f172a;
+        }
+
+        .text-muted {
+            color: #475569;
         }
 
         @media print {
             body {
                 background: #ffffff;
+            }
+
+            .page {
+                width: auto;
+                min-height: auto;
+                margin: 0;
                 padding: 0;
+                box-shadow: none;
             }
 
             .print-actions {
                 display: none;
-            }
-
-            .page {
-                width: 100%;
-                border: none;
-                padding: 20px 28px;
             }
         }
     </style>
@@ -254,187 +294,174 @@
 <body>
 
 <div class="print-actions">
-    <button onclick="window.print()">🖨 Imprimir hoja</button>
+    <button type="button" class="btn" onclick="window.close()">Cerrar</button>
+    <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir / Guardar PDF</button>
 </div>
 
 <div class="page">
+    <div class="content">
 
-    <div class="header">
-        <div class="header-left">
-            <img src="{{ asset('img/logo.png') }}" class="logo" alt="Logo">
-        </div>
-
-        <div class="header-center">
-            <div class="title">
-                <h1>Formato de devolución de equipos y herramientas</h1>
-                <p>Grupo Net Solutions, S.A.</p>
-                <p>Departamento de Bodega</p>
+        <div class="header">
+            <div class="logo-wrap">
+                @if($logoPath)
+                    <img src="{{ $logoPath }}" alt="Grupo NetSolutions" class="logo">
+                @else
+                    <div class="logo-text">
+                        Grupo NetSolutions
+                    </div>
+                @endif
             </div>
+
+            <div class="title">
+                ACTA DE DEVOLUCIÓN DE HERRAMIENTA / DESCARGUE DE<br>
+                RESPONSABILIDAD
+            </div>
+
+            <div></div>
         </div>
 
-        <div class="header-right">
-            <span class="badge">Devolución</span>
+        <div class="company-block">
+            <div>Grupo Net Solutions, S.A</div>
+            <div>Departamento de Recursos Humanos</div>
+            <div>Nombre del Colaborador: {{ $nombreColaborador }}</div>
+            <div>Unidad: {{ $unidad }}</div>
+            <div>Región: {{ $region }}</div>
         </div>
-    </div>
 
-    <div class="info-box">
-        <table class="info-table">
+        <div class="section-title">ANTECEDENTES:</div>
+
+        <p class="paragraph">
+            Con fecha {{ $fechaAsignacion }}, el colaborador recibió la(s) herramienta(s)
+            detallada(s) en la hoja de entrega firmada. La presente acta deja constancia de la
+            devolución de dichos elementos y el cierre de su responsabilidad sobre los mismos.
+        </p>
+
+        <table class="products-table">
+            <thead>
+                <tr>
+                    <th class="item-col">Ítem</th>
+                    <th>Descripción de la herramienta</th>
+                    <th class="cantidad-col">Cantidad</th>
+                    <th class="costo-col">Costo/Estado al momento de devolución</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach($movimientos as $index => $movimiento)
+                    @php
+                        $asignacion = $movimiento->asignacion;
+                        $producto = $asignacion?->producto;
+
+                        $descripcion = $producto?->descripcion
+                            ?? $producto?->nombre
+                            ?? $asignacion?->producto_codigo
+                            ?? 'Producto sin descripción';
+
+                        $codigoProducto = $asignacion?->producto_codigo;
+
+                        $costoUnitario = $asignacion?->costo_unitario ?? 0;
+                        $estadoAsignacion = $asignacion?->estado ?? 'Devuelto';
+                    @endphp
+
+                    <tr>
+                        <td class="item-col">{{ $index + 1 }}</td>
+
+                        <td>
+                            {{ $descripcion }}
+
+                            @if($codigoProducto)
+                                <br>
+                                <span class="text-muted">Código: {{ $codigoProducto }}</span>
+                            @endif
+                        </td>
+
+                        <td class="cantidad-col">
+                            {{ $movimiento->cantidad }}
+                        </td>
+
+                        <td>
+                            @if((float) $costoUnitario > 0)
+                                Q{{ number_format((float) $costoUnitario, 2) }}
+                            @else
+                                {{ $estadoAsignacion }}
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+
+                @for($i = $movimientos->count() + 1; $i <= 8; $i++)
+                    <tr>
+                        <td class="item-col">{{ $i }}</td>
+                        <td>&nbsp;</td>
+                        <td class="cantidad-col">&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                @endfor
+            </tbody>
+        </table>
+
+        <div class="observaciones">
+            <div class="section-title">OBSERVACIONES:</div>
+
+            <div class="line">
+                {{ $detalleGeneral }}
+            </div>
+            <div class="line"></div>
+        </div>
+
+        <div class="declaracion">
+            <div class="section-title">DECLARACIÓN:</div>
+
+            <p class="paragraph">
+                Por medio del presente documento, el colaborador deja constancia de la devolución de la
+                herramienta detallada y se exonera de toda responsabilidad sobre dichos elementos a partir
+                de esta fecha.
+            </p>
+        </div>
+
+        <table class="signature-table">
             <tr>
-                <td class="label">Grupo devolución:</td>
-                <td>{{ $grupo }}</td>
+                <th class="half">Responsable de Recepción:</th>
+                <th class="half">Responsable de Entrega:</th>
             </tr>
 
             <tr>
-                <td class="label">Fecha devolución:</td>
-                <td>{{ optional($primerMovimiento->created_at)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i') }}</td>
+                <td>Fecha</td>
+                <td>Fecha</td>
             </tr>
 
             <tr>
-                <td class="label">Colaborador:</td>
-                <td>
-                    {{ optional(optional($primerMovimiento->asignacion)->colaborador)->nombre ?? 'N/A' }}
-                    /
-                    <strong>Código:</strong>
-                    {{ optional($primerMovimiento->asignacion)->colaborador_codigo ?? 'N/A' }}
-                </td>
+                <td>{{ $fechaDevolucion }}</td>
+                <td>{{ $fechaDevolucion }}</td>
             </tr>
 
             <tr>
-                <td class="label">Recibido por:</td>
-                <td>{{ optional($primerMovimiento->user)->name ?? 'N/A' }}</td>
+                <td>Firma</td>
+                <td>Nombre</td>
             </tr>
 
             <tr>
-                <td class="label">Detalle:</td>
-                <td>{{ $primerMovimiento->detalle ?? 'Devolución de equipo asignado.' }}</td>
+                <td class="signature-space"></td>
+                <td>{{ $nombreColaborador }}</td>
+            </tr>
+
+            <tr>
+                <td>Nombre</td>
+                <td>DPI</td>
+            </tr>
+
+            <tr>
+                <td>{{ $responsableRecibe }}</td>
+                <td>{{ $colaborador->dpi ?? '' }}</td>
+            </tr>
+
+            <tr>
+                <td>DPI</td>
+                <td></td>
             </tr>
         </table>
+
     </div>
-
-    <div class="section-title">Detalle de productos devueltos</div>
-
-    <table class="items-table">
-        <thead>
-            <tr>
-                <th style="width: 45%;">Producto</th>
-                <th style="width: 15%;">Código</th>
-                <th style="width: 15%;">Cantidad</th>
-                <th style="width: 25%;">Bodega</th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @forelse($movimientos as $movimiento)
-                @php
-                    $asignacion = $movimiento->asignacion;
-                    $producto = optional($asignacion)->producto;
-                    $bodega = optional($asignacion)->bodega;
-                @endphp
-
-                <tr>
-                    <td class="left">
-                        {{ $producto->descripcion ?? $producto->nombre ?? 'N/A' }}
-                    </td>
-
-                    <td>
-                        {{ optional($asignacion)->producto_codigo ?? 'N/A' }}
-                    </td>
-
-                    <td>
-                        {{ $movimiento->cantidad }}
-                    </td>
-
-                    <td>
-                        {{ $bodega->nombre ?? 'N/A' }}
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="4">No hay productos en esta devolución.</td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
-
-    <div class="section-title">Condiciones de devolución</div>
-
-    <div class="terms">
-        Por este medio se deja constancia de la devolución del equipo, herramienta o material indicado en este documento.
-        El área de bodega recibe los artículos detallados para su revisión física, validación de estado y actualización
-        del inventario correspondiente. Cualquier daño, faltante o diferencia detectada podrá ser reportada según las
-        políticas internas de la empresa.
-    </div>
-
-    <table class="signatures">
-        <tr>
-            <td>
-                <div class="signature-box">
-                    <div class="signature-title">Entrega colaborador</div>
-
-                    <table class="line-row">
-                        <tr>
-                            <td class="line-label">Firma</td>
-                            <td class="line"></td>
-                        </tr>
-                    </table>
-
-                    <table class="line-row">
-                        <tr>
-                            <td class="line-label">Nombre</td>
-                            <td class="line">
-                                {{ optional(optional($primerMovimiento->asignacion)->colaborador)->nombre ?? '' }}
-                            </td>
-                        </tr>
-                    </table>
-
-                    <table class="line-row">
-                        <tr>
-                            <td class="line-label">Fecha</td>
-                            <td class="line">
-                                {{ optional($primerMovimiento->created_at)->format('d/m/Y') ?? now()->format('d/m/Y') }}
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            </td>
-
-            <td>
-                <div class="signature-box">
-                    <div class="signature-title">Recibe bodega</div>
-
-                    <table class="line-row">
-                        <tr>
-                            <td class="line-label">Firma</td>
-                            <td class="line"></td>
-                        </tr>
-                    </table>
-
-                    <table class="line-row">
-                        <tr>
-                            <td class="line-label">Nombre</td>
-                            <td class="line">
-                                {{ optional($primerMovimiento->user)->name ?? '' }}
-                            </td>
-                        </tr>
-                    </table>
-
-                    <table class="line-row">
-                        <tr>
-                            <td class="line-label">Fecha</td>
-                            <td class="line">
-                                {{ optional($primerMovimiento->created_at)->format('d/m/Y') ?? now()->format('d/m/Y') }}
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            </td>
-        </tr>
-    </table>
-
-    <div class="footer">
-        Documento generado por el sistema de bodega de Grupo Net Solutions, S.A.
-    </div>
-
 </div>
 
 </body>

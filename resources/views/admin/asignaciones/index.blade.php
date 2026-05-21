@@ -404,6 +404,10 @@
     font-weight: 700;
   }
 
+  .asg-pdf-btn:hover {
+    background: #1d4ed8;
+  }
+
   .asg-upload-form {
     display: flex;
     flex-direction: column;
@@ -503,6 +507,7 @@
     @if(session('success'))
       <div class="asg-alert asg-alert-success">
         {{ session('success') }}
+
         @if(session('grupo_devolucion'))
           <div style="margin-top:6px;">
             <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', session('grupo_devolucion')) }}"
@@ -789,6 +794,7 @@
               <th style="text-align:center;">Cantidad</th>
               <th>Detalle</th>
               <th>Usuario</th>
+              <th style="text-align:center;">Documento</th>
             </tr>
           </thead>
 
@@ -796,19 +802,45 @@
             @forelse($movimientos as $m)
               <tr>
                 <td>{{ $m->created_at?->format('d/m/Y H:i') }}</td>
+
                 <td>
                   <span class="asg-status asg-status-gray">
                     {{ $m->tipo }}
                   </span>
                 </td>
-                <td>{{ optional(optional($m->asignacion)->colaborador)->nombre ?? '—' }}</td>
-                <td style="text-align:center; font-weight:700;">{{ $m->cantidad }}</td>
-                <td>{{ $m->detalle ?? '—' }}</td>
-                <td>{{ optional($m->user)->name ?? '—' }}</td>
+
+                <td>
+                  {{ optional(optional($m->asignacion)->colaborador)->nombre ?? '—' }}
+                </td>
+
+                <td style="text-align:center; font-weight:700;">
+                  {{ $m->cantidad }}
+                </td>
+
+                <td>
+                  {{ $m->detalle ?? '—' }}
+                </td>
+
+                <td>
+                  {{ optional($m->user)->name ?? '—' }}
+                </td>
+
+                <td style="text-align:center;">
+                  @if($m->tipo === 'Devolucion' && !empty($m->grupo_devolucion))
+                    <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', $m->grupo_devolucion) }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="asg-pdf-btn">
+                      Ver hoja
+                    </a>
+                  @else
+                    <span style="color:#94a3b8;">—</span>
+                  @endif
+                </td>
               </tr>
             @empty
               <tr>
-                <td colspan="6" style="padding:28px; text-align:center; color:#64748b;">
+                <td colspan="7" style="padding:28px; text-align:center; color:#64748b;">
                   Sin movimientos registrados.
                 </td>
               </tr>
