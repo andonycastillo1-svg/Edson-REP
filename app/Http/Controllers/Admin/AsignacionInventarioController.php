@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Services\AsignacionVidaUtilService;
 use Carbon\Carbon;
 
@@ -28,6 +29,7 @@ class AsignacionInventarioController extends Controller
         }
 
         $asignaciones = $query->get();
+
         $asignacionesPorColaborador = $asignaciones
             ->groupBy('colaborador_codigo')
             ->map(function ($items) {
@@ -44,6 +46,7 @@ class AsignacionInventarioController extends Controller
             ->values();
 
         $movimientos = collect();
+
         if (Schema::hasTable('asignacion_movimientos')) {
             $movimientos = AsignacionMovimiento::with(['asignacion.colaborador', 'user'])
                 ->latest()
@@ -51,7 +54,11 @@ class AsignacionInventarioController extends Controller
                 ->get();
         }
 
-        return view('admin.asignaciones.index', compact('asignacionesPorColaborador', 'routePrefix', 'movimientos'));
+        return view('admin.asignaciones.index', compact(
+            'asignacionesPorColaborador',
+            'routePrefix',
+            'movimientos'
+        ));
     }
 
     public function create()
@@ -64,7 +71,7 @@ class AsignacionInventarioController extends Controller
             'Gerencia',
             'RRHH',
             'Jefe de área',
-            'Supervisor'
+            'Supervisor',
         ];
 
         return view('admin.asignaciones.create', compact(
@@ -93,15 +100,14 @@ class AsignacionInventarioController extends Controller
             'items.*.fecha_dano' => ['nullable', 'date'],
         ]);
 
-        // Imagen compartida en todos los ítems enviados
         $imagenPath = null;
+
         if ($request->hasFile('imagen')) {
             $imagenPath = $request->file('imagen')->store('asignaciones', 'public');
         }
 
         $items = collect($data['items'])->values();
 
-        // Validación de stock consolidada por producto + bodega para evitar sobreasignación en lote.
         $solicitudesAgrupadas = $items
             ->groupBy(fn ($item) => $item['producto_codigo'] . '|' . $item['bodega_id'])
             ->map(fn ($grupo) => [
@@ -143,8 +149,11 @@ class AsignacionInventarioController extends Controller
             }
         }
 
-        DB::transaction(function () use ($data, $items, $imagenPath) {
+        $grupoAsignacion = (string) Str::uuid();
+
+        DB::transaction(function () use ($data, $items, $imagenPath, $grupoAsignacion) {
             $vidaUtilService = app(AsignacionVidaUtilService::class);
+
             foreach ($items as $item) {
                 $inventario = Inventario::with('producto')
                     ->where('producto_codigo', $item['producto_codigo'])
@@ -154,6 +163,7 @@ class AsignacionInventarioController extends Controller
                 $inventario->decrement('cantidad', (int) $item['cantidad_asignada']);
 
                 $costoUnitario = $data['costo_unitario'] ?? null;
+
                 if (empty($costoUnitario)) {
                     $ultimoCosto = DB::table('compra_detalles as cd')
                         ->join('compras as c', 'c.id', '=', 'cd.compra_id')
@@ -166,6 +176,7 @@ class AsignacionInventarioController extends Controller
                 }
 
                 $payload = [
+                    'grupo_asignacion' => $grupoAsignacion,
                     'colaborador_codigo' => $data['colaborador_codigo'],
                     'producto_codigo' => $item['producto_codigo'],
                     'bodega_id' => (int) $item['bodega_id'],
@@ -180,7 +191,8 @@ class AsignacionInventarioController extends Controller
                 ];
 
                 if (!empty($inventario->producto?->vida_util_meses)) {
-$payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($inventario->producto->vida_util_meses);
+                    $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])
+                        ->addMonths($inventario->producto->vida_util_meses);
                 }
 
                 if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
@@ -235,25 +247,45 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
         return redirect()
-            ->route($routePrefix . '.asignaciones.pdf', $data['colaborador_codigo'])
+            ->route($routePrefix . '.asignaciones.pdf', $grupoAsignacion)
             ->with('success', 'Asignaciones registradas correctamente.');
     }
 
-    // 🔥 NUEVO: GENERAR HOJA PDF / IMPRIMIBLE
-    public function pdf($codigo)
+    public function pdf($grupo)
     {
-        $colaborador = Colaborador::where('codigo', $codigo)->firstOrFail();
         $usuario = auth()->user();
 
-        $asignaciones = AsignacionInventario::with('producto', 'bodega')
-            ->where('colaborador_codigo', $codigo)
+        $asignaciones = AsignacionInventario::with(['producto', 'bodega', 'colaborador'])
+            ->where('grupo_asignacion', $grupo)
+            ->where('cantidad_asignada', '>', 0)
             ->get();
+
+        if ($asignaciones->isEmpty()) {
+            abort(404, 'No se encontraron asignaciones para este PDF.');
+        }
+
+        if ((int) $usuario->role_id !== 1 && Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
+            $asignacionNoPermitida = $asignaciones->first(function ($asignacion) use ($usuario) {
+                return (int) $asignacion->user_id !== (int) $usuario->id;
+            });
+
+            if ($asignacionNoPermitida) {
+                abort(403);
+            }
+        }
+
+        $colaborador = $asignaciones->first()->colaborador;
+
+        if (!$colaborador) {
+            abort(404, 'No se encontró el colaborador de esta asignación.');
+        }
 
         $total = $asignaciones->sum(function ($a) {
             return ($a->costo_unitario ?? 0) * $a->cantidad_asignada;
         });
 
         $asignadorNombre = $usuario?->name ?? 'No identificado';
+
         $bodegaAsignador = $usuario?->bodega?->nombre
             ?? optional($asignaciones->first()?->bodega)->nombre
             ?? 'No definida';
@@ -263,14 +295,17 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
             'asignaciones',
             'total',
             'asignadorNombre',
-            'bodegaAsignador'
+            'bodegaAsignador',
+            'grupo'
         ));
     }
 
     public function uploadPdfFirmado(Request $request, AsignacionInventario $asignacion)
     {
-        if (Schema::hasColumn('asignaciones_inventarios', 'user_id')
-            && (int) $asignacion->user_id !== (int) auth()->id()) {
+        if (
+            Schema::hasColumn('asignaciones_inventarios', 'user_id')
+            && (int) $asignacion->user_id !== (int) auth()->id()
+        ) {
             abort(403);
         }
 
@@ -283,7 +318,10 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
         }
 
         $path = $data['pdf_firmado']->store('asignaciones/firmados', 'public');
-        $asignacion->update(['pdf_firmado' => $path]);
+
+        $asignacion->update([
+            'pdf_firmado' => $path,
+        ]);
 
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
@@ -314,10 +352,12 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
 
         DB::transaction(function () use ($asignacion, $cantidadDevuelta, $data) {
             $asignacion->cantidad_asignada = (int) $asignacion->cantidad_asignada - $cantidadDevuelta;
+
             if ((int) $asignacion->cantidad_asignada <= 0) {
                 $asignacion->cantidad_asignada = 0;
                 $asignacion->estado = 'Devuelta';
             }
+
             $asignacion->save();
 
             Inventario::query()
@@ -357,7 +397,10 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
             ->unique()
             ->values();
 
-        $asignaciones = AsignacionInventario::query()->whereIn('id', $ids)->get()->keyBy('id');
+        $asignaciones = AsignacionInventario::query()
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
 
         if ($asignaciones->isEmpty()) {
             return redirect()->route($routePrefix . '.asignaciones.index')
@@ -374,27 +417,33 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
                     continue;
                 }
 
-                if ((int) auth()->user()->role_id !== 1
+                if (
+                    (int) auth()->user()->role_id !== 1
                     && Schema::hasColumn('asignaciones_inventarios', 'user_id')
-                    && (int) $asignacion->user_id !== (int) auth()->id()) {
+                    && (int) $asignacion->user_id !== (int) auth()->id()
+                ) {
                     continue;
                 }
 
                 $cantidadSolicitada = (int) ($data['devoluciones'][$id] ?? 0);
+
                 if ($cantidadSolicitada <= 0) {
                     continue;
                 }
 
                 $cantidadDevuelta = min($cantidadSolicitada, (int) $asignacion->cantidad_asignada);
+
                 if ($cantidadDevuelta <= 0) {
                     continue;
                 }
 
                 $asignacion->cantidad_asignada = (int) $asignacion->cantidad_asignada - $cantidadDevuelta;
+
                 if ((int) $asignacion->cantidad_asignada <= 0) {
                     $asignacion->cantidad_asignada = 0;
                     $asignacion->estado = 'Devuelta';
                 }
+
                 $asignacion->save();
 
                 Inventario::query()
@@ -451,6 +500,7 @@ $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($invent
         DB::transaction(function () use ($asignaciones, $data) {
             foreach ($asignaciones as $asignacion) {
                 $cantidadDevuelta = (int) $asignacion->cantidad_asignada;
+
                 if ($cantidadDevuelta <= 0) {
                     continue;
                 }

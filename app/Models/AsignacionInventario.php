@@ -4,12 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
+use App\Models\Colaborador;
+use App\Models\Producto;
+use App\Models\Bodega;
 
 class AsignacionInventario extends Model
 {
     protected $table = 'asignaciones_inventarios';
 
     protected $fillable = [
+        'grupo_asignacion',
         'colaborador_codigo',
         'producto_codigo',
         'bodega_id',
@@ -26,6 +30,13 @@ class AsignacionInventario extends Model
         'pdf_firmado',
     ];
 
+    protected $casts = [
+        'fecha' => 'datetime',
+        'fecha_vencimiento' => 'datetime',
+        'cantidad_asignada' => 'integer',
+        'costo_unitario' => 'decimal:2',
+    ];
+
     public function colaborador()
     {
         return $this->belongsTo(Colaborador::class, 'colaborador_codigo', 'codigo');
@@ -38,7 +49,7 @@ class AsignacionInventario extends Model
 
     public function bodega()
     {
-        return $this->belongsTo(Bodega::class);
+        return $this->belongsTo(Bodega::class, 'bodega_id');
     }
 
     public function user()
