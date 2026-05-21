@@ -29,7 +29,7 @@ class UsuarioController extends Controller
 
     public function store(Request $request)
     {
-        $rolEncargadoId = $this->rolObjetivoRrhhId();
+        $rolBodegaRequeridaId = $this->rolBodegaRequeridaId();
         $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
 
         $data = $request->validate([
@@ -38,7 +38,7 @@ class UsuarioController extends Controller
             'password' => ['required','string','min:6','confirmed'],
             'role_id' => ['required','exists:roles,id', Rule::in($rolesPermitidos)],
             'bodega_id' => [
-                Rule::requiredIf(fn() => (int)$request->role_id === (int)$rolEncargadoId),
+                Rule::requiredIf(fn() => (int)$request->role_id === (int)$rolBodegaRequeridaId),
                 'nullable',
                 'exists:bodegas,id',
             ],
@@ -78,7 +78,7 @@ class UsuarioController extends Controller
                 ->with('error', 'No tienes permiso para actualizar este usuario.');
         }
 
-        $rolEncargadoId = $this->rolObjetivoRrhhId();
+        $rolBodegaRequeridaId = $this->rolBodegaRequeridaId();
         $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
 
         $data = $request->validate([
@@ -87,7 +87,7 @@ class UsuarioController extends Controller
             'role_id' => ['required','exists:roles,id', Rule::in($rolesPermitidos)],
             'password' => ['nullable','string','min:6','confirmed'],
             'bodega_id' => [
-                Rule::requiredIf(fn() => (int)$request->role_id === (int)$rolEncargadoId),
+                Rule::requiredIf(fn() => (int)$request->role_id === (int)$rolBodegaRequeridaId),
                 'nullable',
                 'exists:bodegas,id',
             ],
@@ -133,12 +133,7 @@ class UsuarioController extends Controller
         $query = Role::query()->orderBy('nombre');
 
         if ((int) auth()->user()->role_id === 4) {
-            $rolId = $this->rolObjetivoRrhhId();
-            if ($rolId) {
-                $query->where('id', $rolId);
-            } else {
-                $query->whereRaw('1 = 0');
-            }
+            $query->whereNotIn('id', [1, 4]);
         }
 
         return $query->get();
@@ -159,12 +154,12 @@ class UsuarioController extends Controller
 
     private function rolObjetivoRrhhId(): ?int
     {
-        $rolOperadorId = Role::where('nombre', 'Operador')->value('id');
-        if ($rolOperadorId) {
-            return (int) $rolOperadorId;
-        }
-
         $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
-        return $rolEncargadoId ? (int) $rolEncargadoId : null;
+        return $rolEncargadoId ? (int) $rolEncargadoId : 2;
+    }
+
+    private function rolBodegaRequeridaId(): int
+    {
+        return (int) ($this->rolObjetivoRrhhId() ?? 2);
     }
 }

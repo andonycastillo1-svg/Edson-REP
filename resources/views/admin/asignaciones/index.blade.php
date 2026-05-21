@@ -503,6 +503,16 @@
     @if(session('success'))
       <div class="asg-alert asg-alert-success">
         {{ session('success') }}
+        @if(session('grupo_devolucion'))
+          <div style="margin-top:6px;">
+            <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', session('grupo_devolucion')) }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               style="font-weight:700; text-decoration:underline;">
+              Ver hoja de devolución
+            </a>
+          </div>
+        @endif
       </div>
     @endif
 
@@ -688,6 +698,7 @@
                           @if(!empty($a->grupo_asignacion))
                             <a href="{{ route($routePrefix . '.asignaciones.pdf', $a->grupo_asignacion) }}"
                                target="_blank"
+                               rel="noopener noreferrer"
                                class="asg-pdf-btn">
                               PDF
                             </a>
