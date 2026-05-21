@@ -350,7 +350,9 @@ class AsignacionInventarioController extends Controller
 
         $cantidadDevuelta = min((int) $data['cantidad_devuelta'], (int) $asignacion->cantidad_asignada);
 
-        DB::transaction(function () use ($asignacion, $cantidadDevuelta, $data) {
+        $grupoDevolucion = (string) Str::uuid();
+
+        DB::transaction(function () use ($asignacion, $cantidadDevuelta, $data, $grupoDevolucion) {
             $asignacion->cantidad_asignada = (int) $asignacion->cantidad_asignada - $cantidadDevuelta;
 
             if ((int) $asignacion->cantidad_asignada <= 0) {
@@ -371,13 +373,15 @@ class AsignacionInventarioController extends Controller
                     'tipo' => 'Devolucion',
                     'cantidad' => $cantidadDevuelta,
                     'detalle' => $data['detalle_devolucion'] ?? 'Devolución de producto.',
+                    'grupo_devolucion' => $grupoDevolucion,
                     'user_id' => auth()->id(),
                 ]);
             }
         });
 
         return redirect()->route($routePrefix . '.asignaciones.index')
-            ->with('success', 'Devolución registrada correctamente.');
+            ->with('success', 'Devolución registrada correctamente.')
+            ->with('grupo_devolucion', $grupoDevolucion);
     }
 
     public function devolverLote(Request $request)
@@ -408,8 +412,9 @@ class AsignacionInventarioController extends Controller
         }
 
         $totalProcesadas = 0;
+        $grupoDevolucion = (string) Str::uuid();
 
-        DB::transaction(function () use ($data, $ids, $asignaciones, &$totalProcesadas) {
+        DB::transaction(function () use ($data, $ids, $asignaciones, &$totalProcesadas, $grupoDevolucion) {
             foreach ($ids as $id) {
                 $asignacion = $asignaciones->get((int) $id);
 
@@ -457,6 +462,7 @@ class AsignacionInventarioController extends Controller
                         'tipo' => 'Devolucion',
                         'cantidad' => $cantidadDevuelta,
                         'detalle' => $data['detalle_devolucion'] ?? 'Devolución múltiple.',
+                        'grupo_devolucion' => $grupoDevolucion,
                         'user_id' => auth()->id(),
                     ]);
                 }
@@ -471,7 +477,8 @@ class AsignacionInventarioController extends Controller
         }
 
         return redirect()->route($routePrefix . '.asignaciones.index')
-            ->with('success', 'Devolución múltiple registrada correctamente. Asignaciones devueltas: ' . $totalProcesadas . '.');
+            ->with('success', 'Devolución múltiple registrada correctamente. Asignaciones devueltas: ' . $totalProcesadas . '.')
+            ->with('grupo_devolucion', $grupoDevolucion);
     }
 
     public function devolverTodoColaborador(Request $request, string $colaboradorCodigo)
@@ -497,7 +504,9 @@ class AsignacionInventarioController extends Controller
                 ->with('error', 'No hay asignaciones activas para devolver.');
         }
 
-        DB::transaction(function () use ($asignaciones, $data) {
+        $grupoDevolucion = (string) Str::uuid();
+
+        DB::transaction(function () use ($asignaciones, $data, $grupoDevolucion) {
             foreach ($asignaciones as $asignacion) {
                 $cantidadDevuelta = (int) $asignacion->cantidad_asignada;
 
@@ -520,6 +529,7 @@ class AsignacionInventarioController extends Controller
                         'tipo' => 'Devolucion',
                         'cantidad' => $cantidadDevuelta,
                         'detalle' => $data['detalle_devolucion'] ?? 'Devolución total por colaborador.',
+                        'grupo_devolucion' => $grupoDevolucion,
                         'user_id' => auth()->id(),
                     ]);
                 }
@@ -527,6 +537,35 @@ class AsignacionInventarioController extends Controller
         });
 
         return redirect()->route($routePrefix . '.asignaciones.index')
-            ->with('success', 'Se devolvió todo el inventario activo del colaborador.');
+            ->with('success', 'Se devolvió todo el inventario activo del colaborador.')
+            ->with('grupo_devolucion', $grupoDevolucion);
+    }
+
+    public function hojaDevolucion(string $grupo)
+    {
+        $query = AsignacionMovimiento::with([
+            'asignacion',
+            'asignacion.colaborador',
+            'asignacion.producto',
+            'asignacion.bodega',
+            'user',
+        ])
+            ->where('tipo', 'Devolucion')
+            ->where('grupo_devolucion', $grupo)
+            ->orderBy('created_at');
+
+        if ((int) auth()->user()->role_id !== 1) {
+            $query->where('user_id', auth()->id());
+        }
+
+        $movimientos = $query->get();
+
+        if ($movimientos->isEmpty()) {
+            abort(404, 'No se encontraron movimientos de devolución para este grupo.');
+        }
+
+        $primerMovimiento = $movimientos->first();
+
+        return view('admin.asignaciones.hoja_devolucion', compact('movimientos', 'grupo', 'primerMovimiento'));
     }
 }

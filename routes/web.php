@@ -123,6 +123,8 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
+        Route::get('asignaciones/devoluciones/{grupo}', [AsignacionInventarioController::class, 'hojaDevolucion'])
+            ->name('asignaciones.hoja_devolucion');
 
         Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
             ->name('asignaciones.upload_pdf_firmado');
@@ -162,6 +164,8 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
+        Route::get('asignaciones/devoluciones/{grupo}', [AsignacionInventarioController::class, 'hojaDevolucion'])
+            ->name('asignaciones.hoja_devolucion');
 
         Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
             ->name('asignaciones.upload_pdf_firmado');
