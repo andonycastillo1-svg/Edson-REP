@@ -13,6 +13,7 @@ class AsignacionMovimiento extends Model
         'tipo',
         'cantidad',
         'detalle',
+        'grupo_devolucion',
         'user_id',
     ];
 
