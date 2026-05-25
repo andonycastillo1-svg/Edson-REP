@@ -7,8 +7,7 @@ use App\Http\Controllers\Admin\InventarioController;
 use App\Http\Controllers\Admin\OperacionTrasladoController;
 use App\Http\Controllers\Admin\ColaboradorController;
 use App\Http\Controllers\Admin\AsignacionInventarioController;
-use App\Models\AlertaReemplazo;
-use Illuminate\Support\Facades\Schema;
+use App\Http\Controllers\RrhhDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,7 +71,9 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
         Route::resource('bodegas', \App\Http\Controllers\Admin\BodegaController::class);
-        Route::get('bodegas/{bodega}/inventario-export', [\App\Http\Controllers\Admin\BodegaController::class, 'exportInventario'])->name('bodegas.inventario.export');
+
+        Route::get('bodegas/{bodega}/inventario-export', [\App\Http\Controllers\Admin\BodegaController::class, 'exportInventario'])
+            ->name('bodegas.inventario.export');
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
@@ -124,6 +125,7 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
+
         Route::get('asignaciones/devoluciones/{grupo}', [AsignacionInventarioController::class, 'hojaDevolucion'])
             ->name('asignaciones.hoja_devolucion');
 
@@ -132,8 +134,10 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'devolver'])
             ->name('asignaciones.devolver');
+
         Route::post('asignaciones/devolver-lote', [AsignacionInventarioController::class, 'devolverLote'])
             ->name('asignaciones.devolver_lote');
+
         Route::post('asignaciones/colaborador/{codigo}/devolver-todo', [AsignacionInventarioController::class, 'devolverTodoColaborador'])
             ->name('asignaciones.devolver_todo_colaborador');
     });
@@ -150,8 +154,11 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::view('/dashboard', 'operador.dashboard')->name('dashboard');
 
-        Route::resource('bodegas', \App\Http\Controllers\Admin\BodegaController::class)->only(['index', 'show']);
-        Route::get('bodegas/{bodega}/inventario-export', [\App\Http\Controllers\Admin\BodegaController::class, 'exportInventario'])->name('bodegas.inventario.export');
+        Route::resource('bodegas', \App\Http\Controllers\Admin\BodegaController::class)
+            ->only(['index', 'show']);
+
+        Route::get('bodegas/{bodega}/inventario-export', [\App\Http\Controllers\Admin\BodegaController::class, 'exportInventario'])
+            ->name('bodegas.inventario.export');
 
         Route::resource('compras', \App\Http\Controllers\Admin\CompraController::class);
 
@@ -166,6 +173,7 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
+
         Route::get('asignaciones/devoluciones/{grupo}', [AsignacionInventarioController::class, 'hojaDevolucion'])
             ->name('asignaciones.hoja_devolucion');
 
@@ -174,8 +182,10 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'devolver'])
             ->name('asignaciones.devolver');
+
         Route::post('asignaciones/devolver-lote', [AsignacionInventarioController::class, 'devolverLote'])
             ->name('asignaciones.devolver_lote');
+
         Route::post('asignaciones/colaborador/{codigo}/devolver-todo', [AsignacionInventarioController::class, 'devolverTodoColaborador'])
             ->name('asignaciones.devolver_todo_colaborador');
 
@@ -211,44 +221,14 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
     ->name('rrhh.')
     ->group(function () {
 
-        Route::get('/dashboard', function () {
-            $alertas = collect();
+        Route::get('/dashboard', [RrhhDashboardController::class, 'index'])
+            ->name('dashboard');
 
-            if (Schema::hasTable('alertas_reemplazos_rrhh')) {
-                try {
-                    $alertas = AlertaReemplazo::query()
-                        ->leftJoin('colaboradores as c', 'c.codigo', '=', 'alertas_reemplazos_rrhh.colaborador_codigo')
-                        ->leftJoin('productos as p', 'p.codigo', '=', 'alertas_reemplazos_rrhh.producto_codigo')
-                        ->addSelect('alertas_reemplazos_rrhh.*')
-                        ->addSelect('c.nombre as colaborador_nombre')
-                        ->addSelect('p.nombre as producto_nombre')
-                        ->addSelect('p.descripcion as producto_descripcion')
-                        ->selectRaw("GREATEST(alertas_reemplazos_rrhh.vida_util_meses - TIMESTAMPDIFF(MONTH, alertas_reemplazos_rrhh.fecha_asignacion_anterior, alertas_reemplazos_rrhh.fecha_dano_reemplazo), 0) as meses_restantes_reales")
-                        ->selectRaw("COALESCE((SELECT cd.precio_unitario FROM compra_detalles cd WHERE cd.producto_codigo = alertas_reemplazos_rrhh.producto_codigo ORDER BY cd.id DESC LIMIT 1), 0) as costo_producto")
-                        ->latest()
-                        ->limit(8)
-                        ->get();
+        Route::get('/alertas', [RrhhDashboardController::class, 'alertas'])
+            ->name('alertas.index');
 
-                    $alertas->transform(function ($alerta) {
-                        $vidaUtilMeses = (int) ($alerta->vida_util_meses ?? 0);
-                        $mesesRestantes = max(0, (int) ($alerta->meses_restantes_reales ?? 0));
-                        $costoProducto = (float) ($alerta->costo_producto ?? 0);
-
-                        $alerta->meses_restantes_reales = $mesesRestantes;
-                        $alerta->descuento_calculado = ($alerta->descuento_aplicable && $vidaUtilMeses > 0)
-                            ? round($costoProducto * ($mesesRestantes / $vidaUtilMeses), 2)
-                            : 0;
-
-                        return $alerta;
-                    });
-                } catch (\Throwable $e) {
-                    report($e);
-                }
-            }
-
-            return view('rrhh.dashboard', compact('alertas'));
-        })->name('dashboard');
-        Route::get('/dashboard/export', [\App\Http\Controllers\RrhhDashboardController::class, 'export'])->name('dashboard.export');
+        Route::get('/alertas/export', [RrhhDashboardController::class, 'export'])
+            ->name('alertas.export');
 
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
 

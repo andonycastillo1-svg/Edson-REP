@@ -32,7 +32,7 @@
     </div>
 
     {{-- Módulos compactos --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
 
         <a href="{{ route('rrhh.colaboradores.index') }}"
            class="group rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm hover:border-emerald-300 hover:bg-emerald-50/40 transition">
@@ -70,109 +70,26 @@
             </div>
         </a>
 
-    </div>
-
-    <form method="GET" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-    <input type="text" name="q" value="{{ request('q') }}" placeholder="Colaborador o producto" class="rounded-xl border-slate-300">
-    <input type="date" name="desde" value="{{ request('desde') }}" class="rounded-xl border-slate-300">
-    <input type="date" name="hasta" value="{{ request('hasta') }}" class="rounded-xl border-slate-300">
-    <div class="flex gap-2"><button class="rounded-xl bg-emerald-600 text-white px-4">Filtrar</button><a href="{{ route('rrhh.dashboard') }}" class="rounded-xl border px-4">Limpiar</a></div>
-</form>
-
-{{-- Alertas como módulo --}}
-    <div class="mt-4 rounded-xl border border-amber-200 bg-white shadow-sm overflow-hidden">
-        <div class="px-4 py-3 bg-amber-50 border-b border-amber-200">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <a href="{{ route('rrhh.alertas.index') }}"
+           class="group rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm hover:border-amber-300 hover:bg-amber-50/50 transition">
+            <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-700 text-sm">
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-700 text-sm">
                         ⚠️
                     </span>
 
                     <div>
-                        <h2 class="text-sm font-bold text-amber-900 leading-tight">
-                            Alertas de reemplazo con descuento potencial
-                        </h2>
-                        <p class="mt-0.5 text-xs text-amber-700">
-                            Casos donde el artículo fue reemplazado antes de cumplir su vida útil.
+                        <h2 class="text-sm font-bold text-slate-900 leading-tight">Alertas</h2>
+                        <p class="mt-0.5 text-xs text-slate-500">
+                            {{ $totalAlertas ?? 0 }} alerta(s) pendiente(s)
                         </p>
                     </div>
                 </div>
 
-                <span class="inline-flex items-center justify-center rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-amber-900">
-                    {{ $alertas->count() }}
-                </span>
+                <span class="text-slate-300 group-hover:text-amber-600 transition text-lg">›</span>
             </div>
-        </div>
+        </a>
 
-        <div class="p-4">
-            @if($alertas->isEmpty())
-                <div class="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3">
-                    <p class="text-sm text-amber-800">
-                        No hay alertas pendientes por ahora.
-                    </p>
-                </div>
-            @else
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-xs">
-                        <thead>
-                            <tr class="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
-                                <th class="px-3 py-2 font-bold">Colaborador</th>
-                                <th class="px-3 py-2 font-bold">Producto</th>
-                                <th class="px-3 py-2 font-bold">Asignación</th>
-                                <th class="px-3 py-2 font-bold">Daño/Reemplazo</th>
-                                <th class="px-3 py-2 font-bold">Vida útil</th>
-                                <th class="px-3 py-2 font-bold">Restante</th>
-                                <th class="px-3 py-2 font-bold">Descuento</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            @foreach($alertas as $a)
-                                <tr class="border-b border-slate-100 text-slate-700 hover:bg-amber-50/50 transition">
-                                    <td class="px-3 py-2 whitespace-nowrap">
-                                        <span class="font-semibold">{{ $a->colaborador_codigo }}</span>
-                                        <span class="text-slate-400">-</span>
-                                        {{ $a->colaborador_nombre ?? 'Sin nombre' }}
-                                    </td>
-
-                                    <td class="px-3 py-2">
-                                        {{ $a->producto_descripcion ?: ($a->producto_nombre ?: $a->producto_codigo) }}
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap">
-                                        {{ optional($a->fecha_asignacion_anterior)->format('d/m/Y') }}
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap">
-                                        {{ optional($a->fecha_dano_reemplazo)->format('d/m/Y') }}
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap">
-                                        {{ $a->vida_util_meses }} meses
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap font-semibold text-amber-800">
-                                        {{ $a->meses_restantes_reales }} meses
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap font-semibold">
-                                        @if(!$a->descuento_aplicable)
-                                            <span class="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                                                No aplica
-                                            </span>
-                                        @else
-                                            <span class="inline-flex rounded-full bg-rose-50 px-2 py-1 text-xs text-rose-700">
-                                                Q {{ number_format($a->descuento_calculado, 2) }}
-                                            </span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-        </div>
     </div>
 
     {{-- Sesión compacta --}}
