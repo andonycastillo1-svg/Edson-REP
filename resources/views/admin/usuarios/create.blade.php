@@ -56,7 +56,7 @@
                 <label class="block text-sm font-medium text-gray-700">Rol</label>
                 <select name="role_id" id="role_id" required
                         class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                    <option value="">Seleccione...</option>
+                    @if(auth()->user()->role_id != 4)<option value="">Seleccione...</option>@endif
 
                     @foreach($roles as $rol)
                         <option value="{{ $rol->id }}" {{ (int) old('role_id') === (int) $rol->id ? 'selected' : '' }}>
@@ -72,7 +72,7 @@
                 <label class="block text-sm font-medium text-gray-700">Bodega</label>
                 <select name="bodega_id" id="bodega_id"
                         class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                    <option value="">Seleccione...</option>
+                    @if(auth()->user()->role_id != 4)<option value="">Seleccione...</option>@endif
                     @foreach($bodegas as $b)
                         <option value="{{ $b->id }}" {{ old('bodega_id') == $b->id ? 'selected' : '' }}>
                             {{ $b->nombre }}
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const bodegaSelect = document.getElementById('bodega_id');
 
     // ID del rol habilitado (Operador / fallback Encargado) viene desde el controller
-    const ROL_ENCARGADO_ID = {{ $rolEncargadoId ?? 2 }};
+    const ROL_ENCARGADO_ID = {{ $rolEncargadoId ?? 'null' }};
 
     function toggleBodega() {
         const isEncargado = parseInt(rolSelect.value || '0') === parseInt(ROL_ENCARGADO_ID);

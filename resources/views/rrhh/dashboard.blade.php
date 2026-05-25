@@ -72,7 +72,14 @@
 
     </div>
 
-    {{-- Alertas como módulo --}}
+    <form method="GET" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+    <input type="text" name="q" value="{{ request('q') }}" placeholder="Colaborador o producto" class="rounded-xl border-slate-300">
+    <input type="date" name="desde" value="{{ request('desde') }}" class="rounded-xl border-slate-300">
+    <input type="date" name="hasta" value="{{ request('hasta') }}" class="rounded-xl border-slate-300">
+    <div class="flex gap-2"><button class="rounded-xl bg-emerald-600 text-white px-4">Filtrar</button><a href="{{ route('rrhh.dashboard') }}" class="rounded-xl border px-4">Limpiar</a></div>
+</form>
+
+{{-- Alertas como módulo --}}
     <div class="mt-4 rounded-xl border border-amber-200 bg-white shadow-sm overflow-hidden">
         <div class="px-4 py-3 bg-amber-50 border-b border-amber-200">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

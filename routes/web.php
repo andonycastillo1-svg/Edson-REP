@@ -72,6 +72,7 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
         Route::resource('bodegas', \App\Http\Controllers\Admin\BodegaController::class);
+        Route::get('bodegas/{bodega}/inventario-export', [\App\Http\Controllers\Admin\BodegaController::class, 'exportInventario'])->name('bodegas.inventario.export');
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
@@ -150,6 +151,7 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
         Route::view('/dashboard', 'operador.dashboard')->name('dashboard');
 
         Route::resource('bodegas', \App\Http\Controllers\Admin\BodegaController::class)->only(['index', 'show']);
+        Route::get('bodegas/{bodega}/inventario-export', [\App\Http\Controllers\Admin\BodegaController::class, 'exportInventario'])->name('bodegas.inventario.export');
 
         Route::resource('compras', \App\Http\Controllers\Admin\CompraController::class);
 
@@ -246,6 +248,7 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 
             return view('rrhh.dashboard', compact('alertas'));
         })->name('dashboard');
+        Route::get('/dashboard/export', [\App\Http\Controllers\RrhhDashboardController::class, 'export'])->name('dashboard.export');
 
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
 

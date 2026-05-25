@@ -101,7 +101,7 @@ class BodegaController extends Controller
      * Display the specified resource.
      * Aquí lo usamos como "Inventario de la bodega"
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         if (!$this->bodegaAccess->canView(auth()->user(), (int) $id)) {
             abort(403);
@@ -133,7 +133,14 @@ class BodegaController extends Controller
             ->leftJoinSub($ultCosto, 'uc', function ($join) {
                 $join->on('uc.producto_codigo', '=', 'i.producto_codigo');
             })
-            ->where('i.bodega_id', $bodega->id);
+            ->where('i.bodega_id', $bodega->id)
+            ->when($request->query('q'), function ($query, $q) {
+                $query->where(function ($w) use ($q) {
+                    $w->where('i.producto_codigo', 'like', "%{$q}%")
+                        ->orWhere('p.nombre', 'like', "%{$q}%")
+                        ->orWhere('p.descripcion', 'like', "%{$q}%");
+                });
+            });
 
         $productosTotal = (clone $inventarioBase)->count();
 
@@ -157,7 +164,7 @@ class BodegaController extends Controller
             )
             ->orderByDesc('i.cantidad')
             ->paginate(15)
-            ->withQueryString();
+            ->appends($request->query());
 
         return view('admin.bodegas.show', [
             'bodega' => $bodega,
@@ -166,6 +173,42 @@ class BodegaController extends Controller
             'stockTotal' => $stockTotal,
             'costoTotalInventario' => $costoTotalInventario,
         ]);
+    }
+
+
+    public function exportInventario(Request $request, string $id)
+    {
+        if (!$this->bodegaAccess->canView(auth()->user(), (int) $id)) {
+            abort(403);
+        }
+
+        $bodega = Bodega::findOrFail($id);
+
+        $rows = DB::table('inventarios as i')
+            ->join('productos as p', 'p.codigo', '=', 'i.producto_codigo')
+            ->where('i.bodega_id', $bodega->id)
+            ->when($request->query('q'), function ($query, $q) {
+                $query->where(function ($w) use ($q) {
+                    $w->where('i.producto_codigo', 'like', "%{$q}%")
+                        ->orWhere('p.nombre', 'like', "%{$q}%")
+                        ->orWhere('p.descripcion', 'like', "%{$q}%");
+                });
+            })
+            ->orderBy('p.nombre')
+            ->get(['i.producto_codigo', 'p.nombre', 'p.descripcion', 'p.unidad_medida', 'p.vida_util_meses', 'i.cantidad']);
+
+        $headers = ['Content-Type' => 'text/csv; charset=UTF-8'];
+        $filename = 'inventario_bodega_'.$bodega->id.'_'.now()->format('Ymd_His').'.csv';
+
+        return response()->streamDownload(function () use ($rows, $bodega) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "ï»¿");
+            fputcsv($out, ['Codigo', 'Producto', 'Descripcion', 'Unidad', 'Bodega', 'Cantidad', 'Vida util (meses)']);
+            foreach ($rows as $r) {
+                fputcsv($out, [$r->producto_codigo, $r->nombre, $r->descripcion, $r->unidad_medida, $bodega->nombre, $r->cantidad, $r->vida_util_meses]);
+            }
+            fclose($out);
+        }, $filename, $headers);
     }
 
     public function edit(string $id)
