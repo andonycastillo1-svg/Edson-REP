@@ -204,7 +204,7 @@
   <div x-show="modalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/40" @click="closeModal()"></div>
 
-    <div class="relative w-full max-w-3xl rounded-2xl bg-white shadow-xl">
+    <div class="relative w-full max-w-5xl rounded-2xl bg-white shadow-xl max-h-[90vh] overflow-y-auto">
 
       <div class="flex items-start justify-between border-b border-slate-200 p-5">
         <div>
@@ -214,7 +214,20 @@
             <span x-text="detalle.codigo"></span>
           </div>
         </div>
-        <button @click="closeModal()">✕</button>
+
+        <div class="flex items-center gap-2">
+          <a x-show="detalle.codigo"
+             :href="`/${routePrefix}/colaboradores/${detalle.codigo}/ficha-tecnica`"
+             target="_blank"
+             class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition">
+            Descargar ficha Excel
+          </a>
+
+          <button @click="closeModal()"
+                  class="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+            ✕
+          </button>
+        </div>
       </div>
 
       <div class="p-5">
@@ -225,51 +238,113 @@
 
         <template x-if="asignaciones.length > 0">
           <div>
-            <table class="ui-table text-sm">
-              <thead class="bg-slate-100">
-                <tr>
-                  <th class="p-2 text-left">Producto</th>
-                  <th class="p-2 text-left">Bodega</th>
-                  <th class="p-2 text-left">Cantidad</th>
-                  <th class="p-2 text-left">Costo</th>
-                  <th class="p-2 text-left">Total</th>
-                  <th class="p-2 text-left">F. Asignación</th>
-                  <th class="p-2 text-left">F. Vencimiento</th>
-                  <th class="p-2 text-left">Estado vida útil</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template x-for="item in asignaciones">
-                  <tr class="border-t">
-                    <td class="p-2">
-                      <div x-text="item.producto"></div>
-                      <div class="text-xs text-slate-500" x-text="'COD: ' + (item.producto_codigo ?? '—')"></div>
-                    </td>
-                    <td class="p-2" x-text="item.bodega"></td>
-                    <td class="p-2" x-text="item.cantidad"></td>
-                    <td class="p-2" x-text="'Q ' + Number(item.costo_unitario).toFixed(2)"></td>
-                    <td class="p-2 font-semibold" x-text="'Q ' + Number(item.total).toFixed(2)"></td>
-                    <td class="p-2" x-text="item.fecha_asignacion ?? '—'"></td>
-                    <td class="p-2" x-text="item.fecha_vencimiento ?? '—'"></td>
-                    <td class="p-2">
-                      <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
-                            :class="item.estado_vida_util === 'Vencido'
-                              ? 'bg-red-100 text-red-700'
-                              : (item.estado_vida_util === 'Vigente'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-slate-100 text-slate-700')"
-                            x-text="item.estado_vida_util"></span>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
+            <div class="mb-3 flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-slate-900">Inventario / equipo asignado</h3>
+              <div class="text-sm font-semibold text-slate-700">
+                Total: Q <span x-text="Number(totalGeneral).toFixed(2)"></span>
+              </div>
+            </div>
 
-            <div class="mt-4 text-right font-semibold">
-              Total: Q <span x-text="Number(totalGeneral).toFixed(2)"></span>
+            <div class="overflow-x-auto">
+              <table class="ui-table text-sm">
+                <thead class="bg-slate-100">
+                  <tr>
+                    <th class="p-2 text-left">Producto</th>
+                    <th class="p-2 text-left">Bodega</th>
+                    <th class="p-2 text-left">Cantidad</th>
+                    <th class="p-2 text-left">Costo</th>
+                    <th class="p-2 text-left">Total</th>
+                    <th class="p-2 text-left">F. Asignación</th>
+                    <th class="p-2 text-left">F. Vencimiento</th>
+                    <th class="p-2 text-left">Estado vida útil</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="item in asignaciones" :key="item.producto_codigo + '-' + item.bodega">
+                    <tr class="border-t">
+                      <td class="p-2">
+                        <div x-text="item.producto"></div>
+                        <div class="text-xs text-slate-500" x-text="'COD: ' + (item.producto_codigo ?? '—')"></div>
+                      </td>
+                      <td class="p-2" x-text="item.bodega"></td>
+                      <td class="p-2" x-text="item.cantidad"></td>
+                      <td class="p-2" x-text="'Q ' + Number(item.costo_unitario).toFixed(2)"></td>
+                      <td class="p-2 font-semibold" x-text="'Q ' + Number(item.total).toFixed(2)"></td>
+                      <td class="p-2" x-text="item.fecha_asignacion ?? '—'"></td>
+                      <td class="p-2" x-text="item.fecha_vencimiento ?? '—'"></td>
+                      <td class="p-2">
+                        <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
+                              :class="item.estado_vida_util === 'Vencido'
+                                ? 'bg-red-100 text-red-700'
+                                : (item.estado_vida_util === 'Vigente'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-slate-100 text-slate-700')"
+                              x-text="item.estado_vida_util"></span>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
             </div>
           </div>
         </template>
+
+        <div class="mt-6 border-t border-slate-200 pt-5">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-slate-900">
+              Cobros / descuentos por daño
+            </h3>
+
+            <div class="text-sm font-semibold text-rose-700">
+              Total cobros: Q <span x-text="Number(totalCobros).toFixed(2)"></span>
+            </div>
+          </div>
+
+          <template x-if="cobros.length === 0">
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              No tiene cobros o descuentos registrados.
+            </div>
+          </template>
+
+          <template x-if="cobros.length > 0">
+            <div class="overflow-x-auto">
+              <table class="ui-table text-sm">
+                <thead class="bg-rose-50">
+                  <tr>
+                    <th class="p-2 text-left">Producto</th>
+                    <th class="p-2 text-left">F. Asignación</th>
+                    <th class="p-2 text-left">F. Daño/Reemplazo</th>
+                    <th class="p-2 text-left">Vida útil</th>
+                    <th class="p-2 text-left">Restante</th>
+                    <th class="p-2 text-left">Costo</th>
+                    <th class="p-2 text-left">Cobro</th>
+                    <th class="p-2 text-left">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="cobro in cobros" :key="cobro.producto_codigo + '-' + cobro.fecha_dano_reemplazo">
+                    <tr class="border-t">
+                      <td class="p-2">
+                        <div x-text="cobro.producto"></div>
+                        <div class="text-xs text-slate-500" x-text="'COD: ' + (cobro.producto_codigo ?? '—')"></div>
+                      </td>
+                      <td class="p-2" x-text="cobro.fecha_asignacion_anterior ?? '—'"></td>
+                      <td class="p-2" x-text="cobro.fecha_dano_reemplazo ?? '—'"></td>
+                      <td class="p-2" x-text="cobro.vida_util_meses + ' meses'"></td>
+                      <td class="p-2" x-text="cobro.meses_restantes + ' meses'"></td>
+                      <td class="p-2" x-text="'Q ' + Number(cobro.costo_producto).toFixed(2)"></td>
+                      <td class="p-2 font-semibold text-rose-700" x-text="'Q ' + Number(cobro.monto_cobro).toFixed(2)"></td>
+                      <td class="p-2">
+                        <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800"
+                              x-text="cobro.estado"></span>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </div>
 
       </div>
 
@@ -283,18 +358,27 @@ function colaboradoresPage(routePrefix) {
     modalOpen: false,
     detalle: {},
     asignaciones: [],
+    cobros: [],
     totalGeneral: 0,
+    totalCobros: 0,
     routePrefix: routePrefix,
 
     async openDetalle(codigo) {
       this.modalOpen = true;
+      this.detalle = {};
+      this.asignaciones = [];
+      this.cobros = [];
+      this.totalGeneral = 0;
+      this.totalCobros = 0;
 
       const res = await fetch(`/${this.routePrefix}/colaboradores/${codigo}/detalle`);
       const data = await res.json();
 
       this.detalle = data.colaborador;
-      this.asignaciones = data.asignaciones;
-      this.totalGeneral = data.total_general;
+      this.asignaciones = data.asignaciones ?? [];
+      this.cobros = data.cobros ?? [];
+      this.totalGeneral = data.total_general ?? 0;
+      this.totalCobros = data.total_cobros ?? 0;
     },
 
     closeModal() {

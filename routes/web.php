@@ -78,6 +78,9 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
 
+        Route::get('colaboradores/{colaborador}/ficha-tecnica', [ColaboradorController::class, 'fichaTecnica'])
+            ->name('colaboradores.ficha_tecnica');
+
         Route::patch('colaboradores/{colaborador}/estado', [ColaboradorController::class, 'cambiarEstado'])
             ->name('colaboradores.estado');
 
@@ -234,6 +237,9 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
+
+        Route::get('colaboradores/{colaborador}/ficha-tecnica', [ColaboradorController::class, 'fichaTecnica'])
+            ->name('colaboradores.ficha_tecnica');
 
         Route::patch('colaboradores/{colaborador}/estado', [ColaboradorController::class, 'cambiarEstado'])
             ->name('colaboradores.estado');
