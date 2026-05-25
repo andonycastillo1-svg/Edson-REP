@@ -353,6 +353,7 @@
         </div>
 
         <div class="inv-actions">
+            <a class="inv-btn inv-btn-secondary" href="{{ route((auth()->user()->role_id == 2 ? 'operador' : 'admin') . '.bodegas.inventario.export', [$bodega->id] + request()->query()) }}">Descargar Excel</a>
             <a href="{{ route('dashboard') }}" class="inv-btn inv-btn-back">
                 ← Volver
             </a>
@@ -391,7 +392,7 @@
         </div>
     </div>
 
-    <div class="inv-toolbar">
+    <form method="GET" class="inv-toolbar">
         <input type="text"
                id="inventarioSearch"
                class="inv-search"
@@ -400,7 +401,9 @@
         <span class="inv-counter" id="inventarioCounter">
             {{ number_format($inventarios->count()) }} productos en pantalla
         </span>
-    </div>
+    <button class="inv-btn inv-btn-primary" type="submit">Filtrar</button>
+        <a class="inv-btn inv-btn-secondary" href="{{ route((auth()->user()->role_id == 2 ? 'operador' : 'admin') . '.bodegas.show', $bodega->id) }}">Limpiar</a>
+    </form>
 
     <div class="inv-table-card">
         <div class="inv-table-scroll">

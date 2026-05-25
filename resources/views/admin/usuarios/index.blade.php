@@ -28,6 +28,18 @@
         </a>
     </div>
 
+    <form method="GET" class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+        <input type="text" name="q" value="{{ request('q') }}" placeholder="Buscar por nombre o correo" class="rounded-xl border-gray-300">
+        <select name="role_id" class="rounded-xl border-gray-300">
+            <option value="">Todos los roles</option>
+            @foreach($rolesFiltro as $rol)
+                <option value="{{ $rol->id }}" {{ (string) request('role_id') === (string) $rol->id ? 'selected' : '' }}>{{ $rol->nombre }}</option>
+            @endforeach
+        </select>
+        <button class="ui-btn-primary" type="submit">Filtrar</button>
+        <a href="{{ route($routePrefix . '.usuarios.index') }}" class="ui-btn-secondary text-center">Limpiar</a>
+    </form>
+
     <!-- Tabla -->
     <div class="overflow-x-auto ui-table">
         <table class="min-w-full">
@@ -97,6 +109,7 @@
             </tbody>
         </table>
     </div>
+    <div class="mt-4">{{ $usuarios->links() }}</div>
 
     <!-- Footer -->
     <div class="mt-6 flex items-center justify-between text-sm text-gray-500">

@@ -11,10 +11,26 @@ use Illuminate\Validation\Rule;
 
 class UsuarioController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $usuarios = User::with(['role','bodega','creator.role'])->orderBy('name')->paginate(15);
-        return view('admin.usuarios.index', compact('usuarios'));
+        $q = trim((string) $request->query('q', ''));
+        $roleId = $request->query('role_id');
+
+        $usuarios = User::with(['role','bodega','creator.role'])
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($w) use ($q) {
+                    $w->where('name', 'like', "%{$q}%")
+                        ->orWhere('email', 'like', "%{$q}%");
+                });
+            })
+            ->when($roleId, fn ($query) => $query->where('role_id', $roleId))
+            ->orderBy('name')
+            ->paginate(15)
+            ->appends($request->query());
+
+        $rolesFiltro = Role::orderBy('nombre')->get();
+
+        return view('admin.usuarios.index', compact('usuarios', 'rolesFiltro'));
     }
 
     public function create()
@@ -133,7 +149,7 @@ class UsuarioController extends Controller
         $query = Role::query()->orderBy('nombre');
 
         if ((int) auth()->user()->role_id === 4) {
-            $query->whereNotIn('id', [1, 4]);
+            $query->where('nombre', 'Almacenista');
         }
 
         return $query->get();
@@ -154,8 +170,8 @@ class UsuarioController extends Controller
 
     private function rolObjetivoRrhhId(): ?int
     {
-        $rolEncargadoId = Role::where('nombre', 'Encargado')->value('id');
-        return $rolEncargadoId ? (int) $rolEncargadoId : 2;
+        $rolAlmacenistaId = Role::where('nombre', 'Almacenista')->value('id');
+        return $rolAlmacenistaId ? (int) $rolAlmacenistaId : null;
     }
 
     private function rolBodegaRequeridaId(): int
