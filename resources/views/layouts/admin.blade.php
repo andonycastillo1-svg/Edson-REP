@@ -14,6 +14,7 @@
                 <img src="{{ asset('img/logo1.png') }}" alt="Logo" class="h-14 w-14 rounded-md border border-sky-200 bg-white p-0.5 object-contain md:h-16 md:w-16">
                 <span class="text-base font-bold tracking-wide text-[#1F2937]">Grupo NetSolutions</span>
             </div>
+
             <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-sm font-semibold text-[#1F2937] md:text-base">
                 <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700">👤</span>
                 <span class="max-w-[220px] truncate">{{ auth()->user()->name }}</span>
@@ -21,7 +22,7 @@
         </div>
     </header>
 
-    <main class="mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-7xl items-center justify-center px-4 py-8 md:px-6">
+    <main class="mx-auto min-h-[calc(100vh-64px)] w-full max-w-7xl px-4 py-8 md:px-6">
         @yield('content')
     </main>
 

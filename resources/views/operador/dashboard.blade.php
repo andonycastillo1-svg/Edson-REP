@@ -15,14 +15,13 @@
 
                 <div>
                     <h1 class="text-xl font-bold text-slate-900 leading-tight">
+                        Panel operador
+                    </h1>
                     <p class="mt-0.5 text-xs text-slate-500">
                         Bienvenido, <span class="font-semibold text-slate-700">{{ auth()->user()->name }}</span>
                     </p>
-                    </h1>
                 </div>
             </div>
-
-            
         </div>
 
         <div class="border-t border-slate-200 bg-slate-50 px-5 py-2">
@@ -114,6 +113,9 @@
     {{-- Sesión compacta --}}
     <div class="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p class="text-xs text-slate-500">
+                Sesión activa como operador.
+            </p>
 
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
