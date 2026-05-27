@@ -17,6 +17,10 @@ class UsuarioController extends Controller
         $roleId = $request->query('role_id');
 
         $usuarios = User::with(['role','bodega','creator.role'])
+            ->when((int) auth()->user()->role_id === 4, function ($query) {
+                $query->whereNotNull('created_by')
+                    ->where('created_by', auth()->id());
+            })
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($w) use ($q) {
                     $w->where('name', 'like', "%{$q}%")

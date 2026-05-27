@@ -13,10 +13,10 @@
             <p class="text-sm text-slate-600">Control visual de vehículos disponibles, en uso o mantenimiento.</p>
         </div>
 
-        <a href="{{ route('admin.vehiculos.create') }}"
+        <div class='flex gap-2'><a href="{{ route('admin.vehiculos.asignaciones.index') }}" class="ui-btn-primary">Asignaciones</a><a href="{{ route('admin.vehiculos.create') }}"
            class="ui-btn-success">
            + Nuevo vehículo
-        </a>
+        </a></div>
     </div>
 
     <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">

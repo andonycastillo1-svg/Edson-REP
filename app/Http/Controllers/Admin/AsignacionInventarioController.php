@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Services\AsignacionVidaUtilService;
 use Carbon\Carbon;
+use App\Models\Role;
 
 class AsignacionInventarioController extends Controller
 {
@@ -63,9 +64,18 @@ class AsignacionInventarioController extends Controller
 
     public function create()
     {
-        $inventarios = Inventario::with('producto', 'bodega')->get();
+        $inventariosQuery = Inventario::with('producto', 'bodega');
+        $bodegasQuery = Bodega::query();
+
+        if ($this->requiereRestriccionBodega()) {
+            $bodegaId = (int) (auth()->user()->bodega_id ?? 0);
+            $inventariosQuery->where('bodega_id', $bodegaId);
+            $bodegasQuery->where('id', $bodegaId);
+        }
+
+        $inventarios = $inventariosQuery->get();
         $colaboradores = Colaborador::where('estado', 'Activo')->get();
-        $bodegas = Bodega::all();
+        $bodegas = $bodegasQuery->get();
 
         $aprobadores = [
             'Gerencia',
@@ -117,6 +127,10 @@ class AsignacionInventarioController extends Controller
             ]);
 
         foreach ($solicitudesAgrupadas as $solicitud) {
+            if ($this->requiereRestriccionBodega() && (int) $solicitud['bodega_id'] !== (int) auth()->user()->bodega_id) {
+                return back()->withInput()->with('error', 'No tienes permiso para asignar productos de otra bodega.');
+            }
+
             $inventario = Inventario::query()
                 ->where('producto_codigo', $solicitud['producto_codigo'])
                 ->where('bodega_id', $solicitud['bodega_id'])
@@ -567,5 +581,19 @@ class AsignacionInventarioController extends Controller
         $primerMovimiento = $movimientos->first();
 
         return view('admin.asignaciones.hoja_devolucion', compact('movimientos', 'grupo', 'primerMovimiento'));
+    }
+
+    private function requiereRestriccionBodega(): bool
+    {
+        $usuario = auth()->user();
+
+        if ((int) $usuario->role_id === 1) {
+            return false;
+        }
+
+        $nombreRol = strtolower(trim((string) optional(Role::find($usuario->role_id))->nombre));
+
+        return in_array($nombreRol, ['almacenista', 'encargado', 'coordinador', 'operador'], true)
+            || in_array((int) $usuario->role_id, [2, 3], true);
     }
 }

@@ -111,6 +111,12 @@ class CompraController extends Controller
             'producto_unidad'      => ['nullable', 'array'],
             'producto_unidad.*'    => ['nullable', 'string', 'max:50'],
 
+            'producto_categoria'   => ['nullable', 'array'],
+            'producto_categoria.*' => ['nullable', 'string', 'max:50'],
+
+            'producto_vida_util_meses'   => ['nullable', 'array'],
+            'producto_vida_util_meses.*' => ['nullable', 'integer', 'min:1', 'max:1200'],
+
             'producto_descripcion'   => ['nullable', 'array'],
             'producto_descripcion.*' => ['nullable', 'string'],
 
@@ -192,6 +198,8 @@ class CompraController extends Controller
             $nombres      = $data['producto_nombre'] ?? [];
             $codNuevos    = $data['producto_codigo_nuevo'] ?? [];
             $unidades     = $data['producto_unidad'] ?? [];
+            $categorias   = $data['producto_categoria'] ?? [];
+            $vidasUtiles  = $data['producto_vida_util_meses'] ?? [];
             $descs        = $data['producto_descripcion'] ?? [];
 
             for ($i = 0; $i < count($tipos); $i++) {
@@ -204,6 +212,8 @@ class CompraController extends Controller
                     $nombre = strtoupper(preg_replace('/\s+/', ' ', trim((string)($nombres[$i] ?? ''))));
                     $codigoNuevo = strtoupper(preg_replace('/\s+/', '', trim((string)($codNuevos[$i] ?? ''))));
                     $unidad = strtoupper(preg_replace('/\s+/', ' ', trim((string)($unidades[$i] ?? 'UND'))));
+                    $categoria = trim((string)($categorias[$i] ?? ''));
+                    $vidaUtilMeses = !empty($vidasUtiles[$i]) ? (int)$vidasUtiles[$i] : null;
                     $descripcion = trim((string)($descs[$i] ?? ''));
 
                     if ($nombre === '' || $codigoNuevo === '') {
@@ -219,6 +229,8 @@ class CompraController extends Controller
                             'nombre'        => $nombre,
                             'descripcion'   => $descripcion !== '' ? $descripcion : null,
                             'unidad_medida' => $unidad,
+                            'tipo'          => $categoria !== '' ? $categoria : null,
+                            'vida_util_meses' => $vidaUtilMeses,
                             'created_at'    => now(),
                             'updated_at'    => now(),
                         ]);
