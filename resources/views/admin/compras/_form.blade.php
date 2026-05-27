@@ -101,7 +101,7 @@
     <table class="w-full text-sm">
         <thead>
             <tr>
-                <th class="text-left">Tipo</th>
+                <th class="text-left">Tipo de registro</th>
                 <th class="text-left">Producto</th>
                 <th class="text-left">Cantidad</th>
                 <th class="text-left">Precio U.</th>
@@ -156,6 +156,17 @@
                        placeholder="Código (nuevo)">
                 <input type="text" name="producto_unidad[]" class="w-full border rounded-lg p-2 productoUnidad"
                        placeholder="Unidad (ej: UND)">
+                <select name="producto_categoria[]" class="w-full border rounded-lg p-2 productoCategoria">
+                    <option value="">Categoría...</option>
+                    <option value="Herramienta">Herramienta</option>
+                    <option value="Equipo">Equipo</option>
+                    <option value="Repuesto">Repuesto</option>
+                    <option value="Insumo">Insumo</option>
+                    <option value="Vehículo">Vehículo</option>
+                    <option value="Otros">Otros</option>
+                </select>
+                <input type="number" min="1" step="1" name="producto_vida_util_meses[]" class="w-full border rounded-lg p-2 productoVidaUtil"
+                       placeholder="Vida útil (meses)">
                 <input type="text" name="producto_descripcion[]" class="w-full border rounded-lg p-2 productoDesc"
                        placeholder="Descripción (opcional)">
             </div>
@@ -230,15 +241,21 @@
     const codigoExistente = tr.querySelector('.productoCodigo');
     const nombreNuevo = tr.querySelector('.productoNombre');
     const codigoNuevo = tr.querySelector('.productoCodigoNuevo');
+    const categoriaNuevo = tr.querySelector('.productoCategoria');
+    const vidaUtilNuevo = tr.querySelector('.productoVidaUtil');
 
     if (isNuevo) {
       codigoExistente.removeAttribute('required');
       nombreNuevo.setAttribute('required','required');
       codigoNuevo.setAttribute('required','required');
+      categoriaNuevo.setAttribute('required','required');
+      vidaUtilNuevo.setAttribute('required','required');
     } else {
       codigoExistente.setAttribute('required','required');
       nombreNuevo.removeAttribute('required');
       codigoNuevo.removeAttribute('required');
+      categoriaNuevo.removeAttribute('required');
+      vidaUtilNuevo.removeAttribute('required');
     }
   }
 
