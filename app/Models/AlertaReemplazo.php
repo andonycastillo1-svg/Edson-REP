@@ -11,6 +11,11 @@ class AlertaReemplazo extends Model
     protected $fillable = [
         'colaborador_codigo',
         'producto_codigo',
+        'vehiculo_vin',
+        'vehiculo_producto_asignacion_id',
+        'cantidad',
+        'costo_estimado',
+        'registrado_por_user_id',
         'asignacion_anterior_id',
         'asignacion_nueva_id',
         'fecha_asignacion_anterior',

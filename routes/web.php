@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\OperacionTrasladoController;
 use App\Http\Controllers\Admin\ColaboradorController;
 use App\Http\Controllers\Admin\AsignacionInventarioController;
 use App\Http\Controllers\Admin\AsignacionVehiculoController;
+use App\Http\Controllers\Admin\VehiculoProductoController;
 use App\Http\Controllers\RrhhDashboardController;
 
 /*
@@ -95,6 +96,9 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::post('vehiculos-asignaciones/{asignacion}/desasignar', [AsignacionVehiculoController::class, 'desasignar'])->name('vehiculos.asignaciones.desasignar');
         Route::get('vehiculos-asignaciones/{asignacion}/pdf-asignacion', [AsignacionVehiculoController::class, 'pdfAsignacion'])->name('vehiculos.asignaciones.pdf_asignacion');
         Route::get('vehiculos-asignaciones/{asignacion}/pdf-desasignacion', [AsignacionVehiculoController::class, 'pdfDesasignacion'])->name('vehiculos.asignaciones.pdf_desasignacion');
+        Route::get('vehiculos-productos', [VehiculoProductoController::class, 'index'])->name('vehiculos.productos.index');
+        Route::post('vehiculos-productos', [VehiculoProductoController::class, 'store'])->name('vehiculos.productos.store');
+        Route::post('vehiculos-productos/{asignacion}/cerrar', [VehiculoProductoController::class, 'cerrar'])->name('vehiculos.productos.cerrar');
         Route::resource('compras', \App\Http\Controllers\Admin\CompraController::class);
 
         Route::get('bodegas/{bodega}/entrada', [InventarioController::class, 'createEntrada'])

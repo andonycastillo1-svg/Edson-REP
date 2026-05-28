@@ -142,6 +142,25 @@
             </div>
         </a>
 
+        <a href="{{ route('admin.vehiculos.productos.index') }}"
+           class="group rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm hover:border-blue-300 hover:bg-blue-50/40 transition">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700 text-sm">
+                        🧰
+                    </span>
+
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-900 leading-tight">Productos del vehículo</h2>
+                        <p class="mt-0.5 text-xs text-slate-500">Refacciones por unidad</p>
+                    </div>
+                </div>
+
+                <span class="text-slate-300 group-hover:text-blue-600 transition text-lg">›</span>
+            </div>
+        </a>
+
+
     </div>
 
     {{-- Sesión compacta --}}

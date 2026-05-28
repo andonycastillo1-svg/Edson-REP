@@ -273,31 +273,18 @@
                             <tr>
                                 <td>
                                     <div class="veh-main">
-                                        {{ optional($a->vehiculo)->marca ?? 'Sin marca' }}
-                                        -
-                                        {{ optional($a->vehiculo)->placa ?? 'Sin placa' }}
+                                        {{ optional($a->vehiculo)->marca ?? 'Sin marca' }} - {{ optional($a->vehiculo)->placa ?? 'Sin placa' }}
                                     </div>
-                                    <div class="veh-sub">
-                                        VIN: {{ $a->vehiculo_vin }}
-                                    </div>
+                                    <div class="veh-sub">VIN: {{ $a->vehiculo_vin }}</div>
                                 </td>
 
                                 <td>
-                                    <div class="veh-main">
-                                        {{ optional($a->colaborador)->nombre ?? 'Sin colaborador' }}
-                                    </div>
-                                    <div class="veh-sub">
-                                        Código: {{ $a->colaborador_codigo }}
-                                    </div>
+                                    <div class="veh-main">{{ optional($a->colaborador)->nombre ?? 'Sin colaborador' }}</div>
+                                    <div class="veh-sub">Código: {{ $a->colaborador_codigo }}</div>
                                 </td>
 
-                                <td>
-                                    {{ optional($a->fecha_inicio)?->format('d/m/Y') ?? '—' }}
-                                </td>
-
-                                <td>
-                                    {{ optional($a->fecha_fin)?->format('d/m/Y') ?? '—' }}
-                                </td>
+                                <td>{{ optional($a->fecha_inicio)?->format('d/m/Y') ?? '—' }}</td>
+                                <td>{{ optional($a->fecha_fin)?->format('d/m/Y') ?? '—' }}</td>
 
                                 <td>
                                     @if($a->activa)
@@ -310,43 +297,27 @@
                                 <td>
                                     <div class="veh-actions">
                                         <div class="veh-docs">
-                                            <a class="btn-light" target="_blank"
-                                               href="{{ route('admin.vehiculos.asignaciones.pdf_asignacion', $a) }}">
-                                                PDF asignación
-                                            </a>
+                                            <a class="btn-light" target="_blank" href="{{ route('admin.vehiculos.asignaciones.pdf_asignacion', $a) }}">PDF asignación</a>
 
                                             @if(!$a->activa)
-                                                <a class="btn-light" target="_blank"
-                                                   href="{{ route('admin.vehiculos.asignaciones.pdf_desasignacion', $a) }}">
-                                                    PDF desasignación
-                                                </a>
+                                                <a class="btn-light" target="_blank" href="{{ route('admin.vehiculos.asignaciones.pdf_desasignacion', $a) }}">PDF desasignación</a>
                                             @endif
+
+                                            <a class="btn-light" href="{{ route('admin.vehiculos.productos.index', ['vehiculo_vin' => $a->vehiculo_vin]) }}">Productos/refacciones del vehículo</a>
                                         </div>
 
                                         @if($a->activa)
                                             <form method="POST"
                                                   action="{{ route('admin.vehiculos.asignaciones.desasignar', $a) }}"
                                                   class="des-form"
-                                                  onsubmit="return confirm('¿Seguro que deseas desasignar este vehículo?');">
+                                                  onsubmit="return confirm('La desasignación no cerrará productos/refacciones activos del vehículo. ¿Deseas continuar?');">
                                                 @csrf
 
-                                                <input
-                                                    type="date"
-                                                    name="fecha_fin"
-                                                    required
-                                                    title="Fecha de desasignación"
-                                                >
+                                                <input type="date" name="fecha_fin" required title="Fecha de desasignación">
+                                                <input type="text" name="estado_final_vehiculo" placeholder="Estado final del vehículo" required>
+                                                <input type="text" name="observaciones_desasignacion" placeholder="Observaciones de desasignación">
 
-                                                <input
-                                                    type="text"
-                                                    name="estado_final_vehiculo"
-                                                    placeholder="Estado final del vehículo"
-                                                    required
-                                                >
-
-                                                <button class="btn-danger" type="submit">
-                                                    Desasignar
-                                                </button>
+                                                <button class="btn-danger" type="submit">Desasignar vehículo</button>
                                             </form>
                                         @endif
                                     </div>
@@ -355,9 +326,7 @@
                         @empty
                             <tr>
                                 <td colspan="6">
-                                    <div class="empty-box">
-                                        No hay asignaciones de vehículos registradas.
-                                    </div>
+                                    <div class="empty-box">No hay asignaciones de vehículos registradas.</div>
                                 </td>
                             </tr>
                         @endforelse
