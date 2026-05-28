@@ -17,13 +17,32 @@ class VehiculoProductoAsignacion extends Model
         'tipo_control',
         'serial',
         'fecha',
-        'asignado_por_user_id',
+        'motivo',
         'observaciones',
+        'estado',
         'activa',
+        'asignado_por_user_id',
+        'cerrado_por_user_id',
+        'fecha_cierre',
+        'accion_cierre',
+        'mal_uso_colaborador',
+        'colaborador_responsable_codigo',
+        'descuento_generado',
     ];
 
-    protected $casts = ['fecha' => 'date', 'activa' => 'boolean'];
+    protected $casts = [
+        'fecha' => 'date',
+        'fecha_cierre' => 'datetime',
+        'activa' => 'boolean',
+        'mal_uso_colaborador' => 'boolean',
+        'descuento_generado' => 'boolean',
+    ];
 
+    public function asignacionVehiculo() { return $this->belongsTo(AsignacionVehiculo::class, 'asignacion_vehiculo_id'); }
+    public function vehiculo() { return $this->belongsTo(Vehiculo::class, 'vehiculo_vin', 'vin'); }
     public function producto() { return $this->belongsTo(Producto::class, 'producto_codigo', 'codigo'); }
     public function bodega() { return $this->belongsTo(Bodega::class, 'bodega_id'); }
+    public function asignadoPor() { return $this->belongsTo(User::class, 'asignado_por_user_id'); }
+    public function cerradoPor() { return $this->belongsTo(User::class, 'cerrado_por_user_id'); }
+    public function colaboradorResponsable() { return $this->belongsTo(Colaborador::class, 'colaborador_responsable_codigo', 'codigo'); }
 }
