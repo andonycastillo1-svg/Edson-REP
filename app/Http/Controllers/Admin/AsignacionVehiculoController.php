@@ -12,24 +12,47 @@ use App\Models\Vehiculo;
 use App\Models\VehiculoProductoAsignacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class AsignacionVehiculoController extends Controller
 {
     public function index()
     {
         $asignaciones = AsignacionVehiculo::with(['vehiculo', 'colaborador', 'productos.producto'])
-            ->latest('fecha_inicio')->paginate(20);
+            ->latest('fecha_inicio')
+            ->paginate(20);
+
         return view('admin.vehiculos.asignaciones.index', compact('asignaciones'));
     }
 
     public function create()
     {
-        $vehiculos = Vehiculo::orderBy('placa')->get();
-        $colaboradores = Colaborador::where('estado', 'Activo')->orderBy('nombre')->get();
-        $inventarios = Inventario::with(['producto', 'bodega'])->where('cantidad', '>', 0)->get();
-        $bodegas = Bodega::orderBy('nombre')->get();
+        $vehiculos = Vehiculo::orderBy('marca')
+            ->orderBy('placa')
+            ->get();
 
-        return view('admin.vehiculos.asignaciones.create', compact('vehiculos', 'colaboradores', 'inventarios', 'bodegas'));
+        $colaboradores = Colaborador::where('estado', 'Activo')
+            ->orderBy('nombre')
+            ->get();
+
+        $bodegas = Bodega::orderBy('nombre')
+            ->get();
+
+        // Solo productos con categoría/tipo refacciones y stock disponible
+        $inventarios = Inventario::with(['producto', 'bodega'])
+            ->where('cantidad', '>', 0)
+            ->whereHas('producto', function ($query) {
+                $query->whereRaw('LOWER(TRIM(tipo)) = ?', ['refacciones']);
+            })
+            ->orderBy('producto_codigo')
+            ->get();
+
+        return view('admin.vehiculos.asignaciones.create', compact(
+            'vehiculos',
+            'colaboradores',
+            'inventarios',
+            'bodegas'
+        ));
     }
 
     public function store(Request $request)
@@ -40,74 +63,112 @@ class AsignacionVehiculoController extends Controller
             'fecha_inicio' => ['required', 'date'],
             'estado_inicial_vehiculo' => ['required', 'string', 'max:60'],
             'observaciones_asignacion' => ['nullable', 'string'],
+
             'productos' => ['nullable', 'array'],
             'productos.*.producto_codigo' => ['required_with:productos', 'exists:productos,codigo'],
             'productos.*.bodega_id' => ['required_with:productos', 'exists:bodegas,id'],
             'productos.*.cantidad' => ['required_with:productos', 'integer', 'min:1'],
-            'productos.*.tipo_control' => ['required_with:productos', 'in:unidad,cantidad'],
-            'productos.*.serial' => ['nullable', 'string', 'max:120'],
-            'productos.*.destino' => ['nullable', 'in:asignado'],
+            'productos.*.tipo_control' => ['nullable', 'in:cantidad'],
             'productos.*.observaciones' => ['nullable', 'string'],
         ]);
 
-        $yaAsignado = AsignacionVehiculo::where('vehiculo_vin', $data['vehiculo_vin'])->where('activa', true)->exists();
-        if ($yaAsignado) return back()->withInput()->with('error', 'El vehículo ya tiene una asignación activa.');
+        $yaAsignado = AsignacionVehiculo::where('vehiculo_vin', $data['vehiculo_vin'])
+            ->where('activa', true)
+            ->exists();
 
-        $personaConVehiculo = AsignacionVehiculo::where('colaborador_codigo', $data['colaborador_codigo'])->where('activa', true)->exists();
-        if ($personaConVehiculo) return back()->withInput()->with('error', 'La persona ya tiene un vehículo activo asignado.');
+        if ($yaAsignado) {
+            return back()
+                ->withInput()
+                ->with('error', 'El vehículo ya tiene una asignación activa.');
+        }
 
-        DB::transaction(function () use ($data) {
-            $asignacion = AsignacionVehiculo::create([
-                'vehiculo_vin' => $data['vehiculo_vin'],
-                'colaborador_codigo' => $data['colaborador_codigo'],
-                'asignado_por_user_id' => auth()->id(),
-                'fecha_inicio' => $data['fecha_inicio'],
-                'estado_inicial_vehiculo' => $data['estado_inicial_vehiculo'],
-                'observaciones_asignacion' => $data['observaciones_asignacion'] ?? null,
-                'activa' => true,
-            ]);
+        $personaConVehiculo = AsignacionVehiculo::where('colaborador_codigo', $data['colaborador_codigo'])
+            ->where('activa', true)
+            ->exists();
 
-            Vehiculo::where('vin', $data['vehiculo_vin'])->update(['estado' => 'En uso']);
+        if ($personaConVehiculo) {
+            return back()
+                ->withInput()
+                ->with('error', 'La persona ya tiene un vehículo activo asignado.');
+        }
 
-            foreach (($data['productos'] ?? []) as $prod) {
-                $inv = Inventario::where('producto_codigo', $prod['producto_codigo'])->where('bodega_id', $prod['bodega_id'])->lockForUpdate()->first();
-                if (!$inv || (int)$inv->cantidad < (int)$prod['cantidad']) throw new \RuntimeException('Stock insuficiente para producto a vehículo.');
-
-                if (($prod['tipo_control'] ?? 'cantidad') === 'unidad' && !empty($prod['serial'])) {
-                    $serialUsado = VehiculoProductoAsignacion::where('producto_codigo', $prod['producto_codigo'])->where('serial', $prod['serial'])->where('activa', true)->exists();
-                    if ($serialUsado) throw new \RuntimeException('Serial ya asignado activamente.');
-                }
-
-                $inv->decrement('cantidad', (int)$prod['cantidad']);
-
-                VehiculoProductoAsignacion::create([
-                    'asignacion_vehiculo_id' => $asignacion->id,
+        try {
+            DB::transaction(function () use ($data) {
+                $asignacion = AsignacionVehiculo::create([
                     'vehiculo_vin' => $data['vehiculo_vin'],
-                    'producto_codigo' => $prod['producto_codigo'],
-                    'bodega_id' => $prod['bodega_id'],
-                    'cantidad' => (int)$prod['cantidad'],
-                    'tipo_control' => $prod['tipo_control'],
-                    'serial' => $prod['serial'] ?? null,
-                    'fecha' => $data['fecha_inicio'],
+                    'colaborador_codigo' => $data['colaborador_codigo'],
                     'asignado_por_user_id' => auth()->id(),
-                    'observaciones' => $prod['observaciones'] ?? null,
+                    'fecha_inicio' => $data['fecha_inicio'],
+                    'estado_inicial_vehiculo' => $data['estado_inicial_vehiculo'],
+                    'observaciones_asignacion' => $data['observaciones_asignacion'] ?? null,
                     'activa' => true,
                 ]);
 
-                Movimiento::create([
-                    'producto_codigo' => $prod['producto_codigo'],
-                    'bodega_origen_id' => $prod['bodega_id'],
-                    'bodega_destino_id' => null,
-                    'tipo_movimiento' => 'Salida',
-                    'cantidad' => (int)$prod['cantidad'],
-                    'fecha' => now(),
-                    'user_id' => auth()->id(),
-                    'vehiculo_vin' => $data['vehiculo_vin'],
-                ]);
-            }
-        });
+                Vehiculo::where('vin', $data['vehiculo_vin'])
+                    ->update(['estado' => 'En uso']);
 
-        return redirect()->route('admin.vehiculos.asignaciones.index')->with('success', 'Asignación de vehículo creada correctamente.');
+                foreach (($data['productos'] ?? []) as $prod) {
+                    $productoCodigo = $prod['producto_codigo'];
+                    $bodegaId = $prod['bodega_id'];
+                    $cantidad = (int) $prod['cantidad'];
+
+                    $inv = Inventario::with('producto')
+                        ->where('producto_codigo', $productoCodigo)
+                        ->where('bodega_id', $bodegaId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$inv) {
+                        throw new \RuntimeException('No existe inventario para el producto y bodega seleccionados.');
+                    }
+
+                    $tipoProducto = strtolower(trim(optional($inv->producto)->tipo ?? ''));
+
+                    if ($tipoProducto !== 'refacciones') {
+                        throw new \RuntimeException('Solo se pueden asignar productos con categoría/tipo refacciones.');
+                    }
+
+                    if ((int) $inv->cantidad < $cantidad) {
+                        throw new \RuntimeException('Stock insuficiente para uno de los productos seleccionados.');
+                    }
+
+                    $inv->decrement('cantidad', $cantidad);
+
+                    VehiculoProductoAsignacion::create([
+                        'asignacion_vehiculo_id' => $asignacion->id,
+                        'vehiculo_vin' => $data['vehiculo_vin'],
+                        'producto_codigo' => $productoCodigo,
+                        'bodega_id' => $bodegaId,
+                        'cantidad' => $cantidad,
+                        'tipo_control' => 'cantidad',
+                        'serial' => null,
+                        'fecha' => $data['fecha_inicio'],
+                        'asignado_por_user_id' => auth()->id(),
+                        'observaciones' => $prod['observaciones'] ?? null,
+                        'activa' => true,
+                    ]);
+
+                    Movimiento::create([
+                        'producto_codigo' => $productoCodigo,
+                        'bodega_origen_id' => $bodegaId,
+                        'bodega_destino_id' => null,
+                        'tipo_movimiento' => 'Salida',
+                        'cantidad' => $cantidad,
+                        'fecha' => now(),
+                        'user_id' => auth()->id(),
+                        'vehiculo_vin' => $data['vehiculo_vin'],
+                    ]);
+                }
+            });
+        } catch (Throwable $e) {
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('admin.vehiculos.asignaciones.index')
+            ->with('success', 'Asignación de vehículo creada correctamente.');
     }
 
     public function desasignar(Request $request, AsignacionVehiculo $asignacion)
@@ -122,7 +183,9 @@ class AsignacionVehiculoController extends Controller
             'productos.*.cantidad' => ['required_with:productos', 'integer', 'min:1'],
         ]);
 
-        if (!$asignacion->activa) return back()->with('error', 'La asignación ya está cerrada.');
+        if (!$asignacion->activa) {
+            return back()->with('error', 'La asignación ya está cerrada.');
+        }
 
         DB::transaction(function () use ($data, $asignacion) {
             $asignacion->update([
@@ -133,18 +196,25 @@ class AsignacionVehiculoController extends Controller
                 'activa' => false,
             ]);
 
-            Vehiculo::where('vin', $asignacion->vehiculo_vin)->update(['estado' => 'Disponible']);
+            Vehiculo::where('vin', $asignacion->vehiculo_vin)
+                ->update(['estado' => 'Disponible']);
 
             foreach (($data['productos'] ?? []) as $item) {
                 $rel = VehiculoProductoAsignacion::lockForUpdate()->findOrFail($item['id']);
-                $cantidad = min((int)$item['cantidad'], (int)$rel->cantidad);
+                $cantidad = min((int) $item['cantidad'], (int) $rel->cantidad);
                 $accion = $item['accion'];
 
                 if ($accion === 'regresar') {
                     $inv = Inventario::firstOrCreate(
-                        ['producto_codigo' => $rel->producto_codigo, 'bodega_id' => $rel->bodega_id],
-                        ['cantidad' => 0]
+                        [
+                            'producto_codigo' => $rel->producto_codigo,
+                            'bodega_id' => $rel->bodega_id,
+                        ],
+                        [
+                            'cantidad' => 0,
+                        ]
                     );
+
                     $inv->increment('cantidad', $cantidad);
 
                     Movimiento::create([
@@ -165,7 +235,9 @@ class AsignacionVehiculoController extends Controller
             }
         });
 
-        return redirect()->route('admin.vehiculos.asignaciones.index')->with('success', 'Vehículo desasignado correctamente.');
+        return redirect()
+            ->route('admin.vehiculos.asignaciones.index')
+            ->with('success', 'Vehículo desasignado correctamente.');
     }
 
     public function pdfAsignacion(AsignacionVehiculo $asignacion)

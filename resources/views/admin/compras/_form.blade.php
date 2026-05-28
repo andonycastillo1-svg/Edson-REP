@@ -1,11 +1,9 @@
 @php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+
 <form action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
 @csrf
 
-{{-- ENCABEZADO --}}
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-    {{-- ✅ FECHA DE COMPRA (CALENDARIO) --}}
     <div>
         <label class="block text-sm font-medium mb-1">Fecha de compra</label>
         <input type="date" name="fecha_compra" value="{{ old('fecha_compra') }}"
@@ -28,7 +26,6 @@
         </select>
     </div>
 
-    {{-- PROVEEDOR --}}
     <div>
         <label class="block text-sm font-medium mb-1">Proveedor</label>
         <select id="proveedor_tipo" name="proveedor_tipo" class="w-full border rounded-lg p-2" required>
@@ -78,7 +75,6 @@
         <input name="a_utilizarse" value="{{ old('a_utilizarse') }}" class="w-full border rounded-lg p-2">
     </div>
 
-    {{-- PDFs --}}
     <div>
         <label class="block text-sm font-medium mb-1">PDF(s) Factura</label>
         <input type="file" name="pdfs[]" multiple accept="application/pdf" class="w-full border rounded-lg p-2">
@@ -86,10 +82,7 @@
     </div>
 </div>
 
-
-{{-- DETALLE DE PRODUCTOS --}}
 <div class="border rounded-xl p-4 bg-gray-50">
-
     <div class="flex justify-between mb-3">
         <h3 class="font-semibold">Detalle de productos</h3>
         <button type="button" id="btnAddLinea"
@@ -97,6 +90,20 @@
             + Agregar línea
         </button>
     </div>
+
+    <datalist id="listaCategorias">
+        @foreach(($categorias ?? collect()) as $cat)
+            <option value="{{ $cat }}"></option>
+        @endforeach
+
+        <option value="Herramienta"></option>
+        <option value="Equipo"></option>
+        <option value="Refacciones"></option>
+        <option value="Repuesto"></option>
+        <option value="Insumo"></option>
+        <option value="Vehículo"></option>
+        <option value="Otros"></option>
+    </datalist>
 
     <table class="w-full text-sm">
         <thead>
@@ -126,8 +133,6 @@
 
 </form>
 
-
-{{-- TEMPLATE FILA --}}
 <template id="tplLinea">
     <tr class="border-t align-top">
         <td class="py-2 pr-2 w-40">
@@ -138,7 +143,6 @@
         </td>
 
         <td class="py-2 pr-2">
-            {{-- EXISTENTE --}}
             <div class="wrapExistente">
                 <select name="producto_codigo[]" class="w-full border rounded-lg p-2 productoCodigo">
                     <option value="">Seleccione...</option>
@@ -148,25 +152,31 @@
                 </select>
             </div>
 
-            {{-- NUEVO --}}
             <div class="wrapNuevo hidden space-y-2">
                 <input type="text" name="producto_nombre[]" class="w-full border rounded-lg p-2 productoNombre"
-                       placeholder="Nombre producto (nuevo)">
+                       placeholder="Nombre producto nuevo">
+
                 <input type="text" name="producto_codigo_nuevo[]" class="w-full border rounded-lg p-2 productoCodigoNuevo"
-                       placeholder="Código (nuevo)">
+                       placeholder="Código nuevo">
+
                 <input type="text" name="producto_unidad[]" class="w-full border rounded-lg p-2 productoUnidad"
                        placeholder="Unidad (ej: UND)">
-                <select name="producto_categoria[]" class="w-full border rounded-lg p-2 productoCategoria">
-                    <option value="">Categoría...</option>
-                    <option value="Herramienta">Herramienta</option>
-                    <option value="Equipo">Equipo</option>
-                    <option value="Repuesto">Repuesto</option>
-                    <option value="Insumo">Insumo</option>
-                    <option value="Vehículo">Vehículo</option>
-                    <option value="Otros">Otros</option>
-                </select>
-                <input type="number" min="1" step="1" name="producto_vida_util_meses[]" class="w-full border rounded-lg p-2 productoVidaUtil"
+
+                <div>
+                    <input type="text"
+                           name="producto_categoria[]"
+                           class="w-full border rounded-lg p-2 productoCategoria"
+                           list="listaCategorias"
+                           placeholder="Categoría: selecciona o escribe una nueva">
+                    <p class="text-xs text-gray-500 mt-1">
+                        Puedes elegir una categoría existente o escribir una nueva.
+                    </p>
+                </div>
+
+                <input type="number" min="1" step="1" name="producto_vida_util_meses[]"
+                       class="w-full border rounded-lg p-2 productoVidaUtil"
                        placeholder="Vida útil (meses)">
+
                 <input type="text" name="producto_descripcion[]" class="w-full border rounded-lg p-2 productoDesc"
                        placeholder="Descripción (opcional)">
             </div>
@@ -190,100 +200,104 @@
     </tr>
 </template>
 
-
 <script>
 (function () {
-  // Toggle proveedor existente/nuevo
-  const tipoProv = document.getElementById('proveedor_tipo');
-  const wrapExistenteProv = document.getElementById('wrap_existente');
-  const wrapNuevoProv = document.getElementById('wrap_nuevo');
+    const tipoProv = document.getElementById('proveedor_tipo');
+    const wrapExistenteProv = document.getElementById('wrap_existente');
+    const wrapNuevoProv = document.getElementById('wrap_nuevo');
 
-  function toggleProveedor() {
-    const isNuevo = tipoProv.value === 'nuevo';
-    wrapExistenteProv.classList.toggle('hidden', isNuevo);
-    wrapNuevoProv.classList.toggle('hidden', !isNuevo);
-  }
-  if (tipoProv) {
-    tipoProv.addEventListener('change', toggleProveedor);
-    toggleProveedor();
-  }
-
-  // Detalle
-  const body = document.getElementById('detalleBody');
-  const tpl = document.getElementById('tplLinea');
-  const totalEl = document.getElementById('totalFactura');
-  const btnAdd = document.getElementById('btnAddLinea');
-
-  function money(n){ return (Math.round(n*100)/100).toFixed(2); }
-
-  function recalcular(){
-    let total = 0;
-    body.querySelectorAll('tr').forEach(tr => {
-      const qty = parseFloat(tr.querySelector('.cantidad')?.value || 0);
-      const prc = parseFloat(tr.querySelector('.precio')?.value || 0);
-      const val = qty * prc;
-      tr.querySelector('.valorLinea').textContent = money(val);
-      total += val;
-    });
-    totalEl.textContent = money(total);
-  }
-
-  function toggleProductoLinea(tr){
-    const sel = tr.querySelector('.productoTipo');
-    const wrapEx = tr.querySelector('.wrapExistente');
-    const wrapNu = tr.querySelector('.wrapNuevo');
-
-    const isNuevo = sel.value === 'nuevo';
-    wrapEx.classList.toggle('hidden', isNuevo);
-    wrapNu.classList.toggle('hidden', !isNuevo);
-
-    // Reglas simple: requerido según tipo
-    const codigoExistente = tr.querySelector('.productoCodigo');
-    const nombreNuevo = tr.querySelector('.productoNombre');
-    const codigoNuevo = tr.querySelector('.productoCodigoNuevo');
-    const categoriaNuevo = tr.querySelector('.productoCategoria');
-    const vidaUtilNuevo = tr.querySelector('.productoVidaUtil');
-
-    if (isNuevo) {
-      codigoExistente.removeAttribute('required');
-      nombreNuevo.setAttribute('required','required');
-      codigoNuevo.setAttribute('required','required');
-      categoriaNuevo.setAttribute('required','required');
-      vidaUtilNuevo.setAttribute('required','required');
-    } else {
-      codigoExistente.setAttribute('required','required');
-      nombreNuevo.removeAttribute('required');
-      codigoNuevo.removeAttribute('required');
-      categoriaNuevo.removeAttribute('required');
-      vidaUtilNuevo.removeAttribute('required');
+    function toggleProveedor() {
+        const isNuevo = tipoProv.value === 'nuevo';
+        wrapExistenteProv.classList.toggle('hidden', isNuevo);
+        wrapNuevoProv.classList.toggle('hidden', !isNuevo);
     }
-  }
 
-  window.addLinea = function () {
-    const clone = tpl.content.cloneNode(true);
-    const tr = clone.querySelector('tr');
+    if (tipoProv) {
+        tipoProv.addEventListener('change', toggleProveedor);
+        toggleProveedor();
+    }
 
-    tr.querySelector('.productoTipo').addEventListener('change', () => toggleProductoLinea(tr));
+    const body = document.getElementById('detalleBody');
+    const tpl = document.getElementById('tplLinea');
+    const totalEl = document.getElementById('totalFactura');
+    const btnAdd = document.getElementById('btnAddLinea');
 
-    tr.addEventListener('input', (e) => {
-      if (e.target.classList.contains('cantidad') || e.target.classList.contains('precio')) {
+    function money(n) {
+        return (Math.round(n * 100) / 100).toFixed(2);
+    }
+
+    function recalcular() {
+        let total = 0;
+
+        body.querySelectorAll('tr').forEach(tr => {
+            const qty = parseFloat(tr.querySelector('.cantidad')?.value || 0);
+            const prc = parseFloat(tr.querySelector('.precio')?.value || 0);
+            const val = qty * prc;
+
+            tr.querySelector('.valorLinea').textContent = money(val);
+            total += val;
+        });
+
+        totalEl.textContent = money(total);
+    }
+
+    function toggleProductoLinea(tr) {
+        const sel = tr.querySelector('.productoTipo');
+        const wrapEx = tr.querySelector('.wrapExistente');
+        const wrapNu = tr.querySelector('.wrapNuevo');
+
+        const isNuevo = sel.value === 'nuevo';
+
+        wrapEx.classList.toggle('hidden', isNuevo);
+        wrapNu.classList.toggle('hidden', !isNuevo);
+
+        const codigoExistente = tr.querySelector('.productoCodigo');
+        const nombreNuevo = tr.querySelector('.productoNombre');
+        const codigoNuevo = tr.querySelector('.productoCodigoNuevo');
+        const categoriaNuevo = tr.querySelector('.productoCategoria');
+        const vidaUtilNuevo = tr.querySelector('.productoVidaUtil');
+
+        if (isNuevo) {
+            codigoExistente.removeAttribute('required');
+            nombreNuevo.setAttribute('required', 'required');
+            codigoNuevo.setAttribute('required', 'required');
+            categoriaNuevo.setAttribute('required', 'required');
+            vidaUtilNuevo.setAttribute('required', 'required');
+        } else {
+            codigoExistente.setAttribute('required', 'required');
+            nombreNuevo.removeAttribute('required');
+            codigoNuevo.removeAttribute('required');
+            categoriaNuevo.removeAttribute('required');
+            vidaUtilNuevo.removeAttribute('required');
+        }
+    }
+
+    window.addLinea = function () {
+        const clone = tpl.content.cloneNode(true);
+        const tr = clone.querySelector('tr');
+
+        tr.querySelector('.productoTipo').addEventListener('change', () => toggleProductoLinea(tr));
+
+        tr.addEventListener('input', (e) => {
+            if (e.target.classList.contains('cantidad') || e.target.classList.contains('precio')) {
+                recalcular();
+            }
+        });
+
+        tr.querySelector('.btnDel').addEventListener('click', () => {
+            tr.remove();
+            recalcular();
+        });
+
+        body.appendChild(tr);
+        toggleProductoLinea(tr);
         recalcular();
-      }
-    });
+    }
 
-    tr.querySelector('.btnDel').addEventListener('click', () => {
-      tr.remove();
-      recalcular();
-    });
+    if (btnAdd) {
+        btnAdd.addEventListener('click', () => window.addLinea());
+    }
 
-    body.appendChild(tr);
-    toggleProductoLinea(tr);
-    recalcular();
-  }
-
-  if (btnAdd) btnAdd.addEventListener('click', () => window.addLinea());
-
-  // Arranca con 1 línea
-  window.addLinea();
+    window.addLinea();
 })();
 </script>
