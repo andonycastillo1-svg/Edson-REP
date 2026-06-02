@@ -11,6 +11,19 @@
     $totalProductos = $inventarios->count();
     $stockTotal = $inventarios->sum('cantidad');
 
+    $productosSinCosto = $inventarios->filter(function ($inv) {
+        $costo = $inv->producto->costo
+            ?? $inv->producto->precio
+            ?? $inv->producto->precio_unitario
+            ?? 0;
+
+        return (float) $costo <= 0;
+    })->count();
+
+    $stockBajo = $inventarios->filter(function ($inv) {
+        return (int) $inv->cantidad > 0 && (int) $inv->cantidad <= 5;
+    })->count();
+
     $costoTotal = $inventarios->sum(function ($inv) {
         $costo = $inv->producto->costo
             ?? $inv->producto->precio
@@ -28,64 +41,84 @@
         width: 100%;
     }
 
+    .inv-card {
+        background: #fff;
+        border: 1px solid #dbe3ea;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    }
+
     .inv-header {
+        padding: 20px 22px;
+        border-bottom: 1px solid #e5eaf0;
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         gap: 16px;
-        margin-bottom: 22px;
     }
 
     .inv-title {
         margin: 0;
         font-size: 24px;
-        font-weight: 800;
+        font-weight: 900;
         color: #0f172a;
-        letter-spacing: -0.03em;
+        letter-spacing: -0.04em;
     }
 
-    .inv-subtitle {
-        margin-top: 4px;
+    .inv-meta {
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
         color: #64748b;
         font-size: 13px;
     }
 
+    .inv-meta strong {
+        color: #0f172a;
+    }
+
+    .inv-mode {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 11px;
+        font-weight: 900;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+    }
+
     .inv-actions {
         display: flex;
-        gap: 8px;
         flex-wrap: wrap;
         justify-content: flex-end;
+        gap: 8px;
     }
 
     .inv-btn {
-        height: 38px;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 13px;
-        padding: 0 14px;
+        height: 36px;
+        border-radius: 9px;
+        padding: 0 13px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        text-decoration: none;
         border: 1px solid transparent;
+        font-size: 13px;
+        font-weight: 800;
+        text-decoration: none;
         white-space: nowrap;
-    }
-
-    .inv-btn-primary {
-        background: #2563eb;
-        color: #fff;
-        border-color: #2563eb;
-    }
-
-    .inv-btn-primary:hover {
-        background: #1d4ed8;
-        color: #fff;
+        transition: .15s ease;
     }
 
     .inv-btn-secondary {
         background: #fff;
         color: #334155;
-        border-color: #dbe3ea;
+        border-color: #cbd5e1;
     }
 
     .inv-btn-secondary:hover {
@@ -93,65 +126,84 @@
         color: #0f172a;
     }
 
+    .inv-btn-primary {
+        background: #4f46e5;
+        color: #fff;
+        border-color: #4f46e5;
+    }
+
+    .inv-btn-primary:hover {
+        background: #4338ca;
+        color: #fff;
+    }
+
     .inv-btn-disabled {
         opacity: .55;
         cursor: not-allowed;
     }
 
-    .inv-stats {
+    .inv-summary {
+        padding: 14px 22px;
+        border-bottom: 1px solid #e5eaf0;
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
-        margin-bottom: 18px;
-    }
-
-    .inv-stat-card {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
         background: #fff;
-        border: 1px solid #dbe3ea;
-        border-radius: 16px;
-        padding: 18px;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
     }
 
-    .inv-stat-label {
+    .inv-summary-item {
+        border: 1px solid #e5eaf0;
+        border-radius: 13px;
+        padding: 12px 14px;
+        background: #fbfdff;
+    }
+
+    .inv-summary-label {
+        font-size: 11px;
+        font-weight: 900;
         color: #64748b;
-        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
         margin-bottom: 6px;
     }
 
-    .inv-stat-value {
+    .inv-summary-value {
+        font-size: 21px;
+        font-weight: 900;
         color: #0f172a;
-        font-size: 24px;
-        font-weight: 800;
         line-height: 1;
     }
 
-    .inv-stat-note {
-        margin-top: 8px;
-        color: #64748b;
+    .inv-summary-note {
+        margin-top: 6px;
         font-size: 11px;
+        color: #64748b;
         line-height: 1.3;
     }
 
     .inv-toolbar {
-        background: #fff;
-        border: 1px solid #dbe3ea;
-        border-radius: 16px;
-        padding: 14px;
-        margin-bottom: 14px;
+        padding: 13px 22px;
+        border-bottom: 1px solid #e5eaf0;
+        background: #f8fafc;
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .inv-search-box {
+        width: 100%;
+        max-width: 500px;
+        position: relative;
     }
 
     .inv-search {
         width: 100%;
-        max-width: 420px;
         height: 38px;
         border: 1px solid #cbd5e1;
         border-radius: 10px;
-        padding: 0 12px;
+        padding: 0 38px 0 12px;
         font-size: 13px;
         color: #334155;
         background: #fff;
@@ -162,25 +214,37 @@
         border-color: #3b82f6;
     }
 
-    .inv-badge {
+    .inv-search-icon {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 13px;
+    }
+
+    .inv-toolbar-info {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .inv-mini {
         display: inline-flex;
         align-items: center;
         border-radius: 999px;
-        padding: 5px 10px;
+        padding: 6px 10px;
+        background: #fff;
+        border: 1px solid #dbe3ea;
+        color: #334155;
         font-size: 12px;
-        font-weight: 700;
-        background: #eff6ff;
-        color: #1d4ed8;
-        border: 1px solid #bfdbfe;
+        font-weight: 800;
         white-space: nowrap;
     }
 
-    .inv-table-card {
-        background: #fff;
-        border: 1px solid #dbe3ea;
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    .inv-table-wrap {
+        overflow-x: auto;
     }
 
     .inv-table {
@@ -191,25 +255,25 @@
     }
 
     .inv-table thead {
-        background: #f8fafc;
-        color: #475569;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: .03em;
+        background: #fff;
     }
 
     .inv-table th {
         padding: 12px 14px;
-        font-weight: 800;
-        border-bottom: 1px solid #e2e8f0;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        border-bottom: 1px solid #e5eaf0;
         white-space: nowrap;
     }
 
     .inv-table td {
         padding: 13px 14px;
         border-bottom: 1px solid #eef2f7;
-        vertical-align: middle;
         color: #0f172a;
+        vertical-align: middle;
     }
 
     .inv-table tbody tr:hover {
@@ -217,13 +281,19 @@
     }
 
     .inv-code {
-        font-weight: 800;
-        color: #0f172a;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 8px;
+        padding: 5px 8px;
+        font-size: 12px;
+        font-weight: 900;
+        color: #1e293b;
+        background: #f1f5f9;
         white-space: nowrap;
     }
 
     .inv-product-name {
-        font-weight: 800;
+        font-weight: 900;
         color: #0f172a;
         margin-bottom: 2px;
     }
@@ -231,91 +301,153 @@
     .inv-product-desc {
         color: #64748b;
         font-size: 12px;
-        max-width: 560px;
+        max-width: 520px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-    }
-
-    .inv-stock {
-        font-weight: 900;
-        font-size: 15px;
-    }
-
-    .inv-stock-pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 44px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        background: #f1f5f9;
-        color: #0f172a;
-        font-weight: 800;
-    }
-
-    .inv-money {
-        font-weight: 800;
-        color: #0f172a;
-        white-space: nowrap;
     }
 
     .inv-muted {
         color: #94a3b8;
     }
 
-    .inv-row-actions {
+    .inv-stock {
         display: inline-flex;
-        gap: 6px;
-        justify-content: flex-end;
-        flex-wrap: wrap;
+        justify-content: center;
+        min-width: 46px;
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-weight: 900;
+        background: #f1f5f9;
+        color: #0f172a;
     }
 
-    .inv-small-btn {
-        height: 30px;
-        border-radius: 8px;
-        font-size: 12px;
-        font-weight: 700;
-        padding: 0 10px;
+    .inv-stock-low {
+        background: #fff7ed;
+        color: #c2410c;
+    }
+
+    .inv-stock-zero {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .inv-life {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        border: 1px solid #dbe3ea;
-        background: #fff;
-        color: #334155;
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 12px;
+        font-weight: 800;
+        background: #eef2ff;
+        color: #4338ca;
+        white-space: nowrap;
     }
 
-    .inv-small-btn-primary {
-        background: #2563eb;
-        color: #fff;
-        border-color: #2563eb;
+    .inv-money {
+        font-weight: 900;
+        color: #0f172a;
+        white-space: nowrap;
+    }
+
+    .inv-money-zero {
+        color: #dc2626;
+    }
+
+    .inv-status {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 5px 10px;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .inv-status-ok {
+        background: #ecfdf5;
+        color: #047857;
+    }
+
+    .inv-status-warning {
+        background: #fff7ed;
+        color: #c2410c;
+    }
+
+    .inv-status-danger {
+        background: #fee2e2;
+        color: #b91c1c;
     }
 
     .inv-empty {
-        padding: 34px;
+        padding: 44px 24px;
         text-align: center;
-        color: #64748b;
     }
 
     .inv-empty-title {
-        font-weight: 800;
+        font-weight: 900;
         color: #0f172a;
-        margin-bottom: 4px;
+        margin-bottom: 5px;
     }
 
-    @media (max-width: 992px) {
-        .inv-header,
-        .inv-toolbar {
+    .inv-empty-text {
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .inv-footer-actions {
+        margin-top: 14px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .inv-footer-note {
+        margin-top: 10px;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    @media (max-width: 1100px) {
+        .inv-header {
             flex-direction: column;
-            align-items: stretch;
         }
 
         .inv-actions {
             justify-content: flex-start;
         }
 
-        .inv-stats {
+        .inv-summary {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 720px) {
+        .inv-summary {
             grid-template-columns: 1fr;
+        }
+
+        .inv-header,
+        .inv-summary,
+        .inv-toolbar {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        .inv-actions,
+        .inv-toolbar-info,
+        .inv-footer-actions {
+            width: 100%;
+        }
+
+        .inv-btn {
+            flex: 1;
+        }
+
+        .inv-search-box {
+            max-width: 100%;
         }
     }
 </style>
@@ -323,88 +455,107 @@
 <div class="ui-panel w-full p-6 md:p-8">
     <div class="inv-page">
 
-        <div class="inv-header">
-            <div>
-                <h4 class="inv-title">
-                    Inventario — {{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}
-                </h4>
+        <div class="inv-card">
 
-                <div class="inv-subtitle">
-                    Tipo:
-                    <strong>{{ $bodega->tipo ?? '—' }}</strong>
+            {{-- Encabezado --}}
+            <div class="inv-header">
+                <div>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <h4 class="inv-title">
+                            Inventario — {{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}
+                        </h4>
 
-                    @if(!empty($bodega->ubicacion))
-                        · Ubicación:
-                        <strong>{{ $bodega->ubicacion }}</strong>
-                    @endif
+                        @if($readOnly)
+                            <span class="inv-mode">
+                                Consulta
+                            </span>
+                        @endif
+                    </div>
 
-                    @if($readOnly)
-                        · Modo consulta
+                    <div class="inv-meta">
+                        <span>Tipo: <strong>{{ $bodega->tipo ?? '—' }}</strong></span>
+
+                        @if(!empty($bodega->ubicacion))
+                            <span>· Ubicación: <strong>{{ $bodega->ubicacion }}</strong></span>
+                        @endif
+
+                        <span>· Rol: <strong>{{ strtoupper($role) }}</strong></span>
+                    </div>
+                </div>
+
+                <div class="inv-actions">
+                    <button class="inv-btn inv-btn-secondary inv-btn-disabled" type="button" disabled>
+                        Descargar Excel
+                    </button>
+
+                    @if($canOperate)
+                        <button class="inv-btn inv-btn-primary inv-btn-disabled" type="button" disabled>
+                            + Agregar al inventario
+                        </button>
                     @endif
                 </div>
             </div>
 
-            <div class="inv-actions">
-                <a href="{{ route('admin.bodegas.index') }}" class="inv-btn inv-btn-secondary">
-                    ← Volver
-                </a>
+            {{-- Resumen --}}
+            <div class="inv-summary">
+                <div class="inv-summary-item">
+                    <div class="inv-summary-label">Productos</div>
+                    <div class="inv-summary-value">{{ number_format($totalProductos) }}</div>
+                    <div class="inv-summary-note">Registros en esta bodega.</div>
+                </div>
 
-                <button class="inv-btn inv-btn-secondary inv-btn-disabled" type="button" disabled>
-                    Descargar inventario
-                </button>
+                <div class="inv-summary-item">
+                    <div class="inv-summary-label">Stock total</div>
+                    <div class="inv-summary-value">{{ number_format($stockTotal) }}</div>
+                    <div class="inv-summary-note">Unidades disponibles.</div>
+                </div>
 
-                @if($canOperate)
-                    <button class="inv-btn inv-btn-primary inv-btn-disabled" type="button" disabled>
-                        + Agregar al inventario
-                    </button>
-                @endif
+                <div class="inv-summary-item">
+                    <div class="inv-summary-label">Costo estimado</div>
+                    <div class="inv-summary-value">Q {{ number_format($costoTotal, 2) }}</div>
+                    <div class="inv-summary-note">Según costo del producto.</div>
+                </div>
+
+                <div class="inv-summary-item">
+                    <div class="inv-summary-label">Revisión</div>
+                    <div class="inv-summary-value">{{ number_format($stockBajo) }}</div>
+                    <div class="inv-summary-note">
+                        Stock bajo · {{ number_format($productosSinCosto) }} sin costo
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <div class="inv-stats">
-            <div class="inv-stat-card">
-                <div class="inv-stat-label">Productos</div>
-                <div class="inv-stat-value">{{ number_format($totalProductos) }}</div>
-                <div class="inv-stat-note">Total de productos registrados en esta bodega.</div>
+            {{-- Buscador --}}
+            <div class="inv-toolbar">
+                <div class="inv-search-box">
+                    <input type="text"
+                           id="inventarioSearch"
+                           class="inv-search"
+                           placeholder="Buscar por código, producto, descripción o unidad...">
+
+                    <span class="inv-search-icon">🔎</span>
+                </div>
+
+                <div class="inv-toolbar-info">
+                    <span class="inv-mini">{{ number_format($totalProductos) }} productos</span>
+                    <span class="inv-mini">{{ number_format($stockTotal) }} unidades</span>
+                    <span class="inv-mini">{{ strtoupper($role) }}</span>
+                </div>
             </div>
 
-            <div class="inv-stat-card">
-                <div class="inv-stat-label">Stock total</div>
-                <div class="inv-stat-value">{{ number_format($stockTotal) }}</div>
-                <div class="inv-stat-note">Suma total de unidades disponibles.</div>
-            </div>
-
-            <div class="inv-stat-card">
-                <div class="inv-stat-label">Costo total estimado</div>
-                <div class="inv-stat-value">Q {{ number_format($costoTotal, 2) }}</div>
-                <div class="inv-stat-note">Calculado con el costo registrado en el producto, si existe.</div>
-            </div>
-        </div>
-
-        <div class="inv-toolbar">
-            <input type="text"
-                   id="inventarioSearch"
-                   class="inv-search"
-                   placeholder="Buscar por código, producto, descripción o unidad...">
-
-            <span class="inv-badge">
-                Acceso: {{ strtoupper($role) }}
-            </span>
-        </div>
-
-        <div class="inv-table-card">
-            <div class="table-responsive">
+            {{-- Tabla --}}
+            <div class="inv-table-wrap">
                 <table class="inv-table" id="inventarioTable">
                     <thead>
                         <tr>
-                            <th>Código</th>
-                            <th>Producto</th>
-                            <th>Unidad</th>
+                            <th class="text-start">Código</th>
+                            <th class="text-start">Producto</th>
+                            <th class="text-start">Unidad</th>
                             <th class="text-end">Cantidad</th>
                             <th class="text-end">Vida útil</th>
                             <th class="text-end">Costo unitario</th>
                             <th class="text-end">Costo total</th>
-                            <th class="text-end">Acciones</th>
+                            <th class="text-end">Estado</th>
                         </tr>
                     </thead>
 
@@ -416,24 +567,44 @@
                                 $nombreProducto = $producto->nombre ?? '—';
                                 $descripcionProducto = $producto->descripcion ?? '';
                                 $unidadMedida = $producto->unidad_medida ?? '—';
-
                                 $vidaUtil = $producto->vida_util_meses ?? null;
+
+                                $cantidad = (int) $inv->cantidad;
 
                                 $costoUnitario = $producto->costo
                                     ?? $producto->precio
                                     ?? $producto->precio_unitario
                                     ?? 0;
 
-                                $costoLinea = ((float) $costoUnitario) * ((int) $inv->cantidad);
+                                $costoUnitario = (float) $costoUnitario;
+                                $costoLinea = $costoUnitario * $cantidad;
+
+                                if ($cantidad <= 0) {
+                                    $stockClass = 'inv-stock-zero';
+                                    $estadoTexto = 'Sin stock';
+                                    $estadoClass = 'inv-status-danger';
+                                } elseif ($cantidad <= 5) {
+                                    $stockClass = 'inv-stock-low';
+                                    $estadoTexto = 'Stock bajo';
+                                    $estadoClass = 'inv-status-warning';
+                                } else {
+                                    $stockClass = '';
+                                    $estadoTexto = 'Disponible';
+                                    $estadoClass = 'inv-status-ok';
+                                }
                             @endphp
 
                             <tr class="inv-row">
                                 <td>
-                                    <span class="inv-code">{{ $inv->producto_codigo }}</span>
+                                    <span class="inv-code">
+                                        {{ $inv->producto_codigo }}
+                                    </span>
                                 </td>
 
                                 <td>
-                                    <div class="inv-product-name">{{ $nombreProducto }}</div>
+                                    <div class="inv-product-name">
+                                        {{ $nombreProducto }}
+                                    </div>
 
                                     @if(!empty($descripcionProducto))
                                         <div class="inv-product-desc" title="{{ $descripcionProducto }}">
@@ -451,47 +622,43 @@
                                 </td>
 
                                 <td class="text-end">
-                                    <span class="inv-stock-pill">
-                                        {{ number_format($inv->cantidad) }}
+                                    <span class="inv-stock {{ $stockClass }}">
+                                        {{ number_format($cantidad) }}
                                     </span>
                                 </td>
 
                                 <td class="text-end">
                                     @if(!empty($vidaUtil))
-                                        {{ $vidaUtil }} meses
+                                        <span class="inv-life">
+                                            {{ $vidaUtil }} meses
+                                        </span>
                                     @else
                                         <span class="inv-muted">—</span>
                                     @endif
                                 </td>
 
                                 <td class="text-end">
-                                    <span class="inv-money">
-                                        Q {{ number_format((float) $costoUnitario, 2) }}
+                                    <span class="inv-money {{ $costoUnitario <= 0 ? 'inv-money-zero' : '' }}">
+                                        Q {{ number_format($costoUnitario, 2) }}
                                     </span>
                                 </td>
 
                                 <td class="text-end">
-                                    <span class="inv-money">
+                                    <span class="inv-money {{ $costoLinea <= 0 ? 'inv-money-zero' : '' }}">
                                         Q {{ number_format($costoLinea, 2) }}
                                     </span>
                                 </td>
 
                                 <td class="text-end">
-                                    <div class="inv-row-actions">
-                                        <button class="inv-small-btn inv-btn-disabled" type="button" disabled>
-                                            Movimientos
-                                        </button>
-
-                                        @if($canOperate)
-                                            <button class="inv-small-btn inv-small-btn-primary inv-btn-disabled" type="button" disabled>
-                                                Entrada
-                                            </button>
-
-                                            <button class="inv-small-btn inv-btn-disabled" type="button" disabled>
-                                                Salida
-                                            </button>
-                                        @endif
-                                    </div>
+                                    @if($costoUnitario <= 0)
+                                        <span class="inv-status inv-status-warning">
+                                            Sin costo
+                                        </span>
+                                    @else
+                                        <span class="inv-status {{ $estadoClass }}">
+                                            {{ $estadoTexto }}
+                                        </span>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -501,7 +668,7 @@
                                         <div class="inv-empty-title">
                                             Esta bodega aún no tiene inventario registrado.
                                         </div>
-                                        <div>
+                                        <div class="inv-empty-text">
                                             Cuando se agreguen productos, aparecerán en esta tabla.
                                         </div>
                                     </div>
@@ -511,11 +678,18 @@
                     </tbody>
                 </table>
             </div>
+
+        </div>
+
+        <div class="inv-footer-actions">
+            <a href="{{ route('admin.bodegas.index') }}" class="inv-btn inv-btn-secondary">
+                ← Volver a bodegas
+            </a>
         </div>
 
         @if($readOnly)
-            <div class="text-muted small mt-3">
-                * En modo consulta no se permiten entradas/salidas; solo ver y descargar.
+            <div class="inv-footer-note">
+                * En modo consulta no se permiten entradas ni salidas; solo visualización.
             </div>
         @endif
 
