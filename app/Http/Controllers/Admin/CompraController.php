@@ -34,12 +34,12 @@ class CompraController extends Controller
             ->get();
 
         $categorias = DB::table('productos')
-            ->whereNotNull('tipo')
-            ->where('tipo', '<>', '')
-            ->select('tipo')
+            ->whereNotNull('categoria')
+            ->where('categoria', '<>', '')
+            ->select('categoria')
             ->distinct()
-            ->orderBy('tipo')
-            ->pluck('tipo')
+            ->orderBy('categoria')
+            ->pluck('categoria')
             ->filter()
             ->values();
 
@@ -60,12 +60,12 @@ class CompraController extends Controller
             ->get();
 
         $categorias = DB::table('productos')
-            ->whereNotNull('tipo')
-            ->where('tipo', '<>', '')
-            ->select('tipo')
+            ->whereNotNull('categoria')
+            ->where('categoria', '<>', '')
+            ->select('categoria')
             ->distinct()
-            ->orderBy('tipo')
-            ->pluck('tipo')
+            ->orderBy('categoria')
+            ->pluck('categoria')
             ->filter()
             ->values();
 
@@ -140,7 +140,7 @@ class CompraController extends Controller
             'producto_unidad.*' => ['nullable', 'string', 'max:50'],
 
             'producto_categoria' => ['nullable', 'array'],
-            'producto_categoria.*' => ['nullable', 'string', 'max:80'],
+            'producto_categoria.*' => ['nullable', 'string', 'max:50'],
 
             'producto_vida_util_meses' => ['nullable', 'array'],
             'producto_vida_util_meses.*' => ['nullable', 'integer', 'min:1', 'max:1200'],
@@ -261,7 +261,7 @@ class CompraController extends Controller
                             'nombre' => $nombre,
                             'descripcion' => $descripcion !== '' ? $descripcion : null,
                             'unidad_medida' => $unidad,
-                            'tipo' => $categoria,
+                            'categoria' => $categoria,
                             'vida_util_meses' => $vidaUtilMeses,
                             'created_at' => now(),
                             'updated_at' => now(),
@@ -270,7 +270,7 @@ class CompraController extends Controller
                         DB::table('productos')
                             ->where('codigo', $codigoNuevo)
                             ->update([
-                                'tipo' => $categoria !== '' ? $categoria : $prod->tipo,
+                                'categoria' => $categoria !== '' ? $categoria : $prod->categoria,
                                 'vida_util_meses' => $vidaUtilMeses ?? $prod->vida_util_meses,
                                 'updated_at' => now(),
                             ]);
@@ -357,7 +357,7 @@ class CompraController extends Controller
         $detalles = DB::table('compra_detalles as d')
             ->join('productos as pr', 'pr.codigo', '=', 'd.producto_codigo')
             ->where('d.compra_id', $id)
-            ->select('d.*', 'pr.nombre as producto_nombre', 'pr.unidad_medida')
+            ->select('d.*', 'pr.nombre as producto_nombre', 'pr.categoria')
             ->orderBy('d.id')
             ->get();
 

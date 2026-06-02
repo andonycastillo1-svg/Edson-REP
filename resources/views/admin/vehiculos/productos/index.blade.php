@@ -523,7 +523,7 @@
             </div>
 
             <div class="vp-note">
-                Solo se listan productos tipo <strong>Refacciones</strong> con stock disponible en bodegas autorizadas.
+                Solo se listan productos de categoría <strong>Refacciones</strong> con stock disponible en bodegas autorizadas.
             </div>
 
             <form method="POST" action="{{ route('admin.vehiculos.productos.store') }}">

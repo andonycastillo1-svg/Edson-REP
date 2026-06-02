@@ -43,7 +43,7 @@
                 <tr>
                     <th class="px-4 py-3">Código</th>
                     <th class="px-4 py-3">Producto</th>
-                    <th class="px-4 py-3">Unidad</th>
+                    <th class="px-4 py-3">Categoría</th>
                     <th class="px-4 py-3 text-right">Cantidad</th>
                     <th class="px-4 py-3 text-right">Precio U.</th>
                     <th class="px-4 py-3 text-right">Valor</th>
@@ -54,7 +54,7 @@
                     <tr>
                         <td class="px-4 py-3 font-semibold">{{ $d->producto_codigo }}</td>
                         <td class="px-4 py-3">{{ $d->producto_nombre }}</td>
-                        <td class="px-4 py-3">{{ $d->unidad_medida ?? '—' }}</td>
+                        <td class="px-4 py-3">{{ $d->categoria ?? '—' }}</td>
                         <td class="px-4 py-3 text-right font-semibold">{{ number_format($d->cantidad) }}</td>
                         <td class="px-4 py-3 text-right">{{ number_format($d->precio_unitario, 2) }}</td>
                         <td class="px-4 py-3 text-right font-bold">{{ number_format($d->valor_total, 2) }}</td>

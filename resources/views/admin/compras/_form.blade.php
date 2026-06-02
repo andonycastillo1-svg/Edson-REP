@@ -208,9 +208,7 @@
                         class="productoCodigoNuevo w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                         placeholder="Código nuevo">
 
-                    <input type="text" name="producto_unidad[]"
-                        class="productoUnidad w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                        placeholder="Unidad (ej: UND)">
+                    <input type="hidden" name="producto_unidad[]" class="productoUnidad" value="UND">
 
                     <input type="number" min="1" step="1" name="producto_vida_util_meses[]"
                         class="productoVidaUtil w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"

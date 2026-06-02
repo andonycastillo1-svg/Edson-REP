@@ -524,7 +524,7 @@
                             <tr>
                                 <th>Código</th>
                                 <th>Producto</th>
-                                <th>Unidad</th>
+                                <th>Categoría</th>
                                 <th class="text-right">Cantidad</th>
                                 <th class="text-right">Vida útil</th>
                                 <th class="text-right">Costo unitario</th>
@@ -556,7 +556,7 @@
                                     </td>
 
                                     <td>
-                                        {{ $inv->unidad_medida ?? '—' }}
+                                        {{ $inv->categoria ?? '—' }}
                                     </td>
 
                                     <td class="text-right">

@@ -197,6 +197,7 @@
 <template id="tplLinea">
   <tr class="border-t">
     <td class="py-2 pr-3">
+      <input type="hidden" name="producto_tipo[]" value="existente">
       <select name="producto_codigo[]" data-searchable="true" data-search-placeholder="Buscar producto por nombre o código..."
               class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-200" required>
         <option value="">Seleccione...</option>

@@ -157,7 +157,7 @@ class BodegaController extends Controller
                 'i.cantidad',
                 'p.nombre',
                 'p.descripcion',
-                'p.unidad_medida',
+                'p.categoria',
                 'p.vida_util_meses',
                 DB::raw('COALESCE(uc.costo_unitario, 0) as costo_unitario'),
                 DB::raw('(i.cantidad * COALESCE(uc.costo_unitario, 0)) as costo_total')
@@ -195,7 +195,7 @@ class BodegaController extends Controller
                 });
             })
             ->orderBy('p.nombre')
-            ->get(['i.producto_codigo', 'p.nombre', 'p.descripcion', 'p.unidad_medida', 'p.vida_util_meses', 'i.cantidad']);
+            ->get(['i.producto_codigo', 'p.nombre', 'p.descripcion', 'p.categoria', 'p.vida_util_meses', 'i.cantidad']);
 
         $headers = ['Content-Type' => 'text/csv; charset=UTF-8'];
         $filename = 'inventario_bodega_'.$bodega->id.'_'.now()->format('Ymd_His').'.csv';
@@ -203,9 +203,9 @@ class BodegaController extends Controller
         return response()->streamDownload(function () use ($rows, $bodega) {
             $out = fopen('php://output', 'w');
             fwrite($out, "ï»¿");
-            fputcsv($out, ['Codigo', 'Producto', 'Descripcion', 'Unidad', 'Bodega', 'Cantidad', 'Vida util (meses)']);
+            fputcsv($out, ['Codigo', 'Producto', 'Descripcion', 'Categoria', 'Bodega', 'Cantidad', 'Vida util (meses)']);
             foreach ($rows as $r) {
-                fputcsv($out, [$r->producto_codigo, $r->nombre, $r->descripcion, $r->unidad_medida, $bodega->nombre, $r->cantidad, $r->vida_util_meses]);
+                fputcsv($out, [$r->producto_codigo, $r->nombre, $r->descripcion, $r->categoria, $bodega->nombre, $r->cantidad, $r->vida_util_meses]);
             }
             fclose($out);
         }, $filename, $headers);
