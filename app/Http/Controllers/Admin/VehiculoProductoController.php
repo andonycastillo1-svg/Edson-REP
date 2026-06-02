@@ -11,6 +11,7 @@ use App\Models\Movimiento;
 use App\Models\Vehiculo;
 use App\Models\VehiculoProductoAsignacion;
 use App\Services\BodegaAccessService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -25,9 +26,17 @@ class VehiculoProductoController extends Controller
         $usuario = auth()->user();
         $visibleBodegas = $bodegaAccess->visibleBodegaIds($usuario);
 
-        $vehiculos = Vehiculo::orderBy('marca')->orderBy('placa')->get();
+        $vehiculos = Vehiculo::orderBy('marca')
+            ->orderBy('placa')
+            ->get();
 
-        $asignaciones = VehiculoProductoAsignacion::with(['vehiculo', 'producto', 'bodega', 'asignadoPor', 'colaboradorResponsable'])
+        $asignaciones = VehiculoProductoAsignacion::with([
+                'vehiculo',
+                'producto',
+                'bodega',
+                'asignadoPor',
+                'colaboradorResponsable',
+            ])
             ->when($vehiculoVin, fn ($query) => $query->where('vehiculo_vin', $vehiculoVin))
             ->latest('fecha')
             ->latest('id')
@@ -74,7 +83,9 @@ class VehiculoProductoController extends Controller
         ]);
 
         if (!$bodegaAccess->canModifyStock(auth()->user(), (int) $data['bodega_id'])) {
-            return back()->withInput()->with('error', 'No tienes permiso para asignar productos de esa bodega.');
+            return back()
+                ->withInput()
+                ->with('error', 'No tienes permiso para asignar productos de esa bodega.');
         }
 
         try {
@@ -132,7 +143,9 @@ class VehiculoProductoController extends Controller
                 ]);
             });
         } catch (Throwable $e) {
-            return back()->withInput()->with('error', $e->getMessage());
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
         }
 
         return redirect()
@@ -143,6 +156,7 @@ class VehiculoProductoController extends Controller
     public function cerrar(Request $request, VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)
     {
         $data = $request->validate([
+            'cantidad_cierre' => ['required', 'integer', 'min:1'],
             'accion_cierre' => ['required', 'in:regresar,consumido,danado,baja'],
             'observaciones_cierre' => ['nullable', 'string'],
             'mal_uso_colaborador' => ['nullable', 'boolean'],
@@ -162,33 +176,31 @@ class VehiculoProductoController extends Controller
                     ->lockForUpdate()
                     ->findOrFail($asignacion->id);
 
-                $accion = $data['accion_cierre'];
-
-                if ($accion === 'regresar') {
-                    $inventario = Inventario::firstOrCreate(
-                        [
-                            'producto_codigo' => $asignacion->producto_codigo,
-                            'bodega_id' => $asignacion->bodega_id,
-                        ],
-                        ['cantidad' => 0]
-                    );
-
-                    $inventario->increment('cantidad', (int) $asignacion->cantidad);
-
-                    Movimiento::create([
-                        'producto_codigo' => $asignacion->producto_codigo,
-                        'bodega_origen_id' => null,
-                        'bodega_destino_id' => $asignacion->bodega_id,
-                        'tipo_movimiento' => 'Entrada',
-                        'cantidad' => (int) $asignacion->cantidad,
-                        'fecha' => now(),
-                        'user_id' => auth()->id(),
-                        'vehiculo_vin' => $asignacion->vehiculo_vin,
-                    ]);
+                if (!$asignacion->activa) {
+                    throw new \RuntimeException('La asignación del producto ya está cerrada.');
                 }
 
+                $cantidadActual = (int) $asignacion->cantidad;
+                $cantidadCerrar = (int) $data['cantidad_cierre'];
+
+                if ($cantidadCerrar <= 0) {
+                    throw new \RuntimeException('La cantidad a retirar debe ser mayor a 0.');
+                }
+
+                if ($cantidadCerrar > $cantidadActual) {
+                    throw new \RuntimeException('No puedes retirar más cantidad de la que está activa en el vehículo.');
+                }
+
+                $accion = $data['accion_cierre'];
                 $estado = $accion === 'regresar' ? 'regresado' : $accion;
                 $malUso = $accion === 'danado' && (bool) ($data['mal_uso_colaborador'] ?? false);
+
+                $asignacionCerrada = $this->obtenerRegistroCierre($asignacion, $cantidadCerrar, $estado, $accion, $malUso, $data['observaciones_cierre'] ?? null);
+
+                if ($accion === 'regresar') {
+                    $this->regresarCantidadAInventario($asignacion, $cantidadCerrar);
+                }
+
                 $responsable = null;
                 $alertaGenerada = false;
 
@@ -201,47 +213,39 @@ class VehiculoProductoController extends Controller
                     $responsable = $vehiculoAsignado?->colaborador_codigo;
 
                     if ($responsable && Schema::hasTable('alertas_reemplazos_rrhh')) {
-                        $costoUnitario = $this->ultimoCostoUnitario($asignacion->producto_codigo);
-
-                        AlertaReemplazo::create([
-                            'colaborador_codigo' => $responsable,
-                            'producto_codigo' => $asignacion->producto_codigo,
-                            'vehiculo_vin' => $asignacion->vehiculo_vin,
-                            'vehiculo_producto_asignacion_id' => $asignacion->id,
-                            'cantidad' => (int) $asignacion->cantidad,
-                            'costo_estimado' => $costoUnitario ? $costoUnitario * (int) $asignacion->cantidad : null,
-                            'registrado_por_user_id' => auth()->id(),
-                            'fecha_asignacion_anterior' => $asignacion->fecha ?? now(),
-                            'fecha_dano_reemplazo' => now(),
-                            'vida_util_meses' => 0,
-                            'meses_restantes' => 0,
-                            'descuento_aplicable' => true,
-                            'estado' => 'pendiente',
-                            'detalle' => $this->detalleAlertaVehiculo($asignacion, $data['observaciones_cierre'] ?? null, $costoUnitario),
-                        ]);
-
-                        $alertaGenerada = true;
+                        $alertaGenerada = $this->generarAlertaMalUsoVehiculo(
+                            asignacion: $asignacionCerrada,
+                            colaboradorCodigo: $responsable,
+                            cantidadCerrar: $cantidadCerrar,
+                            observaciones: $data['observaciones_cierre'] ?? null
+                        );
                     }
                 }
 
-                $observaciones = trim((string) ($asignacion->observaciones ?? ''));
-                $observacionesCierre = trim((string) ($data['observaciones_cierre'] ?? ''));
-
-                if ($observacionesCierre !== '') {
-                    $observaciones = trim($observaciones . ($observaciones ? ' | ' : '') . 'Cierre: ' . $observacionesCierre);
-                }
-
-                $asignacion->update([
-                    'estado' => $estado,
-                    'activa' => false,
-                    'cerrado_por_user_id' => auth()->id(),
-                    'fecha_cierre' => now(),
-                    'accion_cierre' => $accion,
-                    'mal_uso_colaborador' => $malUso,
+                $asignacionCerrada->update([
                     'colaborador_responsable_codigo' => $responsable,
                     'descuento_generado' => $alertaGenerada,
-                    'observaciones' => $observaciones ?: $asignacion->observaciones,
                 ]);
+
+                if ($cantidadCerrar === $cantidadActual) {
+                    $asignacion->update([
+                        'estado' => $asignacionCerrada->estado,
+                        'activa' => false,
+                        'cerrado_por_user_id' => auth()->id(),
+                        'fecha_cierre' => now(),
+                        'accion_cierre' => $accion,
+                        'mal_uso_colaborador' => $malUso,
+                        'colaborador_responsable_codigo' => $responsable,
+                        'descuento_generado' => $alertaGenerada,
+                        'observaciones' => $asignacionCerrada->observaciones,
+                    ]);
+                } else {
+                    $asignacion->update([
+                        'cantidad' => $cantidadActual - $cantidadCerrar,
+                        'estado' => 'activo',
+                        'activa' => true,
+                    ]);
+                }
             });
         } catch (Throwable $e) {
             return back()->with('error', $e->getMessage());
@@ -250,34 +254,195 @@ class VehiculoProductoController extends Controller
         return back()->with('success', 'Producto/refacción cerrado correctamente.');
     }
 
+    private function obtenerRegistroCierre(
+        VehiculoProductoAsignacion $asignacion,
+        int $cantidadCerrar,
+        string $estado,
+        string $accion,
+        bool $malUso,
+        ?string $observacionesCierre
+    ): VehiculoProductoAsignacion {
+        $cantidadActual = (int) $asignacion->cantidad;
+
+        $observaciones = trim((string) ($asignacion->observaciones ?? ''));
+        $observacionesCierre = trim((string) ($observacionesCierre ?? ''));
+
+        $textoCierre = 'Cierre: acción=' . $accion . ', cantidad=' . $cantidadCerrar;
+
+        if ($observacionesCierre !== '') {
+            $textoCierre .= ', observación=' . $observacionesCierre;
+        }
+
+        $observacionesFinal = trim($observaciones . ($observaciones ? ' | ' : '') . $textoCierre);
+
+        if ($cantidadCerrar === $cantidadActual) {
+            $asignacion->fill([
+                'estado' => $estado,
+                'activa' => false,
+                'cerrado_por_user_id' => auth()->id(),
+                'fecha_cierre' => now(),
+                'accion_cierre' => $accion,
+                'mal_uso_colaborador' => $malUso,
+                'observaciones' => $observacionesFinal ?: $asignacion->observaciones,
+            ]);
+
+            return $asignacion;
+        }
+
+        $cerrada = $asignacion->replicate();
+
+        $cerrada->cantidad = $cantidadCerrar;
+        $cerrada->estado = $estado;
+        $cerrada->activa = false;
+        $cerrada->cerrado_por_user_id = auth()->id();
+        $cerrada->fecha_cierre = now();
+        $cerrada->accion_cierre = $accion;
+        $cerrada->mal_uso_colaborador = $malUso;
+        $cerrada->observaciones = $observacionesFinal ?: $asignacion->observaciones;
+
+        $cerrada->created_at = now();
+        $cerrada->updated_at = now();
+
+        $cerrada->save();
+
+        return $cerrada;
+    }
+
+    private function regresarCantidadAInventario(VehiculoProductoAsignacion $asignacion, int $cantidadCerrar): void
+    {
+        $inventario = Inventario::firstOrCreate(
+            [
+                'producto_codigo' => $asignacion->producto_codigo,
+                'bodega_id' => $asignacion->bodega_id,
+            ],
+            ['cantidad' => 0]
+        );
+
+        $inventario->increment('cantidad', $cantidadCerrar);
+
+        Movimiento::create([
+            'producto_codigo' => $asignacion->producto_codigo,
+            'bodega_origen_id' => null,
+            'bodega_destino_id' => $asignacion->bodega_id,
+            'tipo_movimiento' => 'Entrada',
+            'cantidad' => $cantidadCerrar,
+            'fecha' => now(),
+            'user_id' => auth()->id(),
+            'vehiculo_vin' => $asignacion->vehiculo_vin,
+        ]);
+    }
+
+    private function generarAlertaMalUsoVehiculo(
+        VehiculoProductoAsignacion $asignacion,
+        string $colaboradorCodigo,
+        int $cantidadCerrar,
+        ?string $observaciones
+    ): bool {
+        $costoUnitario = $this->ultimoCostoUnitario($asignacion->producto_codigo);
+        $vidaUtilMeses = (int) ($asignacion->producto->vida_util_meses ?? 0);
+
+        $fechaAsignacion = $asignacion->fecha
+            ? Carbon::parse($asignacion->fecha)->startOfDay()
+            : now()->startOfDay();
+
+        $fechaDano = now()->startOfDay();
+
+        $mesesUsados = $fechaAsignacion->diffInMonths($fechaDano);
+        $mesesRestantes = $vidaUtilMeses > 0
+            ? max(0, $vidaUtilMeses - $mesesUsados)
+            : 0;
+
+        $costoTotal = $costoUnitario !== null
+            ? round($costoUnitario * $cantidadCerrar, 2)
+            : null;
+
+        $montoCobro = ($costoTotal !== null && $vidaUtilMeses > 0)
+            ? round($costoTotal * ($mesesRestantes / $vidaUtilMeses), 2)
+            : 0;
+
+        AlertaReemplazo::create([
+            'colaborador_codigo' => $colaboradorCodigo,
+            'producto_codigo' => $asignacion->producto_codigo,
+            'vehiculo_vin' => $asignacion->vehiculo_vin,
+            'vehiculo_producto_asignacion_id' => $asignacion->id,
+            'cantidad' => $cantidadCerrar,
+            'costo_estimado' => $costoTotal,
+            'registrado_por_user_id' => auth()->id(),
+            'fecha_asignacion_anterior' => $asignacion->fecha ?? now(),
+            'fecha_dano_reemplazo' => now(),
+            'vida_util_meses' => $vidaUtilMeses,
+            'meses_restantes' => $mesesRestantes,
+            'descuento_aplicable' => $montoCobro > 0,
+            'estado' => 'pendiente',
+            'detalle' => $this->detalleAlertaVehiculo(
+                asignacion: $asignacion,
+                observaciones: $observaciones,
+                costoUnitario: $costoUnitario,
+                cantidadCerrar: $cantidadCerrar,
+                vidaUtilMeses: $vidaUtilMeses,
+                mesesRestantes: $mesesRestantes,
+                montoCobro: $montoCobro
+            ),
+        ]);
+
+        return true;
+    }
+
     private function ultimoCostoUnitario(string $productoCodigo): ?float
     {
         if (!Schema::hasTable('compra_detalles') || !Schema::hasColumn('compra_detalles', 'precio_unitario')) {
             return null;
         }
 
-        $precio = DB::table('compra_detalles as cd')
-            ->join('compras as c', 'c.id', '=', 'cd.compra_id')
-            ->where('cd.producto_codigo', $productoCodigo)
-            ->orderByDesc('c.fecha_compra')
+        $query = DB::table('compra_detalles as cd')
+            ->where('cd.producto_codigo', $productoCodigo);
+
+        if (Schema::hasTable('compras') && Schema::hasColumn('compra_detalles', 'compra_id')) {
+            $query->leftJoin('compras as c', 'c.id', '=', 'cd.compra_id');
+
+            if (Schema::hasColumn('compras', 'fecha_compra')) {
+                $query->orderByDesc('c.fecha_compra');
+            }
+        }
+
+        $precio = $query
             ->orderByDesc('cd.id')
             ->value('cd.precio_unitario');
 
         return $precio !== null ? (float) $precio : null;
     }
 
-    private function detalleAlertaVehiculo(VehiculoProductoAsignacion $asignacion, ?string $observaciones, ?float $costoUnitario): string
-    {
-        $vehiculo = trim(($asignacion->vehiculo->marca ?? 'Vehículo') . ' ' . ($asignacion->vehiculo->placa ?? '') . ' VIN ' . $asignacion->vehiculo_vin);
-        $producto = $asignacion->producto->nombre ?? $asignacion->producto_codigo;
-        $costo = $costoUnitario !== null
-            ? ' Costo estimado unitario según última compra: $' . number_format($costoUnitario, 2) . '.'
-            : ' No se encontró precio/costo histórico suficiente para calcular descuento automático.';
+    private function detalleAlertaVehiculo(
+        VehiculoProductoAsignacion $asignacion,
+        ?string $observaciones,
+        ?float $costoUnitario,
+        int $cantidadCerrar,
+        int $vidaUtilMeses,
+        int $mesesRestantes,
+        float $montoCobro
+    ): string {
+        $vehiculo = trim(
+            ($asignacion->vehiculo->marca ?? 'Vehículo') .
+            ' ' .
+            ($asignacion->vehiculo->placa ?? '') .
+            ' VIN ' .
+            $asignacion->vehiculo_vin
+        );
 
-        return 'Daño por mal uso registrado desde Productos del vehículo. Vehículo: ' . $vehiculo
-            . '. Producto/refacción: ' . $producto
-            . '. Cantidad: ' . $asignacion->cantidad . '.'
+        $producto = $asignacion->producto->nombre ?? $asignacion->producto_codigo;
+
+        $costo = $costoUnitario !== null
+            ? ' Costo unitario según última compra: Q ' . number_format($costoUnitario, 2) . '.'
+            : ' No se encontró precio/costo histórico suficiente para calcular costo automático.';
+
+        return 'Daño por mal uso registrado desde Productos del vehículo.'
+            . ' Vehículo: ' . $vehiculo . '.'
+            . ' Producto/refacción: ' . $producto . '.'
+            . ' Cantidad dañada: ' . $cantidadCerrar . '.'
+            . ' Vida útil: ' . $vidaUtilMeses . ' meses.'
+            . ' Meses restantes: ' . $mesesRestantes . '.'
+            . ' Cobro calculado: Q ' . number_format($montoCobro, 2) . '.'
             . $costo
             . ($observaciones ? ' Observaciones: ' . $observaciones : '');
     }
-}
+}   

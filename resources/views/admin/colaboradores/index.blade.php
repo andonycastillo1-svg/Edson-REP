@@ -9,382 +9,389 @@
 @endphp
 
 <div x-data="colaboradoresPage('{{ $routePrefix }}')" class="min-h-screen bg-slate-50">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
 
-    <div class="ui-panel">
-
-      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-6 py-5 border-b border-slate-200">
+    {{-- ENCABEZADO --}}
+    <div class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div class="px-6 py-5 border-b border-slate-200">
         <div>
-          <h1 class="text-xl font-semibold text-slate-900">Colaboradores</h1>
-          <p class="text-sm text-slate-600">Gestión de personal y asignaciones.</p>
-        </div>
+          <div class="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
+            Recursos Humanos
+          </div>
 
-        <div class="flex items-center gap-3">
-          <a href="{{ route($routePrefix . '.colaboradores.create') }}"
-             class="ui-btn-primary">
-            <span class="text-base leading-none">+</span>
-            Nuevo colaborador
-          </a>
-          <a href="{{ route($routePrefix . '.dashboard') }}"
-             class="ui-btn-primary">
-            ← Volver al menú
-          </a>
+          <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-950">
+            Colaboradores
+          </h1>
+
+          <p class="mt-1 text-sm text-slate-500">
+            Gestión de personal, expedientes administrativos, asignaciones y revisiones de RRHH.
+          </p>
         </div>
       </div>
 
-      <div class="px-6 py-4 border-b border-slate-200">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <form method="GET" class="w-full md:max-w-md">
-            <div class="relative">
-              <input name="q" value="{{ request('q') }}"
-                     class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 pr-10 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     placeholder="Buscar por código, nombre o puesto..." />
-            </div>
-          </form>
+      {{-- BUSCADOR --}}
+      <div class="bg-slate-50 px-6 py-5">
+        <form method="GET">
+          <label class="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
+            Buscar colaborador
+          </label>
 
-          <div class="text-sm text-slate-600">
-            Activos: <span class="font-semibold text-slate-900">{{ $activos->total() }}</span> ·
-            Inactivos: <span class="font-semibold text-slate-900">{{ $inactivos->total() }}</span>
+          <div class="flex flex-col gap-3 md:flex-row">
+            <input name="q"
+                   value="{{ request('q') }}"
+                   class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="Buscar por código, nombre o puesto..." />
+
+            <button type="submit"
+                    class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
+              Buscar
+            </button>
+
+            @if(request('q'))
+              <a href="{{ route($routePrefix . '.colaboradores.index') }}"
+                 class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-100">
+                Limpiar
+              </a>
+            @endif
           </div>
-        </div>
-
-        <div class="mt-4 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-          <button class="rounded-lg px-4 py-2 text-sm font-semibold"
-                  :class="tab==='activos' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'"
-                  @click="tab='activos'">
-            Activos
-          </button>
-          <button class="rounded-lg px-4 py-2 text-sm font-semibold"
-                  :class="tab==='inactivos' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'"
-                  @click="tab='inactivos'">
-            Inactivos
-          </button>
-        </div>
+        </form>
 
         @if (session('success'))
-          <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 text-sm">
+          <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
             {{ session('success') }}
           </div>
         @endif
+
+        @if (session('error'))
+          <div class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+            {{ session('error') }}
+          </div>
+        @endif
+      </div>
+    </div>
+
+    {{-- DIRECTORIO --}}
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+      {{-- CABECERA DIRECTORIO --}}
+      <div class="border-b border-slate-200 bg-white px-6 py-5">
+        <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-slate-950">
+              Directorio de colaboradores
+            </h2>
+
+            <p class="mt-1 text-sm text-slate-500">
+              Consulta expedientes, selecciona colaboradores y descarga sus fichas técnicas.
+            </p>
+          </div>
+
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div class="inline-flex w-fit rounded-xl border border-slate-200 bg-slate-100 p-1">
+              <button type="button"
+                      class="rounded-lg px-4 py-2 text-sm font-bold transition"
+                      :class="tab==='activos' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900'"
+                      @click="tab='activos'">
+                Activos
+                <span class="ml-1 text-xs" :class="tab==='activos' ? 'text-blue-100' : 'text-slate-400'">
+                  ({{ $activos->total() }})
+                </span>
+              </button>
+
+              <button type="button"
+                      class="rounded-lg px-4 py-2 text-sm font-bold transition"
+                      :class="tab==='inactivos' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900'"
+                      @click="tab='inactivos'">
+                Inactivos
+                <span class="ml-1 text-xs" :class="tab==='inactivos' ? 'text-slate-200' : 'text-slate-400'">
+                  ({{ $inactivos->total() }})
+                </span>
+              </button>
+            </div>
+
+            <a href="{{ route($routePrefix . '.colaboradores.create') }}"
+               class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
+              + Nuevo colaborador
+            </a>
+          </div>
+        </div>
       </div>
 
-      <div class="overflow-hidden">
+      {{-- ACCIONES MASIVAS --}}
+      <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white shadow-sm">
+              <span x-text="selectedCount()"></span>
+            </div>
 
-        {{-- ACTIVOS --}}
-        <div x-show="tab==='activos'">
-          <table class="ui-table text-sm">
-            <thead class="bg-slate-50 text-slate-600">
-              <tr>
-                <th class="px-6 py-3 text-left font-semibold">Código</th>
-                <th class="px-6 py-3 text-left font-semibold">Nombre</th>
-                <th class="px-6 py-3 text-left font-semibold">Puesto</th>
-                <th class="px-6 py-3 text-left font-semibold">Estado</th>
-                <th class="px-6 py-3 text-right font-semibold">Acciones</th>
+            <div>
+              <div class="text-sm font-bold text-slate-900">
+                Selección para descarga
+              </div>
+
+              <p class="text-xs text-slate-500">
+                Marca los colaboradores que deseas incluir en el CSV consolidado.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button type="button"
+                    class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-100"
+                    x-show="tab === 'activos'"
+                    @click="seleccionarTodosVisibles(@js($activos->pluck('codigo')->values()))">
+              Seleccionar visibles
+            </button>
+
+            <button type="button"
+                    class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-100"
+                    x-show="tab === 'inactivos'"
+                    x-cloak
+                    @click="seleccionarTodosVisibles(@js($inactivos->pluck('codigo')->values()))">
+              Seleccionar visibles
+            </button>
+
+            <button type="button"
+                    class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2.5 text-xs font-bold text-red-700 shadow-sm transition hover:bg-red-50"
+                    @click="limpiarSeleccion()">
+              Limpiar selección
+            </button>
+
+            <form method="POST"
+                  action="{{ route($routePrefix . '.colaboradores.fichas_tecnicas_masivas') }}"
+                  x-ref="formFichasSeleccionadas"
+                  @submit.prevent="descargarSeleccionados($refs.formFichasSeleccionadas)">
+              @csrf
+
+              <template x-for="codigo in selectedCodigos" :key="'codigo-selected-' + codigo">
+                <input type="hidden" name="codigos[]" :value="codigo">
+              </template>
+
+              <button type="submit"
+                      class="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                      :class="selectedCount() === 0 ? 'opacity-50 cursor-not-allowed' : ''">
+                Descargar fichas seleccionadas
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {{-- TABLA ACTIVOS --}}
+      <div x-show="tab==='activos'">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 bg-white text-xs uppercase tracking-wide text-slate-500">
+                <th class="px-5 py-3 text-left font-bold w-12">Sel.</th>
+                <th class="px-5 py-3 text-left font-bold">Código</th>
+                <th class="px-5 py-3 text-left font-bold">Colaborador</th>
+                <th class="px-5 py-3 text-left font-bold">Puesto</th>
+                <th class="px-5 py-3 text-center font-bold">Estado</th>
+                <th class="px-5 py-3 text-right font-bold">Acciones</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-200">
+
+            <tbody class="divide-y divide-slate-100">
               @forelse($activos as $c)
-                <tr class="hover:bg-slate-50">
-                  <td class="px-6 py-4 font-semibold text-slate-900">{{ $c->codigo }}</td>
-                  <td class="px-6 py-4 text-slate-900">{{ $c->nombre }}</td>
-                  <td class="px-6 py-4 text-slate-600">{{ $c->puesto }}</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                <tr class="transition hover:bg-blue-50/40">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox"
+                           class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                           :checked="isSelected('{{ $c->codigo }}')"
+                           @change="toggleSeleccion('{{ $c->codigo }}')">
+                  </td>
+
+                  <td class="px-5 py-4 align-middle">
+                    <span class="inline-flex rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                      {{ $c->codigo }}
+                    </span>
+                  </td>
+
+                  <td class="px-5 py-4 align-middle">
+                    <div class="font-bold text-slate-950">
+                      {{ $c->nombre }}
+                    </div>
+
+                    <div class="mt-1 text-xs text-slate-500">
+                      Expediente administrativo disponible
+                    </div>
+                  </td>
+
+                  <td class="px-5 py-4 align-middle text-slate-700">
+                    {{ $c->puesto }}
+                  </td>
+
+                  <td class="px-5 py-4 text-center align-middle">
+                    <span class="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700">
                       Activo
                     </span>
                   </td>
-                  <td class="px-6 py-4">
-                    <div class="flex justify-end gap-2">
 
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap justify-end gap-2">
                       <button type="button"
-                              class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                              class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700"
                               @click="openDetalle('{{ $c->codigo }}')">
-                        Detalle
+                        Expediente
                       </button>
 
                       <a href="{{ route($routePrefix . '.colaboradores.edit', $c) }}"
-                         class="ui-btn-secondary text-xs px-3 py-2">
+                         class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
                         Editar
                       </a>
 
-                      <form method="POST" action="{{ route($routePrefix . '.colaboradores.estado', $c) }}"
+                      <form method="POST"
+                            action="{{ route($routePrefix . '.colaboradores.estado', $c) }}"
                             onsubmit="return confirm('¿Deseas inactivar este colaborador?')">
                         @csrf
                         @method('PATCH')
+
                         <button type="submit"
-                                class="ui-btn-danger text-xs px-3 py-2">
+                                class="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-700 transition hover:bg-red-100">
                           Inactivar
                         </button>
                       </form>
-
                     </div>
                   </td>
                 </tr>
               @empty
                 <tr>
-                  <td colspan="5" class="px-6 py-10 text-center text-slate-600">No hay colaboradores activos.</td>
+                  <td colspan="6" class="px-6 py-14 text-center">
+                    <div class="text-sm font-bold text-slate-900">
+                      No hay colaboradores activos.
+                    </div>
+
+                    <div class="mt-1 text-sm text-slate-500">
+                      Cuando registres colaboradores activos aparecerán aquí.
+                    </div>
+                  </td>
                 </tr>
               @endforelse
             </tbody>
           </table>
-
-          <div class="px-6 py-4 border-t border-slate-200">
-            {{ $activos->links() }}
-          </div>
         </div>
 
-        {{-- INACTIVOS --}}
-        <div x-show="tab==='inactivos'" x-cloak>
-          <table class="ui-table text-sm">
-            <thead class="bg-slate-50 text-slate-600">
-              <tr>
-                <th class="px-6 py-3 text-left font-semibold">Código</th>
-                <th class="px-6 py-3 text-left font-semibold">Nombre</th>
-                <th class="px-6 py-3 text-left font-semibold">Puesto</th>
-                <th class="px-6 py-3 text-left font-semibold">Estado</th>
-                <th class="px-6 py-3 text-right font-semibold">Acciones</th>
+        <div class="border-t border-slate-200 bg-slate-50 px-6 py-4">
+          {{ $activos->links() }}
+        </div>
+      </div>
+
+      {{-- TABLA INACTIVOS --}}
+      <div x-show="tab==='inactivos'" x-cloak>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 bg-white text-xs uppercase tracking-wide text-slate-500">
+                <th class="px-5 py-3 text-left font-bold w-12">Sel.</th>
+                <th class="px-5 py-3 text-left font-bold">Código</th>
+                <th class="px-5 py-3 text-left font-bold">Colaborador</th>
+                <th class="px-5 py-3 text-left font-bold">Puesto</th>
+                <th class="px-5 py-3 text-center font-bold">Estado</th>
+                <th class="px-5 py-3 text-right font-bold">Acciones</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-200">
+
+            <tbody class="divide-y divide-slate-100">
               @forelse($inactivos as $c)
-                <tr class="hover:bg-slate-50">
-                  <td class="px-6 py-4 font-semibold text-slate-900">{{ $c->codigo }}</td>
-                  <td class="px-6 py-4 text-slate-900">{{ $c->nombre }}</td>
-                  <td class="px-6 py-4 text-slate-600">{{ $c->puesto }}</td>
-                  <td class="px-6 py-4">
-                    <span class="inline-flex items-center rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+                <tr class="transition hover:bg-slate-50">
+                  <td class="px-5 py-4 align-middle">
+                    <input type="checkbox"
+                           class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                           :checked="isSelected('{{ $c->codigo }}')"
+                           @change="toggleSeleccion('{{ $c->codigo }}')">
+                  </td>
+
+                  <td class="px-5 py-4 align-middle">
+                    <span class="inline-flex rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                      {{ $c->codigo }}
+                    </span>
+                  </td>
+
+                  <td class="px-5 py-4 align-middle">
+                    <div class="font-bold text-slate-950">
+                      {{ $c->nombre }}
+                    </div>
+
+                    <div class="mt-1 text-xs text-slate-500">
+                      Expediente administrativo disponible
+                    </div>
+                  </td>
+
+                  <td class="px-5 py-4 align-middle text-slate-700">
+                    {{ $c->puesto }}
+                  </td>
+
+                  <td class="px-5 py-4 text-center align-middle">
+                    <span class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-100 px-4 py-1.5 text-xs font-bold text-slate-700">
                       Inactivo
                     </span>
                   </td>
-                  <td class="px-6 py-4">
-                    <div class="flex justify-end gap-2">
 
+                  <td class="px-5 py-4 align-middle">
+                    <div class="flex flex-wrap justify-end gap-2">
                       <button type="button"
-                              class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                              class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700"
                               @click="openDetalle('{{ $c->codigo }}')">
-                        Detalle
+                        Expediente
                       </button>
 
                       <a href="{{ route($routePrefix . '.colaboradores.edit', $c) }}"
-                         class="ui-btn-secondary text-xs px-3 py-2">
+                         class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
                         Editar
                       </a>
 
-                      <form method="POST" action="{{ route($routePrefix . '.colaboradores.estado', $c) }}"
+                      <form method="POST"
+                            action="{{ route($routePrefix . '.colaboradores.estado', $c) }}"
                             onsubmit="return confirm('¿Deseas activar este colaborador?')">
                         @csrf
                         @method('PATCH')
+
                         <button type="submit"
-                                class="ui-btn text-xs px-3 py-2 bg-emerald-600 text-white hover:bg-emerald-700">
+                                class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100">
                           Activar
                         </button>
                       </form>
-
                     </div>
                   </td>
                 </tr>
               @empty
                 <tr>
-                  <td colspan="5" class="px-6 py-10 text-center text-slate-600">No hay colaboradores inactivos.</td>
+                  <td colspan="6" class="px-6 py-14 text-center">
+                    <div class="text-sm font-bold text-slate-900">
+                      No hay colaboradores inactivos.
+                    </div>
+
+                    <div class="mt-1 text-sm text-slate-500">
+                      Los colaboradores inactivos aparecerán aquí.
+                    </div>
+                  </td>
                 </tr>
               @endforelse
             </tbody>
           </table>
-
-          <div class="px-6 py-4 border-t border-slate-200">
-            {{ $inactivos->links() }}
-          </div>
         </div>
 
+        <div class="border-t border-slate-200 bg-slate-50 px-6 py-4">
+          {{ $inactivos->links() }}
+        </div>
       </div>
     </div>
-  </div>
 
-  {{-- MODAL DETALLE --}}
-  <div x-show="modalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-black/40" @click="closeModal()"></div>
-
-    <div class="relative w-full max-w-5xl rounded-2xl bg-white shadow-xl max-h-[90vh] overflow-y-auto">
-
-      <div class="flex items-start justify-between border-b border-slate-200 p-5">
-        <div>
-          <div class="text-sm text-slate-500">Detalle</div>
-          <div class="text-lg font-semibold text-slate-900" x-text="detalle.nombre"></div>
-          <div class="text-sm text-slate-600">
-            <span x-text="detalle.codigo"></span>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <a x-show="detalle.codigo"
-             :href="`/${routePrefix}/colaboradores/${detalle.codigo}/ficha-tecnica`"
-             target="_blank"
-             class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition">
-            Descargar ficha Excel
-          </a>
-
-          <button @click="closeModal()"
-                  class="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
-            ✕
-          </button>
-        </div>
-      </div>
-
-      <div class="p-5">
-
-        <template x-if="asignaciones.length === 0">
-          <div class="text-center text-slate-500">No tiene asignaciones</div>
-        </template>
-
-        <template x-if="asignaciones.length > 0">
-          <div>
-            <div class="mb-3 flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-slate-900">Inventario / equipo asignado</h3>
-              <div class="text-sm font-semibold text-slate-700">
-                Total: Q <span x-text="Number(totalGeneral).toFixed(2)"></span>
-              </div>
-            </div>
-
-            <div class="overflow-x-auto">
-              <table class="ui-table text-sm">
-                <thead class="bg-slate-100">
-                  <tr>
-                    <th class="p-2 text-left">Producto</th>
-                    <th class="p-2 text-left">Bodega</th>
-                    <th class="p-2 text-left">Cantidad</th>
-                    <th class="p-2 text-left">Costo</th>
-                    <th class="p-2 text-left">Total</th>
-                    <th class="p-2 text-left">F. Asignación</th>
-                    <th class="p-2 text-left">F. Vencimiento</th>
-                    <th class="p-2 text-left">Estado vida útil</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <template x-for="item in asignaciones" :key="item.producto_codigo + '-' + item.bodega">
-                    <tr class="border-t">
-                      <td class="p-2">
-                        <div x-text="item.producto"></div>
-                        <div class="text-xs text-slate-500" x-text="'COD: ' + (item.producto_codigo ?? '—')"></div>
-                      </td>
-                      <td class="p-2" x-text="item.bodega"></td>
-                      <td class="p-2" x-text="item.cantidad"></td>
-                      <td class="p-2" x-text="'Q ' + Number(item.costo_unitario).toFixed(2)"></td>
-                      <td class="p-2 font-semibold" x-text="'Q ' + Number(item.total).toFixed(2)"></td>
-                      <td class="p-2" x-text="item.fecha_asignacion ?? '—'"></td>
-                      <td class="p-2" x-text="item.fecha_vencimiento ?? '—'"></td>
-                      <td class="p-2">
-                        <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
-                              :class="item.estado_vida_util === 'Vencido'
-                                ? 'bg-red-100 text-red-700'
-                                : (item.estado_vida_util === 'Vigente'
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : 'bg-slate-100 text-slate-700')"
-                              x-text="item.estado_vida_util"></span>
-                      </td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </template>
-
-        <div class="mt-6 border-t border-slate-200 pt-5">
-          <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-slate-900">
-              Cobros / descuentos por daño
-            </h3>
-
-            <div class="text-sm font-semibold text-rose-700">
-              Total cobros: Q <span x-text="Number(totalCobros).toFixed(2)"></span>
-            </div>
-          </div>
-
-          <template x-if="cobros.length === 0">
-            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              No tiene cobros o descuentos registrados.
-            </div>
-          </template>
-
-          <template x-if="cobros.length > 0">
-            <div class="overflow-x-auto">
-              <table class="ui-table text-sm">
-                <thead class="bg-rose-50">
-                  <tr>
-                    <th class="p-2 text-left">Producto</th>
-                    <th class="p-2 text-left">F. Asignación</th>
-                    <th class="p-2 text-left">F. Daño/Reemplazo</th>
-                    <th class="p-2 text-left">Vida útil</th>
-                    <th class="p-2 text-left">Restante</th>
-                    <th class="p-2 text-left">Costo</th>
-                    <th class="p-2 text-left">Cobro</th>
-                    <th class="p-2 text-left">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <template x-for="cobro in cobros" :key="cobro.producto_codigo + '-' + cobro.fecha_dano_reemplazo">
-                    <tr class="border-t">
-                      <td class="p-2">
-                        <div x-text="cobro.producto"></div>
-                        <div class="text-xs text-slate-500" x-text="'COD: ' + (cobro.producto_codigo ?? '—')"></div>
-                      </td>
-                      <td class="p-2" x-text="cobro.fecha_asignacion_anterior ?? '—'"></td>
-                      <td class="p-2" x-text="cobro.fecha_dano_reemplazo ?? '—'"></td>
-                      <td class="p-2" x-text="cobro.vida_util_meses + ' meses'"></td>
-                      <td class="p-2" x-text="cobro.meses_restantes + ' meses'"></td>
-                      <td class="p-2" x-text="'Q ' + Number(cobro.costo_producto).toFixed(2)"></td>
-                      <td class="p-2 font-semibold text-rose-700" x-text="'Q ' + Number(cobro.monto_cobro).toFixed(2)"></td>
-                      <td class="p-2">
-                        <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800"
-                              x-text="cobro.estado"></span>
-                      </td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-            </div>
-          </template>
-        </div>
-
-      </div>
-
+    {{-- VOLVER --}}
+    <div class="mt-5 flex justify-end">
+      <a href="{{ route($routePrefix . '.dashboard') }}"
+         class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50">
+        ← Volver al menú
+      </a>
     </div>
+
   </div>
 
-<script>
-function colaboradoresPage(routePrefix) {
-  return {
-    tab: 'activos',
-    modalOpen: false,
-    detalle: {},
-    asignaciones: [],
-    cobros: [],
-    totalGeneral: 0,
-    totalCobros: 0,
-    routePrefix: routePrefix,
+  @include('admin.colaboradores.Modals.expediente-modal')
+  @include('admin.colaboradores.Modals.rrhh-revision-modal')
+</div>
 
-    async openDetalle(codigo) {
-      this.modalOpen = true;
-      this.detalle = {};
-      this.asignaciones = [];
-      this.cobros = [];
-      this.totalGeneral = 0;
-      this.totalCobros = 0;
-
-      const res = await fetch(`/${this.routePrefix}/colaboradores/${codigo}/detalle`);
-      const data = await res.json();
-
-      this.detalle = data.colaborador;
-      this.asignaciones = data.asignaciones ?? [];
-      this.cobros = data.cobros ?? [];
-      this.totalGeneral = data.total_general ?? 0;
-      this.totalCobros = data.total_cobros ?? 0;
-    },
-
-    closeModal() {
-      this.modalOpen = false;
-    }
-  }
-}
-</script>
+@include('admin.colaboradores.Modals.expediente-script')
 @endsection

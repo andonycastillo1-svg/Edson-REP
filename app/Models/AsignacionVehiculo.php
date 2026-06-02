@@ -28,7 +28,37 @@ class AsignacionVehiculo extends Model
         'activa' => 'boolean',
     ];
 
-    public function vehiculo() { return $this->belongsTo(Vehiculo::class, 'vehiculo_vin', 'vin'); }
-    public function colaborador() { return $this->belongsTo(Colaborador::class, 'colaborador_codigo', 'codigo'); }
-    public function productos() { return $this->hasMany(VehiculoProductoAsignacion::class, 'asignacion_vehiculo_id'); }
+    public function vehiculo()
+    {
+        return $this->belongsTo(Vehiculo::class, 'vehiculo_vin', 'vin');
+    }
+
+    public function colaborador()
+    {
+        return $this->belongsTo(Colaborador::class, 'colaborador_codigo', 'codigo');
+    }
+
+    public function productos()
+    {
+        return $this->hasMany(VehiculoProductoAsignacion::class, 'asignacion_vehiculo_id');
+    }
+
+    public function archivos()
+    {
+        return $this->hasMany(AsignacionVehiculoArchivo::class, 'asignacion_vehiculo_id');
+    }
+
+    public function pdfAsignacionFirmado()
+    {
+        return $this->hasOne(AsignacionVehiculoArchivo::class, 'asignacion_vehiculo_id')
+            ->where('tipo_documento', 'asignacion_firmada')
+            ->latestOfMany();
+    }
+
+    public function pdfDevolucionFirmado()
+    {
+        return $this->hasOne(AsignacionVehiculoArchivo::class, 'asignacion_vehiculo_id')
+            ->where('tipo_documento', 'devolucion_firmada')
+            ->latestOfMany();
+    }
 }

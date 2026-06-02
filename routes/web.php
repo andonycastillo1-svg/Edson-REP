@@ -83,30 +83,88 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('colaboradores/{colaborador}/ficha-tecnica', [ColaboradorController::class, 'fichaTecnica'])
             ->name('colaboradores.ficha_tecnica');
 
+        Route::post('colaboradores/fichas-tecnicas-masivas', [ColaboradorController::class, 'fichasTecnicasMasivas'])
+            ->name('colaboradores.fichas_tecnicas_masivas');
+
         Route::patch('colaboradores/{colaborador}/estado', [ColaboradorController::class, 'cambiarEstado'])
             ->name('colaboradores.estado');
 
         Route::resource('colaboradores', ColaboradorController::class)
             ->parameters(['colaboradores' => 'colaborador']);
 
+        /*
+        |--------------------------------------------------------------------------
+        | Vehículos
+        |--------------------------------------------------------------------------
+        */
         Route::resource('vehiculos', \App\Http\Controllers\Admin\VehiculoController::class);
-        Route::get('vehiculos-asignaciones', [AsignacionVehiculoController::class, 'index'])->name('vehiculos.asignaciones.index');
-        Route::get('vehiculos-asignaciones/create', [AsignacionVehiculoController::class, 'create'])->name('vehiculos.asignaciones.create');
-        Route::post('vehiculos-asignaciones', [AsignacionVehiculoController::class, 'store'])->name('vehiculos.asignaciones.store');
-        Route::post('vehiculos-asignaciones/{asignacion}/desasignar', [AsignacionVehiculoController::class, 'desasignar'])->name('vehiculos.asignaciones.desasignar');
-        Route::get('vehiculos-asignaciones/{asignacion}/pdf-asignacion', [AsignacionVehiculoController::class, 'pdfAsignacion'])->name('vehiculos.asignaciones.pdf_asignacion');
-        Route::get('vehiculos-asignaciones/{asignacion}/pdf-desasignacion', [AsignacionVehiculoController::class, 'pdfDesasignacion'])->name('vehiculos.asignaciones.pdf_desasignacion');
-        Route::get('vehiculos-productos', [VehiculoProductoController::class, 'index'])->name('vehiculos.productos.index');
-        Route::post('vehiculos-productos', [VehiculoProductoController::class, 'store'])->name('vehiculos.productos.store');
-        Route::post('vehiculos-productos/{asignacion}/cerrar', [VehiculoProductoController::class, 'cerrar'])->name('vehiculos.productos.cerrar');
+
+        Route::get('vehiculos-asignaciones', [AsignacionVehiculoController::class, 'index'])
+            ->name('vehiculos.asignaciones.index');
+
+        Route::get('vehiculos-asignaciones/create', [AsignacionVehiculoController::class, 'create'])
+            ->name('vehiculos.asignaciones.create');
+
+        Route::post('vehiculos-asignaciones', [AsignacionVehiculoController::class, 'store'])
+            ->name('vehiculos.asignaciones.store');
+
+        Route::post('vehiculos-asignaciones/{asignacion}/desasignar', [AsignacionVehiculoController::class, 'desasignar'])
+            ->name('vehiculos.asignaciones.desasignar');
+
+        Route::get('vehiculos-asignaciones/{asignacion}/pdf-asignacion', [AsignacionVehiculoController::class, 'pdfAsignacion'])
+            ->name('vehiculos.asignaciones.pdf_asignacion');
+
+        Route::get('vehiculos-asignaciones/{asignacion}/pdf-desasignacion', [AsignacionVehiculoController::class, 'pdfDesasignacion'])
+            ->name('vehiculos.asignaciones.pdf_desasignacion');
+
+        /*
+        |--------------------------------------------------------------------------
+        | PDF firmados de asignación/devolución de vehículos
+        |--------------------------------------------------------------------------
+        */
+        Route::post('vehiculos-asignaciones/{asignacion}/pdf-firmado', [AsignacionVehiculoController::class, 'subirPdfFirmado'])
+            ->name('vehiculos.asignaciones.subir_pdf_firmado');
+
+        Route::get('vehiculos-asignaciones/archivos/{archivo}/ver', [AsignacionVehiculoController::class, 'verPdfFirmado'])
+            ->name('vehiculos.asignaciones.ver_pdf_firmado');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Productos / refacciones asignadas a vehículo
+        |--------------------------------------------------------------------------
+        */
+        Route::get('vehiculos-productos', [VehiculoProductoController::class, 'index'])
+            ->name('vehiculos.productos.index');
+
+        Route::post('vehiculos-productos', [VehiculoProductoController::class, 'store'])
+            ->name('vehiculos.productos.store');
+
+        Route::post('vehiculos-productos/{asignacion}/cerrar', [VehiculoProductoController::class, 'cerrar'])
+            ->name('vehiculos.productos.cerrar');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Compras
+        |--------------------------------------------------------------------------
+        */
         Route::resource('compras', \App\Http\Controllers\Admin\CompraController::class);
 
+        /*
+        |--------------------------------------------------------------------------
+        | Inventario / bodegas
+        |--------------------------------------------------------------------------
+        */
         Route::get('bodegas/{bodega}/entrada', [InventarioController::class, 'createEntrada'])
             ->name('bodegas.entrada');
 
         Route::post('bodegas/{bodega}/entrada', [InventarioController::class, 'storeEntrada'])
             ->name('bodegas.entrada.store');
 
+        /*
+        |--------------------------------------------------------------------------
+        | Operaciones / traslados
+        |--------------------------------------------------------------------------
+        */
         Route::get('operaciones/traslados', [OperacionTrasladoController::class, 'index'])
             ->name('operaciones.traslados.index');
 
@@ -128,6 +186,11 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('operaciones/traslados/{operacion}/hoja', [OperacionTrasladoController::class, 'hoja'])
             ->name('operaciones.traslados.hoja');
 
+        /*
+        |--------------------------------------------------------------------------
+        | Asignaciones de inventario
+        |--------------------------------------------------------------------------
+        */
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
@@ -251,6 +314,9 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 
         Route::get('colaboradores/{colaborador}/ficha-tecnica', [ColaboradorController::class, 'fichaTecnica'])
             ->name('colaboradores.ficha_tecnica');
+
+        Route::post('colaboradores/fichas-tecnicas-masivas', [ColaboradorController::class, 'fichasTecnicasMasivas'])
+            ->name('colaboradores.fichas_tecnicas_masivas');
 
         Route::patch('colaboradores/{colaborador}/estado', [ColaboradorController::class, 'cambiarEstado'])
             ->name('colaboradores.estado');
