@@ -10,5 +10,5 @@ class Producto extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $fillable = ['codigo', 'nombre', 'descripcion', 'unidad_medida', 'vida_util_meses', 'tipo'];
+    protected $fillable = ['codigo', 'nombre', 'descripcion', 'unidad_medida', 'vida_util_meses', 'categoria'];
 }

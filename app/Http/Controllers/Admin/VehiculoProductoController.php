@@ -46,7 +46,7 @@ class VehiculoProductoController extends Controller
         $inventariosQuery = Inventario::with(['producto', 'bodega'])
             ->where('cantidad', '>', 0)
             ->whereHas('producto', function ($query) {
-                $query->whereRaw('LOWER(TRIM(tipo)) = ?', ['refacciones']);
+                $query->whereRaw('LOWER(TRIM(categoria)) = ?', ['refacciones']);
             })
             ->orderBy('producto_codigo');
 
@@ -100,8 +100,8 @@ class VehiculoProductoController extends Controller
                     throw new \RuntimeException('No existe inventario para el producto y bodega seleccionados.');
                 }
 
-                if (strtolower(trim((string) optional($inventario->producto)->tipo)) !== 'refacciones') {
-                    throw new \RuntimeException('Solo se pueden asignar productos con tipo Refacciones.');
+                if (strtolower(trim((string) optional($inventario->producto)->categoria)) !== 'refacciones') {
+                    throw new \RuntimeException('Solo se pueden asignar productos con categoría Refacciones.');
                 }
 
                 if ((int) $inventario->cantidad < (int) $data['cantidad']) {
