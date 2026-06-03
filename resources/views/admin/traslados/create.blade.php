@@ -28,6 +28,7 @@
       @endif
 
       <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.store') }}"
+            enctype="multipart/form-data"
             class="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
         @csrf
 
@@ -78,6 +79,15 @@
           <textarea name="observacion" rows="2"
             class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
             placeholder="Ej: Enviar con guía #123, frágil, etc.">{{ old('observacion') }}</textarea>
+        </div>
+
+        <div class="px-6 pb-6">
+          <label class="text-sm font-semibold text-slate-700">Excel de destinatarios (opcional)</label>
+          <input type="file" name="archivo_excel" accept=".xlsx,.xls,.csv"
+            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white">
+          <p class="mt-1 text-xs text-slate-500">
+            Puedes adjuntar un archivo .xlsx, .xls o .csv con las personas destinatarias de los productos trasladados.
+          </p>
         </div>
 
         <div class="px-6 py-4 border-t border-b border-slate-100 flex items-center justify-between">

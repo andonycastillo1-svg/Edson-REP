@@ -155,7 +155,7 @@
                                 default => 'bg-slate-50 text-slate-700 border-slate-200',
                             };
 
-                            $puedeEditar = auth()->user()->role_id != 4 || (int) optional(optional($u->creator)->role)->id === 4;
+                            $puedeEditar = auth()->user()->role_id == 1 || (int) $u->created_by === (int) auth()->id();
                         @endphp
 
                         <tr class="transition hover:bg-slate-50">

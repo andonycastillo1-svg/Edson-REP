@@ -17,9 +17,8 @@ class UsuarioController extends Controller
         $roleId = $request->query('role_id');
 
         $usuarios = User::with(['role','bodega','creator.role'])
-            ->when((int) auth()->user()->role_id === 4, function ($query) {
-                $query->whereNotNull('created_by')
-                    ->where('created_by', auth()->id());
+            ->when(!$this->esAdmin(), function ($query) {
+                $query->where('created_by', auth()->id());
             })
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($w) use ($q) {
@@ -32,7 +31,9 @@ class UsuarioController extends Controller
             ->paginate(15)
             ->appends($request->query());
 
-        $rolesFiltro = Role::orderBy('nombre')->get();
+        $rolesFiltro = $this->esAdmin()
+            ? Role::orderBy('nombre')->get()
+            : $this->rolesPermitidosParaGestion();
 
         return view('admin.usuarios.index', compact('usuarios', 'rolesFiltro'));
     }
@@ -152,34 +153,39 @@ class UsuarioController extends Controller
     {
         $query = Role::query()->orderBy('nombre');
 
-        if ((int) auth()->user()->role_id === 4) {
-            $query->where('nombre', 'Almacenista');
+        if (!$this->esAdmin()) {
+            $rolObjetivoId = $this->rolObjetivoRrhhId();
+            $query->where('id', $rolObjetivoId ?? 0);
         }
 
         return $query->get();
     }
 
-
-
     private function puedeEditarUsuario(User $usuario): bool
     {
-        if ((int) auth()->user()->role_id !== 4) {
+        if ($this->esAdmin()) {
             return true;
         }
 
-        $usuario->loadMissing('creator.role');
-
-        return (int) optional(optional($usuario->creator)->role)->id === 4;
+        return (int) $usuario->created_by === (int) auth()->id();
     }
 
     private function rolObjetivoRrhhId(): ?int
     {
-        $rolAlmacenistaId = Role::where('nombre', 'Almacenista')->value('id');
-        return $rolAlmacenistaId ? (int) $rolAlmacenistaId : null;
+        $rol = Role::whereRaw('LOWER(TRIM(nombre)) = ?', ['almacenista'])->first()
+            ?? Role::whereRaw('LOWER(TRIM(nombre)) = ?', ['encargado'])->first()
+            ?? Role::whereRaw('LOWER(TRIM(nombre)) = ?', ['operador'])->first();
+
+        return $rol ? (int) $rol->id : null;
     }
 
     private function rolBodegaRequeridaId(): int
     {
         return (int) ($this->rolObjetivoRrhhId() ?? 2);
+    }
+
+    private function esAdmin(): bool
+    {
+        return (int) auth()->user()->role_id === 1;
     }
 }

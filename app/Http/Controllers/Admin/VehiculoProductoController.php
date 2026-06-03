@@ -36,6 +36,8 @@ class VehiculoProductoController extends Controller
                 'bodega',
                 'asignadoPor',
                 'colaboradorResponsable',
+                'asignacionVehiculo.colaborador',
+                'cerradoPor',
             ])
             ->when($vehiculoVin, fn ($query) => $query->where('vehiculo_vin', $vehiculoVin))
             ->latest('fecha')
@@ -151,6 +153,54 @@ class VehiculoProductoController extends Controller
         return redirect()
             ->route('admin.vehiculos.productos.index', ['vehiculo_vin' => $data['vehiculo_vin']])
             ->with('success', 'Producto/refacción asignado al vehículo correctamente.');
+    }
+
+    public function pdfAsignacion(VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)
+    {
+        $this->autorizarDocumento($asignacion, $bodegaAccess);
+
+        $asignacion->load([
+            'vehiculo',
+            'producto',
+            'bodega',
+            'asignadoPor',
+            'asignacionVehiculo.colaborador',
+        ]);
+
+        return view('admin.vehiculos.productos.pdf', [
+            'asignacion' => $asignacion,
+            'tipoDocumento' => 'asignacion',
+        ]);
+    }
+
+    public function pdfDevolucion(VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)
+    {
+        $this->autorizarDocumento($asignacion, $bodegaAccess);
+
+        if ($asignacion->activa) {
+            return back()->with('error', 'La hoja de devolución solo está disponible cuando el producto/refacción ya fue retirado o cerrado.');
+        }
+
+        $asignacion->load([
+            'vehiculo',
+            'producto',
+            'bodega',
+            'cerradoPor',
+            'colaboradorResponsable',
+            'asignacionVehiculo.colaborador',
+        ]);
+
+        return view('admin.vehiculos.productos.pdf', [
+            'asignacion' => $asignacion,
+            'tipoDocumento' => 'devolucion',
+        ]);
+    }
+
+    private function autorizarDocumento(VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess): void
+    {
+        if (!$bodegaAccess->canView(auth()->user(), (int) $asignacion->bodega_id)) {
+            abort(403);
+        }
     }
 
     public function cerrar(Request $request, VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)
