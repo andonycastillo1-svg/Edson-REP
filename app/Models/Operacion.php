@@ -26,6 +26,8 @@ class Operacion extends Model
         'rechazado_en',
         'motivo_rechazo',
         'observacion',
+        'archivo_excel_path',
+        'archivo_excel_nombre',
     ];
 
     protected $casts = [

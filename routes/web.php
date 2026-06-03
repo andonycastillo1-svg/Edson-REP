@@ -142,6 +142,13 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::post('vehiculos-productos/{asignacion}/cerrar', [VehiculoProductoController::class, 'cerrar'])
             ->name('vehiculos.productos.cerrar');
 
+
+        Route::get('vehiculos-productos/{asignacion}/pdf-asignacion', [VehiculoProductoController::class, 'pdfAsignacion'])
+            ->name('vehiculos.productos.pdf_asignacion');
+
+        Route::get('vehiculos-productos/{asignacion}/pdf-devolucion', [VehiculoProductoController::class, 'pdfDevolucion'])
+            ->name('vehiculos.productos.pdf_devolucion');
+
         /*
         |--------------------------------------------------------------------------
         | Compras
@@ -185,6 +192,9 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::get('operaciones/traslados/{operacion}/hoja', [OperacionTrasladoController::class, 'hoja'])
             ->name('operaciones.traslados.hoja');
+
+        Route::get('operaciones/traslados/{operacion}/archivo-excel', [OperacionTrasladoController::class, 'archivo'])
+            ->name('operaciones.traslados.archivo');
 
         /*
         |--------------------------------------------------------------------------
@@ -286,6 +296,9 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::get('operaciones/traslados/{operacion}/hoja', [OperacionTrasladoController::class, 'hoja'])
             ->name('operaciones.traslados.hoja');
+
+        Route::get('operaciones/traslados/{operacion}/archivo-excel', [OperacionTrasladoController::class, 'archivo'])
+            ->name('operaciones.traslados.archivo');
     });
 
 /*

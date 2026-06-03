@@ -684,6 +684,16 @@
                                     Ver detalle
                                 </button>
 
+                                <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.pdf_asignacion', $a) }}" target="_blank" rel="noopener">
+                                    PDF asignación
+                                </a>
+
+                                @unless($a->activa)
+                                    <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.pdf_devolucion', $a) }}" target="_blank" rel="noopener">
+                                        PDF devolución
+                                    </a>
+                                @endunless
+
                                 @if($a->activa)
                                     <button type="button" class="vp-small-btn vp-small-btn-danger" onclick="toggleDetalleProducto('cerrar-producto-{{ $a->id }}')">
                                         Retirar / cerrar
