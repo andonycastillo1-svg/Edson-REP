@@ -42,15 +42,15 @@ class OperacionTrasladoController extends Controller
         } elseif ($user->isEncargado()) {
             $q->where(function ($query) use ($user) {
                 $query->where('bodega_destino_id', $user->bodega_id)
-                      ->orWhere('creado_por', $user->id);
+                    ->orWhere('creado_por', $user->id);
             });
         } else {
             $q->where('creado_por', $user->id);
         }
 
         $q->when($estado, function ($qq) use ($estado) {
-                $qq->where('estado', $estado);
-            })
+            $qq->where('estado', $estado);
+        })
             ->when($origen, function ($qq) use ($origen) {
                 $qq->where('bodega_origen_id', $origen);
             })
@@ -102,14 +102,14 @@ class OperacionTrasladoController extends Controller
         }
 
         $data = $request->validate([
-            'bodega_origen_id'  => ['required', 'exists:bodegas,id', 'different:bodega_destino_id'],
-            'bodega_destino_id' => ['required', 'exists:bodegas,id'],
-            'observacion'       => ['nullable', 'string', 'max:2000'],
-            'archivo_excel'    => ['nullable', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+            'bodega_origen_id'       => ['required', 'exists:bodegas,id', 'different:bodega_destino_id'],
+            'bodega_destino_id'      => ['required', 'exists:bodegas,id'],
+            'observacion'            => ['nullable', 'string', 'max:2000'],
+            'archivo_excel'          => ['nullable', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
 
-            'lineas'                   => ['required', 'array', 'min:1'],
+            'lineas'                 => ['required', 'array', 'min:1'],
             'lineas.*.producto_codigo' => ['required', 'exists:productos,codigo'],
-            'lineas.*.cantidad'        => ['required', 'integer', 'min:1'],
+            'lineas.*.cantidad'      => ['required', 'integer', 'min:1'],
         ], [
             'lineas.required' => 'Debes agregar al menos un producto.',
         ]);
@@ -177,16 +177,14 @@ class OperacionTrasladoController extends Controller
         }
 
         $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre) {
-            $operacion = new Operacion();
-
-            $payload = [
-                'tipo'              => Operacion::TIPO_TRASLADO,
-                'estado'            => Operacion::ESTADO_PENDIENTE,
-                'bodega_origen_id'  => (int) $data['bodega_origen_id'],
-                'bodega_destino_id' => (int) $data['bodega_destino_id'],
-                'creado_por'        => (int) auth()->id(),
-                'observacion'       => $data['observacion'] ?? null,
-                'archivo_excel_path' => $archivoExcelPath,
+            $operacion = new Operacion([
+                'tipo'                 => Operacion::TIPO_TRASLADO,
+                'estado'               => Operacion::ESTADO_PENDIENTE,
+                'bodega_origen_id'     => (int) $data['bodega_origen_id'],
+                'bodega_destino_id'    => (int) $data['bodega_destino_id'],
+                'creado_por'           => (int) auth()->id(),
+                'observacion'          => $data['observacion'] ?? null,
+                'archivo_excel_path'   => $archivoExcelPath,
                 'archivo_excel_nombre' => $archivoExcelNombre,
             ]);
 
