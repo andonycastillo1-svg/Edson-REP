@@ -12,7 +12,6 @@ use App\Models\Producto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class OperacionTrasladoController extends Controller
@@ -168,15 +167,6 @@ class OperacionTrasladoController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $puedeGuardarArchivoExcel = Schema::hasColumn('operaciones', 'archivo_excel_path')
-            && Schema::hasColumn('operaciones', 'archivo_excel_nombre');
-
-        if ($request->hasFile('archivo_excel') && !$puedeGuardarArchivoExcel) {
-            throw ValidationException::withMessages([
-                'archivo_excel' => 'La base de datos todavía no tiene los campos para guardar el adjunto. Ejecuta php artisan migrate y vuelve a intentarlo.',
-            ]);
-        }
-
         $archivoExcelPath = null;
         $archivoExcelNombre = null;
 
@@ -186,7 +176,7 @@ class OperacionTrasladoController extends Controller
             $archivoExcelNombre = $archivo->getClientOriginalName();
         }
 
-        $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre, $puedeGuardarArchivoExcel) {
+        $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre) {
             $operacion = new Operacion();
 
             $payload = [
@@ -196,14 +186,9 @@ class OperacionTrasladoController extends Controller
                 'bodega_destino_id' => (int) $data['bodega_destino_id'],
                 'creado_por'        => (int) auth()->id(),
                 'observacion'       => $data['observacion'] ?? null,
-            ];
-
-            if ($puedeGuardarArchivoExcel) {
-                $payload['archivo_excel_path'] = $archivoExcelPath;
-                $payload['archivo_excel_nombre'] = $archivoExcelNombre;
-            }
-
-            $operacion->forceFill($payload);
+                'archivo_excel_path' => $archivoExcelPath,
+                'archivo_excel_nombre' => $archivoExcelNombre,
+            ]);
 
             $operacion->save();
 
@@ -387,7 +372,7 @@ class OperacionTrasladoController extends Controller
     {
         $this->autorizarVerOperacion($operacion);
 
-        if (!Schema::hasColumn('operaciones', 'archivo_excel_path') || !$operacion->archivo_excel_path || !Storage::disk('public')->exists($operacion->archivo_excel_path)) {
+        if (!$operacion->archivo_excel_path || !Storage::disk('public')->exists($operacion->archivo_excel_path)) {
             abort(404, 'El archivo adjunto no existe.');
         }
 

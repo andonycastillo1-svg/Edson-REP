@@ -149,13 +149,6 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('vehiculos-productos/{asignacion}/pdf-devolucion', [VehiculoProductoController::class, 'pdfDevolucion'])
             ->name('vehiculos.productos.pdf_devolucion');
 
-
-        Route::post('vehiculos-productos/{asignacion}/pdf-firmado', [VehiculoProductoController::class, 'subirPdfFirmado'])
-            ->name('vehiculos.productos.subir_pdf_firmado');
-
-        Route::get('vehiculos-productos/archivos/{archivo}/ver', [VehiculoProductoController::class, 'verPdfFirmado'])
-            ->name('vehiculos.productos.ver_pdf_firmado');
-
         /*
         |--------------------------------------------------------------------------
         | Compras
