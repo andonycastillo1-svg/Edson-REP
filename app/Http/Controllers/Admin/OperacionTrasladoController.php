@@ -179,7 +179,7 @@ class OperacionTrasladoController extends Controller
         $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre) {
             $operacion = new Operacion();
 
-            $operacion->forceFill([
+            $payload = [
                 'tipo'              => Operacion::TIPO_TRASLADO,
                 'estado'            => Operacion::ESTADO_PENDIENTE,
                 'bodega_origen_id'  => (int) $data['bodega_origen_id'],

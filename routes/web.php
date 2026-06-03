@@ -219,6 +219,13 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
             ->name('asignaciones.upload_pdf_firmado');
 
+
+        Route::post('asignaciones/devoluciones/{grupo}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfDevolucionFirmado'])
+            ->name('asignaciones.upload_pdf_devolucion_firmado');
+
+        Route::get('asignaciones/archivos/{archivo}/ver', [AsignacionInventarioController::class, 'verPdfFirmado'])
+            ->name('asignaciones.ver_pdf_firmado');
+
         Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'devolver'])
             ->name('asignaciones.devolver');
 
@@ -266,6 +273,13 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
             ->name('asignaciones.upload_pdf_firmado');
+
+
+        Route::post('asignaciones/devoluciones/{grupo}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfDevolucionFirmado'])
+            ->name('asignaciones.upload_pdf_devolucion_firmado');
+
+        Route::get('asignaciones/archivos/{archivo}/ver', [AsignacionInventarioController::class, 'verPdfFirmado'])
+            ->name('asignaciones.ver_pdf_firmado');
 
         Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'devolver'])
             ->name('asignaciones.devolver');

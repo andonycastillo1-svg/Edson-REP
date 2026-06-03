@@ -4,6 +4,7 @@
 @endsection
 
 @section('content')
+@php($puedeGestionarPdfsFirmados = \Illuminate\Support\Facades\Schema::hasTable('asignacion_inventario_archivos'))
 
 <style>
   .asg-page {
@@ -481,6 +482,16 @@
     .asg-left {
       min-width: 0;
     }
+
+    .asg-upload-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .asg-file {
+      width: 100%;
+      max-width: 100%;
+    }
   }
 </style>
 
@@ -713,6 +724,7 @@
                         </td>
 
                         <td>
+                          @php($pdfAsignacionFirmado = $puedeGestionarPdfsFirmados ? ($a->pdfAsignacionFirmado ?? null) : null)
                           <form method="POST"
                                 action="{{ route($routePrefix . '.asignaciones.upload_pdf_firmado', $a) }}"
                                 enctype="multipart/form-data"
@@ -722,20 +734,20 @@
                             <div class="asg-upload-row">
                               <input type="file"
                                      name="pdf_firmado"
-                                     accept=".pdf,.jpg,.jpeg,.png"
+                                     accept="application/pdf,.pdf"
                                      required
                                      class="asg-file">
 
                               <button type="submit" class="asg-upload-btn">
-                                Subir
+                                {{ $pdfAsignacionFirmado ? 'Reemplazar' : 'Subir' }}
                               </button>
                             </div>
 
-                            @if($a->pdf_firmado)
-                              <a href="{{ asset('storage/' . $a->pdf_firmado) }}"
+                            @if($pdfAsignacionFirmado)
+                              <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $pdfAsignacionFirmado) }}"
                                  target="_blank"
                                  style="font-size:11px; font-weight:700; color:#047857;">
-                                Ver firmado
+                                Ver firmado: {{ $pdfAsignacionFirmado->nombre_original ?? 'PDF firmado' }}
                               </a>
                             @endif
                           </form>
@@ -827,12 +839,36 @@
 
                 <td style="text-align:center;">
                   @if($m->tipo === 'Devolucion' && !empty($m->grupo_devolucion))
-                    <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', $m->grupo_devolucion) }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="asg-pdf-btn">
-                      Ver hoja
-                    </a>
+                    @php($pdfDevolucionFirmado = $puedeGestionarPdfsFirmados ? $pdfsDevolucionFirmados->get($m->grupo_devolucion) : null)
+                    <div class="asg-upload-form">
+                      <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', $m->grupo_devolucion) }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="asg-pdf-btn">
+                        Ver hoja
+                      </a>
+
+                      <form method="POST"
+                            action="{{ route($routePrefix . '.asignaciones.upload_pdf_devolucion_firmado', $m->grupo_devolucion) }}"
+                            enctype="multipart/form-data"
+                            class="asg-upload-form">
+                        @csrf
+                        <div class="asg-upload-row">
+                          <input type="file" name="pdf_firmado" accept="application/pdf,.pdf" required class="asg-file">
+                          <button type="submit" class="asg-upload-btn">
+                            {{ $pdfDevolucionFirmado ? 'Reemplazar firmado' : 'Subir firmado' }}
+                          </button>
+                        </div>
+                      </form>
+
+                      @if($pdfDevolucionFirmado)
+                        <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $pdfDevolucionFirmado) }}"
+                           target="_blank"
+                           style="font-size:11px; font-weight:700; color:#047857;">
+                          Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
+                        </a>
+                      @endif
+                    </div>
                   @else
                     <span style="color:#94a3b8;">—</span>
                   @endif

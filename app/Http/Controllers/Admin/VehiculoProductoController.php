@@ -10,11 +10,13 @@ use App\Models\Inventario;
 use App\Models\Movimiento;
 use App\Models\Vehiculo;
 use App\Models\VehiculoProductoAsignacion;
+use App\Models\VehiculoProductoArchivo;
 use App\Services\BodegaAccessService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class VehiculoProductoController extends Controller

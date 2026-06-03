@@ -45,4 +45,8 @@ class VehiculoProductoAsignacion extends Model
     public function asignadoPor() { return $this->belongsTo(User::class, 'asignado_por_user_id'); }
     public function cerradoPor() { return $this->belongsTo(User::class, 'cerrado_por_user_id'); }
     public function colaboradorResponsable() { return $this->belongsTo(Colaborador::class, 'colaborador_responsable_codigo', 'codigo'); }
+
+    public function archivosFirmados() { return $this->hasMany(VehiculoProductoArchivo::class, 'vehiculo_producto_asignacion_id'); }
+    public function pdfAsignacionFirmado() { return $this->hasOne(VehiculoProductoArchivo::class, 'vehiculo_producto_asignacion_id')->where('tipo_documento', 'asignacion_firmada')->latestOfMany(); }
+    public function pdfDevolucionFirmado() { return $this->hasOne(VehiculoProductoArchivo::class, 'vehiculo_producto_asignacion_id')->where('tipo_documento', 'devolucion_firmada')->latestOfMany(); }
 }

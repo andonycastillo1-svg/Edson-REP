@@ -3,6 +3,7 @@
 @section('title', 'Productos del vehículo')
 
 @section('content')
+@php($puedeGestionarPdfsFirmadosVehiculo = \Illuminate\Support\Facades\Schema::hasTable('vehiculo_producto_archivos'))
 <style>
     .vp-wrap {
         max-width: 1180px;
@@ -448,6 +449,11 @@
         .vp-close-form {
             grid-template-columns: 1fr;
         }
+
+        .vp-close-form form {
+            display: grid;
+            gap: 8px;
+        }
     }
 
     @media (max-width: 800px) {
@@ -636,6 +642,10 @@
 
             <div class="vp-list">
                 @forelse($asignaciones as $a)
+                    @php
+                        $pdfAsignacionFirmado = $puedeGestionarPdfsFirmadosVehiculo ? ($a->pdfAsignacionFirmado ?? null) : null;
+                        $pdfDevolucionFirmado = $puedeGestionarPdfsFirmadosVehiculo ? ($a->pdfDevolucionFirmado ?? null) : null;
+                    @endphp
                     <div class="vp-item">
                         <div class="vp-item-summary">
                             <div>
@@ -753,6 +763,45 @@
                                         @endif
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="vp-close-panel open">
+                            <div class="vp-close-title">PDFs firmados del producto/refacción</div>
+                            <div class="vp-close-subtitle">
+                                Genera la hoja, fírmala y carga aquí el PDF final para conservar la constancia.
+                            </div>
+
+                            <div class="vp-close-form">
+                                <form method="POST" action="{{ route('admin.vehiculos.productos.subir_pdf_firmado', $a) }}" enctype="multipart/form-data">
+                                    @csrf
+                                    <input type="hidden" name="tipo_documento" value="asignacion_firmada">
+                                    <input type="file" name="archivo" accept="application/pdf,.pdf" required>
+                                    <button class="vp-btn vp-btn-primary" type="submit">
+                                        {{ $pdfAsignacionFirmado ? 'Reemplazar asignación firmada' : 'Subir asignación firmada' }}
+                                    </button>
+                                    @if($pdfAsignacionFirmado)
+                                        <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfAsignacionFirmado) }}" target="_blank" rel="noopener">
+                                            Ver firmado: {{ $pdfAsignacionFirmado->nombre_original ?? 'PDF firmado' }}
+                                        </a>
+                                    @endif
+                                </form>
+
+                                @unless($a->activa)
+                                    <form method="POST" action="{{ route('admin.vehiculos.productos.subir_pdf_firmado', $a) }}" enctype="multipart/form-data">
+                                        @csrf
+                                        <input type="hidden" name="tipo_documento" value="devolucion_firmada">
+                                        <input type="file" name="archivo" accept="application/pdf,.pdf" required>
+                                        <button class="vp-btn vp-btn-primary" type="submit">
+                                            {{ $pdfDevolucionFirmado ? 'Reemplazar devolución firmada' : 'Subir devolución firmada' }}
+                                        </button>
+                                        @if($pdfDevolucionFirmado)
+                                            <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfDevolucionFirmado) }}" target="_blank" rel="noopener">
+                                                Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
+                                            </a>
+                                        @endif
+                                    </form>
+                                @endunless
                             </div>
                         </div>
 

@@ -8,6 +8,7 @@ use App\Models\Inventario;
 use App\Models\Colaborador;
 use App\Models\Bodega;
 use App\Models\AsignacionMovimiento;
+use App\Models\AsignacionInventarioArchivo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
@@ -23,7 +24,13 @@ class AsignacionInventarioController extends Controller
     {
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 
-        $query = AsignacionInventario::with(['colaborador', 'producto', 'bodega'])->latest();
+        $relaciones = ['colaborador', 'producto', 'bodega'];
+
+        if (Schema::hasTable('asignacion_inventario_archivos')) {
+            $relaciones[] = 'pdfAsignacionFirmado.subidoPor';
+        }
+
+        $query = AsignacionInventario::with($relaciones)->latest();
 
         if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
             $query->where('user_id', auth()->id());
@@ -55,10 +62,30 @@ class AsignacionInventarioController extends Controller
                 ->get();
         }
 
+        $pdfsDevolucionFirmados = collect();
+
+        if (Schema::hasTable('asignacion_inventario_archivos') && $movimientos->isNotEmpty()) {
+            $gruposDevolucion = $movimientos
+                ->where('tipo', 'Devolucion')
+                ->pluck('grupo_devolucion')
+                ->filter()
+                ->unique()
+                ->values();
+
+            $pdfsDevolucionFirmados = AsignacionInventarioArchivo::with('subidoPor')
+                ->whereIn('grupo_devolucion', $gruposDevolucion)
+                ->where('tipo_documento', 'devolucion_firmada')
+                ->latest('id')
+                ->get()
+                ->unique('grupo_devolucion')
+                ->keyBy('grupo_devolucion');
+        }
+
         return view('admin.asignaciones.index', compact(
             'asignacionesPorColaborador',
             'routePrefix',
-            'movimientos'
+            'movimientos',
+            'pdfsDevolucionFirmados'
         ));
     }
 
@@ -316,22 +343,42 @@ class AsignacionInventarioController extends Controller
 
     public function uploadPdfFirmado(Request $request, AsignacionInventario $asignacion)
     {
-        if (
-            Schema::hasColumn('asignaciones_inventarios', 'user_id')
-            && (int) $asignacion->user_id !== (int) auth()->id()
-        ) {
-            abort(403);
+        $this->autorizarAsignacionInventario($asignacion);
+
+        if (!Schema::hasTable('asignacion_inventario_archivos')) {
+            return back()->with('error', 'La tabla para PDFs firmados no existe. Ejecuta php artisan migrate.');
         }
 
         $data = $request->validate([
-            'pdf_firmado' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'pdf_firmado' => ['required', 'file', 'mimes:pdf', 'max:10240'],
         ]);
 
-        if ($asignacion->pdf_firmado) {
+        $archivoAnterior = $asignacion->pdfAsignacionFirmado;
+
+        if ($archivoAnterior && Storage::disk('public')->exists($archivoAnterior->ruta)) {
+            Storage::disk('public')->delete($archivoAnterior->ruta);
+        }
+
+        if ($archivoAnterior) {
+            $archivoAnterior->delete();
+        }
+
+        if ($asignacion->pdf_firmado && Storage::disk('public')->exists($asignacion->pdf_firmado)) {
             Storage::disk('public')->delete($asignacion->pdf_firmado);
         }
 
-        $path = $data['pdf_firmado']->store('asignaciones/firmados', 'public');
+        $file = $data['pdf_firmado'];
+        $path = $file->store('asignaciones/firmados/asignaciones/' . $asignacion->id, 'public');
+
+        AsignacionInventarioArchivo::create([
+            'asignacion_inventario_id' => $asignacion->id,
+            'tipo_documento' => 'asignacion_firmada',
+            'ruta' => $path,
+            'nombre_original' => $file->getClientOriginalName(),
+            'mime' => $file->getMimeType(),
+            'tamano' => $file->getSize(),
+            'subido_por_user_id' => auth()->id(),
+        ]);
 
         $asignacion->update([
             'pdf_firmado' => $path,
@@ -342,6 +389,84 @@ class AsignacionInventarioController extends Controller
         return redirect()
             ->route($routePrefix . '.asignaciones.index')
             ->with('success', 'Documento firmado cargado correctamente.');
+    }
+
+    public function uploadPdfDevolucionFirmado(Request $request, string $grupo)
+    {
+        if (!Schema::hasTable('asignacion_inventario_archivos')) {
+            return back()->with('error', 'La tabla para PDFs firmados no existe. Ejecuta php artisan migrate.');
+        }
+
+        $movimientos = $this->movimientosDevolucionAutorizados($grupo);
+
+        if ($movimientos->isEmpty()) {
+            abort(404, 'No se encontraron movimientos de devolución para este grupo.');
+        }
+
+        $data = $request->validate([
+            'pdf_firmado' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+        ]);
+
+        $archivoAnterior = AsignacionInventarioArchivo::where('grupo_devolucion', $grupo)
+            ->where('tipo_documento', 'devolucion_firmada')
+            ->latest('id')
+            ->first();
+
+        if ($archivoAnterior && Storage::disk('public')->exists($archivoAnterior->ruta)) {
+            Storage::disk('public')->delete($archivoAnterior->ruta);
+        }
+
+        if ($archivoAnterior) {
+            $archivoAnterior->delete();
+        }
+
+        $file = $data['pdf_firmado'];
+        $path = $file->store('asignaciones/firmados/devoluciones/' . $grupo, 'public');
+
+        AsignacionInventarioArchivo::create([
+            'asignacion_inventario_id' => optional($movimientos->first())->asignacion_inventario_id,
+            'grupo_devolucion' => $grupo,
+            'tipo_documento' => 'devolucion_firmada',
+            'ruta' => $path,
+            'nombre_original' => $file->getClientOriginalName(),
+            'mime' => $file->getMimeType(),
+            'tamano' => $file->getSize(),
+            'subido_por_user_id' => auth()->id(),
+        ]);
+
+        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+
+        return redirect()
+            ->route($routePrefix . '.asignaciones.index')
+            ->with('success', 'PDF firmado de devolución cargado correctamente.');
+    }
+
+    public function verPdfFirmado(AsignacionInventarioArchivo $archivo)
+    {
+        if ($archivo->tipo_documento === 'devolucion_firmada') {
+            $movimientos = $this->movimientosDevolucionAutorizados((string) $archivo->grupo_devolucion);
+
+            if ($movimientos->isEmpty()) {
+                abort(403);
+            }
+        } else {
+            $archivo->loadMissing('asignacion');
+
+            if (!$archivo->asignacion) {
+                abort(404);
+            }
+
+            $this->autorizarAsignacionInventario($archivo->asignacion);
+        }
+
+        if (!Storage::disk('public')->exists($archivo->ruta)) {
+            abort(404, 'El archivo firmado no existe.');
+        }
+
+        return response()->file(
+            Storage::disk('public')->path($archivo->ruta),
+            ['Content-Type' => $archivo->mime ?? 'application/pdf']
+        );
     }
 
     public function devolver(Request $request, AsignacionInventario $asignacion)
@@ -557,6 +682,30 @@ class AsignacionInventarioController extends Controller
 
     public function hojaDevolucion(string $grupo)
     {
+        $movimientos = $this->movimientosDevolucionAutorizados($grupo);
+
+        if ($movimientos->isEmpty()) {
+            abort(404, 'No se encontraron movimientos de devolución para este grupo.');
+        }
+
+        $primerMovimiento = $movimientos->first();
+
+        return view('admin.asignaciones.hoja_devolucion', compact('movimientos', 'grupo', 'primerMovimiento'));
+    }
+
+    private function autorizarAsignacionInventario(AsignacionInventario $asignacion): void
+    {
+        if (
+            (int) auth()->user()->role_id !== 1
+            && Schema::hasColumn('asignaciones_inventarios', 'user_id')
+            && (int) $asignacion->user_id !== (int) auth()->id()
+        ) {
+            abort(403);
+        }
+    }
+
+    private function movimientosDevolucionAutorizados(string $grupo)
+    {
         $query = AsignacionMovimiento::with([
             'asignacion',
             'asignacion.colaborador',
@@ -572,15 +721,7 @@ class AsignacionInventarioController extends Controller
             $query->where('user_id', auth()->id());
         }
 
-        $movimientos = $query->get();
-
-        if ($movimientos->isEmpty()) {
-            abort(404, 'No se encontraron movimientos de devolución para este grupo.');
-        }
-
-        $primerMovimiento = $movimientos->first();
-
-        return view('admin.asignaciones.hoja_devolucion', compact('movimientos', 'grupo', 'primerMovimiento'));
+        return $query->get();
     }
 
     private function requiereRestriccionBodega(): bool
