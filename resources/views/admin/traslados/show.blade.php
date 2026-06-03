@@ -374,6 +374,13 @@
           🧾 Hoja
         </a>
 
+
+        @if($operacion->archivo_excel_path)
+          <a href="{{ route($routePrefix . '.operaciones.traslados.archivo', $operacion) }}" target="_blank" rel="noopener" class="btn btn-white">
+            📎 Ver Excel adjunto
+          </a>
+        @endif
+
         <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}" class="btn btn-white">
           ← Volver
         </a>

@@ -142,6 +142,20 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::post('vehiculos-productos/{asignacion}/cerrar', [VehiculoProductoController::class, 'cerrar'])
             ->name('vehiculos.productos.cerrar');
 
+
+        Route::get('vehiculos-productos/{asignacion}/pdf-asignacion', [VehiculoProductoController::class, 'pdfAsignacion'])
+            ->name('vehiculos.productos.pdf_asignacion');
+
+        Route::get('vehiculos-productos/{asignacion}/pdf-devolucion', [VehiculoProductoController::class, 'pdfDevolucion'])
+            ->name('vehiculos.productos.pdf_devolucion');
+
+
+        Route::post('vehiculos-productos/{asignacion}/pdf-firmado', [VehiculoProductoController::class, 'subirPdfFirmado'])
+            ->name('vehiculos.productos.subir_pdf_firmado');
+
+        Route::get('vehiculos-productos/archivos/{archivo}/ver', [VehiculoProductoController::class, 'verPdfFirmado'])
+            ->name('vehiculos.productos.ver_pdf_firmado');
+
         /*
         |--------------------------------------------------------------------------
         | Compras
@@ -186,6 +200,9 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('operaciones/traslados/{operacion}/hoja', [OperacionTrasladoController::class, 'hoja'])
             ->name('operaciones.traslados.hoja');
 
+        Route::get('operaciones/traslados/{operacion}/archivo-excel', [OperacionTrasladoController::class, 'archivo'])
+            ->name('operaciones.traslados.archivo');
+
         /*
         |--------------------------------------------------------------------------
         | Asignaciones de inventario
@@ -208,6 +225,13 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
             ->name('asignaciones.upload_pdf_firmado');
+
+
+        Route::post('asignaciones/devoluciones/{grupo}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfDevolucionFirmado'])
+            ->name('asignaciones.upload_pdf_devolucion_firmado');
+
+        Route::get('asignaciones/archivos/{archivo}/ver', [AsignacionInventarioController::class, 'verPdfFirmado'])
+            ->name('asignaciones.ver_pdf_firmado');
 
         Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'devolver'])
             ->name('asignaciones.devolver');
@@ -257,6 +281,13 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
         Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
             ->name('asignaciones.upload_pdf_firmado');
 
+
+        Route::post('asignaciones/devoluciones/{grupo}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfDevolucionFirmado'])
+            ->name('asignaciones.upload_pdf_devolucion_firmado');
+
+        Route::get('asignaciones/archivos/{archivo}/ver', [AsignacionInventarioController::class, 'verPdfFirmado'])
+            ->name('asignaciones.ver_pdf_firmado');
+
         Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'devolver'])
             ->name('asignaciones.devolver');
 
@@ -286,6 +317,9 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::get('operaciones/traslados/{operacion}/hoja', [OperacionTrasladoController::class, 'hoja'])
             ->name('operaciones.traslados.hoja');
+
+        Route::get('operaciones/traslados/{operacion}/archivo-excel', [OperacionTrasladoController::class, 'archivo'])
+            ->name('operaciones.traslados.archivo');
     });
 
 /*

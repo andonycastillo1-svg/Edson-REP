@@ -10,11 +10,13 @@ use App\Models\Inventario;
 use App\Models\Movimiento;
 use App\Models\Vehiculo;
 use App\Models\VehiculoProductoAsignacion;
+use App\Models\VehiculoProductoArchivo;
 use App\Services\BodegaAccessService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class VehiculoProductoController extends Controller
@@ -30,13 +32,22 @@ class VehiculoProductoController extends Controller
             ->orderBy('placa')
             ->get();
 
-        $asignaciones = VehiculoProductoAsignacion::with([
-                'vehiculo',
-                'producto',
-                'bodega',
-                'asignadoPor',
-                'colaboradorResponsable',
-            ])
+        $relaciones = [
+            'vehiculo',
+            'producto',
+            'bodega',
+            'asignadoPor',
+            'colaboradorResponsable',
+            'asignacionVehiculo.colaborador',
+            'cerradoPor',
+        ];
+
+        if (Schema::hasTable('vehiculo_producto_archivos')) {
+            $relaciones[] = 'pdfAsignacionFirmado.subidoPor';
+            $relaciones[] = 'pdfDevolucionFirmado.subidoPor';
+        }
+
+        $asignaciones = VehiculoProductoAsignacion::with($relaciones)
             ->when($vehiculoVin, fn ($query) => $query->where('vehiculo_vin', $vehiculoVin))
             ->latest('fecha')
             ->latest('id')
@@ -151,6 +162,120 @@ class VehiculoProductoController extends Controller
         return redirect()
             ->route('admin.vehiculos.productos.index', ['vehiculo_vin' => $data['vehiculo_vin']])
             ->with('success', 'Producto/refacción asignado al vehículo correctamente.');
+    }
+
+    public function pdfAsignacion(VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)
+    {
+        $this->autorizarDocumento($asignacion, $bodegaAccess);
+
+        $asignacion->load([
+            'vehiculo',
+            'producto',
+            'bodega',
+            'asignadoPor',
+            'asignacionVehiculo.colaborador',
+        ]);
+
+        return view('admin.vehiculos.productos.pdf', [
+            'asignacion' => $asignacion,
+            'tipoDocumento' => 'asignacion',
+        ]);
+    }
+
+    public function pdfDevolucion(VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)
+    {
+        $this->autorizarDocumento($asignacion, $bodegaAccess);
+
+        if ($asignacion->activa) {
+            return back()->with('error', 'La hoja de devolución solo está disponible cuando el producto/refacción ya fue retirado o cerrado.');
+        }
+
+        $asignacion->load([
+            'vehiculo',
+            'producto',
+            'bodega',
+            'cerradoPor',
+            'colaboradorResponsable',
+            'asignacionVehiculo.colaborador',
+        ]);
+
+        return view('admin.vehiculos.productos.pdf', [
+            'asignacion' => $asignacion,
+            'tipoDocumento' => 'devolucion',
+        ]);
+    }
+
+    private function autorizarDocumento(VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess): void
+    {
+        if (!$bodegaAccess->canView(auth()->user(), (int) $asignacion->bodega_id)) {
+            abort(403);
+        }
+    }
+
+    public function subirPdfFirmado(Request $request, VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)
+    {
+        $this->autorizarDocumento($asignacion, $bodegaAccess);
+
+        if (!Schema::hasTable('vehiculo_producto_archivos')) {
+            return back()->with('error', 'La tabla para PDFs firmados no existe. Ejecuta php artisan migrate.');
+        }
+
+        $data = $request->validate([
+            'tipo_documento' => ['required', 'in:asignacion_firmada,devolucion_firmada'],
+            'archivo' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+        ]);
+
+        if ($data['tipo_documento'] === 'devolucion_firmada' && $asignacion->activa) {
+            return back()->with('error', 'No puedes subir PDF firmado de devolución si el producto/refacción sigue activo.');
+        }
+
+        $anterior = VehiculoProductoArchivo::where('vehiculo_producto_asignacion_id', $asignacion->id)
+            ->where('tipo_documento', $data['tipo_documento'])
+            ->latest('id')
+            ->first();
+
+        if ($anterior && Storage::disk('public')->exists($anterior->ruta)) {
+            Storage::disk('public')->delete($anterior->ruta);
+        }
+
+        if ($anterior) {
+            $anterior->delete();
+        }
+
+        $file = $data['archivo'];
+        $path = $file->store('vehiculos/productos/' . $asignacion->id . '/firmados', 'public');
+
+        VehiculoProductoArchivo::create([
+            'vehiculo_producto_asignacion_id' => $asignacion->id,
+            'tipo_documento' => $data['tipo_documento'],
+            'ruta' => $path,
+            'nombre_original' => $file->getClientOriginalName(),
+            'mime' => $file->getMimeType(),
+            'tamano' => $file->getSize(),
+            'subido_por_user_id' => auth()->id(),
+        ]);
+
+        return back()->with('success', 'PDF firmado del producto/refacción guardado correctamente.');
+    }
+
+    public function verPdfFirmado(VehiculoProductoArchivo $archivo, BodegaAccessService $bodegaAccess)
+    {
+        $archivo->loadMissing('asignacion');
+
+        if (!$archivo->asignacion) {
+            abort(404);
+        }
+
+        $this->autorizarDocumento($archivo->asignacion, $bodegaAccess);
+
+        if (!Storage::disk('public')->exists($archivo->ruta)) {
+            abort(404, 'El archivo firmado no existe.');
+        }
+
+        return response()->file(
+            Storage::disk('public')->path($archivo->ruta),
+            ['Content-Type' => $archivo->mime ?? 'application/pdf']
+        );
     }
 
     public function cerrar(Request $request, VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)

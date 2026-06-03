@@ -11,6 +11,8 @@ use App\Models\OperacionDetalle;
 use App\Models\Producto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class OperacionTrasladoController extends Controller
@@ -104,6 +106,7 @@ class OperacionTrasladoController extends Controller
             'bodega_origen_id'  => ['required', 'exists:bodegas,id', 'different:bodega_destino_id'],
             'bodega_destino_id' => ['required', 'exists:bodegas,id'],
             'observacion'       => ['nullable', 'string', 'max:2000'],
+            'archivo_excel'    => ['nullable', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
 
             'lineas'                   => ['required', 'array', 'min:1'],
             'lineas.*.producto_codigo' => ['required', 'exists:productos,codigo'],
@@ -165,17 +168,42 @@ class OperacionTrasladoController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $operacion = DB::transaction(function () use ($data, $agrupadas) {
+        $puedeGuardarArchivoExcel = Schema::hasColumn('operaciones', 'archivo_excel_path')
+            && Schema::hasColumn('operaciones', 'archivo_excel_nombre');
+
+        if ($request->hasFile('archivo_excel') && !$puedeGuardarArchivoExcel) {
+            throw ValidationException::withMessages([
+                'archivo_excel' => 'La base de datos todavía no tiene los campos para guardar el adjunto. Ejecuta php artisan migrate y vuelve a intentarlo.',
+            ]);
+        }
+
+        $archivoExcelPath = null;
+        $archivoExcelNombre = null;
+
+        if ($request->hasFile('archivo_excel')) {
+            $archivo = $request->file('archivo_excel');
+            $archivoExcelPath = $archivo->store('traslados', 'public');
+            $archivoExcelNombre = $archivo->getClientOriginalName();
+        }
+
+        $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre, $puedeGuardarArchivoExcel) {
             $operacion = new Operacion();
 
-            $operacion->forceFill([
+            $payload = [
                 'tipo'              => Operacion::TIPO_TRASLADO,
                 'estado'            => Operacion::ESTADO_PENDIENTE,
                 'bodega_origen_id'  => (int) $data['bodega_origen_id'],
                 'bodega_destino_id' => (int) $data['bodega_destino_id'],
                 'creado_por'        => (int) auth()->id(),
                 'observacion'       => $data['observacion'] ?? null,
-            ]);
+            ];
+
+            if ($puedeGuardarArchivoExcel) {
+                $payload['archivo_excel_path'] = $archivoExcelPath;
+                $payload['archivo_excel_nombre'] = $archivoExcelNombre;
+            }
+
+            $operacion->forceFill($payload);
 
             $operacion->save();
 
@@ -353,6 +381,36 @@ class OperacionTrasladoController extends Controller
         return redirect()
             ->route($routePrefix . '.operaciones.traslados.show', $operacion)
             ->with('ok', 'Solicitud rechazada.');
+    }
+
+    public function archivo(Operacion $operacion)
+    {
+        $this->autorizarVerOperacion($operacion);
+
+        if (!Schema::hasColumn('operaciones', 'archivo_excel_path') || !$operacion->archivo_excel_path || !Storage::disk('public')->exists($operacion->archivo_excel_path)) {
+            abort(404, 'El archivo adjunto no existe.');
+        }
+
+        return response()->file(
+            Storage::disk('public')->path($operacion->archivo_excel_path),
+            [
+                'Content-Disposition' => 'inline; filename="' . addslashes($operacion->archivo_excel_nombre ?? basename($operacion->archivo_excel_path)) . '"',
+            ]
+        );
+    }
+
+    private function autorizarVerOperacion(Operacion $operacion): void
+    {
+        $user = auth()->user();
+
+        $esAdmin = (int) $user->role_id === 1;
+        $esCreador = (int) $user->id === (int) $operacion->creado_por;
+        $esDestinoEncargado = $user->isEncargado()
+            && (int) $user->bodega_id === (int) $operacion->bodega_destino_id;
+
+        if (!$esAdmin && !$esCreador && !$esDestinoEncargado) {
+            abort(403);
+        }
     }
 
     public function hoja(Operacion $operacion)

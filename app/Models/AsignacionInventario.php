@@ -57,6 +57,18 @@ class AsignacionInventario extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function archivosFirmados()
+    {
+        return $this->hasMany(AsignacionInventarioArchivo::class, 'asignacion_inventario_id');
+    }
+
+    public function pdfAsignacionFirmado()
+    {
+        return $this->hasOne(AsignacionInventarioArchivo::class, 'asignacion_inventario_id')
+            ->where('tipo_documento', 'asignacion_firmada')
+            ->latestOfMany();
+    }
+
     public function movimientos()
     {
         return $this->hasMany(AsignacionMovimiento::class, 'asignacion_inventario_id');
