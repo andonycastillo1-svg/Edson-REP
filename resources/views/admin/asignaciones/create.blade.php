@@ -299,12 +299,6 @@
       </div>
     </form>
 
-    <div class="mt-5 flex justify-end">
-      <a href="{{ route('dashboard') }}"
-        class="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-extrabold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:shadow-md">
-        ← Volver
-      </a>
-    </div>
   </div>
 </div>
 

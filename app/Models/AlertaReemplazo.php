@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class AlertaReemplazo extends Model
 {
+    public const ESTADO_PENDIENTE = 'pendiente';
+    public const ESTADO_FINALIZADO = 'finalizado';
+
     protected $table = 'alertas_reemplazos_rrhh';
 
     protected $fillable = [
@@ -32,4 +35,16 @@ class AlertaReemplazo extends Model
         'fecha_dano_reemplazo' => 'datetime',
         'descuento_aplicable' => 'boolean',
     ];
+
+    public function estaPendiente(): bool
+    {
+        return ($this->estado ?? self::ESTADO_PENDIENTE) === self::ESTADO_PENDIENTE;
+    }
+
+    public function marcarFinalizada(): void
+    {
+        $this->forceFill([
+            'estado' => self::ESTADO_FINALIZADO,
+        ])->save();
+    }
 }
