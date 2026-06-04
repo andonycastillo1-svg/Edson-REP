@@ -334,6 +334,9 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
         Route::get('/alertas/export', [RrhhDashboardController::class, 'export'])
             ->name('alertas.export');
 
+        Route::post('/alertas/{alerta}/finalizar', [RrhhDashboardController::class, 'finalizar'])
+            ->name('alertas.finalizar');
+
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])

@@ -16,7 +16,14 @@
             </div>
 
             <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
+            <div class="hidden sm:flex sm:items-center sm:ms-6 sm:gap-3">
+                @unless(request()->routeIs('dashboard', '*.dashboard'))
+                    <a href="{{ route('dashboard') }}"
+                       class="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-100">
+                        Panel principal
+                    </a>
+                @endunless
+
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button class="inline-flex items-center rounded-full border border-sky-100 bg-sky-50/80 px-4 py-2 text-sm font-semibold leading-4 text-slate-700 shadow-sm transition duration-150 ease-in-out hover:bg-sky-100 hover:text-sky-900 focus:outline-none">
@@ -72,6 +79,12 @@
             </div>
 
             <div class="mt-3 space-y-1">
+                @unless(request()->routeIs('dashboard', '*.dashboard'))
+                    <x-responsive-nav-link :href="route('dashboard')">
+                        Panel principal
+                    </x-responsive-nav-link>
+                @endunless
+
                 <x-responsive-nav-link :href="route('profile.edit')">
                     Perfil
                 </x-responsive-nav-link>

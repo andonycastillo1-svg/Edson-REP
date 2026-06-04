@@ -508,10 +508,6 @@
         <a href="{{ route($routePrefix . '.asignaciones.create') }}" class="asg-btn-primary">
           + Nueva asignación
         </a>
-
-        <a href="{{ route('dashboard') }}" class="asg-btn-secondary">
-          ← Volver
-        </a>
       </div>
     </div>
 
