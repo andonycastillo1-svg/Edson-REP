@@ -379,14 +379,6 @@
       </div>
     </div>
 
-    {{-- VOLVER --}}
-    <div class="mt-5 flex justify-end">
-      <a href="{{ route($routePrefix . '.dashboard') }}"
-         class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50">
-        ← Volver al menú
-      </a>
-    </div>
-
   </div>
 
   @include('admin.colaboradores.Modals.expediente-modal')

@@ -336,10 +336,6 @@
             + Nueva solicitud
           </a>
         @endif
-
-        <a href="{{ route('dashboard') }}" class="btn-secondary">
-          ← Volver
-        </a>
       </div>
     </div>
 

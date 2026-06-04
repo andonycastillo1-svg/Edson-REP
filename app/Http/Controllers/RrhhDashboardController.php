@@ -10,7 +10,9 @@ class RrhhDashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $totalAlertas = $this->buildQuery($request)->count();
+        $totalAlertas = $this->buildQuery($request)
+            ->where('alertas_reemplazos_rrhh.estado', AlertaReemplazo::ESTADO_PENDIENTE)
+            ->count();
 
         return view('rrhh.dashboard', compact('totalAlertas'));
     }
@@ -25,6 +27,21 @@ class RrhhDashboardController extends Controller
         $alertas->through(fn ($a) => $this->mapAlerta($a));
 
         return view('rrhh.alertas.index', compact('alertas'));
+    }
+
+    public function finalizar(Request $request, AlertaReemplazo $alerta)
+    {
+        $request->validate([
+            'confirmar' => ['required', 'accepted'],
+        ]);
+
+        if (!$alerta->estaPendiente()) {
+            return back()->with('info', 'La alerta ya se encuentra finalizada.');
+        }
+
+        $alerta->marcarFinalizada();
+
+        return back()->with('success', 'Alerta de descuento marcada como finalizada.');
     }
 
     public function export(Request $request)
@@ -50,6 +67,7 @@ class RrhhDashboardController extends Controller
                 'Vida restante',
                 'Descuento aplica',
                 'Monto descuento',
+                'Estado',
             ]);
 
             foreach ($alertas as $a) {
@@ -64,6 +82,7 @@ class RrhhDashboardController extends Controller
                     $a->meses_restantes_reales,
                     $a->descuento_aplicable ? 'Sí' : 'No',
                     number_format($a->descuento_calculado, 2, '.', ''),
+                    $a->estado_etiqueta,
                 ]);
             }
 
@@ -119,6 +138,13 @@ class RrhhDashboardController extends Controller
                         ->orWhere('p.descripcion', 'like', "%{$q}%");
                 });
             })
+            ->when($request->filled('estado'), function ($query) use ($request) {
+                $estado = $request->query('estado');
+
+                if (in_array($estado, [AlertaReemplazo::ESTADO_PENDIENTE, AlertaReemplazo::ESTADO_FINALIZADO], true)) {
+                    $query->where('alertas_reemplazos_rrhh.estado', $estado);
+                }
+            })
             ->when($request->filled('desde'), function ($query) use ($request) {
                 $query->whereDate(
                     'alertas_reemplazos_rrhh.fecha_dano_reemplazo',
@@ -146,6 +172,11 @@ class RrhhDashboardController extends Controller
         $alerta->descuento_calculado = ($alerta->descuento_aplicable && $vidaUtilMeses > 0)
             ? round($costoProducto * ($mesesRestantes / $vidaUtilMeses), 2)
             : 0;
+
+        $estado = $alerta->estado ?? AlertaReemplazo::ESTADO_PENDIENTE;
+        $alerta->estado_etiqueta = $estado === AlertaReemplazo::ESTADO_FINALIZADO
+            ? 'Finalizado'
+            : 'Pendiente';
 
         return $alerta;
     }

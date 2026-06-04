@@ -27,10 +27,6 @@
                 </div>
             </div>
 
-            <a href="{{ route('rrhh.dashboard') }}"
-               class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
-                ← Volver al panel
-            </a>
         </div>
 
         <div class="border-t border-slate-200 bg-slate-50 px-5 py-2">
@@ -40,17 +36,35 @@
         </div>
     </div>
 
+    @if(session('success'))
+        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('info'))
+        <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
+            {{ session('info') }}
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
     {{-- Filtros --}}
     <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
             <h2 class="text-sm font-bold text-slate-900">Filtros de alertas</h2>
             <p class="text-xs text-slate-500">
-                Busca por colaborador, producto o rango de fechas.
+                Busca por colaborador, producto, rango de fechas o estado.
             </p>
         </div>
 
         <form method="GET" action="{{ route('rrhh.alertas.index') }}" class="p-4">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <div class="md:col-span-2">
                     <label class="block text-xs font-semibold text-slate-600 mb-1">
                         Colaborador o producto
@@ -86,6 +100,20 @@
                         value="{{ request('hasta') }}"
                         class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
                     >
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">
+                        Estado
+                    </label>
+                    <select
+                        name="estado"
+                        class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                    >
+                        <option value="" @selected(request('estado') === null || request('estado') === '')>Todos</option>
+                        <option value="pendiente" @selected(request('estado') === 'pendiente')>Pendiente</option>
+                        <option value="finalizado" @selected(request('estado') === 'finalizado')>Finalizado</option>
+                    </select>
                 </div>
             </div>
 
@@ -139,7 +167,7 @@
             @if($alertas->isEmpty())
                 <div class="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3">
                     <p class="text-sm text-amber-800">
-                        No hay alertas pendientes por ahora.
+                        No hay alertas de descuento para los filtros seleccionados.
                     </p>
                 </div>
             @else
@@ -154,6 +182,8 @@
                                 <th class="px-3 py-2 font-bold">Vida útil</th>
                                 <th class="px-3 py-2 font-bold">Restante</th>
                                 <th class="px-3 py-2 font-bold">Descuento</th>
+                                <th class="px-3 py-2 font-bold">Estado</th>
+                                <th class="px-3 py-2 font-bold text-right">Acción</th>
                             </tr>
                         </thead>
 
@@ -195,6 +225,35 @@
                                             <span class="inline-flex rounded-full bg-rose-50 px-2 py-1 text-xs text-rose-700">
                                                 Q {{ number_format($a->descuento_calculado, 2) }}
                                             </span>
+                                        @endif
+                                    </td>
+
+                                    <td class="px-3 py-2 whitespace-nowrap">
+                                        @if(($a->estado ?? 'pendiente') === 'finalizado')
+                                            <span class="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                                                Finalizado
+                                            </span>
+                                        @else
+                                            <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800 ring-1 ring-amber-200">
+                                                Pendiente
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    <td class="px-3 py-2 whitespace-nowrap text-right">
+                                        @if(($a->estado ?? 'pendiente') === 'pendiente')
+                                            <form method="POST"
+                                                  action="{{ route('rrhh.alertas.finalizar', $a) }}"
+                                                  onsubmit="return confirm('¿Confirmas marcar esta alerta de descuento como finalizada?');">
+                                                @csrf
+                                                <input type="hidden" name="confirmar" value="1">
+                                                <button type="submit"
+                                                        class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition">
+                                                    Finalizar
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="text-xs font-semibold text-slate-400">Gestionada</span>
                                         @endif
                                     </td>
                                 </tr>

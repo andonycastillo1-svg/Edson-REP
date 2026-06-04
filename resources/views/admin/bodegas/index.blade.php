@@ -433,12 +433,6 @@
             @endforelse
         </div>
 
-        <div class="volver-wrap">
-            <a href="{{ route('dashboard') }}" class="btn-volver">
-                ← Volver
-            </a>
-        </div>
-
     </div>
 </div>
 @endsection
