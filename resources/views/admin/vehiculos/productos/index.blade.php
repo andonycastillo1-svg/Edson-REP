@@ -3,7 +3,10 @@
 @section('title', 'Productos del vehículo')
 
 @section('content')
-@php($puedeGestionarPdfsFirmadosVehiculo = \Illuminate\Support\Facades\Schema::hasTable('vehiculo_producto_archivos'))
+@php
+    $puedeGestionarPdfsFirmadosVehiculo = \Illuminate\Support\Facades\Schema::hasTable('vehiculo_producto_archivos');
+@endphp
+
 <style>
     .vp-wrap {
         max-width: 1180px;
@@ -355,10 +358,8 @@
     .vp-close-panel {
         display: none;
         background: #fff;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
+        border-top: 1px solid #f1f5f9;
         padding: 14px;
-        margin-top: 12px;
     }
 
     .vp-close-panel.open {
@@ -380,9 +381,18 @@
 
     .vp-close-form {
         display: grid;
-        grid-template-columns: 140px 220px 1fr auto;
-        gap: 10px;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
         align-items: start;
+    }
+
+    .vp-close-form form {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 12px;
+        background: #f8fafc;
+        display: grid;
+        gap: 10px;
     }
 
     .vp-close-form input,
@@ -398,9 +408,11 @@
         font-size: 14px;
     }
 
-    .vp-close-form textarea {
-        min-height: 42px;
-        resize: vertical;
+    .vp-cierre-form-grid {
+        display: grid;
+        grid-template-columns: 140px 220px 1fr auto;
+        gap: 10px;
+        align-items: start;
     }
 
     .vp-check {
@@ -446,13 +458,9 @@
             grid-template-columns: 1fr 1fr;
         }
 
-        .vp-close-form {
+        .vp-close-form,
+        .vp-cierre-form-grid {
             grid-template-columns: 1fr;
-        }
-
-        .vp-close-form form {
-            display: grid;
-            gap: 8px;
         }
     }
 
@@ -540,6 +548,7 @@
                         <label>Vehículo</label>
                         <select name="vehiculo_vin" required>
                             <option value="">Seleccione vehículo...</option>
+
                             @foreach($vehiculos as $v)
                                 <option value="{{ $v->vin }}" @selected(old('vehiculo_vin', $vehiculoVin) == $v->vin)>
                                     {{ $v->marca ?? 'Sin marca' }} - {{ $v->placa ?? 'Sin placa' }} / VIN: {{ $v->vin }}
@@ -552,13 +561,10 @@
                         <label>Producto/refacción</label>
                         <select name="producto_codigo" id="producto_codigo" required>
                             <option value="">Seleccione producto...</option>
-                            @foreach($inventarios->groupBy('producto_codigo') as $codigo => $items)
-                                @php
-                                    $producto = optional($items->first()->producto);
-                                @endphp
 
+                            @foreach($inventarios->groupBy('producto_codigo') as $codigo => $items)
                                 <option value="{{ $codigo }}" @selected(old('producto_codigo') == $codigo)>
-                                    {{ $producto->nombre ?? $codigo }} — Stock total: {{ $items->sum('cantidad') }}
+                                    {{ optional(optional($items->first())->producto)->nombre ?? $codigo }} — Stock total: {{ $items->sum('cantidad') }}
                                 </option>
                             @endforeach
                         </select>
@@ -568,6 +574,7 @@
                         <label>Bodega de origen</label>
                         <select name="bodega_id" id="bodega_id" required>
                             <option value="">Seleccione bodega...</option>
+
                             @foreach($inventarios as $inv)
                                 <option
                                     value="{{ $inv->bodega_id }}"
@@ -627,6 +634,7 @@
                 <form method="GET" action="{{ route('admin.vehiculos.productos.index') }}" class="vp-filter-form">
                     <select name="vehiculo_vin">
                         <option value="">Todos los vehículos</option>
+
                         @foreach($vehiculos as $v)
                             <option value="{{ $v->vin }}" @selected($vehiculoVin == $v->vin)>
                                 {{ $v->marca ?? 'Sin marca' }} - {{ $v->placa ?? 'Sin placa' }} / {{ $v->vin }}
@@ -643,9 +651,15 @@
             <div class="vp-list">
                 @forelse($asignaciones as $a)
                     @php
-                        $pdfAsignacionFirmado = $puedeGestionarPdfsFirmadosVehiculo ? ($a->pdfAsignacionFirmado ?? null) : null;
-                        $pdfDevolucionFirmado = $puedeGestionarPdfsFirmadosVehiculo ? ($a->pdfDevolucionFirmado ?? null) : null;
+                        $pdfAsignacionFirmado = null;
+                        $pdfDevolucionFirmado = null;
+
+                        if ($puedeGestionarPdfsFirmadosVehiculo) {
+                            $pdfAsignacionFirmado = $a->pdfAsignacionFirmado ?? null;
+                            $pdfDevolucionFirmado = $a->pdfDevolucionFirmado ?? null;
+                        }
                     @endphp
+
                     <div class="vp-item">
                         <div class="vp-item-summary">
                             <div>
@@ -671,7 +685,7 @@
                                     Cantidad: {{ $a->cantidad }}
                                 </div>
                                 <div class="vp-muted">
-                                    {{ optional($a->fecha)?->format('d/m/Y') ?? 'Sin fecha' }}
+                                    {{ optional($a->fecha)->format('d/m/Y') ?? 'Sin fecha' }}
                                 </div>
                             </div>
 
@@ -692,6 +706,10 @@
                             <div class="vp-item-actions">
                                 <button type="button" class="vp-small-btn" onclick="toggleDetalleProducto('detalle-producto-{{ $a->id }}')">
                                     Ver detalle
+                                </button>
+
+                                <button type="button" class="vp-small-btn" onclick="toggleDetalleProducto('pdfs-producto-{{ $a->id }}')">
+                                    PDFs firmados
                                 </button>
 
                                 <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.pdf_asignacion', $a) }}" target="_blank" rel="noopener">
@@ -748,7 +766,7 @@
                                         @if($a->activa)
                                             Producto/refacción activo.
                                         @else
-                                            Cerrado el {{ optional($a->fecha_cierre)?->format('d/m/Y H:i') ?? '—' }}
+                                            Cerrado el {{ optional($a->fecha_cierre)->format('d/m/Y H:i') ?? '—' }}
                                         @endif
                                     </div>
                                 </div>
@@ -766,43 +784,55 @@
                             </div>
                         </div>
 
-                        <div class="vp-close-panel open">
+                        <div id="pdfs-producto-{{ $a->id }}" class="vp-close-panel">
                             <div class="vp-close-title">PDFs firmados del producto/refacción</div>
                             <div class="vp-close-subtitle">
                                 Genera la hoja, fírmala y carga aquí el PDF final para conservar la constancia.
                             </div>
 
-                            <div class="vp-close-form">
-                                <form method="POST" action="{{ route('admin.vehiculos.productos.subir_pdf_firmado', $a) }}" enctype="multipart/form-data">
-                                    @csrf
-                                    <input type="hidden" name="tipo_documento" value="asignacion_firmada">
-                                    <input type="file" name="archivo" accept="application/pdf,.pdf" required>
-                                    <button class="vp-btn vp-btn-primary" type="submit">
-                                        {{ $pdfAsignacionFirmado ? 'Reemplazar asignación firmada' : 'Subir asignación firmada' }}
-                                    </button>
-                                    @if($pdfAsignacionFirmado)
-                                        <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfAsignacionFirmado) }}" target="_blank" rel="noopener">
-                                            Ver firmado: {{ $pdfAsignacionFirmado->nombre_original ?? 'PDF firmado' }}
-                                        </a>
-                                    @endif
-                                </form>
-
-                                @unless($a->activa)
+                            @if($puedeGestionarPdfsFirmadosVehiculo)
+                                <div class="vp-close-form">
                                     <form method="POST" action="{{ route('admin.vehiculos.productos.subir_pdf_firmado', $a) }}" enctype="multipart/form-data">
                                         @csrf
-                                        <input type="hidden" name="tipo_documento" value="devolucion_firmada">
+
+                                        <input type="hidden" name="tipo_documento" value="asignacion_firmada">
                                         <input type="file" name="archivo" accept="application/pdf,.pdf" required>
+
                                         <button class="vp-btn vp-btn-primary" type="submit">
-                                            {{ $pdfDevolucionFirmado ? 'Reemplazar devolución firmada' : 'Subir devolución firmada' }}
+                                            {{ $pdfAsignacionFirmado ? 'Reemplazar asignación firmada' : 'Subir asignación firmada' }}
                                         </button>
-                                        @if($pdfDevolucionFirmado)
-                                            <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfDevolucionFirmado) }}" target="_blank" rel="noopener">
-                                                Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
+
+                                        @if($pdfAsignacionFirmado)
+                                            <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfAsignacionFirmado) }}" target="_blank" rel="noopener">
+                                                Ver firmado: {{ $pdfAsignacionFirmado->nombre_original ?? 'PDF firmado' }}
                                             </a>
                                         @endif
                                     </form>
-                                @endunless
-                            </div>
+
+                                    @unless($a->activa)
+                                        <form method="POST" action="{{ route('admin.vehiculos.productos.subir_pdf_firmado', $a) }}" enctype="multipart/form-data">
+                                            @csrf
+
+                                            <input type="hidden" name="tipo_documento" value="devolucion_firmada">
+                                            <input type="file" name="archivo" accept="application/pdf,.pdf" required>
+
+                                            <button class="vp-btn vp-btn-primary" type="submit">
+                                                {{ $pdfDevolucionFirmado ? 'Reemplazar devolución firmada' : 'Subir devolución firmada' }}
+                                            </button>
+
+                                            @if($pdfDevolucionFirmado)
+                                                <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfDevolucionFirmado) }}" target="_blank" rel="noopener">
+                                                    Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
+                                                </a>
+                                            @endif
+                                        </form>
+                                    @endunless
+                                </div>
+                            @else
+                                <div class="vp-note">
+                                    La tabla de archivos firmados todavía no existe. Ejecuta las migraciones pendientes para habilitar esta función.
+                                </div>
+                            @endif
                         </div>
 
                         @if($a->activa)
@@ -819,7 +849,7 @@
                                 >
                                     @csrf
 
-                                    <div class="vp-close-form">
+                                    <div class="vp-cierre-form-grid">
                                         <div>
                                             <input
                                                 type="number"

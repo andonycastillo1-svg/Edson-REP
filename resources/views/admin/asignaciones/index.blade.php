@@ -4,7 +4,13 @@
 @endsection
 
 @section('content')
-@php($puedeGestionarPdfsFirmados = \Illuminate\Support\Facades\Schema::hasTable('asignacion_inventario_archivos'))
+@php
+  $puedeGestionarPdfsFirmados = \Illuminate\Support\Facades\Schema::hasTable('asignacion_inventario_archivos');
+
+  $asignacionesPorColaborador = $asignacionesPorColaborador ?? collect();
+  $movimientos = $movimientos ?? collect();
+  $pdfsDevolucionFirmados = $pdfsDevolucionFirmados ?? collect();
+@endphp
 
 <style>
   .asg-page {
@@ -539,252 +545,253 @@
         Colaboradores con asignaciones
       </div>
 
-      @forelse($asignacionesPorColaborador as $grupo)
-
-        @php
-          $bulkFormId = 'bulk-return-' . $grupo['colaborador_codigo'];
-        @endphp
-
-        <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}">
-          @csrf
-        </form>
-
-        <details class="asg-collab">
-          <summary>
-            <div class="asg-row">
-              <div class="asg-left">
-                <span class="asg-arrow">▶</span>
-
-                <div class="asg-avatar">
-                  {{ strtoupper(mb_substr($grupo['colaborador_nombre'] ?? 'C', 0, 1)) }}
-                </div>
-
-                <div>
-                  <p class="asg-name">{{ $grupo['colaborador_nombre'] }}</p>
-                  <p class="asg-code">Código: <strong>{{ $grupo['colaborador_codigo'] }}</strong></p>
-                </div>
-              </div>
-
-              <div class="asg-metrics">
-                <div>
-                  <span class="asg-metric-label">Asignaciones</span>
-                  <span class="asg-metric-value">{{ $grupo['asignaciones']->count() }}</span>
-                </div>
-
-                <div>
-                  <span class="asg-metric-label">Activas</span>
-                  <span class="asg-pill">{{ $grupo['total_activo'] }}</span>
-                </div>
-
-                <span class="asg-detail-btn">Ver detalle</span>
-              </div>
-            </div>
-          </summary>
-
-          <div class="asg-detail">
-
-            <div class="asg-mini-card">
-              <form method="POST"
-                    action="{{ route($routePrefix . '.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}">
-                @csrf
-
-                <div>
-                  <p class="asg-mini-title">Acciones del colaborador</p>
-                  <p class="asg-mini-text">Puedes devolver todo lo activo o seleccionar productos específicos.</p>
-                </div>
-
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  <input type="text"
-                         name="detalle_devolucion"
-                         placeholder="Motivo devolución total"
-                         class="asg-input"
-                         style="width:260px;">
-
-                  <button type="submit"
-                          class="asg-btn-warning"
-                          onclick="return confirm('¿Devolver todo lo activo de este colaborador?')">
-                    Devolver todo
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            <div class="asg-table-wrap">
-              <div class="asg-table-scroll">
-                <table class="asg-table">
-                  <thead>
-                    <tr>
-                      <th>Sel.</th>
-                      <th>Producto</th>
-                      <th>Fecha</th>
-                      <th>Bodega</th>
-                      <th>Estado</th>
-                      <th>Vida útil</th>
-                      <th style="text-align:center;">Activa</th>
-                      <th style="text-align:center;">Dev.</th>
-                      <th style="text-align:center;">PDF</th>
-                      <th>Firmado</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    @foreach($grupo['asignaciones'] as $a)
-                      @php
-                        $estado = $a->estado ?? 'Activa';
-                        $activa = $estado === 'Activa' && (int) $a->cantidad_asignada > 0;
-                        $productoNombre = optional($a->producto)->descripcion ?? optional($a->producto)->nombre ?? $a->producto_codigo;
-
-                        $fechaVenc = !empty($a->fecha_vencimiento)
-                          ? \Carbon\Carbon::parse($a->fecha_vencimiento)
-                          : null;
-                      @endphp
-
-                      <tr>
-                        <td>
-                          @if($activa)
-                            <input type="checkbox"
-                                   name="seleccionadas[]"
-                                   value="{{ $a->id }}"
-                                   form="{{ $bulkFormId }}"
-                                   class="selector"
-                                   data-target="devolucion_{{ $a->id }}">
-                          @else
-                            —
-                          @endif
-                        </td>
-
-                        <td>
-                          <div class="asg-product">{{ $productoNombre }}</div>
-                          <div class="asg-product-code">COD: {{ $a->producto_codigo }}</div>
-                        </td>
-
-                        <td>
-                          {{ $a->fecha ? date('d/m/Y', strtotime($a->fecha)) : '—' }}
-                        </td>
-
-                        <td>
-                          {{ optional($a->bodega)->nombre ?? '—' }}
-                        </td>
-
-                        <td>
-                          @if($estado === 'Activa')
-                            <span class="asg-status asg-status-green">Activa</span>
-                          @elseif($estado === 'Dañada')
-                            <span class="asg-status asg-status-red">Dañada</span>
-                          @else
-                            <span class="asg-status asg-status-gray">{{ $estado }}</span>
-                          @endif
-                        </td>
-
-                        <td>
-                          @if($fechaVenc && $fechaVenc->isFuture())
-                            <span class="asg-status asg-status-green">Dentro de vida útil</span>
-                          @elseif($fechaVenc)
-                            <span class="asg-status asg-status-amber">Depreciado</span>
-                          @else
-                            <span style="color:#94a3b8;">Sin dato</span>
-                          @endif
-                        </td>
-
-                        <td style="text-align:center; font-weight:700;">
-                          {{ $a->cantidad_asignada }}
-                        </td>
-
-                        <td style="text-align:center;">
-                          @if($activa)
-                            <input type="number"
-                                   id="devolucion_{{ $a->id }}"
-                                   name="devoluciones[{{ $a->id }}]"
-                                   form="{{ $bulkFormId }}"
-                                   min="1"
-                                   max="{{ $a->cantidad_asignada }}"
-                                   value="1"
-                                   disabled
-                                   class="asg-small-input">
-                          @else
-                            <span style="color:#94a3b8;">No aplica</span>
-                          @endif
-                        </td>
-
-                        <td style="text-align:center;">
-                          @if(!empty($a->grupo_asignacion))
-                            <a href="{{ route($routePrefix . '.asignaciones.pdf', $a->grupo_asignacion) }}"
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               class="asg-pdf-btn">
-                              PDF
-                            </a>
-                          @else
-                            <span style="color:#94a3b8;">Sin grupo</span>
-                          @endif
-                        </td>
-
-                        <td>
-                          @php($pdfAsignacionFirmado = $puedeGestionarPdfsFirmados ? ($a->pdfAsignacionFirmado ?? null) : null)
-                          <form method="POST"
-                                action="{{ route($routePrefix . '.asignaciones.upload_pdf_firmado', $a) }}"
-                                enctype="multipart/form-data"
-                                class="asg-upload-form">
-                            @csrf
-
-                            <div class="asg-upload-row">
-                              <input type="file"
-                                     name="pdf_firmado"
-                                     accept="application/pdf,.pdf"
-                                     required
-                                     class="asg-file">
-
-                              <button type="submit" class="asg-upload-btn">
-                                {{ $pdfAsignacionFirmado ? 'Reemplazar' : 'Subir' }}
-                              </button>
-                            </div>
-
-                            @if($pdfAsignacionFirmado)
-                              <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $pdfAsignacionFirmado) }}"
-                                 target="_blank"
-                                 style="font-size:11px; font-weight:700; color:#047857;">
-                                Ver firmado: {{ $pdfAsignacionFirmado->nombre_original ?? 'PDF firmado' }}
-                              </a>
-                            @endif
-                          </form>
-                        </td>
-                      </tr>
-                    @endforeach
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="asg-footer-actions">
-                <div>
-                  <p class="asg-footer-title">Devolución de seleccionados</p>
-                  <p class="asg-footer-text">Marca asignaciones y coloca la cantidad a devolver.</p>
-                </div>
-
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                  <input type="text"
-                         name="detalle_devolucion"
-                         form="{{ $bulkFormId }}"
-                         placeholder="Detalle devolución múltiple"
-                         class="asg-input"
-                         style="width:260px;">
-
-                  <button type="submit"
-                          form="{{ $bulkFormId }}"
-                          class="asg-btn-warning">
-                    Devolver seleccionados
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </details>
-
-      @empty
+      @if(blank($asignacionesPorColaborador))
         <div style="padding:32px; text-align:center; color:#64748b;">
           Aún no tienes asignaciones registradas.
         </div>
-      @endforelse
+      @else
+        <?php foreach ($asignacionesPorColaborador as $grupo): ?>
+          @php
+            $bulkFormId = 'bulk-return-' . $grupo['colaborador_codigo'];
+          @endphp
+
+          <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}">
+            @csrf
+          </form>
+
+          <details class="asg-collab">
+            <summary>
+              <div class="asg-row">
+                <div class="asg-left">
+                  <span class="asg-arrow">▶</span>
+
+                  <div class="asg-avatar">
+                    {{ strtoupper(mb_substr($grupo['colaborador_nombre'] ?? 'C', 0, 1)) }}
+                  </div>
+
+                  <div>
+                    <p class="asg-name">{{ $grupo['colaborador_nombre'] }}</p>
+                    <p class="asg-code">Código: <strong>{{ $grupo['colaborador_codigo'] }}</strong></p>
+                  </div>
+                </div>
+
+                <div class="asg-metrics">
+                  <div>
+                    <span class="asg-metric-label">Asignaciones</span>
+                    <span class="asg-metric-value">{{ $grupo['asignaciones']->count() }}</span>
+                  </div>
+
+                  <div>
+                    <span class="asg-metric-label">Activas</span>
+                    <span class="asg-pill">{{ $grupo['total_activo'] }}</span>
+                  </div>
+
+                  <span class="asg-detail-btn">Ver detalle</span>
+                </div>
+              </div>
+            </summary>
+
+            <div class="asg-detail">
+
+              <div class="asg-mini-card">
+                <form method="POST"
+                      action="{{ route($routePrefix . '.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}">
+                  @csrf
+
+                  <div>
+                    <p class="asg-mini-title">Acciones del colaborador</p>
+                    <p class="asg-mini-text">Puedes devolver todo lo activo o seleccionar productos específicos.</p>
+                  </div>
+
+                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <input type="text"
+                           name="detalle_devolucion"
+                           placeholder="Motivo devolución total"
+                           class="asg-input"
+                           style="width:260px;">
+
+                    <button type="submit"
+                            class="asg-btn-warning"
+                            onclick="return confirm('¿Devolver todo lo activo de este colaborador?')">
+                      Devolver todo
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div class="asg-table-wrap">
+                <div class="asg-table-scroll">
+                  <table class="asg-table">
+                    <thead>
+                      <tr>
+                        <th>Sel.</th>
+                        <th>Producto</th>
+                        <th>Fecha</th>
+                        <th>Bodega</th>
+                        <th>Estado</th>
+                        <th>Vida útil</th>
+                        <th style="text-align:center;">Activa</th>
+                        <th style="text-align:center;">Dev.</th>
+                        <th style="text-align:center;">PDF</th>
+                        <th>Firmado</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      <?php foreach ($grupo['asignaciones'] as $a): ?>
+                        @php
+                          $estado = $a->estado ?? 'Activa';
+                          $activa = $estado === 'Activa' && (int) $a->cantidad_asignada > 0;
+                          $productoNombre = optional($a->producto)->descripcion ?? optional($a->producto)->nombre ?? $a->producto_codigo;
+
+                          $fechaVenc = !empty($a->fecha_vencimiento)
+                            ? \Carbon\Carbon::parse($a->fecha_vencimiento)
+                            : null;
+
+                          $pdfAsignacionFirmado = $puedeGestionarPdfsFirmados ? ($a->pdfAsignacionFirmado ?? null) : null;
+                        @endphp
+
+                        <tr>
+                          <td>
+                            @if($activa)
+                              <input type="checkbox"
+                                     name="seleccionadas[]"
+                                     value="{{ $a->id }}"
+                                     form="{{ $bulkFormId }}"
+                                     class="selector"
+                                     data-target="devolucion_{{ $a->id }}">
+                            @else
+                              —
+                            @endif
+                          </td>
+
+                          <td>
+                            <div class="asg-product">{{ $productoNombre }}</div>
+                            <div class="asg-product-code">COD: {{ $a->producto_codigo }}</div>
+                          </td>
+
+                          <td>
+                            {{ $a->fecha ? date('d/m/Y', strtotime($a->fecha)) : '—' }}
+                          </td>
+
+                          <td>
+                            {{ optional($a->bodega)->nombre ?? '—' }}
+                          </td>
+
+                          <td>
+                            @if($estado === 'Activa')
+                              <span class="asg-status asg-status-green">Activa</span>
+                            @elseif($estado === 'Dañada')
+                              <span class="asg-status asg-status-red">Dañada</span>
+                            @else
+                              <span class="asg-status asg-status-gray">{{ $estado }}</span>
+                            @endif
+                          </td>
+
+                          <td>
+                            @if($fechaVenc && $fechaVenc->isFuture())
+                              <span class="asg-status asg-status-green">Dentro de vida útil</span>
+                            @elseif($fechaVenc)
+                              <span class="asg-status asg-status-amber">Depreciado</span>
+                            @else
+                              <span style="color:#94a3b8;">Sin dato</span>
+                            @endif
+                          </td>
+
+                          <td style="text-align:center; font-weight:700;">
+                            {{ $a->cantidad_asignada }}
+                          </td>
+
+                          <td style="text-align:center;">
+                            @if($activa)
+                              <input type="number"
+                                     id="devolucion_{{ $a->id }}"
+                                     name="devoluciones[{{ $a->id }}]"
+                                     form="{{ $bulkFormId }}"
+                                     min="1"
+                                     max="{{ $a->cantidad_asignada }}"
+                                     value="1"
+                                     disabled
+                                     class="asg-small-input">
+                            @else
+                              <span style="color:#94a3b8;">No aplica</span>
+                            @endif
+                          </td>
+
+                          <td style="text-align:center;">
+                            @if(!empty($a->grupo_asignacion))
+                              <a href="{{ route($routePrefix . '.asignaciones.pdf', $a->grupo_asignacion) }}"
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 class="asg-pdf-btn">
+                                PDF
+                              </a>
+                            @else
+                              <span style="color:#94a3b8;">Sin grupo</span>
+                            @endif
+                          </td>
+
+                          <td>
+                            <form method="POST"
+                                  action="{{ route($routePrefix . '.asignaciones.upload_pdf_firmado', $a) }}"
+                                  enctype="multipart/form-data"
+                                  class="asg-upload-form">
+                              @csrf
+
+                              <div class="asg-upload-row">
+                                <input type="file"
+                                       name="pdf_firmado"
+                                       accept="application/pdf,.pdf"
+                                       required
+                                       class="asg-file">
+
+                                <button type="submit" class="asg-upload-btn">
+                                  {{ $pdfAsignacionFirmado ? 'Reemplazar' : 'Subir' }}
+                                </button>
+                              </div>
+
+                              @if($pdfAsignacionFirmado)
+                                <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $pdfAsignacionFirmado) }}"
+                                   target="_blank"
+                                   style="font-size:11px; font-weight:700; color:#047857;">
+                                  Ver firmado: {{ $pdfAsignacionFirmado->nombre_original ?? 'PDF firmado' }}
+                                </a>
+                              @endif
+                            </form>
+                          </td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="asg-footer-actions">
+                  <div>
+                    <p class="asg-footer-title">Devolución de seleccionados</p>
+                    <p class="asg-footer-text">Marca asignaciones y coloca la cantidad a devolver.</p>
+                  </div>
+
+                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <input type="text"
+                           name="detalle_devolucion"
+                           form="{{ $bulkFormId }}"
+                           placeholder="Detalle devolución múltiple"
+                           class="asg-input"
+                           style="width:260px;">
+
+                    <button type="submit"
+                            form="{{ $bulkFormId }}"
+                            class="asg-btn-warning">
+                      Devolver seleccionados
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </details>
+        <?php endforeach; ?>
+      @endif
     </div>
 
     <div class="asg-panel asg-history">
@@ -807,76 +814,91 @@
           </thead>
 
           <tbody>
-            @forelse($movimientos as $m)
-              <tr>
-                <td>{{ $m->created_at?->format('d/m/Y H:i') }}</td>
-
-                <td>
-                  <span class="asg-status asg-status-gray">
-                    {{ $m->tipo }}
-                  </span>
-                </td>
-
-                <td>
-                  {{ optional(optional($m->asignacion)->colaborador)->nombre ?? '—' }}
-                </td>
-
-                <td style="text-align:center; font-weight:700;">
-                  {{ $m->cantidad }}
-                </td>
-
-                <td>
-                  {{ $m->detalle ?? '—' }}
-                </td>
-
-                <td>
-                  {{ optional($m->user)->name ?? '—' }}
-                </td>
-
-                <td style="text-align:center;">
-                  @if($m->tipo === 'Devolucion' && !empty($m->grupo_devolucion))
-                    @php($pdfDevolucionFirmado = $puedeGestionarPdfsFirmados ? $pdfsDevolucionFirmados->get($m->grupo_devolucion) : null)
-                    <div class="asg-upload-form">
-                      <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', $m->grupo_devolucion) }}"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         class="asg-pdf-btn">
-                        Ver hoja
-                      </a>
-
-                      <form method="POST"
-                            action="{{ route($routePrefix . '.asignaciones.upload_pdf_devolucion_firmado', $m->grupo_devolucion) }}"
-                            enctype="multipart/form-data"
-                            class="asg-upload-form">
-                        @csrf
-                        <div class="asg-upload-row">
-                          <input type="file" name="pdf_firmado" accept="application/pdf,.pdf" required class="asg-file">
-                          <button type="submit" class="asg-upload-btn">
-                            {{ $pdfDevolucionFirmado ? 'Reemplazar firmado' : 'Subir firmado' }}
-                          </button>
-                        </div>
-                      </form>
-
-                      @if($pdfDevolucionFirmado)
-                        <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $pdfDevolucionFirmado) }}"
-                           target="_blank"
-                           style="font-size:11px; font-weight:700; color:#047857;">
-                          Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
-                        </a>
-                      @endif
-                    </div>
-                  @else
-                    <span style="color:#94a3b8;">—</span>
-                  @endif
-                </td>
-              </tr>
-            @empty
+            @if(blank($movimientos))
               <tr>
                 <td colspan="7" style="padding:28px; text-align:center; color:#64748b;">
                   Sin movimientos registrados.
                 </td>
               </tr>
-            @endforelse
+            @else
+              <?php foreach ($movimientos as $m): ?>
+                @php
+                  $pdfDevolucionFirmado = null;
+
+                  if ($m->tipo === 'Devolucion' && !empty($m->grupo_devolucion) && $puedeGestionarPdfsFirmados) {
+                    $pdfDevolucionFirmado = $pdfsDevolucionFirmados->get($m->grupo_devolucion);
+                  }
+                @endphp
+
+                <tr>
+                  <td>{{ $m->created_at?->format('d/m/Y H:i') }}</td>
+
+                  <td>
+                    <span class="asg-status asg-status-gray">
+                      {{ $m->tipo }}
+                    </span>
+                  </td>
+
+                  <td>
+                    {{ optional(optional($m->asignacion)->colaborador)->nombre ?? '—' }}
+                  </td>
+
+                  <td style="text-align:center; font-weight:700;">
+                    {{ $m->cantidad }}
+                  </td>
+
+                  <td>
+                    {{ $m->detalle ?? '—' }}
+                  </td>
+
+                  <td>
+                    {{ optional($m->user)->name ?? '—' }}
+                  </td>
+
+                  <td style="text-align:center;">
+                    @if($m->tipo === 'Devolucion' && !empty($m->grupo_devolucion))
+                      <div class="asg-upload-form">
+                        <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', $m->grupo_devolucion) }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="asg-pdf-btn">
+                          Ver hoja
+                        </a>
+
+                        <form method="POST"
+                              action="{{ route($routePrefix . '.asignaciones.upload_pdf_devolucion_firmado', $m->grupo_devolucion) }}"
+                              enctype="multipart/form-data"
+                              class="asg-upload-form">
+                          @csrf
+
+                          <div class="asg-upload-row">
+                            <input type="file"
+                                   name="pdf_firmado"
+                                   accept="application/pdf,.pdf"
+                                   required
+                                   class="asg-file">
+
+                            <button type="submit" class="asg-upload-btn">
+                              {{ $pdfDevolucionFirmado ? 'Reemplazar firmado' : 'Subir firmado' }}
+                            </button>
+                          </div>
+                        </form>
+
+                        @if($pdfDevolucionFirmado)
+                          <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $pdfDevolucionFirmado) }}"
+                             target="_blank"
+                             style="font-size:11px; font-weight:700; color:#047857;">
+                            Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
+                          </a>
+                        @endif
+                      </div>
+                    @else
+                      <span style="color:#94a3b8;">—</span>
+                    @endif
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            @endif
           </tbody>
         </table>
       </div>
