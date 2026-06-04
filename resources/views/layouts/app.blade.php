@@ -15,7 +15,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen bg-[#EAF4FF]">
+        <div class="ui-shell">
             @if (!View::hasSection('no_nav'))
     @include('layouts.navigation')
 @endif
@@ -23,8 +23,8 @@
             <!-- Page Heading -->
             @if (!View::hasSection('no_header'))
                 @isset($header)
-                    <header class="bg-white shadow">
-                        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                    <header class="border-b border-sky-100 bg-white/80 shadow-sm backdrop-blur">
+                        <div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
                             {{ $header }}
                         </div>
                     </header>
@@ -32,7 +32,7 @@
             @endif
 
             <!-- Page Content -->
-            <main>
+            <main class="ui-main">
                 @isset($slot)
                     {{ $slot }}
                 @else

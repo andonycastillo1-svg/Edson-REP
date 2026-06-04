@@ -6,13 +6,13 @@
     <title>@yield('title', 'Admin - Inventario')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-[#EAF4FF] text-[#1F2937]">
+<body class="ui-shell">
 
-    <header class="sticky top-0 z-20 border-b border-sky-200 bg-white/90 backdrop-blur">
-        <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6">
-            <div class="flex items-center gap-3 text-[#475569]">
-                <img src="{{ asset('img/logo1.png') }}" alt="Logo" class="h-14 w-14 rounded-md border border-sky-200 bg-white p-0.5 object-contain md:h-16 md:w-16">
-                <span class="text-base font-bold tracking-wide text-[#1F2937]">Grupo NetSolutions</span>
+    <header class="ui-topbar">
+        <div class="ui-topbar-inner">
+            <div class="ui-brand">
+                <img src="{{ asset('img/logo1.png') }}" alt="Logo" class="ui-brand-logo">
+                <span class="ui-brand-name">Grupo NetSolutions</span>
             </div>
 
             <div class="flex items-center gap-2">

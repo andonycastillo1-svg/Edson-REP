@@ -1,6 +1,6 @@
-<nav x-data="{ open: false }" class="sticky top-0 z-30 border-b border-sky-100 bg-white/90 shadow-sm backdrop-blur-xl">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-20">
+<nav x-data="{ open: false }" class="ui-topbar">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex h-20 justify-between">
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
@@ -26,7 +26,7 @@
 
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center rounded-full border border-sky-100 bg-sky-50/80 px-4 py-2 text-sm font-semibold leading-4 text-slate-700 shadow-sm transition duration-150 ease-in-out hover:bg-sky-100 hover:text-sky-900 focus:outline-none">
+                        <button class="ui-user-pill transition hover:bg-sky-50 focus:outline-none focus:ring-4 focus:ring-sky-200">
                             <div>{{ Auth::user()->name }}</div>
 
                             <div class="ms-1">
@@ -55,7 +55,7 @@
 
             <!-- Hamburger -->
             <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center rounded-xl border border-sky-100 bg-white p-2 text-sky-700 shadow-sm transition duration-150 ease-in-out hover:bg-sky-50 focus:outline-none">
+                <button @click="open = ! open" class="inline-flex items-center justify-center rounded-xl border border-sky-100 bg-white p-2 text-sky-700 shadow-sm transition hover:bg-sky-50 focus:outline-none focus:ring-4 focus:ring-sky-200">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

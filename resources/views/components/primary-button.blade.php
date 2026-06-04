@@ -1,3 +1,3 @@
-<button {{ $attributes->merge(['type' => 'submit', 'class' => 'ui-btn-success text-xs uppercase tracking-widest']) }}>
+<button {{ $attributes->merge(['type' => 'submit', 'class' => 'ui-btn-primary text-xs uppercase tracking-widest']) }}>
     {{ $slot }}
 </button>
