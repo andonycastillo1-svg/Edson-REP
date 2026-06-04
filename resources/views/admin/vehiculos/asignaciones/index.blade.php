@@ -469,7 +469,6 @@
             </div>
 
             <div class="veh-top-actions">
-                <a href="{{ route('dashboard') }}" class="veh-btn veh-btn-light">← Volver al menú</a>
                 <a href="{{ route('admin.vehiculos.asignaciones.create') }}" class="veh-btn veh-btn-primary">+ Nueva asignación</a>
             </div>
         </div>

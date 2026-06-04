@@ -255,12 +255,7 @@
                 </p>
             </div>
 
-            <div class="veh-actions-top">
-                <a href="{{ route('dashboard') }}" class="veh-btn veh-btn-light">
-                    ← Volver al menú
-                </a>
-
-                <a href="{{ route('admin.vehiculos.asignaciones.index') }}" class="veh-btn veh-btn-primary">
+            <div class="veh-actions-top">                <a href="{{ route('admin.vehiculos.asignaciones.index') }}" class="veh-btn veh-btn-primary">
                     Asignaciones
                 </a>
 

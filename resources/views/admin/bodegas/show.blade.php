@@ -637,12 +637,6 @@
                 </div>
             @endif
 
-            <div class="inv-bottom-actions">
-                <a href="{{ route('dashboard') }}" class="inv-btn inv-btn-sky">
-                    ← Volver
-                </a>
-            </div>
-
         </div>
     </div>
 </div>

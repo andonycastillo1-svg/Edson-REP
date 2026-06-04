@@ -5,65 +5,546 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --ui-bg: #eaf4ff;
+    --ui-surface: rgba(255, 255, 255, 0.96);
+    --ui-surface-solid: #ffffff;
+    --ui-border: #dbeafe;
+    --ui-border-strong: #bfdbfe;
+    --ui-text: #0f172a;
+    --ui-muted: #475569;
+    --ui-primary: #2563eb;
+    --ui-primary-dark: #1d4ed8;
+    --ui-success: #059669;
+    --ui-success-dark: #047857;
+    --ui-danger: #e11d48;
+    --ui-danger-dark: #be123c;
+    --ui-warning: #f59e0b;
+    --ui-warning-dark: #d97706;
+    --ui-info: #0284c7;
+    --ui-shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.07);
+    --ui-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+    --ui-shadow-lg: 0 24px 70px rgba(15, 23, 42, 0.14);
+  }
+
+  html {
+    min-height: 100%;
+    background: var(--ui-bg);
+  }
+
   body {
-    background-color: #EAF4FF;
-    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    @apply text-slate-800;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(37, 99, 235, 0.13), transparent 28rem),
+      radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.14), transparent 32rem),
+      linear-gradient(135deg, #e0f2fe 0%, #eff6ff 48%, #ffffff 100%);
+    color: var(--ui-text);
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: rgba(37, 99, 235, 0.22);
+    color: #0f172a;
+  }
+
+  h1, h2, h3, h4 {
+    color: var(--ui-text);
+    letter-spacing: -0.025em;
+  }
+
+  p, label, td, .text-slate-500, .text-slate-600, .text-gray-500, .text-gray-600 {
+    color: var(--ui-muted);
+  }
+
+  input, select, textarea {
+    border-color: var(--ui-border-strong) !important;
+    border-radius: 0.875rem !important;
+    color: var(--ui-text) !important;
+    background-color: #fff !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--ui-primary) !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #94a3b8;
   }
 }
 
 @layer components {
+  .ui-shell {
+    @apply min-h-screen text-slate-900;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(14, 165, 233, 0.14), transparent 28rem),
+      radial-gradient(circle at 100% 20%, rgba(37, 99, 235, 0.10), transparent 30rem),
+      linear-gradient(135deg, #e0f2fe 0%, #eff6ff 50%, #ffffff 100%);
+  }
+
+  .ui-topbar {
+    @apply sticky top-0 z-30 border-b border-sky-100 bg-white/90 shadow-sm backdrop-blur-xl;
+  }
+
+  .ui-topbar-inner {
+    @apply mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:h-20 md:px-6;
+  }
+
+  .ui-brand {
+    @apply flex min-w-0 items-center gap-3 text-slate-600;
+  }
+
+  .ui-brand-logo {
+    @apply h-12 w-12 rounded-2xl border border-sky-100 bg-white p-1 object-contain shadow-sm md:h-14 md:w-14;
+  }
+
+  .ui-brand-name {
+    @apply hidden truncate text-sm font-extrabold tracking-tight text-slate-900 sm:block md:text-base;
+  }
+
+  .ui-user-pill {
+    @apply inline-flex max-w-[210px] items-center gap-2 rounded-full border border-sky-100 bg-white px-3 py-1.5 text-sm font-bold text-slate-800 shadow-sm;
+  }
+
+  .ui-dashboard-link {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-extrabold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-100 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-200;
+  }
+
+  .ui-main {
+    @apply mx-auto min-h-[calc(100vh-64px)] w-full max-w-7xl px-4 py-6 md:px-6 md:py-8;
+  }
+
+  .ui-page-header {
+    @apply mb-5 overflow-hidden rounded-3xl border border-sky-100 bg-white/95 shadow-sm ring-1 ring-slate-900/5 backdrop-blur;
+  }
+
+  .ui-page-header-body {
+    @apply flex flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-6;
+  }
+
+  .ui-page-title {
+    @apply text-2xl font-extrabold leading-tight text-slate-950 md:text-3xl;
+  }
+
+  .ui-page-subtitle {
+    @apply mt-1 max-w-3xl text-sm font-medium text-slate-500;
+  }
+
+  .ui-kicker {
+    @apply text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600;
+  }
+
   .ui-panel {
-    @apply rounded-3xl border border-slate-200 bg-white/95 shadow-xl ring-1 ring-slate-900/5 backdrop-blur;
+    @apply rounded-3xl border border-sky-100 bg-white/95 shadow-sm ring-1 ring-slate-900/5 backdrop-blur;
   }
 
   .ui-card {
-    @apply rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg;
+    @apply rounded-2xl border border-sky-100 bg-white/95 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md;
   }
 
-  .ui-btn {
-    @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition duration-200;
+  .ui-action-bar {
+    @apply flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end;
   }
 
-  .ui-btn-primary {
-    @apply ui-btn bg-blue-600 text-white shadow-sm hover:bg-blue-700;
+  .ui-btn,
+  .ui-btn-primary,
+  .ui-btn-secondary,
+  .ui-btn-success,
+  .ui-btn-danger,
+  .ui-btn-warning,
+  .ui-btn-info,
+  .ui-btn-download,
+  .ui-btn-filter,
+  .ui-btn-transfer,
+  .ui-btn-create,
+  .ui-btn-edit,
+  .ui-btn-dark,
+  .btn,
+  .btn-new,
+  .action-btn,
+  .inv-btn,
+  .veh-btn,
+  .veh-btn-secondary,
+  .asg-btn-primary,
+  .asg-btn-secondary,
+  .asg-btn-warning,
+  .asg-pdf-btn,
+  .asg-upload-btn,
+  .btn-volver,
+  .btn-secondary,
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-extrabold leading-5 no-underline shadow-sm transition duration-200 focus:outline-none focus:ring-4 disabled:pointer-events-none disabled:opacity-60;
   }
 
-  .ui-btn-secondary {
-    @apply ui-btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  .ui-btn:hover,
+  .ui-btn-primary:hover,
+  .ui-btn-secondary:hover,
+  .ui-btn-success:hover,
+  .ui-btn-danger:hover,
+  .ui-btn-warning:hover,
+  .ui-btn-info:hover,
+  .ui-btn-download:hover,
+  .ui-btn-filter:hover,
+  .ui-btn-transfer:hover,
+  .ui-btn-create:hover,
+  .ui-btn-edit:hover,
+  .ui-btn-dark:hover,
+  .btn:hover,
+  .btn-new:hover,
+  .action-btn:hover,
+  .inv-btn:hover,
+  .veh-btn:hover,
+  .veh-btn-secondary:hover,
+  .asg-btn-primary:hover,
+  .asg-btn-secondary:hover,
+  .asg-btn-warning:hover,
+  .asg-pdf-btn:hover,
+  .asg-upload-btn:hover,
+  .btn-volver:hover,
+  .btn-secondary:hover,
+  .btn-primary:hover {
+    @apply -translate-y-0.5 shadow-md;
   }
 
-  .ui-btn-danger {
-    @apply ui-btn bg-rose-600 text-white shadow-sm hover:bg-rose-700;
+  .ui-btn-primary,
+  .btn-primary,
+  .veh-btn-primary,
+  .asg-btn-primary,
+  .inv-btn-blue,
+  .btn-inventario {
+    @apply border border-blue-600 bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-200;
   }
 
-  .ui-btn-warning {
-    @apply ui-btn bg-amber-500 text-white shadow-sm hover:bg-amber-600;
+  .ui-btn-secondary,
+  .btn-secondary,
+  .btn-volver,
+  .veh-btn-light,
+  .veh-btn-secondary,
+  .asg-btn-secondary,
+  .inv-btn-light,
+  .btn-light,
+  .btn-outline-secondary,
+  .btn-outline-primary {
+    @apply border border-sky-200 bg-white text-slate-700 hover:bg-sky-50 hover:text-blue-700 focus:ring-sky-200;
   }
 
-  .ui-table {
-    @apply w-full overflow-hidden rounded-xl border border-slate-200 bg-white;
+  .ui-btn-success,
+  .ui-btn-create,
+  .btn-new,
+  .veh-btn-success,
+  .inv-btn-green,
+  .btn-aprobacion,
+  button[type='submit']:not(.ui-btn-danger):not(.ui-btn-warning):not(.btn-eliminar):not([class*='rose']):not([class*='red']) {
+    @apply border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-200;
   }
 
-  .ui-table thead {
-    @apply bg-slate-100 text-slate-700;
+  .ui-btn-danger,
+  .btn-eliminar,
+  .veh-btn-danger,
+  .inv-btn-red,
+  button[class*='rose'],
+  button[class*='red'] {
+    @apply border border-rose-600 bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-200;
   }
 
-  .ui-table th {
-    @apply px-5 py-3 text-left text-xs font-bold uppercase tracking-wide;
+  .ui-btn-warning,
+  .asg-btn-warning,
+  .inv-btn-orange,
+  button[class*='amber'] {
+    @apply border border-amber-500 bg-amber-500 text-amber-950 hover:bg-amber-400 focus:ring-amber-200;
   }
 
-  .ui-table td {
-    @apply px-5 py-4 align-middle;
+  .ui-btn-info,
+  .ui-btn-edit,
+  .btn-editar,
+  .inv-btn-purple,
+  .btn-trasladar {
+    @apply border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-200;
   }
 
-  .ui-table tbody tr {
-    @apply border-t border-slate-100 transition hover:bg-slate-50/80;
+  .ui-btn-download,
+  .asg-pdf-btn,
+  a[href*='pdf'],
+  a[href*='hoja'],
+  a[target='_blank'] {
+    @apply border border-slate-700 bg-slate-800 text-white hover:bg-slate-900 focus:ring-slate-200;
   }
 
-  .ui-form input,
-  .ui-form select,
-  .ui-form textarea {
-    @apply rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500;
+  .ui-btn-sm,
+  .bodega-card-actions .action-btn,
+  .veh-row-actions .veh-btn,
+  .row-actions .veh-btn,
+  .asg-table .asg-pdf-btn,
+  .asg-table .asg-upload-btn {
+    @apply rounded-lg px-3 py-1.5 text-xs;
+  }
+
+  .ui-input,
+  .ui-select,
+  .asg-input,
+  .asg-small-input,
+  .form-control,
+  .form-select {
+    @apply w-full rounded-xl border-sky-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500;
+  }
+
+  .ui-label {
+    @apply mb-1 block text-xs font-extrabold uppercase tracking-wide text-slate-600;
+  }
+
+  .ui-table-wrap,
+  .table-responsive,
+  .asg-table-scroll,
+  .inv-table-scroll {
+    @apply w-full overflow-x-auto rounded-2xl border border-sky-100 bg-white shadow-sm;
+  }
+
+  .ui-table,
+  .asg-table,
+  .veh-table,
+  .inv-table,
+  table:not(.header-table):not(.signature-table):not(.products-table):not(.info-table):not(.items-table) {
+    @apply w-full border-separate border-spacing-0 bg-white text-sm;
+  }
+
+  .ui-table thead,
+  .asg-table thead,
+  .veh-table thead,
+  .inv-table thead,
+  table:not(.header-table):not(.signature-table):not(.products-table):not(.info-table):not(.items-table) thead {
+    @apply bg-slate-50;
+  }
+
+  .ui-table th,
+  .asg-table th,
+  .veh-table th,
+  .inv-table th,
+  table:not(.header-table):not(.signature-table):not(.products-table):not(.info-table):not(.items-table) th {
+    @apply whitespace-nowrap border-b border-sky-100 px-4 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-600;
+  }
+
+  .ui-table td,
+  .asg-table td,
+  .veh-table td,
+  .inv-table td,
+  table:not(.header-table):not(.signature-table):not(.products-table):not(.info-table):not(.items-table) td {
+    @apply border-b border-slate-100 px-4 py-3 align-middle text-sm;
+  }
+
+  .ui-table tbody tr,
+  .asg-table tbody tr,
+  .veh-table tbody tr,
+  .inv-table tbody tr,
+  table:not(.header-table):not(.signature-table):not(.products-table):not(.info-table):not(.items-table) tbody tr {
+    @apply transition hover:bg-sky-50/70;
+  }
+
+  .ui-badge,
+  .badge,
+  .bodega-badge,
+  .estado-badge,
+  [class*='rounded-full'][class*='text-xs'] {
+    @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-extrabold shadow-sm;
+  }
+
+  .ui-badge-success,
+  .badge-success,
+  .badge-principal {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
+  }
+
+  .ui-badge-warning,
+  .badge-warning,
+  .badge-regional {
+    @apply border-amber-200 bg-amber-50 text-amber-800;
+  }
+
+  .ui-badge-danger,
+  .badge-danger {
+    @apply border-rose-200 bg-rose-50 text-rose-700;
+  }
+
+  .ui-badge-info,
+  .badge-info {
+    @apply border-blue-200 bg-blue-50 text-blue-700;
+  }
+
+  .ui-alert,
+  .ui-alert-success,
+  .ui-alert-error,
+  .ui-alert-warning,
+  .asg-alert,
+  .veh-alert-success,
+  .veh-alert-error,
+  .alert {
+    @apply mb-4 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm;
+  }
+
+  .ui-alert-success,
+  .asg-alert-success,
+  .veh-alert-success,
+  .alert-success {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
+  }
+
+  .ui-alert-error,
+  .asg-alert-error,
+  .veh-alert-error,
+  .alert-danger {
+    @apply border-rose-200 bg-rose-50 text-rose-700;
+  }
+
+  .ui-alert-warning,
+  .alert-warning {
+    @apply border-amber-200 bg-amber-50 text-amber-800;
+  }
+
+  .ui-empty-state,
+  .empty-box {
+    @apply rounded-3xl border border-dashed border-sky-200 bg-sky-50/70 px-6 py-10 text-center text-sm font-semibold text-slate-500;
+  }
+
+  .ui-modal {
+    @apply rounded-3xl border border-sky-100 bg-white shadow-2xl ring-1 ring-slate-900/5;
+  }
+
+  .bodega-page,
+  .inv-page,
+  .veh-page,
+  .asg-page {
+    @apply w-full;
+  }
+
+  .bodega-header,
+  .inv-header,
+  .veh-header,
+  .asg-header {
+    @apply mb-5 flex flex-col gap-4 rounded-3xl border border-sky-100 bg-white/95 p-5 shadow-sm ring-1 ring-slate-900/5 md:flex-row md:items-center md:justify-between;
+  }
+
+  .bodega-title,
+  .inv-title,
+  .veh-title,
+  .asg-title,
+  .panel-title {
+    @apply text-2xl font-extrabold tracking-tight text-slate-950;
+  }
+
+  .bodega-subtitle,
+  .inv-subtitle,
+  .veh-subtitle,
+  .asg-subtitle,
+  .panel-description {
+    @apply mt-1 text-sm font-medium text-slate-500;
+  }
+
+  .bodega-header-actions,
+  .inv-actions,
+  .veh-actions-top,
+  .veh-top-actions,
+  .asg-actions,
+  .row-actions,
+  .bodega-card-actions {
+    @apply flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end;
+  }
+
+  .bodega-card,
+  .inv-table-card,
+  .veh-card,
+  .asg-panel,
+  .asg-mini-card,
+  .panel,
+  .card,
+  .content {
+    @apply rounded-3xl border border-sky-100 bg-white/95 p-5 shadow-sm ring-1 ring-slate-900/5;
+  }
+
+  .bodega-card-body,
+  .asg-footer-actions {
+    @apply rounded-2xl border border-slate-100 bg-slate-50/80 p-4;
+  }
+
+  .dashboard-card,
+  .role-menu-single .ui-card {
+    @apply rounded-2xl border border-sky-100 bg-white/95 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md;
+  }
+}
+
+@layer utilities {
+  .ui-soft-bg {
+    background:
+      radial-gradient(circle at top left, rgba(14, 165, 233, 0.12), transparent 26rem),
+      linear-gradient(135deg, #f8fcff, #eff6ff 55%, #ffffff);
+  }
+}
+
+@media (max-width: 640px) {
+  .ui-btn,
+  .ui-btn-primary,
+  .ui-btn-secondary,
+  .ui-btn-success,
+  .ui-btn-danger,
+  .ui-btn-warning,
+  .ui-btn-info,
+  .ui-btn-download,
+  .ui-btn-filter,
+  .ui-btn-transfer,
+  .ui-btn-create,
+  .ui-btn-edit,
+  .btn,
+  .btn-new,
+  .action-btn,
+  .inv-btn,
+  .veh-btn,
+  .veh-btn-secondary,
+  .asg-btn-primary,
+  .asg-btn-secondary,
+  .asg-btn-warning,
+  .asg-pdf-btn,
+  .asg-upload-btn,
+  .btn-volver,
+  .btn-secondary,
+  .btn-primary {
+    width: 100%;
+  }
+
+  .ui-table th,
+  .ui-table td,
+  .asg-table th,
+  .asg-table td,
+  .veh-table th,
+  .veh-table td,
+  .inv-table th,
+  .inv-table td {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .ui-topbar,
+  header,
+  nav,
+  .ui-dashboard-link,
+  .ui-action-bar,
+  .print-actions,
+  button {
+    display: none !important;
+  }
+
+  .ui-panel,
+  .ui-card,
+  .card,
+  table {
+    box-shadow: none !important;
   }
 }

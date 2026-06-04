@@ -223,15 +223,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- VOLVER --}}
-            <div class="mt-5 flex justify-end">
-                <a href="{{ route('dashboard') }}"
-                   class="inline-flex items-center gap-2 rounded-2xl border border-sky-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-sky-50 hover:text-blue-700">
-                    <span>←</span>
-                    Volver al menú
-                </a>
-            </div>
         </div>
 
     </div>
