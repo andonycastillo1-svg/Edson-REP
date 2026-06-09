@@ -16,17 +16,13 @@
 @endphp
 
 <div class="w-full max-w-3xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
+    <x-internal-navigation :back-url="route($routePrefix . '.usuarios.index')" />
 
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-2xl font-semibold text-gray-800">Editar usuario</h1>
             <p class="text-sm text-gray-500">Modifica la información del usuario</p>
         </div>
-
-        <a href="{{ route($routePrefix . '.usuarios.index') }}"
-           class="text-sm text-blue-600 hover:underline">
-            ← Volver
-        </a>
     </div>
 
     @if ($errors->any())

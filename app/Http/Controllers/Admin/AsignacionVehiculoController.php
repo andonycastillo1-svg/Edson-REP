@@ -100,7 +100,7 @@ class AsignacionVehiculoController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($data) {
+            $asignacion = DB::transaction(function () use ($data) {
                 $asignacion = AsignacionVehiculo::create([
                     'vehiculo_vin' => $data['vehiculo_vin'],
                     'colaborador_codigo' => $data['colaborador_codigo'],
@@ -166,6 +166,8 @@ class AsignacionVehiculoController extends Controller
                         'vehiculo_vin' => $data['vehiculo_vin'],
                     ]);
                 }
+
+                return $asignacion;
             });
         } catch (Throwable $e) {
             return back()
@@ -175,7 +177,8 @@ class AsignacionVehiculoController extends Controller
 
         return redirect()
             ->route('admin.vehiculos.asignaciones.index')
-            ->with('success', 'Asignación de vehículo creada correctamente.');
+            ->with('success', 'Asignación de vehículo creada correctamente.')
+            ->with('pdf_url', route('admin.vehiculos.asignaciones.pdf_asignacion', $asignacion));
     }
 
     public function desasignar(Request $request, AsignacionVehiculo $asignacion)

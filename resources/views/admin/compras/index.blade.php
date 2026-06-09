@@ -6,6 +6,7 @@
 @php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 
 <div class="w-full">
+    <x-internal-navigation :back-url="route('dashboard')" />
 
     <div class="overflow-hidden rounded-3xl border border-sky-200 bg-white shadow-xl shadow-sky-100/70">
 

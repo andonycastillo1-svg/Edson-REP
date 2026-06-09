@@ -4,9 +4,9 @@
 @php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 <div class="min-h-[calc(100vh-64px)] flex items-center justify-center p-6"
      style="background: linear-gradient(180deg, #36a2ff 0%, #2b7dff 100%);">
-
   <div class="w-full max-w-5xl bg-white/90 backdrop-blur rounded-2xl shadow-xl border border-white/40">
     <div class="p-6 md:p-8">
+      <x-internal-navigation :back-url="route($routePrefix . '.compras.index')" />
 
       <div class="flex items-start justify-between gap-4 mb-6">
         <div>
@@ -15,10 +15,6 @@
             Al guardar, se crea la compra + entradas automáticas al inventario (bodega principal).
           </p>
         </div>
-        <a href="{{ route($routePrefix . '.compras.index') }}"
-           class="px-4 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm">
-          ← Volver
-        </a>
       </div>
 
       @if(session('error'))

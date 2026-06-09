@@ -5,6 +5,7 @@
 @section('content')
 @php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
 <div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
+    <x-internal-navigation :back-url="route($routePrefix . '.compras.index')" />
 
     <div class="flex items-start justify-between gap-4 mb-6">
         <div>
@@ -15,11 +16,6 @@
                 Fecha de compra: <span class="font-semibold text-slate-700">{{ $compra->fecha_compra }}</span>
             </p>
         </div>
-
-        <a href="{{ route($routePrefix . '.compras.index') }}"
-           class="px-4 py-2 rounded-xl border border-slate-200 font-semibold hover:bg-slate-50 transition">
-            ← Volver
-        </a>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

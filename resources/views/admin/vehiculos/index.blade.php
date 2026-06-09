@@ -244,6 +244,7 @@
 </style>
 
 <div class="ui-panel w-full p-6 md:p-8">
+    <x-internal-navigation :back-url="route('dashboard')" />
     <div class="veh-wrap">
 
         <div class="veh-header">

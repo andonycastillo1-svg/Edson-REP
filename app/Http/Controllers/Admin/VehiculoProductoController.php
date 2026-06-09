@@ -93,7 +93,7 @@ class VehiculoProductoController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($data) {
+            $asignacion = DB::transaction(function () use ($data) {
                 $inventario = Inventario::with('producto')
                     ->where('producto_codigo', $data['producto_codigo'])
                     ->where('bodega_id', $data['bodega_id'])
@@ -119,7 +119,7 @@ class VehiculoProductoController extends Controller
 
                 $inventario->decrement('cantidad', (int) $data['cantidad']);
 
-                VehiculoProductoAsignacion::create([
+                $asignacion = VehiculoProductoAsignacion::create([
                     'asignacion_vehiculo_id' => $asignacionActiva?->id,
                     'vehiculo_vin' => $data['vehiculo_vin'],
                     'producto_codigo' => $data['producto_codigo'],
@@ -145,6 +145,8 @@ class VehiculoProductoController extends Controller
                     'user_id' => auth()->id(),
                     'vehiculo_vin' => $data['vehiculo_vin'],
                 ]);
+
+                return $asignacion;
             });
         } catch (Throwable $e) {
             return back()
@@ -154,7 +156,8 @@ class VehiculoProductoController extends Controller
 
         return redirect()
             ->route('admin.vehiculos.productos.index', ['vehiculo_vin' => $data['vehiculo_vin']])
-            ->with('success', 'Producto/refacción asignado al vehículo correctamente.');
+            ->with('success', 'Producto/refacción asignado al vehículo correctamente.')
+            ->with('pdf_url', route('admin.vehiculos.productos.pdf_asignacion', $asignacion));
     }
 
     public function pdfAsignacion(VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)

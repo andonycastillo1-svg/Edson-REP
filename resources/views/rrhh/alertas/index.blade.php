@@ -8,6 +8,7 @@
 @endphp
 
 <div class="w-full max-w-6xl mx-auto px-4 py-6">
+    <x-internal-navigation :back-url="route('dashboard')" />
 
     {{-- Encabezado --}}
     <div class="mb-4 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
