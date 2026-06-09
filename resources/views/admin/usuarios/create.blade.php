@@ -5,6 +5,9 @@
 @section('content')
 @php
     $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+    $rolSeleccionadoId = (int) old('role_id', 0);
+    $mostrarBodega = $rolSeleccionadoId === (int) $rolAlmacenistaId;
+    $mostrarAlmacenista = $rolSeleccionadoId === (int) $rolSupervisorId;
 @endphp
 <div class="w-full max-w-3xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
 
@@ -59,7 +62,9 @@
                     @if(auth()->user()->role_id != 4)<option value="">Seleccione...</option>@endif
 
                     @foreach($roles as $rol)
-                        <option value="{{ $rol->id }}" {{ (int) old('role_id') === (int) $rol->id ? 'selected' : '' }}>
+                        <option value="{{ $rol->id }}"
+                                data-role-type="{{ (int) $rol->id === (int) $rolAlmacenistaId ? 'almacenista' : ((int) $rol->id === (int) $rolSupervisorId ? 'supervisor' : 'otro') }}"
+                                {{ $rolSeleccionadoId === (int) $rol->id ? 'selected' : '' }}>
                             {{ $rol->nombre }}
                         </option>
                     @endforeach
@@ -68,7 +73,7 @@
             </div>
 
             <!-- Bodega (según rol habilitado) -->
-            <div id="bodega_wrap" class="hidden">
+            <div id="bodega_wrap" @if(!$mostrarBodega) hidden style="display: none;" @endif>
                 <label class="block text-sm font-medium text-gray-700">Bodega</label>
                 <select name="bodega_id" id="bodega_id"
                         class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
