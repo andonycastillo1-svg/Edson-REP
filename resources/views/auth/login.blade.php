@@ -47,19 +47,6 @@
                 <input id="password" name="password" type="password" required
                        class="ui-input mt-1">
             </div>
-
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <label class="inline-flex items-center rounded-xl border border-sky-100 bg-sky-50/60 px-3 py-2">
-                    <input type="checkbox" name="remember"
-                           class="rounded border-sky-200 text-blue-600 focus:ring-blue-500">
-                    <span class="ml-2 text-sm font-semibold text-slate-600">Recordar</span>
-                </label>
-
-                @if (Route::has('password.request'))
-                    <a href="{{ route('password.request') }}" class="text-sm font-bold text-blue-600 hover:text-blue-800 hover:underline">
-                        Olvidó su contraseña?
-                    </a>
-                @endif
             </div>
 
             <button type="submit" class="ui-btn-primary w-full">
