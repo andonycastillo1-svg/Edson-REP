@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\NotificacionService;
 use App\Models\AlertaReemplazo;
 use App\Models\AsignacionVehiculo;
 use App\Models\Bodega;
@@ -93,7 +94,7 @@ class VehiculoProductoController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($data) {
+            $asignacion = DB::transaction(function () use ($data) {
                 $inventario = Inventario::with('producto')
                     ->where('producto_codigo', $data['producto_codigo'])
                     ->where('bodega_id', $data['bodega_id'])
@@ -119,7 +120,7 @@ class VehiculoProductoController extends Controller
 
                 $inventario->decrement('cantidad', (int) $data['cantidad']);
 
-                VehiculoProductoAsignacion::create([
+                $asignacion = VehiculoProductoAsignacion::create([
                     'asignacion_vehiculo_id' => $asignacionActiva?->id,
                     'vehiculo_vin' => $data['vehiculo_vin'],
                     'producto_codigo' => $data['producto_codigo'],
@@ -145,6 +146,8 @@ class VehiculoProductoController extends Controller
                     'user_id' => auth()->id(),
                     'vehiculo_vin' => $data['vehiculo_vin'],
                 ]);
+
+                return $asignacion;
             });
         } catch (Throwable $e) {
             return back()
@@ -152,9 +155,20 @@ class VehiculoProductoController extends Controller
                 ->with('error', $e->getMessage());
         }
 
+        try {
+            app(NotificacionService::class)->notificarNuevaAsignacion(
+                $asignacion,
+                $request->user(),
+                route('admin.vehiculos.productos.index', ['vehiculo_vin' => $data['vehiculo_vin']])
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
         return redirect()
             ->route('admin.vehiculos.productos.index', ['vehiculo_vin' => $data['vehiculo_vin']])
-            ->with('success', 'Producto/refacción asignado al vehículo correctamente.');
+            ->with('success', 'Producto/refacción asignado al vehículo correctamente.')
+            ->with('pdf_url', route('admin.vehiculos.productos.pdf_asignacion', $asignacion));
     }
 
     public function pdfAsignacion(VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)
@@ -223,7 +237,7 @@ class VehiculoProductoController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($data, $asignacion) {
+            $alertaRrhh = DB::transaction(function () use ($data, $asignacion) {
                 $asignacion = VehiculoProductoAsignacion::with(['producto', 'vehiculo'])
                     ->lockForUpdate()
                     ->findOrFail($asignacion->id);
@@ -254,7 +268,7 @@ class VehiculoProductoController extends Controller
                 }
 
                 $responsable = null;
-                $alertaGenerada = false;
+                $alertaGenerada = null;
 
                 if ($malUso) {
                     $vehiculoAsignado = AsignacionVehiculo::where('vehiculo_vin', $asignacion->vehiculo_vin)
@@ -276,7 +290,7 @@ class VehiculoProductoController extends Controller
 
                 $asignacionCerrada->update([
                     'colaborador_responsable_codigo' => $responsable,
-                    'descuento_generado' => $alertaGenerada,
+                    'descuento_generado' => (bool) $alertaGenerada,
                 ]);
 
                 if ($cantidadCerrar === $cantidadActual) {
@@ -288,7 +302,7 @@ class VehiculoProductoController extends Controller
                         'accion_cierre' => $accion,
                         'mal_uso_colaborador' => $malUso,
                         'colaborador_responsable_codigo' => $responsable,
-                        'descuento_generado' => $alertaGenerada,
+                        'descuento_generado' => (bool) $alertaGenerada,
                         'observaciones' => $asignacionCerrada->observaciones,
                     ]);
                 } else {
@@ -298,9 +312,19 @@ class VehiculoProductoController extends Controller
                         'activa' => true,
                     ]);
                 }
+
+                return $alertaGenerada;
             });
         } catch (Throwable $e) {
             return back()->with('error', $e->getMessage());
+        }
+
+        if ($alertaRrhh instanceof AlertaReemplazo) {
+            try {
+                app(NotificacionService::class)->notificarAlertaRrhh($alertaRrhh, $request->user());
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
         }
 
         return back()->with('success', 'Producto/refacción cerrado correctamente.');
@@ -389,7 +413,7 @@ class VehiculoProductoController extends Controller
         string $colaboradorCodigo,
         int $cantidadCerrar,
         ?string $observaciones
-    ): bool {
+    ): AlertaReemplazo {
         $costoUnitario = $this->ultimoCostoUnitario($asignacion->producto_codigo);
         $vidaUtilMeses = (int) ($asignacion->producto->vida_util_meses ?? 0);
 
@@ -412,7 +436,7 @@ class VehiculoProductoController extends Controller
             ? round($costoTotal * ($mesesRestantes / $vidaUtilMeses), 2)
             : 0;
 
-        AlertaReemplazo::create([
+        return AlertaReemplazo::create([
             'colaborador_codigo' => $colaboradorCodigo,
             'producto_codigo' => $asignacion->producto_codigo,
             'vehiculo_vin' => $asignacion->vehiculo_vin,
@@ -436,8 +460,6 @@ class VehiculoProductoController extends Controller
                 montoCobro: $montoCobro
             ),
         ]);
-
-        return true;
     }
 
     private function ultimoCostoUnitario(string $productoCodigo): ?float

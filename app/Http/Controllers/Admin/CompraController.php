@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use App\Services\BodegaAccessService;
 use App\Services\InventarioStockService;
+use App\Services\NotificacionService;
 
 class CompraController extends Controller
 {
@@ -203,7 +204,7 @@ class CompraController extends Controller
             $proveedorId = $data['proveedor_id'];
         }
 
-        DB::transaction(function () use ($request, $data, $bodegaPrincipalId, $proveedorId) {
+        $compraId = DB::transaction(function () use ($request, $data, $bodegaPrincipalId, $proveedorId) {
             $compraId = DB::table('compras')->insertGetId([
                 'fecha_compra' => $data['fecha_compra'],
                 'no_factura' => $data['no_factura'],
@@ -334,7 +335,19 @@ class CompraController extends Controller
                     ]);
                 }
             }
+
+            return $compraId;
         });
+
+        $bodegaPrincipal = Bodega::findOrFail($bodegaPrincipalId);
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarMovimientoInventario(
+                $bodegaPrincipal,
+                $request->user(),
+                'La compra #' . $compraId . ' registró una entrada importante en ' . $bodegaPrincipal->nombre . '.',
+                (string) $compraId
+            )
+        );
 
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 

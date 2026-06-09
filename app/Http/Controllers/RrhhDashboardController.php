@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\AlertasRrhhExport;
 use App\Models\AlertaReemplazo;
+use App\Services\NotificacionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Maatwebsite\Excel\Facades\Excel;
 
 class RrhhDashboardController extends Controller
 {
@@ -35,11 +38,14 @@ class RrhhDashboardController extends Controller
             'confirmar' => ['required', 'accepted'],
         ]);
 
-        if (!$alerta->estaPendiente()) {
+        if (! $alerta->estaPendiente()) {
             return back()->with('info', 'La alerta ya se encuentra finalizada.');
         }
 
         $alerta->marcarFinalizada();
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarResolucionAlertaRrhh($alerta, $request->user())
+        );
 
         return back()->with('success', 'Alerta de descuento marcada como finalizada.');
     }
@@ -49,63 +55,44 @@ class RrhhDashboardController extends Controller
         $alertas = $this->buildQuery($request)
             ->latest('alertas_reemplazos_rrhh.created_at')
             ->get()
-            ->map(fn ($a) => $this->mapAlerta($a));
+            ->map(fn ($alerta) => $this->mapAlerta($alerta));
 
-        return response()->streamDownload(function () use ($alertas) {
-            $out = fopen('php://output', 'w');
+        $filters = [];
+        if ($request->filled('q')) {
+            $filters['Búsqueda'] = trim((string) $request->query('q'));
+        }
+        if ($request->filled('estado')) {
+            $filters['Estado'] = ucfirst((string) $request->query('estado'));
+        }
+        if ($request->filled('desde')) {
+            $filters['Desde'] = $request->query('desde');
+        }
+        if ($request->filled('hasta')) {
+            $filters['Hasta'] = $request->query('hasta');
+        }
 
-            fwrite($out, "\xEF\xBB\xBF");
-
-            fputcsv($out, [
-                'Colaborador ID',
-                'Colaborador',
-                'Código producto',
-                'Producto',
-                'Fecha asignación',
-                'Fecha daño/reemplazo',
-                'Vida útil meses',
-                'Vida restante',
-                'Descuento aplica',
-                'Monto descuento',
-                'Estado',
-            ]);
-
-            foreach ($alertas as $a) {
-                fputcsv($out, [
-                    $a->colaborador_codigo,
-                    $a->colaborador_nombre ?? 'Sin nombre',
-                    $a->producto_codigo,
-                    $a->producto_descripcion ?: ($a->producto_nombre ?: $a->producto_codigo),
-                    optional($a->fecha_asignacion_anterior)->format('d/m/Y'),
-                    optional($a->fecha_dano_reemplazo)->format('d/m/Y'),
-                    $a->vida_util_meses,
-                    $a->meses_restantes_reales,
-                    $a->descuento_aplicable ? 'Sí' : 'No',
-                    number_format($a->descuento_calculado, 2, '.', ''),
-                    $a->estado_etiqueta,
-                ]);
-            }
-
-            fclose($out);
-        }, 'reporte_descuentos_' . now()->format('Ymd_His') . '.csv', [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        return Excel::download(
+            new AlertasRrhhExport($alertas, $request->user()->name, $filters),
+            'alertas_rrhh_'.now()->format('Y-m-d_Hi').'.xlsx'
+        );
     }
 
     private function buildQuery(Request $request)
     {
-        if (!Schema::hasTable('alertas_reemplazos_rrhh')) {
+        if (! Schema::hasTable('alertas_reemplazos_rrhh')) {
             return AlertaReemplazo::query()->whereRaw('1 = 0');
         }
 
         return AlertaReemplazo::query()
             ->leftJoin('colaboradores as c', 'c.codigo', '=', 'alertas_reemplazos_rrhh.colaborador_codigo')
             ->leftJoin('productos as p', 'p.codigo', '=', 'alertas_reemplazos_rrhh.producto_codigo')
+            ->leftJoin('users as u', 'u.id', '=', 'alertas_reemplazos_rrhh.registrado_por_user_id')
             ->addSelect('alertas_reemplazos_rrhh.*')
             ->addSelect('c.nombre as colaborador_nombre')
             ->addSelect('p.nombre as producto_nombre')
             ->addSelect('p.descripcion as producto_descripcion')
-            ->selectRaw("
+            ->addSelect('u.name as registrado_por_nombre')
+            ->selectRaw('
                 GREATEST(
                     alertas_reemplazos_rrhh.vida_util_meses - TIMESTAMPDIFF(
                         MONTH,
@@ -114,8 +101,8 @@ class RrhhDashboardController extends Controller
                     ),
                     0
                 ) as meses_restantes_reales
-            ")
-            ->selectRaw("
+            ')
+            ->selectRaw('
                 COALESCE(
                     (
                         SELECT cd.precio_unitario
@@ -126,7 +113,7 @@ class RrhhDashboardController extends Controller
                     ),
                     0
                 ) as costo_producto
-            ")
+            ')
             ->when($request->filled('q'), function ($query) use ($request) {
                 $q = trim($request->query('q'));
 

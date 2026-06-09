@@ -16,6 +16,7 @@
             </div>
 
             <div class="flex items-center gap-2">
+                @include('partials.notificaciones-campana')
                 @unless(request()->routeIs('dashboard', '*.dashboard'))
                     <a href="{{ route('dashboard') }}"
                        class="hidden sm:inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-100">
@@ -23,9 +24,9 @@
                     </a>
                 @endunless
 
-                <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-sm font-semibold text-[#1F2937] md:text-base">
+                <div class="inline-flex min-w-0 items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-sm font-semibold text-[#1F2937] md:text-base">
                     <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700">👤</span>
-                    <span class="max-w-[220px] truncate">{{ auth()->user()->name }}</span>
+                    <span class="hidden max-w-[220px] truncate sm:block">{{ auth()->user()->name }}</span>
                 </div>
             </div>
         </div>

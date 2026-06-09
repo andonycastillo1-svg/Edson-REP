@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\InventarioBodegaExport;
 use App\Http\Controllers\Controller;
 use App\Models\Bodega;
 use App\Services\BodegaAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class BodegaController extends Controller
 {
-    public function __construct(private BodegaAccessService $bodegaAccess)
-    {
-    }
+    public function __construct(private BodegaAccessService $bodegaAccess) {}
 
     /**
      * Display a listing of the resource.
@@ -56,6 +56,7 @@ class BodegaController extends Controller
             $b->items_count = (int) ($resumen[$b->id]->items_count ?? 0);
             $b->stock_total = (int) ($resumen[$b->id]->stock_total ?? 0);
             $b->ultima_fecha = $ultimos[$b->id]->ultima_fecha ?? null;
+
             return $b;
         });
 
@@ -103,44 +104,13 @@ class BodegaController extends Controller
      */
     public function show(Request $request, string $id)
     {
-        if (!$this->bodegaAccess->canView(auth()->user(), (int) $id)) {
+        if (! $this->bodegaAccess->canView(auth()->user(), (int) $id)) {
             abort(403);
         }
 
         $bodega = Bodega::findOrFail($id);
 
-        $ultFechaSub = DB::table('compra_detalles as cd')
-            ->join('compras as c', 'c.id', '=', 'cd.compra_id')
-            ->select(
-                'cd.producto_codigo',
-                DB::raw('MAX(c.fecha_compra) as max_fecha')
-            )
-            ->groupBy('cd.producto_codigo');
-
-        $ultCosto = DB::table('compra_detalles as cd')
-            ->join('compras as c', 'c.id', '=', 'cd.compra_id')
-            ->joinSub($ultFechaSub, 'uf', function ($join) {
-                $join->on('uf.producto_codigo', '=', 'cd.producto_codigo')
-                    ->on('uf.max_fecha', '=', 'c.fecha_compra');
-            })
-            ->select(
-                'cd.producto_codigo',
-                DB::raw('cd.precio_unitario as costo_unitario')
-            );
-
-        $inventarioBase = DB::table('inventarios as i')
-            ->join('productos as p', 'p.codigo', '=', 'i.producto_codigo')
-            ->leftJoinSub($ultCosto, 'uc', function ($join) {
-                $join->on('uc.producto_codigo', '=', 'i.producto_codigo');
-            })
-            ->where('i.bodega_id', $bodega->id)
-            ->when($request->query('q'), function ($query, $q) {
-                $query->where(function ($w) use ($q) {
-                    $w->where('i.producto_codigo', 'like', "%{$q}%")
-                        ->orWhere('p.nombre', 'like', "%{$q}%")
-                        ->orWhere('p.descripcion', 'like', "%{$q}%");
-                });
-            });
+        $inventarioBase = $this->inventarioQuery($request, $bodega);
 
         $productosTotal = (clone $inventarioBase)->count();
 
@@ -175,40 +145,69 @@ class BodegaController extends Controller
         ]);
     }
 
-
     public function exportInventario(Request $request, string $id)
     {
-        if (!$this->bodegaAccess->canView(auth()->user(), (int) $id)) {
+        if (! $this->bodegaAccess->canView(auth()->user(), (int) $id)) {
             abort(403);
         }
 
         $bodega = Bodega::findOrFail($id);
+        $inventarios = $this->inventarioQuery($request, $bodega)
+            ->select(
+                'i.producto_codigo',
+                'i.cantidad',
+                'i.updated_at',
+                'p.nombre',
+                'p.descripcion',
+                'p.categoria',
+                'p.vida_util_meses',
+                DB::raw('COALESCE(uc.costo_unitario, 0) as costo_unitario'),
+                DB::raw('(i.cantidad * COALESCE(uc.costo_unitario, 0)) as costo_total')
+            )
+            ->orderBy('p.nombre')
+            ->get();
 
-        $rows = DB::table('inventarios as i')
+        $filename = 'inventario_bodega_'.$bodega->id.'_'.now()->format('Y-m-d_Hi').'.xlsx';
+        $filters = ['Bodega' => $bodega->nombre];
+
+        if ($request->filled('q')) {
+            $filters['Búsqueda'] = trim((string) $request->query('q'));
+        }
+
+        return Excel::download(
+            new InventarioBodegaExport($inventarios, $bodega->nombre, $request->user()->name, $filters),
+            $filename
+        );
+    }
+
+    private function inventarioQuery(Request $request, Bodega $bodega)
+    {
+        $ultFechaSub = DB::table('compra_detalles as cd')
+            ->join('compras as c', 'c.id', '=', 'cd.compra_id')
+            ->select('cd.producto_codigo', DB::raw('MAX(c.fecha_compra) as max_fecha'))
+            ->groupBy('cd.producto_codigo');
+
+        $ultCosto = DB::table('compra_detalles as cd')
+            ->join('compras as c', 'c.id', '=', 'cd.compra_id')
+            ->joinSub($ultFechaSub, 'uf', function ($join) {
+                $join->on('uf.producto_codigo', '=', 'cd.producto_codigo')
+                    ->on('uf.max_fecha', '=', 'c.fecha_compra');
+            })
+            ->select('cd.producto_codigo', DB::raw('cd.precio_unitario as costo_unitario'));
+
+        return DB::table('inventarios as i')
             ->join('productos as p', 'p.codigo', '=', 'i.producto_codigo')
+            ->leftJoinSub($ultCosto, 'uc', function ($join) {
+                $join->on('uc.producto_codigo', '=', 'i.producto_codigo');
+            })
             ->where('i.bodega_id', $bodega->id)
             ->when($request->query('q'), function ($query, $q) {
-                $query->where(function ($w) use ($q) {
-                    $w->where('i.producto_codigo', 'like', "%{$q}%")
+                $query->where(function ($where) use ($q) {
+                    $where->where('i.producto_codigo', 'like', "%{$q}%")
                         ->orWhere('p.nombre', 'like', "%{$q}%")
                         ->orWhere('p.descripcion', 'like', "%{$q}%");
                 });
-            })
-            ->orderBy('p.nombre')
-            ->get(['i.producto_codigo', 'p.nombre', 'p.descripcion', 'p.categoria', 'p.vida_util_meses', 'i.cantidad']);
-
-        $headers = ['Content-Type' => 'text/csv; charset=UTF-8'];
-        $filename = 'inventario_bodega_'.$bodega->id.'_'.now()->format('Ymd_His').'.csv';
-
-        return response()->streamDownload(function () use ($rows, $bodega) {
-            $out = fopen('php://output', 'w');
-            fwrite($out, "ï»¿");
-            fputcsv($out, ['Codigo', 'Producto', 'Descripcion', 'Categoria', 'Bodega', 'Cantidad', 'Vida util (meses)']);
-            foreach ($rows as $r) {
-                fputcsv($out, [$r->producto_codigo, $r->nombre, $r->descripcion, $r->categoria, $bodega->nombre, $r->cantidad, $r->vida_util_meses]);
-            }
-            fclose($out);
-        }, $filename, $headers);
+            });
     }
 
     public function edit(string $id)
@@ -218,6 +217,7 @@ class BodegaController extends Controller
         }
 
         $bodega = Bodega::findOrFail($id);
+
         return view('admin.bodegas.edit', compact('bodega'));
     }
 
