@@ -42,7 +42,7 @@
 </head>
 <body>
     <div class="actions">
-        <button class="print-btn" onclick="window.print()">Imprimir / Guardar PDF</button>
+        <button type="button" class="print-btn" onclick="window.print()">Imprimir / Guardar PDF</button>
     </div>
 
     <div class="top">

@@ -916,6 +916,7 @@
                         @if($pdfDevolucionFirmado)
                           <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $pdfDevolucionFirmado) }}"
                              target="_blank"
+                             rel="noopener noreferrer"
                              style="font-size:11px; font-weight:700; color:#047857;">
                             Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
                           </a>
@@ -938,6 +939,11 @@
 </div>
 
 <script>
+@if(session('pdf_url'))
+  window.addEventListener('load', function () {
+    window.open(@json(session('pdf_url')), '_blank', 'noopener,noreferrer');
+  });
+@endif
   document.querySelectorAll('.selector').forEach((checkbox) => {
     checkbox.addEventListener('change', function () {
       const targetId = this.dataset.target;
