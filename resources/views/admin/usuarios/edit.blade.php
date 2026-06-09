@@ -142,16 +142,19 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const rolSelect = document.getElementById('role_id');
-    const wrap = document.getElementById('bodega_wrap');
+    const bodegaWrap = document.getElementById('bodega_wrap');
     const bodegaSelect = document.getElementById('bodega_id');
     const supervisoresWrap = document.getElementById('supervisores_wrap');
     const supervisoresSelect = document.getElementById('supervisores');
 
-    const ROL_ENCARGADO_ID = {{ $rolEncargadoId ?? 2 }};
+    function toggleCamposPorRol() {
+        const roleId = parseInt(rolSelect.value || '0');
+        const esAlmacenista = roleId === parseInt(ROL_ALMACENISTA_ID);
+        const esSupervisor = roleId === parseInt(ROL_SUPERVISOR_ID);
 
-    function toggleBodega() {
-        const isEncargado = parseInt(rolSelect.value || '0') === parseInt(ROL_ENCARGADO_ID);
-        wrap.classList.toggle('hidden', !isEncargado);
+        bodegaWrap.classList.toggle('hidden', !esAlmacenista);
+        bodegaSelect.disabled = !esAlmacenista;
+        bodegaSelect.required = esAlmacenista;
 
         if (supervisoresWrap) {
             supervisoresWrap.classList.toggle('hidden', !isEncargado);
@@ -168,8 +171,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (rolSelect) {
-        rolSelect.addEventListener('change', toggleBodega);
-        toggleBodega();
+        rolSelect.addEventListener('change', toggleCamposPorRol);
+        toggleCamposPorRol();
     }
 });
 </script>
