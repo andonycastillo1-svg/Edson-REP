@@ -85,6 +85,23 @@
                 <p class="text-xs text-gray-400 mt-1">Asigna la bodega que administrará este usuario.</p>
             </div>
 
+            @if(auth()->user()->role_id == 1)
+                <!-- Relación administrada únicamente por Admin -->
+                <div id="supervisores_wrap" class="hidden md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">Supervisores relacionados</label>
+                    <select name="supervisores[]" id="supervisores" multiple
+                            class="mt-1 w-full min-h-32 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        @foreach($supervisores as $supervisor)
+                            <option value="{{ $supervisor->id }}"
+                                @selected(in_array((int) $supervisor->id, array_map('intval', old('supervisores', $usuario->supervisoresAsignados->pluck('id')->all()))))>
+                                {{ $supervisor->name }} ({{ $supervisor->email }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-gray-400 mt-1">Usa Ctrl/Cmd para seleccionar varios. Solo se guarda cuando el usuario es almacenista/encargado.</p>
+                </div>
+            @endif
+
             <!-- Nueva contraseña -->
             <div>
                 <label class="block text-sm font-medium text-gray-700">
@@ -127,6 +144,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const rolSelect = document.getElementById('role_id');
     const wrap = document.getElementById('bodega_wrap');
     const bodegaSelect = document.getElementById('bodega_id');
+    const supervisoresWrap = document.getElementById('supervisores_wrap');
+    const supervisoresSelect = document.getElementById('supervisores');
 
     const ROL_ENCARGADO_ID = {{ $rolEncargadoId ?? 2 }};
 
@@ -134,9 +153,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const isEncargado = parseInt(rolSelect.value || '0') === parseInt(ROL_ENCARGADO_ID);
         wrap.classList.toggle('hidden', !isEncargado);
 
+        if (supervisoresWrap) {
+            supervisoresWrap.classList.toggle('hidden', !isEncargado);
+        }
+
         // si no es encargado, limpiamos bodega (para que no guarde basura)
         if (!isEncargado && bodegaSelect) {
             bodegaSelect.value = '';
+        }
+
+        if (!isEncargado && supervisoresSelect) {
+            Array.from(supervisoresSelect.options).forEach(option => option.selected = false);
         }
     }
 

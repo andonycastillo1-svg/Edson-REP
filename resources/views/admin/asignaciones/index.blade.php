@@ -10,6 +10,9 @@
   $asignacionesPorColaborador = $asignacionesPorColaborador ?? collect();
   $movimientos = $movimientos ?? collect();
   $pdfsDevolucionFirmados = $pdfsDevolucionFirmados ?? collect();
+  $puedeCrearAsignaciones = $puedeCrearAsignaciones ?? false;
+  $puedeGestionarDevoluciones = $puedeGestionarDevoluciones ?? false;
+  $puedeSubirEvidencias = $puedeSubirEvidencias ?? false;
 @endphp
 
 <style>
@@ -510,11 +513,13 @@
         <p class="asg-subtitle">Control de equipos asignados, documentos firmados y devoluciones.</p>
       </div>
 
-      <div class="asg-actions">
-        <a href="{{ route($routePrefix . '.asignaciones.create') }}" class="asg-btn-primary">
-          + Nueva asignación
-        </a>
-      </div>
+      @if($puedeCrearAsignaciones)
+        <div class="asg-actions">
+          <a href="{{ route($routePrefix . '.asignaciones.create') }}" class="asg-btn-primary">
+            + Nueva asignación
+          </a>
+        </div>
+      @endif
     </div>
 
     @if(session('success'))
@@ -547,7 +552,7 @@
 
       @if(blank($asignacionesPorColaborador))
         <div style="padding:32px; text-align:center; color:#64748b;">
-          Aún no tienes asignaciones registradas.
+          No hay asignaciones disponibles para este usuario.
         </div>
       @else
         <?php foreach ($asignacionesPorColaborador as $grupo): ?>
@@ -555,9 +560,11 @@
             $bulkFormId = 'bulk-return-' . $grupo['colaborador_codigo'];
           @endphp
 
-          <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}">
-            @csrf
-          </form>
+          @if($puedeGestionarDevoluciones)
+            <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}">
+              @csrf
+            </form>
+          @endif
 
           <details class="asg-collab">
             <summary>
@@ -593,6 +600,7 @@
 
             <div class="asg-detail">
 
+              @if($puedeGestionarDevoluciones)
               <div class="asg-mini-card">
                 <form method="POST"
                       action="{{ route($routePrefix . '.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}">
@@ -618,6 +626,7 @@
                   </div>
                 </form>
               </div>
+              @endif
 
               <div class="asg-table-wrap">
                 <div class="asg-table-scroll">
@@ -628,12 +637,13 @@
                         <th>Producto</th>
                         <th>Fecha</th>
                         <th>Bodega</th>
-                        <th>Estado</th>
+                        <th>Estado inventario</th>
+                        <th>Entrega</th>
                         <th>Vida útil</th>
                         <th style="text-align:center;">Activa</th>
                         <th style="text-align:center;">Dev.</th>
                         <th style="text-align:center;">PDF</th>
-                        <th>Firmado</th>
+                        <th>Evidencias</th>
                       </tr>
                     </thead>
 
@@ -653,7 +663,7 @@
 
                         <tr>
                           <td>
-                            @if($activa)
+                            @if($activa && $puedeGestionarDevoluciones)
                               <input type="checkbox"
                                      name="seleccionadas[]"
                                      value="{{ $a->id }}"
@@ -689,6 +699,14 @@
                           </td>
 
                           <td>
+                            @if(($a->estado_evidencia ?? 'completa') === 'completa')
+                              <span class="asg-status asg-status-green">Completa</span>
+                            @else
+                              <span class="asg-status asg-status-amber">Pendiente</span>
+                            @endif
+                          </td>
+
+                          <td>
                             @if($fechaVenc && $fechaVenc->isFuture())
                               <span class="asg-status asg-status-green">Dentro de vida útil</span>
                             @elseif($fechaVenc)
@@ -703,7 +721,7 @@
                           </td>
 
                           <td style="text-align:center;">
-                            @if($activa)
+                            @if($activa && $puedeGestionarDevoluciones)
                               <input type="number"
                                      id="devolucion_{{ $a->id }}"
                                      name="devoluciones[{{ $a->id }}]"
@@ -732,32 +750,40 @@
                           </td>
 
                           <td>
-                            <form method="POST"
-                                  action="{{ route($routePrefix . '.asignaciones.upload_pdf_firmado', $a) }}"
-                                  enctype="multipart/form-data"
-                                  class="asg-upload-form">
-                              @csrf
+                            @if($puedeSubirEvidencias)
+                              <form method="POST"
+                                    action="{{ route($routePrefix . '.asignaciones.upload_pdf_firmado', $a) }}"
+                                    enctype="multipart/form-data"
+                                    class="asg-upload-form">
+                                @csrf
+                                <div class="asg-upload-row">
+                                  <input type="file"
+                                         name="evidencias[]"
+                                         accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                                         multiple
+                                         required
+                                         class="asg-file">
+                                  <button type="submit" class="asg-upload-btn">Subir</button>
+                                </div>
+                                <span style="font-size:11px; color:#64748b;">Requiere 1 PDF firmado y 1 imagen.</span>
+                              </form>
+                            @endif
 
-                              <div class="asg-upload-row">
-                                <input type="file"
-                                       name="pdf_firmado"
-                                       accept="application/pdf,.pdf"
-                                       required
-                                       class="asg-file">
-
-                                <button type="submit" class="asg-upload-btn">
-                                  {{ $pdfAsignacionFirmado ? 'Reemplazar' : 'Subir' }}
-                                </button>
+                            @if($puedeGestionarPdfsFirmados)
+                              <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+                                @forelse($a->evidencias as $evidencia)
+                                  <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $evidencia) }}"
+                                     target="_blank"
+                                     rel="noopener noreferrer"
+                                     style="font-size:11px; font-weight:700; color:{{ $evidencia->tipo_documento === 'asignacion_firmada' ? '#047857' : '#1d4ed8' }};">
+                                    {{ $evidencia->tipo_documento === 'asignacion_firmada' ? 'PDF' : 'Imagen' }}:
+                                    {{ $evidencia->nombre_original ?? 'Evidencia' }}
+                                  </a>
+                                @empty
+                                  <span style="font-size:11px; color:#94a3b8;">Sin evidencias</span>
+                                @endforelse
                               </div>
-
-                              @if($pdfAsignacionFirmado)
-                                <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $pdfAsignacionFirmado) }}"
-                                   target="_blank"
-                                   style="font-size:11px; font-weight:700; color:#047857;">
-                                  Ver firmado: {{ $pdfAsignacionFirmado->nombre_original ?? 'PDF firmado' }}
-                                </a>
-                              @endif
-                            </form>
+                            @endif
                           </td>
                         </tr>
                       <?php endforeach; ?>
@@ -765,27 +791,29 @@
                   </table>
                 </div>
 
-                <div class="asg-footer-actions">
-                  <div>
-                    <p class="asg-footer-title">Devolución de seleccionados</p>
-                    <p class="asg-footer-text">Marca asignaciones y coloca la cantidad a devolver.</p>
-                  </div>
+                @if($puedeGestionarDevoluciones)
+                  <div class="asg-footer-actions">
+                    <div>
+                      <p class="asg-footer-title">Devolución de seleccionados</p>
+                      <p class="asg-footer-text">Marca asignaciones y coloca la cantidad a devolver.</p>
+                    </div>
 
-                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <input type="text"
-                           name="detalle_devolucion"
-                           form="{{ $bulkFormId }}"
-                           placeholder="Detalle devolución múltiple"
-                           class="asg-input"
-                           style="width:260px;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                      <input type="text"
+                             name="detalle_devolucion"
+                             form="{{ $bulkFormId }}"
+                             placeholder="Detalle devolución múltiple"
+                             class="asg-input"
+                             style="width:260px;">
 
-                    <button type="submit"
-                            form="{{ $bulkFormId }}"
-                            class="asg-btn-warning">
-                      Devolver seleccionados
-                    </button>
+                      <button type="submit"
+                              form="{{ $bulkFormId }}"
+                              class="asg-btn-warning">
+                        Devolver seleccionados
+                      </button>
+                    </div>
                   </div>
-                </div>
+                @endif
               </div>
 
             </div>
@@ -794,6 +822,7 @@
       @endif
     </div>
 
+    @if($puedeGestionarDevoluciones)
     <div class="asg-panel asg-history">
       <div class="asg-panel-title">
         Historial de movimientos
@@ -903,6 +932,7 @@
         </table>
       </div>
     </div>
+    @endif
 
   </div>
 </div>

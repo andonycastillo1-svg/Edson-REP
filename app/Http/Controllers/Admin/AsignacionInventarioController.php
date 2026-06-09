@@ -22,18 +22,32 @@ class AsignacionInventarioController extends Controller
 {
     public function index()
     {
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+        $usuario = auth()->user();
+        $routePrefix = $this->asignacionesRoutePrefix();
+        $puedeCrearAsignaciones = in_array((int) $usuario->role_id, [1, 2], true);
+        $puedeGestionarDevoluciones = $puedeCrearAsignaciones;
+        $puedeSubirEvidencias = in_array((int) $usuario->role_id, [1, 2, 3], true);
 
-        $relaciones = ['colaborador', 'producto', 'bodega'];
+        $relaciones = ['colaborador', 'producto', 'bodega', 'user'];
 
         if (Schema::hasTable('asignacion_inventario_archivos')) {
+            $relaciones[] = 'evidencias.subidoPor';
             $relaciones[] = 'pdfAsignacionFirmado.subidoPor';
         }
 
         $query = AsignacionInventario::with($relaciones)->latest();
 
         if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
-            $query->where('user_id', auth()->id());
+            if ((int) $usuario->role_id === 2) {
+                $query->where('user_id', $usuario->id);
+            } elseif ((int) $usuario->role_id === 3) {
+                $query->whereIn('user_id', $usuario->almacenistasAsignados()->select('users.id'));
+            } elseif ((int) $usuario->role_id !== 1) {
+                $query->whereRaw('1 = 0');
+            }
+        } elseif ((int) $usuario->role_id === 3) {
+            // Sin el campo creador no es posible demostrar la relación; se niega por seguridad.
+            $query->whereRaw('1 = 0');
         }
 
         $asignaciones = $query->get();
@@ -56,10 +70,20 @@ class AsignacionInventarioController extends Controller
         $movimientos = collect();
 
         if (Schema::hasTable('asignacion_movimientos')) {
-            $movimientos = AsignacionMovimiento::with(['asignacion.colaborador', 'user'])
+            $movimientosQuery = AsignacionMovimiento::with(['asignacion.colaborador', 'user'])
                 ->latest()
-                ->limit(30)
-                ->get();
+                ->limit(30);
+
+            if ((int) $usuario->role_id === 2) {
+                $movimientosQuery->whereHas('asignacion', fn ($query) => $query->where('user_id', $usuario->id));
+            } elseif ((int) $usuario->role_id === 3) {
+                $almacenistaIds = $usuario->almacenistasAsignados()->pluck('users.id');
+                $movimientosQuery->whereHas('asignacion', fn ($query) => $query->whereIn('user_id', $almacenistaIds));
+            } elseif ((int) $usuario->role_id !== 1) {
+                $movimientosQuery->whereRaw('1 = 0');
+            }
+
+            $movimientos = $movimientosQuery->get();
         }
 
         $pdfsDevolucionFirmados = collect();
@@ -85,7 +109,10 @@ class AsignacionInventarioController extends Controller
             'asignacionesPorColaborador',
             'routePrefix',
             'movimientos',
-            'pdfsDevolucionFirmados'
+            'pdfsDevolucionFirmados',
+            'puedeCrearAsignaciones',
+            'puedeGestionarDevoluciones',
+            'puedeSubirEvidencias'
         ));
     }
 
@@ -229,6 +256,7 @@ class AsignacionInventarioController extends Controller
                     'imagen' => $imagenPath,
                     'observaciones' => $data['observaciones'] ?? null,
                     'estado' => 'Activa',
+                    'estado_evidencia' => 'pendiente',
                 ];
 
                 if (!empty($inventario->producto?->vida_util_meses)) {
@@ -285,7 +313,7 @@ class AsignacionInventarioController extends Controller
             }
         });
 
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+        $routePrefix = $this->asignacionesRoutePrefix();
 
         return redirect()
             ->route($routePrefix . '.asignaciones.pdf', $grupoAsignacion)
@@ -294,9 +322,7 @@ class AsignacionInventarioController extends Controller
 
     public function pdf($grupo)
     {
-        $usuario = auth()->user();
-
-        $asignaciones = AsignacionInventario::with(['producto', 'bodega', 'colaborador'])
+        $asignaciones = AsignacionInventario::with(['producto', 'bodega', 'colaborador', 'user.bodega'])
             ->where('grupo_asignacion', $grupo)
             ->where('cantidad_asignada', '>', 0)
             ->get();
@@ -305,15 +331,7 @@ class AsignacionInventarioController extends Controller
             abort(404, 'No se encontraron asignaciones para este PDF.');
         }
 
-        if ((int) $usuario->role_id !== 1 && Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
-            $asignacionNoPermitida = $asignaciones->first(function ($asignacion) use ($usuario) {
-                return (int) $asignacion->user_id !== (int) $usuario->id;
-            });
-
-            if ($asignacionNoPermitida) {
-                abort(403);
-            }
-        }
+        $asignaciones->each(fn (AsignacionInventario $asignacion) => $this->autorizarAsignacionInventario($asignacion));
 
         $colaborador = $asignaciones->first()->colaborador;
 
@@ -325,9 +343,10 @@ class AsignacionInventarioController extends Controller
             return ($a->costo_unitario ?? 0) * $a->cantidad_asignada;
         });
 
-        $asignadorNombre = $usuario?->name ?? 'No identificado';
+        $creador = $asignaciones->first()->user;
+        $asignadorNombre = $creador?->name ?? 'No identificado';
 
-        $bodegaAsignador = $usuario?->bodega?->nombre
+        $bodegaAsignador = $creador?->bodega?->nombre
             ?? optional($asignaciones->first()?->bodega)->nombre
             ?? 'No definida';
 
@@ -346,49 +365,75 @@ class AsignacionInventarioController extends Controller
         $this->autorizarAsignacionInventario($asignacion);
 
         if (!Schema::hasTable('asignacion_inventario_archivos')) {
-            return back()->with('error', 'La tabla para PDFs firmados no existe. Ejecuta php artisan migrate.');
+            return back()->with('error', 'La tabla para evidencias no existe. Ejecuta php artisan migrate.');
         }
 
-        $data = $request->validate([
-            'pdf_firmado' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+        $request->validate([
+            'evidencias' => ['required_without:pdf_firmado', 'array', 'min:1'],
+            'evidencias.*' => ['file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            // Se mantiene el campo anterior para clientes o formularios aún no actualizados.
+            'pdf_firmado' => ['required_without:evidencias', 'nullable', 'file', 'mimes:pdf', 'max:10240'],
+        ], [
+            'evidencias.required_without' => 'Selecciona al menos un PDF firmado o una imagen de entrega.',
+            'evidencias.*.mimes' => 'Las evidencias deben ser PDF, JPG, JPEG, PNG o WEBP.',
+            'evidencias.*.max' => 'Cada evidencia puede pesar como máximo 10 MB.',
         ]);
 
-        $archivoAnterior = $asignacion->pdfAsignacionFirmado;
+        $archivos = collect($request->file('evidencias', []));
 
-        if ($archivoAnterior && Storage::disk('public')->exists($archivoAnterior->ruta)) {
-            Storage::disk('public')->delete($archivoAnterior->ruta);
+        if ($request->hasFile('pdf_firmado')) {
+            $archivos->push($request->file('pdf_firmado'));
         }
 
-        if ($archivoAnterior) {
-            $archivoAnterior->delete();
+        DB::transaction(function () use ($archivos, $asignacion) {
+            foreach ($archivos as $file) {
+                $esPdf = strtolower($file->getClientOriginalExtension()) === 'pdf'
+                    || $file->getMimeType() === 'application/pdf';
+                $tipoDocumento = $esPdf ? 'asignacion_firmada' : 'evidencia_entrega';
+                $carpeta = $esPdf ? 'documentos' : 'imagenes';
+                $path = $file->store("asignaciones/evidencias/{$asignacion->id}/{$carpeta}", 'public');
+
+                AsignacionInventarioArchivo::create([
+                    'asignacion_inventario_id' => $asignacion->id,
+                    'tipo_documento' => $tipoDocumento,
+                    'ruta' => $path,
+                    'nombre_original' => $file->getClientOriginalName(),
+                    'mime' => $file->getMimeType(),
+                    'tamano' => $file->getSize(),
+                    'subido_por_user_id' => auth()->id(),
+                ]);
+
+                if ($esPdf) {
+                    $asignacion->pdf_firmado = $path;
+                }
+            }
+
+            $tienePdf = $asignacion->pdfsAsignacionFirmados()->exists();
+            $tieneImagen = $asignacion->imagenesEntrega()->exists();
+            $asignacion->estado_evidencia = $tienePdf && $tieneImagen ? 'completa' : 'pendiente';
+            $asignacion->save();
+        });
+
+        $asignacion->refresh();
+        $routePrefix = $this->asignacionesRoutePrefix();
+
+        if ($asignacion->estado_evidencia === 'completa') {
+            return redirect()->route($routePrefix . '.asignaciones.index')
+                ->with('success', 'Asignación completa');
         }
 
-        if ($asignacion->pdf_firmado && Storage::disk('public')->exists($asignacion->pdf_firmado)) {
-            Storage::disk('public')->delete($asignacion->pdf_firmado);
+        $faltantes = [];
+
+        if (!$asignacion->pdfsAsignacionFirmados()->exists()) {
+            $faltantes[] = '1 PDF firmado';
         }
 
-        $file = $data['pdf_firmado'];
-        $path = $file->store('asignaciones/firmados/asignaciones/' . $asignacion->id, 'public');
+        if (!$asignacion->imagenesEntrega()->exists()) {
+            $faltantes[] = '1 imagen de entrega';
+        }
 
-        AsignacionInventarioArchivo::create([
-            'asignacion_inventario_id' => $asignacion->id,
-            'tipo_documento' => 'asignacion_firmada',
-            'ruta' => $path,
-            'nombre_original' => $file->getClientOriginalName(),
-            'mime' => $file->getMimeType(),
-            'tamano' => $file->getSize(),
-            'subido_por_user_id' => auth()->id(),
-        ]);
-
-        $asignacion->update([
-            'pdf_firmado' => $path,
-        ]);
-
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
-
-        return redirect()
-            ->route($routePrefix . '.asignaciones.index')
-            ->with('success', 'Documento firmado cargado correctamente.');
+        return redirect()->route($routePrefix . '.asignaciones.index')
+            ->with('error', 'Evidencias guardadas. La asignación sigue pendiente; falta: ' . implode(' y ', $faltantes) . '.');
     }
 
     public function uploadPdfDevolucionFirmado(Request $request, string $grupo)
@@ -434,7 +479,7 @@ class AsignacionInventarioController extends Controller
             'subido_por_user_id' => auth()->id(),
         ]);
 
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+        $routePrefix = $this->asignacionesRoutePrefix();
 
         return redirect()
             ->route($routePrefix . '.asignaciones.index')
@@ -471,7 +516,7 @@ class AsignacionInventarioController extends Controller
 
     public function devolver(Request $request, AsignacionInventario $asignacion)
     {
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+        $routePrefix = $this->asignacionesRoutePrefix();
 
         if ((int) auth()->user()->role_id !== 1 && (int) $asignacion->user_id !== (int) auth()->id()) {
             abort(403);
@@ -525,7 +570,7 @@ class AsignacionInventarioController extends Controller
 
     public function devolverLote(Request $request)
     {
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+        $routePrefix = $this->asignacionesRoutePrefix();
 
         $data = $request->validate([
             'seleccionadas' => ['required', 'array', 'min:1'],
@@ -622,7 +667,7 @@ class AsignacionInventarioController extends Controller
 
     public function devolverTodoColaborador(Request $request, string $colaboradorCodigo)
     {
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+        $routePrefix = $this->asignacionesRoutePrefix();
 
         $data = $request->validate([
             'detalle_devolucion' => ['nullable', 'string', 'max:1000'],
@@ -695,13 +740,33 @@ class AsignacionInventarioController extends Controller
 
     private function autorizarAsignacionInventario(AsignacionInventario $asignacion): void
     {
-        if (
-            (int) auth()->user()->role_id !== 1
-            && Schema::hasColumn('asignaciones_inventarios', 'user_id')
-            && (int) $asignacion->user_id !== (int) auth()->id()
-        ) {
-            abort(403);
+        $usuario = auth()->user();
+
+        if ((int) $usuario->role_id === 1) {
+            return;
         }
+
+        if ((int) $usuario->role_id === 2 && (int) $asignacion->user_id === (int) $usuario->id) {
+            return;
+        }
+
+        if (
+            (int) $usuario->role_id === 3
+            && $usuario->almacenistasAsignados()->whereKey($asignacion->user_id)->exists()
+        ) {
+            return;
+        }
+
+        abort(403);
+    }
+
+    private function asignacionesRoutePrefix(): string
+    {
+        return match ((int) auth()->user()->role_id) {
+            2 => 'operador',
+            3 => 'supervisor',
+            default => 'admin',
+        };
     }
 
     private function movimientosDevolucionAutorizados(string $grupo)
@@ -734,7 +799,7 @@ class AsignacionInventarioController extends Controller
 
         $nombreRol = strtolower(trim((string) optional(Role::find($usuario->role_id))->nombre));
 
-        return in_array($nombreRol, ['almacenista', 'encargado', 'coordinador', 'operador'], true)
+        return in_array($nombreRol, ['almacenista', 'encargado', 'supervisor', 'coordinador', 'operador'], true)
             || in_array((int) $usuario->role_id, [2, 3], true);
     }
 }

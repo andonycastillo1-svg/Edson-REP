@@ -9,11 +9,11 @@ class RolesSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('roles')->insertOrIgnore([
+        DB::table('roles')->upsert([
             ['id' => 1, 'nombre' => 'Administrador'],
             ['id' => 2, 'nombre' => 'Encargado'],
-            ['id' => 3, 'nombre' => 'Coordinador'],
+            ['id' => 3, 'nombre' => 'Supervisor'],
             ['id' => 4, 'nombre' => 'Consultas'],
-        ]);
+        ], ['id'], ['nombre']);
     }
 }
