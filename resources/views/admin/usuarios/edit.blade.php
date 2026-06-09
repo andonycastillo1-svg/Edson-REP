@@ -85,21 +85,22 @@
                 <p class="text-xs text-gray-400 mt-1">Asigna la bodega que administrará este usuario.</p>
             </div>
 
-            <!-- Relación Supervisor -> Almacenista -->
-            <div id="almacenista_wrap" class="hidden">
-                <label class="block text-sm font-medium text-gray-700">Almacenista asignado</label>
-                <select name="almacenista_id" id="almacenista_id"
-                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                    <option value="">Seleccione...</option>
-                    @foreach($almacenistas as $almacenista)
-                        <option value="{{ $almacenista->id }}"
-                            {{ (int) old('almacenista_id', $almacenistaAsignadoId) === (int) $almacenista->id ? 'selected' : '' }}>
-                            {{ $almacenista->name }} ({{ $almacenista->email }})
-                        </option>
-                    @endforeach
-                </select>
-                <p class="text-xs text-gray-400 mt-1">Selecciona el Almacenista al que pertenece este Supervisor.</p>
-            </div>
+            @if(auth()->user()->role_id == 1)
+                <!-- Relación administrada únicamente por Admin -->
+                <div id="supervisores_wrap" class="hidden md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">Supervisores relacionados</label>
+                    <select name="supervisores[]" id="supervisores" multiple
+                            class="mt-1 w-full min-h-32 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                        @foreach($supervisores as $supervisor)
+                            <option value="{{ $supervisor->id }}"
+                                @selected(in_array((int) $supervisor->id, array_map('intval', old('supervisores', $usuario->supervisoresAsignados->pluck('id')->all()))))>
+                                {{ $supervisor->name }} ({{ $supervisor->email }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-gray-400 mt-1">Usa Ctrl/Cmd para seleccionar varios. Solo se guarda cuando el usuario es almacenista/encargado.</p>
+                </div>
+            @endif
 
             <!-- Nueva contraseña -->
             <div>
@@ -143,11 +144,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const rolSelect = document.getElementById('role_id');
     const bodegaWrap = document.getElementById('bodega_wrap');
     const bodegaSelect = document.getElementById('bodega_id');
-    const almacenistaWrap = document.getElementById('almacenista_wrap');
-    const almacenistaSelect = document.getElementById('almacenista_id');
-
-    const ROL_ALMACENISTA_ID = {{ $rolEncargadoId ?? 2 }};
-    const ROL_SUPERVISOR_ID = {{ $rolSupervisorId ?? 3 }};
+    const supervisoresWrap = document.getElementById('supervisores_wrap');
+    const supervisoresSelect = document.getElementById('supervisores');
 
     function toggleCamposPorRol() {
         const roleId = parseInt(rolSelect.value || '0');
@@ -158,9 +156,18 @@ document.addEventListener('DOMContentLoaded', function () {
         bodegaSelect.disabled = !esAlmacenista;
         bodegaSelect.required = esAlmacenista;
 
-        almacenistaWrap.classList.toggle('hidden', !esSupervisor);
-        almacenistaSelect.disabled = !esSupervisor;
-        almacenistaSelect.required = esSupervisor;
+        if (supervisoresWrap) {
+            supervisoresWrap.classList.toggle('hidden', !isEncargado);
+        }
+
+        // si no es encargado, limpiamos bodega (para que no guarde basura)
+        if (!isEncargado && bodegaSelect) {
+            bodegaSelect.value = '';
+        }
+
+        if (!isEncargado && supervisoresSelect) {
+            Array.from(supervisoresSelect.options).forEach(option => option.selected = false);
+        }
     }
 
     if (rolSelect) {
