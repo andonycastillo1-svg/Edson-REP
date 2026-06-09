@@ -14,7 +14,7 @@
         <button type="button"
                 @click="notificacionesAbiertas = !notificacionesAbiertas"
                 @keydown.escape.window="notificacionesAbiertas = false"
-                class="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-sky-200 bg-white text-slate-700 shadow-sm transition hover:bg-sky-50 focus:outline-none focus:ring-4 focus:ring-sky-200"
+                class="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-sky-200 bg-white text-slate-700 shadow-sm transition hover:bg-sky-50 focus:outline-none focus:ring-4 focus:ring-sky-200"
                 aria-label="Abrir notificaciones"
                 :aria-expanded="notificacionesAbiertas.toString()">
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -32,7 +32,7 @@
              x-show="notificacionesAbiertas"
              x-transition.origin.top.right
              @click.outside="notificacionesAbiertas = false"
-             class="fixed inset-x-2 top-16 z-50 max-h-[75vh] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:absolute sm:inset-auto sm:right-0 sm:top-12 sm:w-96 sm:max-w-[calc(100vw-2rem)]">
+             class="fixed inset-x-3 top-16 z-50 max-h-[75vh] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:absolute sm:inset-auto sm:right-0 sm:top-12 sm:w-96">
             <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                 <div>
                     <p class="font-bold text-slate-900">Notificaciones</p>
@@ -62,7 +62,7 @@
                             <span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full {{ $notificacion->read_at ? 'bg-slate-300' : 'bg-blue-600' }}"></span>
                             <div class="min-w-0 flex-1">
                                 <p class="truncate text-sm font-bold text-slate-900">{{ $data['titulo'] ?? 'Notificación' }}</p>
-                                <p class="mt-1 line-clamp-2 break-words text-xs text-slate-600">{{ $data['mensaje'] ?? '' }}</p>
+                                <p class="mt-1 line-clamp-2 text-xs text-slate-600">{{ $data['mensaje'] ?? '' }}</p>
                                 <div class="mt-2 flex items-center justify-between gap-3">
                                     <span class="text-[11px] text-slate-400">{{ $notificacion->created_at?->diffForHumans() }}</span>
                                     @if($urlSegura)
