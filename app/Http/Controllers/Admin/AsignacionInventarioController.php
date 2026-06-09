@@ -9,12 +9,14 @@ use App\Models\Colaborador;
 use App\Models\Bodega;
 use App\Models\AsignacionMovimiento;
 use App\Models\AsignacionInventarioArchivo;
+use App\Models\AlertaReemplazo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Services\AsignacionVidaUtilService;
+use App\Services\NotificacionService;
 use Carbon\Carbon;
 use App\Models\Role;
 
@@ -218,8 +220,9 @@ class AsignacionInventarioController extends Controller
         }
 
         $grupoAsignacion = (string) Str::uuid();
+        $alertasRrhhIds = [];
 
-        DB::transaction(function () use ($data, $items, $imagenPath, $grupoAsignacion) {
+        DB::transaction(function () use ($data, $items, $imagenPath, $grupoAsignacion, &$alertasRrhhIds) {
             $vidaUtilService = app(AsignacionVidaUtilService::class);
 
             foreach ($items as $item) {
@@ -297,7 +300,11 @@ class AsignacionInventarioController extends Controller
                             ? Carbon::parse($item['fecha_dano'])
                             : Carbon::parse($data['fecha']);
 
-                        $vidaUtilService->procesarReemplazoPorDanio($anterior, $asignacion, $fechaDanio);
+                        $alertaRrhh = $vidaUtilService->procesarReemplazoPorDanio($anterior, $asignacion, $fechaDanio);
+
+                        if ($alertaRrhh) {
+                            $alertasRrhhIds[] = $alertaRrhh->id;
+                        }
 
                         if (Schema::hasTable('asignacion_movimientos')) {
                             AsignacionMovimiento::create([
@@ -314,6 +321,34 @@ class AsignacionInventarioController extends Controller
         });
 
         $routePrefix = $this->asignacionesRoutePrefix();
+        $asignacionCreada = AsignacionInventario::with('colaborador')
+            ->where('grupo_asignacion', $grupoAsignacion)
+            ->oldest('id')
+            ->firstOrFail();
+
+        try {
+            $notificacionService = app(NotificacionService::class);
+            $urlAsignaciones = route($routePrefix . '.asignaciones.index');
+
+            $notificacionService->notificarNuevaAsignacion(
+                $asignacionCreada,
+                $request->user(),
+                $urlAsignaciones
+            );
+            $notificacionService->notificarAsignacionPendiente(
+                $asignacionCreada,
+                $request->user(),
+                $urlAsignaciones
+            );
+
+            if ($alertasRrhhIds !== []) {
+                foreach (AlertaReemplazo::whereIn('id', $alertasRrhhIds)->get() as $alertaRrhh) {
+                    $notificacionService->notificarAlertaRrhh($alertaRrhh, $request->user());
+                }
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
 
         return redirect()
             ->route($routePrefix . '.asignaciones.index')

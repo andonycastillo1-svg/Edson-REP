@@ -16,6 +16,7 @@
             </div>
 
             <div class="flex items-center gap-2">
+                @include('partials.notificaciones-campana')
                 @unless(request()->routeIs('dashboard', '*.dashboard'))
                     <a href="{{ route('dashboard') }}"
                        class="hidden sm:inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-100">

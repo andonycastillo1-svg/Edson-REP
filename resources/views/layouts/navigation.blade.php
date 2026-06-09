@@ -15,6 +15,10 @@
                 </div>
             </div>
 
+            <div class="ms-auto flex items-center sm:ms-6">
+                @include('partials.notificaciones-campana')
+            </div>
+
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6 sm:gap-3">
                 @unless(request()->routeIs('dashboard', '*.dashboard'))

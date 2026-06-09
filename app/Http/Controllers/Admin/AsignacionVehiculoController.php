@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\NotificacionService;
 use App\Models\AsignacionVehiculo;
 use App\Models\AsignacionVehiculoArchivo;
 use App\Models\Bodega;
@@ -173,6 +174,16 @@ class AsignacionVehiculoController extends Controller
             return back()
                 ->withInput()
                 ->with('error', $e->getMessage());
+        }
+
+        try {
+            app(NotificacionService::class)->notificarNuevaAsignacion(
+                $asignacion,
+                $request->user(),
+                route('admin.vehiculos.asignaciones.index')
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
         }
 
         return redirect()

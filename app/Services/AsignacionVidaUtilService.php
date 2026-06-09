@@ -44,7 +44,8 @@ class AsignacionVidaUtilService
         AsignacionInventario $asignacionAnterior,
         AsignacionInventario $asignacionNueva,
         Carbon $fechaDanio
-    ): void {
+    ): ?AlertaReemplazo {
+        $alertaRrhh = null;
         $vidaMeses = (int) ($asignacionAnterior->producto->vida_util_meses ?? 0);
         $mesesRestantes = $this->mesesRestantes($asignacionAnterior, $fechaDanio);
 
@@ -53,7 +54,7 @@ class AsignacionVidaUtilService
             $this->registrarEstado($asignacionAnterior, 'danado', 'Producto dañado antes de finalizar vida útil.');
 
             if (Schema::hasTable('alertas_reemplazos_rrhh')) {
-                AlertaReemplazo::create([
+                $alertaRrhh = AlertaReemplazo::create([
                     'colaborador_codigo' => $asignacionAnterior->colaborador_codigo,
                     'producto_codigo' => $asignacionAnterior->producto_codigo,
                     'asignacion_anterior_id' => $asignacionAnterior->id,
@@ -74,5 +75,7 @@ class AsignacionVidaUtilService
         }
 
         $asignacionAnterior->save();
+
+        return $alertaRrhh;
     }
 }
