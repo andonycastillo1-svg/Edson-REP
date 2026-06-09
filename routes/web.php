@@ -33,7 +33,7 @@ Route::get('/dashboard', function () {
     return match ((int) $roleId) {
         1 => redirect()->route('admin.dashboard'),
         2 => redirect()->route('operador.dashboard'),
-        3 => redirect()->route('coordinador.dashboard'),
+        3 => redirect()->route('supervisor.dashboard'),
         4 => redirect()->route('rrhh.dashboard'),
         default => redirect()->route('login'),
     };
@@ -44,8 +44,11 @@ Route::get('/dashboard', function () {
 | Dashboards base por rol
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'auto.logout'])->group(function () {
-    Route::view('/coordinador/dashboard', 'coordinador.dashboard')->name('coordinador.dashboard');
+Route::middleware(['auth', 'auto.logout', 'role:3'])->group(function () {
+    Route::view('/supervisor/dashboard', 'supervisor.dashboard')->name('supervisor.dashboard');
+
+    // Alias legado: se conserva coordinador.* para enlaces o marcadores existentes.
+    Route::redirect('/coordinador/dashboard', '/supervisor/dashboard')->name('coordinador.dashboard');
 });
 
 /*
@@ -321,6 +324,28 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::get('operaciones/traslados/{operacion}/archivo-excel', [OperacionTrasladoController::class, 'archivo'])
             ->name('operaciones.traslados.archivo');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Rutas Supervisor (role_id = 3; antes Coordinador)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'auto.logout', 'role:3'])
+    ->prefix('supervisor')
+    ->name('supervisor.')
+    ->group(function () {
+        Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
+            ->name('asignaciones.index');
+
+        Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
+            ->name('asignaciones.pdf');
+
+        Route::post('asignaciones/{asignacion}/pdf-firmado', [AsignacionInventarioController::class, 'uploadPdfFirmado'])
+            ->name('asignaciones.upload_pdf_firmado');
+
+        Route::get('asignaciones/archivos/{archivo}/ver', [AsignacionInventarioController::class, 'verPdfFirmado'])
+            ->name('asignaciones.ver_pdf_firmado');
     });
 
 /*

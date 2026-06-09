@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use App\Models\Role;
-use App\Models\Bodega;
 
 class User extends Authenticatable
 {
@@ -44,13 +42,39 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function supervisoresAsignados()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'almacenista_supervisores',
+            'almacenista_id',
+            'supervisor_id'
+        )->withTimestamps();
+    }
+
+    public function almacenistasAsignados()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'almacenista_supervisores',
+            'supervisor_id',
+            'almacenista_id'
+        )->withTimestamps();
+    }
+
     /**
-     * En tu sistema el rol que "decide" (aprueba/rechaza) es Operador (id=2).
-     * Dejamos el nombre del método igual para no tocar controllers/vistas ya hechas.
+     * En el sistema el rol que aprueba/rechaza traslados es Operador/Encargado (id=2).
+     * Se conserva el nombre del método por compatibilidad con controladores y vistas existentes.
      */
     public function isEncargado(): bool
     {
-        return strtolower(trim((string) optional($this->role)->nombre)) === 'operador'
+        return in_array(strtolower(trim((string) optional($this->role)->nombre)), ['operador', 'encargado', 'almacenista'], true)
             || (int) $this->role_id === 2;
+    }
+
+    public function isSupervisor(): bool
+    {
+        return in_array(strtolower(trim((string) optional($this->role)->nombre)), ['supervisor', 'coordinador'], true)
+            || (int) $this->role_id === 3;
     }
 }
