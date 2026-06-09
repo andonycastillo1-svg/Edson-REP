@@ -8,6 +8,7 @@
 @endphp
 
 <div class="w-full max-w-7xl mx-auto">
+    <x-internal-navigation :back-url="route('dashboard')" />
 
     @if(session('error'))
         <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">

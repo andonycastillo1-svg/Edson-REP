@@ -506,6 +506,7 @@
 
 <div class="asg-page">
   <div class="asg-container">
+    <x-internal-navigation :back-url="route('dashboard')" />
 
     <div class="asg-header">
       <div>

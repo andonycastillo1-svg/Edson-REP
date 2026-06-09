@@ -5,6 +5,7 @@
 
 @section('content')
 <div class="w-full max-w-xl bg-white/90 rounded-2xl shadow-2xl p-8">
+    <x-internal-navigation :back-url="route('admin.bodegas.index')" />
 
     <h1 class="text-2xl font-bold text-slate-800 mb-1">Crear bodega</h1>
     <p class="text-slate-500 text-sm mb-6">Agrega una nueva bodega al sistema.</p>

@@ -458,6 +458,7 @@
 </style>
 
 <div class="ui-panel p-6 md:p-8">
+    <x-internal-navigation :back-url="route('admin.vehiculos.index')" />
     <div class="veh-page">
         <div class="veh-header">
             <div>

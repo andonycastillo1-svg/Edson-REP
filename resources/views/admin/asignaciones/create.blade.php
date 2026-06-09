@@ -20,6 +20,7 @@
 
 <div class="min-h-screen bg-[#EAF4FF]">
   <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <x-internal-navigation :back-url="route($routePrefix . '.asignaciones.index')" />
 
     <div class="mb-6 rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-xl shadow-slate-200/60">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
