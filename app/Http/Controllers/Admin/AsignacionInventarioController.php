@@ -316,8 +316,9 @@ class AsignacionInventarioController extends Controller
         $routePrefix = $this->asignacionesRoutePrefix();
 
         return redirect()
-            ->route($routePrefix . '.asignaciones.pdf', $grupoAsignacion)
-            ->with('success', 'Asignaciones registradas correctamente.');
+            ->route($routePrefix . '.asignaciones.index')
+            ->with('success', 'Asignaciones registradas correctamente.')
+            ->with('pdf_url', route($routePrefix . '.asignaciones.pdf', $grupoAsignacion));
     }
 
     public function pdf($grupo)

@@ -712,12 +712,12 @@
                                     PDFs firmados
                                 </button>
 
-                                <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.pdf_asignacion', $a) }}" target="_blank" rel="noopener">
+                                <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.pdf_asignacion', $a) }}" target="_blank" rel="noopener noreferrer">
                                     PDF asignación
                                 </a>
 
                                 @unless($a->activa)
-                                    <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.pdf_devolucion', $a) }}" target="_blank" rel="noopener">
+                                    <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.pdf_devolucion', $a) }}" target="_blank" rel="noopener noreferrer">
                                         PDF devolución
                                     </a>
                                 @endunless
@@ -803,7 +803,7 @@
                                         </button>
 
                                         @if($pdfAsignacionFirmado)
-                                            <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfAsignacionFirmado) }}" target="_blank" rel="noopener">
+                                            <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfAsignacionFirmado) }}" target="_blank" rel="noopener noreferrer">
                                                 Ver firmado: {{ $pdfAsignacionFirmado->nombre_original ?? 'PDF firmado' }}
                                             </a>
                                         @endif
@@ -821,7 +821,7 @@
                                             </button>
 
                                             @if($pdfDevolucionFirmado)
-                                                <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfDevolucionFirmado) }}" target="_blank" rel="noopener">
+                                                <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfDevolucionFirmado) }}" target="_blank" rel="noopener noreferrer">
                                                     Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
                                                 </a>
                                             @endif
@@ -910,6 +910,11 @@
 </div>
 
 <script>
+@if(session('pdf_url'))
+  window.addEventListener('load', function () {
+    window.open(@json(session('pdf_url')), '_blank', 'noopener,noreferrer');
+  });
+@endif
 const productoSelect = document.getElementById('producto_codigo');
 const bodegaSelect = document.getElementById('bodega_id');
 const allBodegas = bodegaSelect ? Array.from(bodegaSelect.options).map(option => option.cloneNode(true)) : [];

@@ -473,7 +473,7 @@
 @endphp
 
 <div class="no-print">
-    <button class="btn-print" onclick="window.print()">🖨 Imprimir ficha</button>
+    <button type="button" class="btn-print" onclick="window.print()">🖨 Imprimir ficha</button>
 </div>
 
 <div class="sheet">
