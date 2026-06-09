@@ -82,6 +82,22 @@
                 <p class="text-xs text-gray-400 mt-1">Asigna la bodega que administrará este usuario.</p>
             </div>
 
+            <!-- Relación Supervisor -> Almacenista -->
+            <div id="almacenista_wrap" class="hidden">
+                <label class="block text-sm font-medium text-gray-700">Almacenista asignado</label>
+                <select name="almacenista_id" id="almacenista_id"
+                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Seleccione...</option>
+                    @foreach($almacenistas as $almacenista)
+                        <option value="{{ $almacenista->id }}"
+                            {{ old('almacenista_id') == $almacenista->id ? 'selected' : '' }}>
+                            {{ $almacenista->name }} ({{ $almacenista->email }})
+                        </option>
+                    @endforeach
+                </select>
+                <p class="text-xs text-gray-400 mt-1">Selecciona el Almacenista al que pertenece este Supervisor.</p>
+            </div>
+
             <!-- Password -->
             <div>
                 <label class="block text-sm font-medium text-gray-700">Contraseña</label>
@@ -116,25 +132,31 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const rolSelect = document.getElementById('role_id');
-    const wrap = document.getElementById('bodega_wrap');
+    const bodegaWrap = document.getElementById('bodega_wrap');
     const bodegaSelect = document.getElementById('bodega_id');
+    const almacenistaWrap = document.getElementById('almacenista_wrap');
+    const almacenistaSelect = document.getElementById('almacenista_id');
 
-    // ID del rol habilitado (Operador / fallback Encargado) viene desde el controller
-    const ROL_ENCARGADO_ID = {{ $rolEncargadoId ?? 'null' }};
+    const ROL_ALMACENISTA_ID = {{ $rolEncargadoId ?? 'null' }};
+    const ROL_SUPERVISOR_ID = {{ $rolSupervisorId ?? 3 }};
 
-    function toggleBodega() {
-        const isEncargado = parseInt(rolSelect.value || '0') === parseInt(ROL_ENCARGADO_ID);
-        wrap.classList.toggle('hidden', !isEncargado);
+    function toggleCamposPorRol() {
+        const roleId = parseInt(rolSelect.value || '0');
+        const esAlmacenista = roleId === parseInt(ROL_ALMACENISTA_ID);
+        const esSupervisor = roleId === parseInt(ROL_SUPERVISOR_ID);
 
-        // si no es encargado, limpiamos bodega
-        if (!isEncargado && bodegaSelect) {
-            bodegaSelect.value = '';
-        }
+        bodegaWrap.classList.toggle('hidden', !esAlmacenista);
+        bodegaSelect.disabled = !esAlmacenista;
+        bodegaSelect.required = esAlmacenista;
+
+        almacenistaWrap.classList.toggle('hidden', !esSupervisor);
+        almacenistaSelect.disabled = !esSupervisor;
+        almacenistaSelect.required = esSupervisor;
     }
 
     if (rolSelect) {
-        rolSelect.addEventListener('change', toggleBodega);
-        toggleBodega();
+        rolSelect.addEventListener('change', toggleCamposPorRol);
+        toggleCamposPorRol();
     }
 });
 </script>
