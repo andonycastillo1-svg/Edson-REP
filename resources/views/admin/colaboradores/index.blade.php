@@ -132,7 +132,7 @@
               </div>
 
               <p class="text-xs text-slate-500">
-                Marca los colaboradores que deseas incluir en el CSV consolidado.
+                Marca los colaboradores que deseas incluir en el Excel consolidado.
               </p>
             </div>
           </div>
@@ -172,7 +172,7 @@
               <button type="submit"
                       class="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
                       :class="selectedCount() === 0 ? 'opacity-50 cursor-not-allowed' : ''">
-                Descargar fichas seleccionadas
+                Descargar fichas en Excel
               </button>
             </form>
           </div>

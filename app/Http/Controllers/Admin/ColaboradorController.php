@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\ColaboradoresFichaExport;
 use App\Http\Controllers\Controller;
 use App\Models\AlertaReemplazo;
-use App\Models\Colaborador;
 use App\Models\AsignacionInventario;
+use App\Models\Colaborador;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ColaboradorController extends Controller
 {
@@ -63,7 +65,7 @@ class ColaboradorController extends Controller
         Colaborador::create($data);
 
         return redirect()
-            ->route($this->colaboradoresRoutePrefix() . '.colaboradores.index')
+            ->route($this->colaboradoresRoutePrefix().'.colaboradores.index')
             ->with('success', 'Colaborador creado correctamente.');
     }
 
@@ -75,7 +77,7 @@ class ColaboradorController extends Controller
     public function update(Request $request, Colaborador $colaborador)
     {
         $data = $request->validate([
-            'codigo' => ['required', 'unique:colaboradores,codigo,' . $colaborador->codigo . ',codigo'],
+            'codigo' => ['required', 'unique:colaboradores,codigo,'.$colaborador->codigo.',codigo'],
             'nombre' => ['required', 'max:255'],
             'puesto' => ['required', 'max:255'],
             'estado' => ['required', 'in:Activo,Inactivo'],
@@ -84,7 +86,7 @@ class ColaboradorController extends Controller
         $colaborador->update($data);
 
         return redirect()
-            ->route($this->colaboradoresRoutePrefix() . '.colaboradores.index')
+            ->route($this->colaboradoresRoutePrefix().'.colaboradores.index')
             ->with('success', 'Colaborador actualizado correctamente.');
     }
 
@@ -109,24 +111,19 @@ class ColaboradorController extends Controller
         ]);
     }
 
-    public function fichaTecnica(Colaborador $colaborador)
+    public function fichaTecnica(Request $request, Colaborador $colaborador)
     {
         $ficha = $this->generarFichaColaborador($colaborador);
+        $filename = 'ficha_colaborador_'.$colaborador->codigo.'_'.now()->format('Y-m-d_Hi').'.xlsx';
 
-        $filename = 'ficha_colaborador_' . $colaborador->codigo . '_' . now()->format('Ymd_His') . '.csv';
-
-        return response()->streamDownload(function () use ($ficha) {
-            $out = fopen('php://output', 'w');
-
-            fwrite($out, "\xEF\xBB\xBF");
-
-            fputcsv($out, $this->headersFichaTecnicaCsv());
-            $this->escribirFilasFichaTecnicaCsv($out, $ficha);
-
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        return Excel::download(
+            new ColaboradoresFichaExport(
+                [$ficha],
+                $request->user()->name,
+                ['Colaborador' => $colaborador->codigo.' - '.$colaborador->nombre]
+            ),
+            $filename
+        );
     }
 
     public function fichasTecnicasMasivas(Request $request)
@@ -149,453 +146,19 @@ class ColaboradorController extends Controller
                 ->with('error', 'No se encontraron colaboradores para descargar.');
         }
 
-        $filename = 'fichas_colaboradores_seleccionados_' . now()->format('Ymd_His') . '.csv';
-
-        return response()->streamDownload(function () use ($colaboradores) {
-            $out = fopen('php://output', 'w');
-
-            fwrite($out, "\xEF\xBB\xBF");
-
-            fputcsv($out, $this->headersFichaTecnicaCsv());
-
-            foreach ($colaboradores as $colaborador) {
-                $ficha = $this->generarFichaColaborador($colaborador);
-                $this->escribirFilasFichaTecnicaCsv($out, $ficha);
-            }
-
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
-    }
-
-    private function headersFichaTecnicaCsv(): array
-    {
-        return [
-            'Tipo registro',
-            'Código colaborador',
-            'Colaborador',
-            'Puesto',
-            'Estado colaborador',
-
-            'Código producto',
-            'Producto',
-            'Bodega',
-            'Cantidad',
-            'Costo unitario',
-            'Total',
-
-            'Vehículo',
-            'Marca',
-            'Modelo',
-            'Placa',
-            'VIN',
-
-            'Fecha asignación',
-            'Fecha vencimiento',
-            'Estado vida útil',
-
-            'Motivo',
-            'Aplica cobro',
-            'Monto cobro',
-            'Estado cobro',
-            'Detalle',
-        ];
-    }
-
-    private function escribirFilasFichaTecnicaCsv($out, array $ficha): void
-    {
-        $colaborador = $ficha['colaborador'];
-
-        if (count($ficha['asignaciones']) > 0) {
-            foreach ($ficha['asignaciones'] as $item) {
-                fputcsv($out, [
-                    'Inventario directo',
-                    $colaborador['codigo'],
-                    $colaborador['nombre'],
-                    $colaborador['puesto'],
-                    $colaborador['estado'],
-
-                    $item['producto_codigo'] ?? '',
-                    $item['producto'] ?? '',
-                    $item['bodega'] ?? '',
-                    $item['cantidad'] ?? 0,
-                    number_format((float) ($item['costo_unitario'] ?? 0), 2, '.', ''),
-                    number_format((float) ($item['total'] ?? 0), 2, '.', ''),
-
-                    '',
-                    '',
-                    '',
-                    '',
-                    '',
-
-                    $item['fecha_asignacion'] ?? '',
-                    $item['fecha_vencimiento'] ?? '',
-                    $item['estado_vida_util'] ?? '',
-
-                    '',
-                    '',
-                    '',
-                    '',
-                    '',
-                ]);
-            }
-        } else {
-            fputcsv($out, [
-                'Inventario directo',
-                $colaborador['codigo'],
-                $colaborador['nombre'],
-                $colaborador['puesto'],
-                $colaborador['estado'],
-
-                '',
-                'Sin productos asignados directamente',
-                '',
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-                '',
-                '',
-            ]);
-        }
-
-        if ($ficha['vehiculo_asignado']) {
-            $vehiculo = $ficha['vehiculo_asignado'];
-
-            fputcsv($out, [
-                'Vehículo asignado',
-                $colaborador['codigo'],
-                $colaborador['nombre'],
-                $colaborador['puesto'],
-                $colaborador['estado'],
-
-                '',
-                '',
-                '',
-                '',
-                '',
-                number_format((float) ($ficha['total_productos_vehiculo'] ?? 0), 2, '.', ''),
-
-                trim(($vehiculo['marca'] ?? '') . ' ' . ($vehiculo['modelo'] ?? '')),
-                $vehiculo['marca'] ?? '',
-                $vehiculo['modelo'] ?? '',
-                $vehiculo['placa'] ?? '',
-                $vehiculo['vin'] ?? '',
-
-                $vehiculo['fecha_asignacion'] ?? '',
-                '',
-                $vehiculo['estado'] ?? '',
-
-                '',
-                '',
-                '',
-                '',
-                '',
-            ]);
-        } else {
-            fputcsv($out, [
-                'Vehículo asignado',
-                $colaborador['codigo'],
-                $colaborador['nombre'],
-                $colaborador['puesto'],
-                $colaborador['estado'],
-
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-
-                'Sin vehículo asignado',
-                '',
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-                '',
-                '',
-            ]);
-        }
-
-        if (count($ficha['productos_vehiculo']) > 0) {
-            foreach ($ficha['productos_vehiculo'] as $item) {
-                $vehiculo = $ficha['vehiculo_asignado'];
-
-                fputcsv($out, [
-                    'Producto vehículo',
-                    $colaborador['codigo'],
-                    $colaborador['nombre'],
-                    $colaborador['puesto'],
-                    $colaborador['estado'],
-
-                    $item['producto_codigo'] ?? '',
-                    $item['producto'] ?? '',
-                    $item['bodega'] ?? '',
-                    $item['cantidad'] ?? 0,
-                    number_format((float) ($item['costo_unitario'] ?? 0), 2, '.', ''),
-                    number_format((float) ($item['total'] ?? 0), 2, '.', ''),
-
-                    $vehiculo ? trim(($vehiculo['marca'] ?? '') . ' ' . ($vehiculo['modelo'] ?? '')) : '',
-                    $vehiculo['marca'] ?? '',
-                    $vehiculo['modelo'] ?? '',
-                    $vehiculo['placa'] ?? '',
-                    $vehiculo['vin'] ?? '',
-
-                    $item['fecha'] ?? '',
-                    '',
-                    $item['estado'] ?? '',
-
-                    $item['motivo'] ?? '',
-                    '',
-                    '',
-                    '',
-                    $item['observaciones'] ?? '',
-                ]);
-            }
-        } else {
-            fputcsv($out, [
-                'Producto vehículo',
-                $colaborador['codigo'],
-                $colaborador['nombre'],
-                $colaborador['puesto'],
-                $colaborador['estado'],
-
-                '',
-                'Sin productos/refacciones en vehículo',
-                '',
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-                '',
-                '',
-            ]);
-        }
-
-        if (count($ficha['cobros']) > 0) {
-            foreach ($ficha['cobros'] as $cobro) {
-                fputcsv($out, [
-                    'Cobro / descuento RRHH',
-                    $colaborador['codigo'],
-                    $colaborador['nombre'],
-                    $colaborador['puesto'],
-                    $colaborador['estado'],
-
-                    $cobro['producto_codigo'] ?? '',
-                    $cobro['producto'] ?? '',
-                    '',
-                    '',
-                    number_format((float) ($cobro['costo_producto'] ?? 0), 2, '.', ''),
-                    '',
-
-                    '',
-                    '',
-                    '',
-                    '',
-                    '',
-
-                    $cobro['fecha_asignacion_anterior'] ?? '',
-                    $cobro['fecha_dano_reemplazo'] ?? '',
-                    'Vida útil: ' . ($cobro['vida_util_meses'] ?? 0) . ' meses / Restante: ' . ($cobro['meses_restantes'] ?? 0) . ' meses',
-
-                    '',
-                    !empty($cobro['descuento_aplicable']) ? 'Sí' : 'No',
-                    number_format((float) ($cobro['monto_cobro'] ?? 0), 2, '.', ''),
-                    $cobro['estado'] ?? '',
-                    $cobro['detalle'] ?? '',
-                ]);
-            }
-        } else {
-            fputcsv($out, [
-                'Cobro / descuento RRHH',
-                $colaborador['codigo'],
-                $colaborador['nombre'],
-                $colaborador['puesto'],
-                $colaborador['estado'],
-
-                '',
-                'Sin cobros o descuentos registrados',
-                '',
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-
-                '',
-                '',
-                '',
-                '',
-                '',
-            ]);
-        }
-
-        fputcsv($out, [
-            'TOTAL INVENTARIO DIRECTO',
-            $colaborador['codigo'],
-            $colaborador['nombre'],
-            $colaborador['puesto'],
-            $colaborador['estado'],
-
-            '',
-            '',
-            '',
-            '',
-            '',
-            number_format((float) ($ficha['total_inventario'] ?? 0), 2, '.', ''),
-
-            '',
-            '',
-            '',
-            '',
-            '',
-
-            '',
-            '',
-            '',
-
-            '',
-            '',
-            '',
-            '',
-            '',
-        ]);
-
-        fputcsv($out, [
-            'TOTAL PRODUCTOS VEHÍCULO',
-            $colaborador['codigo'],
-            $colaborador['nombre'],
-            $colaborador['puesto'],
-            $colaborador['estado'],
-
-            '',
-            '',
-            '',
-            '',
-            '',
-            number_format((float) ($ficha['total_productos_vehiculo'] ?? 0), 2, '.', ''),
-
-            '',
-            '',
-            '',
-            '',
-            '',
-
-            '',
-            '',
-            '',
-
-            '',
-            '',
-            '',
-            '',
-            '',
-        ]);
-
-        fputcsv($out, [
-            'TOTAL GENERAL ASIGNADO',
-            $colaborador['codigo'],
-            $colaborador['nombre'],
-            $colaborador['puesto'],
-            $colaborador['estado'],
-
-            '',
-            '',
-            '',
-            '',
-            '',
-            number_format((float) ($ficha['total_general'] ?? 0), 2, '.', ''),
-
-            '',
-            '',
-            '',
-            '',
-            '',
-
-            '',
-            '',
-            '',
-
-            '',
-            '',
-            '',
-            '',
-            '',
-        ]);
-
-        fputcsv($out, [
-            'TOTAL COBROS / DESCUENTOS',
-            $colaborador['codigo'],
-            $colaborador['nombre'],
-            $colaborador['puesto'],
-            $colaborador['estado'],
-
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-
-            '',
-            '',
-            '',
-            '',
-            '',
-
-            '',
-            '',
-            '',
-
-            '',
-            '',
-            number_format((float) ($ficha['total_cobros'] ?? 0), 2, '.', ''),
-            '',
-            '',
-        ]);
+        $fichas = $colaboradores
+            ->map(fn (Colaborador $colaborador) => $this->generarFichaColaborador($colaborador))
+            ->all();
+        $filename = 'fichas_colaboradores_seleccionados_'.now()->format('Y-m-d_Hi').'.xlsx';
+
+        return Excel::download(
+            new ColaboradoresFichaExport(
+                $fichas,
+                $request->user()->name,
+                ['Colaboradores seleccionados' => $colaboradores->count()]
+            ),
+            $filename
+        );
     }
 
     private function generarFichaColaborador(Colaborador $colaborador): array
@@ -650,7 +213,7 @@ class ColaboradorController extends Controller
         $productosVehiculo = collect();
         $totalProductosVehiculo = 0;
 
-        if ($vehiculoAsignado && !empty($vehiculoAsignado['vin'])) {
+        if ($vehiculoAsignado && ! empty($vehiculoAsignado['vin'])) {
             $productosVehiculo = $this->obtenerProductosVehiculo($vehiculoAsignado['vin']);
             $totalProductosVehiculo = (float) $productosVehiculo->sum('total');
         }
@@ -665,7 +228,7 @@ class ColaboradorController extends Controller
                 ->addSelect('alertas_reemplazos_rrhh.*')
                 ->addSelect('p.nombre as producto_nombre')
                 ->addSelect('p.descripcion as producto_descripcion')
-                ->selectRaw("
+                ->selectRaw('
                     COALESCE(
                         (
                             SELECT cd.precio_unitario
@@ -676,7 +239,7 @@ class ColaboradorController extends Controller
                         ),
                         0
                     ) as costo_producto
-                ")
+                ')
                 ->latest('alertas_reemplazos_rrhh.created_at')
                 ->get()
                 ->map(function ($alerta) use (&$totalCobros) {
@@ -742,15 +305,15 @@ class ColaboradorController extends Controller
             'asignacion_vehiculos',
         ]);
 
-        if (!$tablaAsignaciones || !Schema::hasTable('vehiculos')) {
+        if (! $tablaAsignaciones || ! Schema::hasTable('vehiculos')) {
             return null;
         }
 
-        if (!Schema::hasColumn($tablaAsignaciones, 'colaborador_codigo')) {
+        if (! Schema::hasColumn($tablaAsignaciones, 'colaborador_codigo')) {
             return null;
         }
 
-        $query = DB::table($tablaAsignaciones . ' as av')
+        $query = DB::table($tablaAsignaciones.' as av')
             ->leftJoin('vehiculos as v', 'v.vin', '=', 'av.vehiculo_vin')
             ->where('av.colaborador_codigo', $colaborador->codigo);
 
@@ -781,17 +344,17 @@ class ColaboradorController extends Controller
             'v.vin as vehiculo_vin_real',
         ])->first();
 
-        if (!$row) {
+        if (! $row) {
             return null;
         }
 
         $fechaAsignacion = null;
 
-        if (!empty($row->fecha_inicio)) {
+        if (! empty($row->fecha_inicio)) {
             $fechaAsignacion = Carbon::parse($row->fecha_inicio)->format('d/m/Y');
-        } elseif (!empty($row->fecha_asignacion)) {
+        } elseif (! empty($row->fecha_asignacion)) {
             $fechaAsignacion = Carbon::parse($row->fecha_asignacion)->format('d/m/Y');
-        } elseif (!empty($row->created_at)) {
+        } elseif (! empty($row->created_at)) {
             $fechaAsignacion = Carbon::parse($row->created_at)->format('d/m/Y');
         }
 
@@ -802,7 +365,7 @@ class ColaboradorController extends Controller
             'modelo' => $row->vehiculo_modelo ?? '—',
             'placa' => $row->vehiculo_placa ?? '—',
             'fecha_asignacion' => $fechaAsignacion ?? '—',
-            'estado' => $row->estado ?? (!empty($row->activa) ? 'Activa' : '—'),
+            'estado' => $row->estado ?? (! empty($row->activa) ? 'Activa' : '—'),
         ];
     }
 
@@ -816,15 +379,15 @@ class ColaboradorController extends Controller
             'asignaciones_vehiculo_productos',
         ]);
 
-        if (!$tablaProductosVehiculo) {
+        if (! $tablaProductosVehiculo) {
             return collect();
         }
 
-        if (!Schema::hasColumn($tablaProductosVehiculo, 'vehiculo_vin')) {
+        if (! Schema::hasColumn($tablaProductosVehiculo, 'vehiculo_vin')) {
             return collect();
         }
 
-        $query = DB::table($tablaProductosVehiculo . ' as vp')
+        $query = DB::table($tablaProductosVehiculo.' as vp')
             ->leftJoin('productos as p', 'p.codigo', '=', 'vp.producto_codigo')
             ->leftJoin('bodegas as b', 'b.id', '=', 'vp.bodega_id')
             ->where('vp.vehiculo_vin', $vehiculoVin);
@@ -870,9 +433,9 @@ class ColaboradorController extends Controller
 
             $fecha = null;
 
-            if (!empty($row->fecha)) {
+            if (! empty($row->fecha)) {
                 $fecha = Carbon::parse($row->fecha)->format('d/m/Y');
-            } elseif (!empty($row->created_at)) {
+            } elseif (! empty($row->created_at)) {
                 $fecha = Carbon::parse($row->created_at)->format('d/m/Y');
             }
 
@@ -886,7 +449,7 @@ class ColaboradorController extends Controller
                 'total' => (float) $total,
                 'fecha' => $fecha ?? '—',
                 'motivo' => $row->motivo ?? '—',
-                'estado' => $row->estado ?? (!empty($row->activa) ? 'Activo' : '—'),
+                'estado' => $row->estado ?? (! empty($row->activa) ? 'Activo' : '—'),
                 'observaciones' => $row->observaciones ?? '—',
             ];
         })->values();
@@ -900,7 +463,7 @@ class ColaboradorController extends Controller
             return collect();
         }
 
-        if (!Schema::hasTable('compra_detalles')) {
+        if (! Schema::hasTable('compra_detalles')) {
             return collect();
         }
 
@@ -943,7 +506,7 @@ class ColaboradorController extends Controller
         ]);
 
         return redirect()
-            ->route($this->colaboradoresRoutePrefix() . '.colaboradores.index')
+            ->route($this->colaboradoresRoutePrefix().'.colaboradores.index')
             ->with('success', 'Estado del colaborador actualizado correctamente.');
     }
 

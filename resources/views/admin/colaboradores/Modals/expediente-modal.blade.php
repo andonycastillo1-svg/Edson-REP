@@ -29,7 +29,7 @@
              :href="`/${routePrefix}/colaboradores/${detalle.codigo}/ficha-tecnica`"
              target="_blank"
              class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition">
-            Descargar ficha
+            Descargar Excel
           </a>
 
           <button type="button"
