@@ -56,8 +56,9 @@ Route::middleware(['auth', 'auto.logout', 'role:3'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'auto.logout'])->group(function () {
-    Route::redirect('/profile', '/dashboard')->name('profile.edit');
-    Route::redirect('/profile/edit', '/dashboard');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
     Route::patch('/notificaciones/leer-todas', [NotificacionController::class, 'marcarTodasLeidas'])->name('notificaciones.leer-todas');

@@ -12,19 +12,19 @@
                 <p class="mt-1 text-sm text-slate-500">Consulta y administra los avisos asociados a tu usuario.</p>
             </div>
 
-            <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-                <form method="POST" action="{{ route('notificaciones.leer-todas') }}" class="w-full sm:w-auto">
+            <div class="flex flex-wrap gap-2">
+                <form method="POST" action="{{ route('notificaciones.leer-todas') }}">
                     @csrf
                     @method('PATCH')
-                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100">
+                    <button type="submit" class="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100">
                         Marcar todas como leídas
                     </button>
                 </form>
 
-                <form method="POST" action="{{ route('notificaciones.eliminar-todas') }}" class="w-full sm:w-auto" onsubmit="return confirm('¿Eliminar todas tus notificaciones? Esta acción no se puede deshacer.');">
+                <form method="POST" action="{{ route('notificaciones.eliminar-todas') }}" onsubmit="return confirm('¿Eliminar todas tus notificaciones? Esta acción no se puede deshacer.');">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50">
+                    <button type="submit" class="inline-flex items-center justify-center rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50">
                         Eliminar todas
                     </button>
                 </form>
@@ -57,7 +57,7 @@
                                     </span>
                                 </div>
 
-                                <p class="mt-2 break-words text-sm leading-6 text-slate-600">{{ $data['mensaje'] ?? '' }}</p>
+                                <p class="mt-2 text-sm leading-6 text-slate-600">{{ $data['mensaje'] ?? '' }}</p>
 
                                 <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                                     <span>Tipo: {{ str_replace('_', ' ', $data['tipo'] ?? 'general') }}</span>
@@ -68,27 +68,27 @@
                             </div>
                         </div>
 
-                        <div class="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                        <div class="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
                             @if($urlSegura)
-                                <a href="{{ $url }}" class="inline-flex w-full sm:w-auto items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-700">
+                                <a href="{{ $url }}" class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-700">
                                     Abrir
                                 </a>
                             @endif
 
                             @if(!$notificacion->read_at)
-                                <form method="POST" action="{{ route('notificaciones.leer', $notificacion->id) }}" class="w-full sm:w-auto">
+                                <form method="POST" action="{{ route('notificaciones.leer', $notificacion->id) }}">
                                     @csrf
                                     @method('PATCH')
-                                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
+                                    <button type="submit" class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
                                         Marcar como leída
                                     </button>
                                 </form>
                             @endif
 
-                            <form method="POST" action="{{ route('notificaciones.eliminar', $notificacion->id) }}" class="w-full sm:w-auto" onsubmit="return confirm('¿Eliminar esta notificación?');">
+                            <form method="POST" action="{{ route('notificaciones.eliminar', $notificacion->id) }}" onsubmit="return confirm('¿Eliminar esta notificación?');">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-50">
+                                <button type="submit" class="inline-flex items-center justify-center rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-50">
                                     Eliminar
                                 </button>
                             </form>
