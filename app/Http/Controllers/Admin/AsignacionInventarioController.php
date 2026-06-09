@@ -599,6 +599,15 @@ class AsignacionInventarioController extends Controller
             }
         });
 
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarCambioEstadoAsignacion(
+                [$asignacion->fresh()],
+                $request->user(),
+                'una devolución',
+                route($routePrefix . '.asignaciones.index')
+            )
+        );
+
         return redirect()->route($routePrefix . '.asignaciones.index')
             ->with('success', 'Devolución registrada correctamente.')
             ->with('grupo_devolucion', $grupoDevolucion);
@@ -632,9 +641,10 @@ class AsignacionInventarioController extends Controller
         }
 
         $totalProcesadas = 0;
+        $procesadasIds = [];
         $grupoDevolucion = (string) Str::uuid();
 
-        DB::transaction(function () use ($data, $ids, $asignaciones, &$totalProcesadas, $grupoDevolucion) {
+        DB::transaction(function () use ($data, $ids, $asignaciones, &$totalProcesadas, &$procesadasIds, $grupoDevolucion) {
             foreach ($ids as $id) {
                 $asignacion = $asignaciones->get((int) $id);
 
@@ -688,6 +698,7 @@ class AsignacionInventarioController extends Controller
                 }
 
                 $totalProcesadas++;
+                $procesadasIds[] = $asignacion->id;
             }
         });
 
@@ -695,6 +706,15 @@ class AsignacionInventarioController extends Controller
             return redirect()->route($routePrefix . '.asignaciones.index')
                 ->with('error', 'No se devolvió ninguna asignación. Verifica que estén activas y con cantidad válida.');
         }
+
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarCambioEstadoAsignacion(
+                AsignacionInventario::whereIn('id', $procesadasIds)->get(),
+                $request->user(),
+                'una devolución múltiple',
+                route($routePrefix . '.asignaciones.index')
+            )
+        );
 
         return redirect()->route($routePrefix . '.asignaciones.index')
             ->with('success', 'Devolución múltiple registrada correctamente. Asignaciones devueltas: ' . $totalProcesadas . '.')
@@ -755,6 +775,15 @@ class AsignacionInventarioController extends Controller
                 }
             }
         });
+
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarCambioEstadoAsignacion(
+                $asignaciones->map->fresh(),
+                $request->user(),
+                'una devolución total',
+                route($routePrefix . '.asignaciones.index')
+            )
+        );
 
         return redirect()->route($routePrefix . '.asignaciones.index')
             ->with('success', 'Se devolvió todo el inventario activo del colaborador.')

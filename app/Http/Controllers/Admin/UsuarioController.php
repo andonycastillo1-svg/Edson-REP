@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bodega;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\NotificacionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -89,7 +90,7 @@ class UsuarioController extends Controller
 
         $data = $request->validate($rules);
 
-        DB::transaction(function () use ($data, $rolAlmacenistaId, $rolSupervisorId) {
+        $usuario = DB::transaction(function () use ($data, $rolAlmacenistaId, $rolSupervisorId) {
             $usuario = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
@@ -106,7 +107,23 @@ class UsuarioController extends Controller
                     (int) $data['almacenista_id'],
                 ]);
             }
+
+            return $usuario;
         });
+
+        if ((int) $usuario->role_id === $rolSupervisorId) {
+            $almacenista = User::find((int) $data['almacenista_id']);
+
+            if ($almacenista) {
+                app(NotificacionService::class)->safeAction(
+                    fn (NotificacionService $service) => $service->notificarRelacionSupervisorAlmacenista(
+                        $usuario,
+                        $almacenista,
+                        $request->user()
+                    )
+                );
+            }
+        }
 
         return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok', 'Usuario creado correctamente.');
@@ -175,6 +192,7 @@ class UsuarioController extends Controller
         ];
 
         $data = $request->validate($rules);
+        $almacenistaAnteriorId = $usuario->almacenistasAsignados()->value('users.id');
 
         DB::transaction(function () use ($data, $usuario, $rolAlmacenistaId, $rolSupervisorId) {
             $nuevoRolId = (int) $data['role_id'];
@@ -206,6 +224,24 @@ class UsuarioController extends Controller
                 $usuario->supervisoresAsignados()->detach();
             }
         });
+
+        $nuevoAlmacenistaId = (int) $data['role_id'] === $rolSupervisorId
+            ? (int) $data['almacenista_id']
+            : null;
+
+        if ($nuevoAlmacenistaId && (int) $almacenistaAnteriorId !== $nuevoAlmacenistaId) {
+            $almacenista = User::find($nuevoAlmacenistaId);
+
+            if ($almacenista) {
+                app(NotificacionService::class)->safeAction(
+                    fn (NotificacionService $service) => $service->notificarRelacionSupervisorAlmacenista(
+                        $usuario->fresh(),
+                        $almacenista,
+                        $request->user()
+                    )
+                );
+            }
+        }
 
         return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok', 'Usuario actualizado correctamente.');

@@ -24,9 +24,9 @@
                     </a>
                 @endunless
 
-                <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-sm font-semibold text-[#1F2937] md:text-base">
+                <div class="inline-flex min-w-0 items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-sm font-semibold text-[#1F2937] md:text-base">
                     <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-blue-700">👤</span>
-                    <span class="max-w-[220px] truncate">{{ auth()->user()->name }}</span>
+                    <span class="hidden max-w-[220px] truncate sm:block">{{ auth()->user()->name }}</span>
                 </div>
             </div>
         </div>

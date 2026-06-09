@@ -256,6 +256,15 @@ class AsignacionVehiculoController extends Controller
             }
         });
 
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarCambioEstadoAsignacion(
+                [$asignacion->fresh()],
+                $request->user(),
+                'una desasignación de vehículo',
+                route('admin.vehiculos.asignaciones.index')
+            )
+        );
+
         return redirect()
             ->route('admin.vehiculos.asignaciones.index')
             ->with('success', 'Vehículo desasignado correctamente.');

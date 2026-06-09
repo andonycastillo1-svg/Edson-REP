@@ -9,6 +9,7 @@ use App\Models\Movimiento;
 use App\Models\Operacion;
 use App\Models\OperacionDetalle;
 use App\Models\Producto;
+use App\Services\NotificacionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -201,6 +202,10 @@ class OperacionTrasladoController extends Controller
             return $operacion;
         });
 
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarNuevoTraslado($operacion, $user)
+        );
+
         $routePrefix = (int) $user->role_id === 2 ? 'operador' : 'admin';
 
         return redirect()
@@ -330,6 +335,10 @@ class OperacionTrasladoController extends Controller
             $operacion->save();
         });
 
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarCambioEstadoTraslado($operacion->fresh(), $user)
+        );
+
         $routePrefix = (int) $user->role_id === 2 ? 'operador' : 'admin';
 
         return redirect()
@@ -358,6 +367,10 @@ class OperacionTrasladoController extends Controller
         $operacion->rechazado_en = now();
         $operacion->motivo_rechazo = $data['motivo_rechazo'];
         $operacion->save();
+
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarCambioEstadoTraslado($operacion, $user)
+        );
 
         $routePrefix = (int) $user->role_id === 2 ? 'operador' : 'admin';
 

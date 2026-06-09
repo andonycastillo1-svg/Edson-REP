@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
-
 use App\Http\Controllers\Admin\InventarioController;
 use App\Http\Controllers\Admin\OperacionTrasladoController;
 use App\Http\Controllers\Admin\ColaboradorController;
