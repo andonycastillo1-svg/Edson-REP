@@ -438,6 +438,7 @@
 
 <div class="inv-page">
     <div class="inv-wrapper">
+        <x-internal-navigation :back-url="route((auth()->user()->role_id == 2 ? 'operador' : 'admin') . '.bodegas.index')" />
 
         <div class="inv-top">
             <div class="inv-header">

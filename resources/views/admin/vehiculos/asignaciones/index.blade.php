@@ -458,6 +458,7 @@
 </style>
 
 <div class="ui-panel p-6 md:p-8">
+    <x-internal-navigation :back-url="route('admin.vehiculos.index')" />
     <div class="veh-page">
         <div class="veh-header">
             <div>
@@ -600,13 +601,13 @@
                                         <div class="document-title">Asignación</div>
 
                                         <div class="action-row">
-                                            <a class="small-btn" target="_blank"
+                                            <a class="small-btn" target="_blank" rel="noopener noreferrer"
                                                href="{{ route('admin.vehiculos.asignaciones.pdf_asignacion', $a) }}">
                                                 PDF generado
                                             </a>
 
                                             @if($pdfAsignacionFirmado)
-                                                <a class="small-btn green-btn" target="_blank"
+                                                <a class="small-btn green-btn" target="_blank" rel="noopener noreferrer"
                                                    href="{{ route('admin.vehiculos.asignaciones.ver_pdf_firmado', $pdfAsignacionFirmado) }}">
                                                     Ver firmado
                                                 </a>
@@ -641,13 +642,13 @@
 
                                         @if(!$a->activa)
                                             <div class="action-row">
-                                                <a class="small-btn" target="_blank"
+                                                <a class="small-btn" target="_blank" rel="noopener noreferrer"
                                                    href="{{ route('admin.vehiculos.asignaciones.pdf_desasignacion', $a) }}">
                                                     PDF generado
                                                 </a>
 
                                                 @if($pdfDevolucionFirmado)
-                                                    <a class="small-btn green-btn" target="_blank"
+                                                    <a class="small-btn green-btn" target="_blank" rel="noopener noreferrer"
                                                        href="{{ route('admin.vehiculos.asignaciones.ver_pdf_firmado', $pdfDevolucionFirmado) }}">
                                                         Ver firmado
                                                     </a>
@@ -721,6 +722,11 @@
 </div>
 
 <script>
+@if(session('pdf_url'))
+  window.addEventListener('load', function () {
+    window.open(@json(session('pdf_url')), '_blank', 'noopener,noreferrer');
+  });
+@endif
 function toggleDetalle(id) {
     const detalleSeleccionado = document.getElementById(id);
 

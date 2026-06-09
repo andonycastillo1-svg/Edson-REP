@@ -17,8 +17,14 @@
     <body class="font-sans antialiased">
         <div class="ui-shell">
             @if (!View::hasSection('no_nav'))
-    @include('layouts.navigation')
-@endif
+                @include('layouts.navigation')
+            @else
+                @auth
+                    <div class="fixed right-4 top-4 z-50">
+                        @include('partials.notificaciones-campana')
+                    </div>
+                @endauth
+            @endif
 
             <!-- Page Heading -->
             @if (!View::hasSection('no_header'))

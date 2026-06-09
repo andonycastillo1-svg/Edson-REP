@@ -360,6 +360,7 @@
 
 <div class="show-page">
   <div class="show-container">
+    <x-internal-navigation :back-url="route($routePrefix . '.operaciones.traslados.index')" />
 
     <div class="show-header">
       <div>
@@ -380,10 +381,6 @@
             📎 Ver Excel adjunto
           </a>
         @endif
-
-        <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}" class="btn btn-white">
-          ← Volver
-        </a>
       </div>
     </div>
 

@@ -24,10 +24,10 @@
 </style>
 
 <div class="ui-panel p-6">
+    <x-internal-navigation :back-url="route('admin.vehiculos.asignaciones.index')" />
     <div class="veh-form-wrap">
         <div class="veh-header">
             <h1 class="veh-title">Nueva asignación de vehículo</h1>
-            <a href="{{ route('admin.vehiculos.asignaciones.index') }}" class="veh-btn-secondary">← Volver</a>
         </div>
 
         @if(session('error'))

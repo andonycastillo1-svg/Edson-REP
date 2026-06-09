@@ -9,9 +9,9 @@
 
   <div class="min-h-[calc(100vh-120px)] px-6 py-10">
     <div class="max-w-4xl mx-auto">
+      <x-internal-navigation :back-url="route($routePrefix . '.operaciones.traslados.index')" />
 
       <div class="mb-6">
-        <a href="{{ route($routePrefix . '.bodegas.index') }}" class="text-sm text-blue-700 hover:underline">← Volver</a>
         <h1 class="text-3xl font-bold text-slate-900 mt-2">Nueva solicitud de traslado</h1>
         <p class="text-sm text-slate-50000">El encargado de la bodega destino debe aprobar o rechazar.</p>
       </div>

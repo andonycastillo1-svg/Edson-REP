@@ -314,6 +314,7 @@
 
 <div class="bodega-page">
     <div class="bodega-container">
+        <x-internal-navigation :back-url="route('dashboard')" />
 
         <div class="bodega-header">
             <div>

@@ -7,15 +7,13 @@
 @php($routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin')
 <div class="min-h-screen bg-slate-50">
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <x-internal-navigation :back-url="route($routePrefix . '.colaboradores.index')" />
 
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-semibold text-slate-900">Editar colaborador</h1>
         <p class="text-sm text-slate-600">Actualiza datos y estado.</p>
       </div>
-      <a href="{{ route($routePrefix . '.colaboradores.index') }}" class="text-sm font-medium text-blue-700 hover:underline">
-        ← Volver
-      </a>
     </div>
 
     <form method="POST" action="{{ route($routePrefix . '.colaboradores.update', $colaborador) }}"

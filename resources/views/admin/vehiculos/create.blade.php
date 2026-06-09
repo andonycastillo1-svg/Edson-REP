@@ -4,13 +4,10 @@
 
 @section('content')
 <div class="ui-panel w-full max-w-3xl p-6 md:p-8">
+    <x-internal-navigation :back-url="route('admin.vehiculos.index')" />
 
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Nuevo Vehículo</h1>
-
-        <a href="{{ route('admin.vehiculos.index') }}" class="ui-btn-secondary">
-            Volver
-        </a>
     </div>
 
     @if ($errors->any())
