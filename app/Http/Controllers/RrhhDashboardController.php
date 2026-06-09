@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AlertaReemplazo;
+use App\Services\NotificacionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -40,6 +41,9 @@ class RrhhDashboardController extends Controller
         }
 
         $alerta->marcarFinalizada();
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarResolucionAlertaRrhh($alerta, $request->user())
+        );
 
         return back()->with('success', 'Alerta de descuento marcada como finalizada.');
     }

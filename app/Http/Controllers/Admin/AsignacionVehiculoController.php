@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\NotificacionService;
 use App\Models\AsignacionVehiculo;
 use App\Models\AsignacionVehiculoArchivo;
 use App\Models\Bodega;
@@ -100,7 +101,7 @@ class AsignacionVehiculoController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($data) {
+            $asignacion = DB::transaction(function () use ($data) {
                 $asignacion = AsignacionVehiculo::create([
                     'vehiculo_vin' => $data['vehiculo_vin'],
                     'colaborador_codigo' => $data['colaborador_codigo'],
@@ -166,6 +167,8 @@ class AsignacionVehiculoController extends Controller
                         'vehiculo_vin' => $data['vehiculo_vin'],
                     ]);
                 }
+
+                return $asignacion;
             });
         } catch (Throwable $e) {
             return back()
@@ -173,9 +176,20 @@ class AsignacionVehiculoController extends Controller
                 ->with('error', $e->getMessage());
         }
 
+        try {
+            app(NotificacionService::class)->notificarNuevaAsignacion(
+                $asignacion,
+                $request->user(),
+                route('admin.vehiculos.asignaciones.index')
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
         return redirect()
             ->route('admin.vehiculos.asignaciones.index')
-            ->with('success', 'Asignación de vehículo creada correctamente.');
+            ->with('success', 'Asignación de vehículo creada correctamente.')
+            ->with('pdf_url', route('admin.vehiculos.asignaciones.pdf_asignacion', $asignacion));
     }
 
     public function desasignar(Request $request, AsignacionVehiculo $asignacion)
@@ -241,6 +255,15 @@ class AsignacionVehiculoController extends Controller
                 $rel->save();
             }
         });
+
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarCambioEstadoAsignacion(
+                [$asignacion->fresh()],
+                $request->user(),
+                'una desasignación de vehículo',
+                route('admin.vehiculos.asignaciones.index')
+            )
+        );
 
         return redirect()
             ->route('admin.vehiculos.asignaciones.index')

@@ -15,6 +15,10 @@
                 </div>
             </div>
 
+            <div class="ms-auto flex items-center sm:ms-6">
+                @include('partials.notificaciones-campana')
+            </div>
+
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6 sm:gap-3">
                 @unless(request()->routeIs('dashboard', '*.dashboard'))
@@ -38,10 +42,6 @@
                     </x-slot>
 
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('profile.edit')">
-                            Perfil
-                        </x-dropdown-link>
-
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <x-dropdown-link :href="route('logout')"
@@ -84,10 +84,6 @@
                         Panel principal
                     </x-responsive-nav-link>
                 @endunless
-
-                <x-responsive-nav-link :href="route('profile.edit')">
-                    Perfil
-                </x-responsive-nav-link>
 
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf

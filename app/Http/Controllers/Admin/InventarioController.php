@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bodega;
 use App\Services\BodegaAccessService;
 use App\Services\InventarioStockService;
+use App\Services\NotificacionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -60,6 +61,14 @@ class InventarioController extends Controller
 
             $this->stockService->incrementar((int) $bodega->id, $data['producto_codigo'], (int) $data['cantidad']);
         });
+
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarMovimientoInventario(
+                $bodega,
+                $request->user(),
+                'Se registró una entrada manual de ' . $data['cantidad'] . ' unidad(es) en ' . $bodega->nombre . '.'
+            )
+        );
 
         $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
 

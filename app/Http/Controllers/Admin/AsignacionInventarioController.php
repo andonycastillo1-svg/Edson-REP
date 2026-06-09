@@ -9,12 +9,14 @@ use App\Models\Colaborador;
 use App\Models\Bodega;
 use App\Models\AsignacionMovimiento;
 use App\Models\AsignacionInventarioArchivo;
+use App\Models\AlertaReemplazo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Services\AsignacionVidaUtilService;
+use App\Services\NotificacionService;
 use Carbon\Carbon;
 use App\Models\Role;
 
@@ -218,8 +220,9 @@ class AsignacionInventarioController extends Controller
         }
 
         $grupoAsignacion = (string) Str::uuid();
+        $alertasRrhhIds = [];
 
-        DB::transaction(function () use ($data, $items, $imagenPath, $grupoAsignacion) {
+        DB::transaction(function () use ($data, $items, $imagenPath, $grupoAsignacion, &$alertasRrhhIds) {
             $vidaUtilService = app(AsignacionVidaUtilService::class);
 
             foreach ($items as $item) {
@@ -297,7 +300,11 @@ class AsignacionInventarioController extends Controller
                             ? Carbon::parse($item['fecha_dano'])
                             : Carbon::parse($data['fecha']);
 
-                        $vidaUtilService->procesarReemplazoPorDanio($anterior, $asignacion, $fechaDanio);
+                        $alertaRrhh = $vidaUtilService->procesarReemplazoPorDanio($anterior, $asignacion, $fechaDanio);
+
+                        if ($alertaRrhh) {
+                            $alertasRrhhIds[] = $alertaRrhh->id;
+                        }
 
                         if (Schema::hasTable('asignacion_movimientos')) {
                             AsignacionMovimiento::create([
@@ -314,10 +321,39 @@ class AsignacionInventarioController extends Controller
         });
 
         $routePrefix = $this->asignacionesRoutePrefix();
+        $asignacionCreada = AsignacionInventario::with('colaborador')
+            ->where('grupo_asignacion', $grupoAsignacion)
+            ->oldest('id')
+            ->firstOrFail();
+
+        try {
+            $notificacionService = app(NotificacionService::class);
+            $urlAsignaciones = route($routePrefix . '.asignaciones.index');
+
+            $notificacionService->notificarNuevaAsignacion(
+                $asignacionCreada,
+                $request->user(),
+                $urlAsignaciones
+            );
+            $notificacionService->notificarAsignacionPendiente(
+                $asignacionCreada,
+                $request->user(),
+                $urlAsignaciones
+            );
+
+            if ($alertasRrhhIds !== []) {
+                foreach (AlertaReemplazo::whereIn('id', $alertasRrhhIds)->get() as $alertaRrhh) {
+                    $notificacionService->notificarAlertaRrhh($alertaRrhh, $request->user());
+                }
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
 
         return redirect()
-            ->route($routePrefix . '.asignaciones.pdf', $grupoAsignacion)
-            ->with('success', 'Asignaciones registradas correctamente.');
+            ->route($routePrefix . '.asignaciones.index')
+            ->with('success', 'Asignaciones registradas correctamente.')
+            ->with('pdf_url', route($routePrefix . '.asignaciones.pdf', $grupoAsignacion));
     }
 
     public function pdf($grupo)
@@ -563,6 +599,15 @@ class AsignacionInventarioController extends Controller
             }
         });
 
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarCambioEstadoAsignacion(
+                [$asignacion->fresh()],
+                $request->user(),
+                'una devolución',
+                route($routePrefix . '.asignaciones.index')
+            )
+        );
+
         return redirect()->route($routePrefix . '.asignaciones.index')
             ->with('success', 'Devolución registrada correctamente.')
             ->with('grupo_devolucion', $grupoDevolucion);
@@ -596,9 +641,10 @@ class AsignacionInventarioController extends Controller
         }
 
         $totalProcesadas = 0;
+        $procesadasIds = [];
         $grupoDevolucion = (string) Str::uuid();
 
-        DB::transaction(function () use ($data, $ids, $asignaciones, &$totalProcesadas, $grupoDevolucion) {
+        DB::transaction(function () use ($data, $ids, $asignaciones, &$totalProcesadas, &$procesadasIds, $grupoDevolucion) {
             foreach ($ids as $id) {
                 $asignacion = $asignaciones->get((int) $id);
 
@@ -652,6 +698,7 @@ class AsignacionInventarioController extends Controller
                 }
 
                 $totalProcesadas++;
+                $procesadasIds[] = $asignacion->id;
             }
         });
 
@@ -659,6 +706,15 @@ class AsignacionInventarioController extends Controller
             return redirect()->route($routePrefix . '.asignaciones.index')
                 ->with('error', 'No se devolvió ninguna asignación. Verifica que estén activas y con cantidad válida.');
         }
+
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarCambioEstadoAsignacion(
+                AsignacionInventario::whereIn('id', $procesadasIds)->get(),
+                $request->user(),
+                'una devolución múltiple',
+                route($routePrefix . '.asignaciones.index')
+            )
+        );
 
         return redirect()->route($routePrefix . '.asignaciones.index')
             ->with('success', 'Devolución múltiple registrada correctamente. Asignaciones devueltas: ' . $totalProcesadas . '.')
@@ -719,6 +775,15 @@ class AsignacionInventarioController extends Controller
                 }
             }
         });
+
+        app(NotificacionService::class)->safeAction(
+            fn (NotificacionService $service) => $service->notificarCambioEstadoAsignacion(
+                $asignaciones->map->fresh(),
+                $request->user(),
+                'una devolución total',
+                route($routePrefix . '.asignaciones.index')
+            )
+        );
 
         return redirect()->route($routePrefix . '.asignaciones.index')
             ->with('success', 'Se devolvió todo el inventario activo del colaborador.')

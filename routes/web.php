@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProfileController;
-
 use App\Http\Controllers\Admin\InventarioController;
 use App\Http\Controllers\Admin\OperacionTrasladoController;
 use App\Http\Controllers\Admin\ColaboradorController;
@@ -10,6 +8,7 @@ use App\Http\Controllers\Admin\AsignacionInventarioController;
 use App\Http\Controllers\Admin\AsignacionVehiculoController;
 use App\Http\Controllers\Admin\VehiculoProductoController;
 use App\Http\Controllers\RrhhDashboardController;
+use App\Http\Controllers\NotificacionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -57,9 +56,14 @@ Route::middleware(['auth', 'auto.logout', 'role:3'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'auto.logout'])->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::redirect('/profile', '/dashboard')->name('profile.edit');
+    Route::redirect('/profile/edit', '/dashboard');
+
+    Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
+    Route::patch('/notificaciones/leer-todas', [NotificacionController::class, 'marcarTodasLeidas'])->name('notificaciones.leer-todas');
+    Route::patch('/notificaciones/{id}/leer', [NotificacionController::class, 'marcarLeida'])->name('notificaciones.leer');
+    Route::delete('/notificaciones', [NotificacionController::class, 'eliminarTodas'])->name('notificaciones.eliminar-todas');
+    Route::delete('/notificaciones/{id}', [NotificacionController::class, 'eliminar'])->name('notificaciones.eliminar');
 });
 
 /*

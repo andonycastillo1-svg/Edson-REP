@@ -317,6 +317,7 @@
 
 <div class="tras-page">
   <div class="tras-container">
+    <x-internal-navigation :back-url="route('dashboard')" />
 
     <div class="tras-header">
       <div>
