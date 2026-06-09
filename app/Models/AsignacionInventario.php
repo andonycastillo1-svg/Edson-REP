@@ -3,10 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
-use App\Models\Colaborador;
-use App\Models\Producto;
-use App\Models\Bodega;
 
 class AsignacionInventario extends Model
 {
@@ -27,6 +23,7 @@ class AsignacionInventario extends Model
         'observaciones',
         'fecha_vencimiento',
         'estado',
+        'estado_evidencia',
         'pdf_firmado',
     ];
 
@@ -57,9 +54,28 @@ class AsignacionInventario extends Model
         return $this->belongsTo(User::class);
     }
 
+    /** Relación histórica conservada para compatibilidad. */
     public function archivosFirmados()
     {
         return $this->hasMany(AsignacionInventarioArchivo::class, 'asignacion_inventario_id');
+    }
+
+    public function evidencias()
+    {
+        return $this->hasMany(AsignacionInventarioArchivo::class, 'asignacion_inventario_id')
+            ->whereIn('tipo_documento', ['asignacion_firmada', 'evidencia_entrega']);
+    }
+
+    public function pdfsAsignacionFirmados()
+    {
+        return $this->hasMany(AsignacionInventarioArchivo::class, 'asignacion_inventario_id')
+            ->where('tipo_documento', 'asignacion_firmada');
+    }
+
+    public function imagenesEntrega()
+    {
+        return $this->hasMany(AsignacionInventarioArchivo::class, 'asignacion_inventario_id')
+            ->where('tipo_documento', 'evidencia_entrega');
     }
 
     public function pdfAsignacionFirmado()

@@ -149,7 +149,7 @@
                             $roleClasses = match(strtolower($rolNombre)) {
                                 'administrador', 'admin' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
                                 'rrhh' => 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
-                                'coordinador' => 'bg-sky-50 text-sky-700 border-sky-200',
+                                'supervisor', 'coordinador' => 'bg-sky-50 text-sky-700 border-sky-200',
                                 'almacenista', 'encargado' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
                                 'consultas' => 'bg-amber-50 text-amber-700 border-amber-200',
                                 default => 'bg-slate-50 text-slate-700 border-slate-200',
