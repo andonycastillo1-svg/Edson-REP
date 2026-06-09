@@ -17,7 +17,7 @@ class UsuarioController extends Controller
         $q = trim((string) $request->query('q', ''));
         $roleId = $request->query('role_id');
 
-        $usuarios = User::with(['role', 'bodega', 'creator.role', 'supervisoresAsignados'])
+        $usuarios = User::with(['role', 'bodega', 'creator.role', 'supervisoresAsignados', 'almacenistasAsignados'])
             ->when(!$this->esAdmin(), function ($query) {
                 $query->where('created_by', auth()->id());
             })
@@ -43,22 +43,29 @@ class UsuarioController extends Controller
     {
         $roles = $this->rolesPermitidosParaGestion();
         $bodegas = Bodega::orderBy('nombre')->get();
-        $rolEncargadoId = $this->rolAlmacenistaId();
+
+        $rolAlmacenistaId = $this->rolAlmacenistaId();
         $rolSupervisorId = $this->rolSupervisorId();
-        $supervisores = $this->esAdmin() ? $this->supervisoresDisponibles() : collect();
+
+        $almacenistas = User::query()
+            ->where('role_id', $rolAlmacenistaId)
+            ->orderBy('name')
+            ->get();
 
         return view('admin.usuarios.create', compact(
             'roles',
             'bodegas',
-            'rolEncargadoId',
-            'rolSupervisorId',
-            'supervisores'
+            'almacenistas',
+            'rolAlmacenistaId',
+            'rolSupervisorId'
         ));
     }
 
     public function store(Request $request)
     {
         $rolAlmacenistaId = $this->rolAlmacenistaId();
+        $rolSupervisorId = $this->rolSupervisorId();
+
         $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
 
         $rules = [
@@ -66,35 +73,38 @@ class UsuarioController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6', 'confirmed'],
             'role_id' => ['required', 'exists:roles,id', Rule::in($rolesPermitidos)],
+
             'bodega_id' => [
                 Rule::requiredIf(fn () => (int) $request->role_id === $rolAlmacenistaId),
                 'nullable',
                 'exists:bodegas,id',
             ],
-        ];
 
-        if ($this->esAdmin()) {
-            $rules['supervisores'] = ['nullable', 'array'];
-            $rules['supervisores.*'] = [
-                'integer',
-                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role_id', $this->rolSupervisorId())),
-            ];
-        }
+            'almacenista_id' => [
+                Rule::requiredIf(fn () => (int) $request->role_id === $rolSupervisorId),
+                'nullable',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role_id', $rolAlmacenistaId)),
+            ],
+        ];
 
         $data = $request->validate($rules);
 
-        DB::transaction(function () use ($data, $rolAlmacenistaId) {
+        DB::transaction(function () use ($data, $rolAlmacenistaId, $rolSupervisorId) {
             $usuario = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => bcrypt($data['password']),
                 'role_id' => $data['role_id'],
-                'bodega_id' => $data['bodega_id'] ?? null,
+                'bodega_id' => (int) $data['role_id'] === $rolAlmacenistaId
+                    ? ($data['bodega_id'] ?? null)
+                    : null,
                 'created_by' => auth()->id(),
             ]);
 
-            if ($this->esAdmin() && (int) $usuario->role_id === $rolAlmacenistaId) {
-                $usuario->supervisoresAsignados()->sync($data['supervisores'] ?? []);
+            if ((int) $usuario->role_id === $rolSupervisorId) {
+                $usuario->almacenistasAsignados()->sync([
+                    (int) $data['almacenista_id'],
+                ]);
             }
         });
 
@@ -111,18 +121,25 @@ class UsuarioController extends Controller
 
         $roles = $this->rolesPermitidosParaGestion();
         $bodegas = Bodega::orderBy('nombre')->get();
-        $rolEncargadoId = $this->rolAlmacenistaId();
+
+        $rolAlmacenistaId = $this->rolAlmacenistaId();
         $rolSupervisorId = $this->rolSupervisorId();
-        $supervisores = $this->esAdmin() ? $this->supervisoresDisponibles($usuario->id) : collect();
-        $usuario->load('supervisoresAsignados');
+
+        $almacenistas = User::query()
+            ->where('role_id', $rolAlmacenistaId)
+            ->where('id', '!=', $usuario->id)
+            ->orderBy('name')
+            ->get();
+
+        $usuario->load('almacenistasAsignados');
 
         return view('admin.usuarios.edit', compact(
             'usuario',
             'roles',
             'bodegas',
-            'rolEncargadoId',
-            'rolSupervisorId',
-            'supervisores'
+            'almacenistas',
+            'rolAlmacenistaId',
+            'rolSupervisorId'
         ));
     }
 
@@ -135,6 +152,7 @@ class UsuarioController extends Controller
 
         $rolAlmacenistaId = $this->rolAlmacenistaId();
         $rolSupervisorId = $this->rolSupervisorId();
+
         $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
 
         $rules = [
@@ -142,29 +160,32 @@ class UsuarioController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($usuario->id)],
             'role_id' => ['required', 'exists:roles,id', Rule::in($rolesPermitidos)],
             'password' => ['nullable', 'string', 'min:6', 'confirmed'],
+
             'bodega_id' => [
                 Rule::requiredIf(fn () => (int) $request->role_id === $rolAlmacenistaId),
                 'nullable',
                 'exists:bodegas,id',
             ],
-        ];
 
-        if ($this->esAdmin()) {
-            $rules['supervisores'] = ['nullable', 'array'];
-            $rules['supervisores.*'] = [
-                'integer',
-                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role_id', $rolSupervisorId)),
-            ];
-        }
+            'almacenista_id' => [
+                Rule::requiredIf(fn () => (int) $request->role_id === $rolSupervisorId),
+                'nullable',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role_id', $rolAlmacenistaId)),
+            ],
+        ];
 
         $data = $request->validate($rules);
 
         DB::transaction(function () use ($data, $usuario, $rolAlmacenistaId, $rolSupervisorId) {
+            $nuevoRolId = (int) $data['role_id'];
+
             $payload = [
                 'name' => $data['name'],
                 'email' => $data['email'],
-                'role_id' => $data['role_id'],
-                'bodega_id' => $data['bodega_id'] ?? null,
+                'role_id' => $nuevoRolId,
+                'bodega_id' => $nuevoRolId === $rolAlmacenistaId
+                    ? ($data['bodega_id'] ?? null)
+                    : null,
             ];
 
             if (!empty($data['password'])) {
@@ -173,16 +194,16 @@ class UsuarioController extends Controller
 
             $usuario->update($payload);
 
-            if ((int) $usuario->role_id === $rolAlmacenistaId) {
-                if ($this->esAdmin()) {
-                    $usuario->supervisoresAsignados()->sync($data['supervisores'] ?? []);
-                }
+            if ($nuevoRolId === $rolSupervisorId) {
+                $usuario->almacenistasAsignados()->sync([
+                    (int) $data['almacenista_id'],
+                ]);
             } else {
-                $usuario->supervisoresAsignados()->detach();
+                $usuario->almacenistasAsignados()->detach();
             }
 
-            if ((int) $usuario->role_id !== $rolSupervisorId) {
-                $usuario->almacenistasAsignados()->detach();
+            if ($nuevoRolId !== $rolAlmacenistaId) {
+                $usuario->supervisoresAsignados()->detach();
             }
         });
 
@@ -222,15 +243,6 @@ class UsuarioController extends Controller
         return $query->get();
     }
 
-    private function supervisoresDisponibles(?int $usuarioExcluidoId = null)
-    {
-        return User::query()
-            ->where('role_id', $this->rolSupervisorId())
-            ->when($usuarioExcluidoId, fn ($query) => $query->where('id', '!=', $usuarioExcluidoId))
-            ->orderBy('name')
-            ->get();
-    }
-
     private function puedeEditarUsuario(User $usuario): bool
     {
         if ($this->esAdmin()) {
@@ -242,19 +254,12 @@ class UsuarioController extends Controller
 
     private function rolAlmacenistaId(): int
     {
-        $rol = Role::whereRaw('LOWER(TRIM(nombre)) = ?', ['almacenista'])->first()
-            ?? Role::whereRaw('LOWER(TRIM(nombre)) = ?', ['encargado'])->first()
-            ?? Role::whereRaw('LOWER(TRIM(nombre)) = ?', ['operador'])->first();
-
-        return (int) ($rol?->id ?? 2);
+        return 2;
     }
 
     private function rolSupervisorId(): int
     {
-        $rol = Role::whereRaw('LOWER(TRIM(nombre)) = ?', ['supervisor'])->first()
-            ?? Role::whereRaw('LOWER(TRIM(nombre)) = ?', ['coordinador'])->first();
-
-        return (int) ($rol?->id ?? 3);
+        return 3;
     }
 
     private function esAdmin(): bool

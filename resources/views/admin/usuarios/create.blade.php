@@ -5,13 +5,15 @@
 @section('content')
 @php
     $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+
     $rolSeleccionadoId = (int) old('role_id', 0);
+
     $mostrarBodega = $rolSeleccionadoId === (int) $rolAlmacenistaId;
     $mostrarAlmacenista = $rolSeleccionadoId === (int) $rolSupervisorId;
 @endphp
+
 <div class="w-full max-w-3xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
 
-    <!-- Header -->
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-2xl font-semibold text-gray-800">Crear usuario</h1>
@@ -24,7 +26,6 @@
         </a>
     </div>
 
-    <!-- Errores -->
     @if ($errors->any())
         <div class="mb-6 rounded-xl bg-red-50 text-red-700 px-4 py-3 text-sm">
             <ul class="list-disc pl-5">
@@ -40,86 +41,124 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-            <!-- Nombre -->
             <div>
                 <label class="block text-sm font-medium text-gray-700">Nombre</label>
-                <input type="text" name="name" value="{{ old('name') }}" required
+                <input type="text"
+                       name="name"
+                       value="{{ old('name') }}"
+                       required
                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
             </div>
 
-            <!-- Correo -->
             <div>
                 <label class="block text-sm font-medium text-gray-700">Correo</label>
-                <input type="email" name="email" value="{{ old('email') }}" required
+                <input type="email"
+                       name="email"
+                       value="{{ old('email') }}"
+                       required
                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
             </div>
 
-            <!-- Rol -->
             <div>
                 <label class="block text-sm font-medium text-gray-700">Rol</label>
-                <select name="role_id" id="role_id" required
+
+                <select name="role_id"
+                        id="role_id"
+                        required
                         class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                    @if(auth()->user()->role_id != 4)<option value="">Seleccione...</option>@endif
+
+                    @if(auth()->user()->role_id != 4)
+                        <option value="">Seleccione...</option>
+                    @endif
 
                     @foreach($roles as $rol)
+                        @php
+                            $tipoRol = 'otro';
+
+                            if ((int) $rol->id === (int) $rolAlmacenistaId) {
+                                $tipoRol = 'almacenista';
+                            }
+
+                            if ((int) $rol->id === (int) $rolSupervisorId) {
+                                $tipoRol = 'supervisor';
+                            }
+                        @endphp
+
                         <option value="{{ $rol->id }}"
-                                data-role-type="{{ (int) $rol->id === (int) $rolAlmacenistaId ? 'almacenista' : ((int) $rol->id === (int) $rolSupervisorId ? 'supervisor' : 'otro') }}"
+                                data-role-type="{{ $tipoRol }}"
                                 {{ $rolSeleccionadoId === (int) $rol->id ? 'selected' : '' }}>
                             {{ $rol->nombre }}
                         </option>
                     @endforeach
                 </select>
-                <p class="text-xs text-gray-400 mt-1">Define el acceso del usuario.</p>
+
+                <p class="text-xs text-gray-400 mt-1">
+                    Define el acceso del usuario.
+                </p>
             </div>
 
-            <!-- Bodega (según rol habilitado) -->
-            <div id="bodega_wrap" @if(!$mostrarBodega) hidden style="display: none;" @endif>
+            <div id="bodega_wrap" class="{{ $mostrarBodega ? '' : 'hidden' }}">
                 <label class="block text-sm font-medium text-gray-700">Bodega</label>
-                <select name="bodega_id" id="bodega_id"
+
+                <select name="bodega_id"
+                        id="bodega_id"
+                        {{ $mostrarBodega ? 'required' : 'disabled' }}
                         class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                    @if(auth()->user()->role_id != 4)<option value="">Seleccione...</option>@endif
+
+                    <option value="">Seleccione...</option>
+
                     @foreach($bodegas as $b)
                         <option value="{{ $b->id }}" {{ old('bodega_id') == $b->id ? 'selected' : '' }}>
                             {{ $b->nombre }}
                         </option>
                     @endforeach
                 </select>
-                <p class="text-xs text-gray-400 mt-1">Asigna la bodega que administrará este usuario.</p>
+
+                <p class="text-xs text-gray-400 mt-1">
+                    Asigna la bodega que administrará este usuario.
+                </p>
             </div>
 
-            @if(auth()->user()->role_id == 1)
-                <!-- Relación administrada únicamente por Admin -->
-                <div id="supervisores_wrap" class="hidden md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Supervisores relacionados</label>
-                    <select name="supervisores[]" id="supervisores" multiple
-                            class="mt-1 w-full min-h-32 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                        @foreach($supervisores as $supervisor)
-                            <option value="{{ $supervisor->id }}"
-                                @selected(in_array((int) $supervisor->id, array_map('intval', old('supervisores', []))))>
-                                {{ $supervisor->name }} ({{ $supervisor->email }})
-                            </option>
-                        @endforeach
-                    </select>
-                    <p class="text-xs text-gray-400 mt-1">Usa Ctrl/Cmd para seleccionar varios. Solo se guarda cuando el usuario es almacenista/encargado.</p>
-                </div>
-            @endif
+            <div id="almacenista_wrap" class="{{ $mostrarAlmacenista ? '' : 'hidden' }}">
+                <label class="block text-sm font-medium text-gray-700">Almacenista asignado</label>
 
-            <!-- Password -->
+                <select name="almacenista_id"
+                        id="almacenista_id"
+                        {{ $mostrarAlmacenista ? 'required' : 'disabled' }}
+                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+
+                    <option value="">Seleccione...</option>
+
+                    @foreach($almacenistas as $almacenista)
+                        <option value="{{ $almacenista->id }}"
+                                {{ old('almacenista_id') == $almacenista->id ? 'selected' : '' }}>
+                            {{ $almacenista->name }} ({{ $almacenista->email }})
+                        </option>
+                    @endforeach
+                </select>
+
+                <p class="text-xs text-gray-400 mt-1">
+                    Selecciona el almacenista al que pertenece este supervisor.
+                </p>
+            </div>
+
             <div>
                 <label class="block text-sm font-medium text-gray-700">Contraseña</label>
-                <input type="password" name="password" required
+                <input type="password"
+                       name="password"
+                       required
                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
             </div>
 
-            <!-- Confirmación -->
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700">Confirmar contraseña</label>
-                <input type="password" name="password_confirmation" required
+                <input type="password"
+                       name="password_confirmation"
+                       required
                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
             </div>
         </div>
 
-        <!-- Botones -->
         <div class="pt-4 border-t flex flex-col sm:flex-row gap-3 justify-end">
             <a href="{{ route($routePrefix . '.usuarios.index') }}"
                class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-gray-700 font-semibold hover:bg-gray-50 transition">
@@ -132,43 +171,53 @@
             </button>
         </div>
     </form>
-
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const rolSelect = document.getElementById('role_id');
+
     const bodegaWrap = document.getElementById('bodega_wrap');
     const bodegaSelect = document.getElementById('bodega_id');
-    const supervisoresWrap = document.getElementById('supervisores_wrap');
-    const supervisoresSelect = document.getElementById('supervisores');
 
-    function toggleCamposPorRol() {
-        const roleId = parseInt(rolSelect.value || '0');
-        const esAlmacenista = roleId === parseInt(ROL_ALMACENISTA_ID);
-        const esSupervisor = roleId === parseInt(ROL_SUPERVISOR_ID);
+    const almacenistaWrap = document.getElementById('almacenista_wrap');
+    const almacenistaSelect = document.getElementById('almacenista_id');
 
-        bodegaWrap.classList.toggle('hidden', !esAlmacenista);
-        bodegaSelect.disabled = !esAlmacenista;
-        bodegaSelect.required = esAlmacenista;
-
-        if (supervisoresWrap) {
-            supervisoresWrap.classList.toggle('hidden', !isEncargado);
+    function actualizarCamposPorRol() {
+        if (!rolSelect) {
+            return;
         }
 
-        // si no es encargado, limpiamos bodega
-        if (!isEncargado && bodegaSelect) {
-            bodegaSelect.value = '';
+        const selectedOption = rolSelect.options[rolSelect.selectedIndex];
+        const tipoRol = selectedOption ? selectedOption.dataset.roleType : 'otro';
+
+        const esAlmacenista = tipoRol === 'almacenista';
+        const esSupervisor = tipoRol === 'supervisor';
+
+        if (bodegaWrap && bodegaSelect) {
+            bodegaWrap.classList.toggle('hidden', !esAlmacenista);
+            bodegaSelect.disabled = !esAlmacenista;
+            bodegaSelect.required = esAlmacenista;
+
+            if (!esAlmacenista) {
+                bodegaSelect.value = '';
+            }
         }
 
-        if (!isEncargado && supervisoresSelect) {
-            Array.from(supervisoresSelect.options).forEach(option => option.selected = false);
+        if (almacenistaWrap && almacenistaSelect) {
+            almacenistaWrap.classList.toggle('hidden', !esSupervisor);
+            almacenistaSelect.disabled = !esSupervisor;
+            almacenistaSelect.required = esSupervisor;
+
+            if (!esSupervisor) {
+                almacenistaSelect.value = '';
+            }
         }
     }
 
     if (rolSelect) {
-        rolSelect.addEventListener('change', toggleCamposPorRol);
-        toggleCamposPorRol();
+        rolSelect.addEventListener('change', actualizarCamposPorRol);
+        actualizarCamposPorRol();
     }
 });
 </script>
