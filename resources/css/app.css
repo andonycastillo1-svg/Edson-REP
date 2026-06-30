@@ -67,6 +67,29 @@
     transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
   }
 
+
+  .colaborador-selector,
+  .selector,
+  .reemplazo-dano-checkbox,
+  .vp-check input[type="checkbox"] {
+    appearance: auto;
+    -webkit-appearance: auto;
+    accent-color: var(--ui-primary);
+    color: var(--ui-primary) !important;
+    background-color: Canvas !important;
+    border-color: var(--ui-border-strong) !important;
+    border-radius: 0.25rem !important;
+    box-shadow: none;
+  }
+
+  .colaborador-selector:checked,
+  .selector:checked,
+  .reemplazo-dano-checkbox:checked,
+  .vp-check input[type="checkbox"]:checked {
+    background-color: var(--ui-primary) !important;
+    border-color: var(--ui-primary) !important;
+  }
+
   input:focus, select:focus, textarea:focus {
     border-color: var(--ui-primary) !important;
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;

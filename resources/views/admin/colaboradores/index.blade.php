@@ -199,7 +199,7 @@
                 <tr class="transition hover:bg-blue-50/40">
                   <td class="px-5 py-4 align-middle">
                     <input type="checkbox"
-                           class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                           class="colaborador-selector h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                            :checked="isSelected('{{ $c->codigo }}')"
                            @change="toggleSeleccion('{{ $c->codigo }}')">
                   </td>
@@ -299,7 +299,7 @@
                 <tr class="transition hover:bg-slate-50">
                   <td class="px-5 py-4 align-middle">
                     <input type="checkbox"
-                           class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                           class="colaborador-selector h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                            :checked="isSelected('{{ $c->codigo }}')"
                            @change="toggleSeleccion('{{ $c->codigo }}')">
                   </td>
