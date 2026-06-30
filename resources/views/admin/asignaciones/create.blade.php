@@ -261,7 +261,7 @@
                       <input type="checkbox"
                         value="1"
                         data-name="es_reemplazo"
-                        class="rounded border-amber-300 text-blue-600 focus:ring-blue-500">
+                        class="reemplazo-dano-checkbox rounded border-amber-300 text-blue-600 focus:ring-blue-500">
                       Reemplazo por daño
                     </label>
                     <p class="mt-1 text-xs text-amber-700">

@@ -429,6 +429,20 @@
         min-height: auto;
     }
 
+    .vp-check input[type="checkbox"] {
+        appearance: auto;
+        -webkit-appearance: auto;
+        accent-color: #2563eb;
+        background: Canvas !important;
+        border-color: #cbd5e1 !important;
+        border-radius: 4px !important;
+    }
+
+    .vp-check input[type="checkbox"]:checked {
+        background: #2563eb !important;
+        border-color: #2563eb !important;
+    }
+
     .vp-warning {
         margin-top: 10px;
         border: 1px solid #fecaca;
