@@ -125,6 +125,8 @@ class BodegaController extends Controller
                 'i.id',
                 'i.producto_codigo',
                 'i.cantidad',
+                'i.stock_tipo',
+                'i.vida_util_restante_meses',
                 'p.nombre',
                 'p.descripcion',
                 'p.categoria',
@@ -201,6 +203,7 @@ class BodegaController extends Controller
                 $join->on('uc.producto_codigo', '=', 'i.producto_codigo');
             })
             ->where('i.bodega_id', $bodega->id)
+            ->when($request->filled('stock_tipo'), fn ($query) => $query->where('i.stock_tipo', $request->query('stock_tipo')))
             ->when($request->query('q'), function ($query, $q) {
                 $query->where(function ($where) use ($q) {
                     $where->where('i.producto_codigo', 'like', "%{$q}%")

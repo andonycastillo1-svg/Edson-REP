@@ -226,7 +226,13 @@ class NotificacionService
         ];
 
         $rrhh = User::query()
-            ->where('role_id', 4)
+            ->where(function ($query) {
+                $query->where('role_id', 4)
+                    ->orWhere(function ($almacenistaPrincipal) {
+                        $almacenistaPrincipal->where('role_id', 2)
+                            ->whereHas('bodega', fn ($bodega) => $bodega->where('tipo', 'Principal'));
+                    });
+            })
             ->when($creador, fn ($query) => $query->where('id', '!=', $creador->id))
             ->get();
 

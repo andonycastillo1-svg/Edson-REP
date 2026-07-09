@@ -13,7 +13,7 @@
       return [
           'producto_codigo' => $i->producto_codigo,
           'bodega_id' => $i->bodega_id,
-          'label' => (optional($i->producto)->descripcion ?: optional($i->producto)->nombre) . ' - ' . $i->producto_codigo . ' (' . optional($i->bodega)->nombre . ') - Stock: ' . $i->cantidad,
+          'label' => (optional($i->producto)->descripcion ?: optional($i->producto)->nombre) . ' - ' . $i->producto_codigo . ' (' . optional($i->bodega)->nombre . ') - ' . (($i->stock_tipo ?? 'nuevo') === 'usado' ? 'Usado reutilizable' : 'Nuevo') . ' - Stock: ' . $i->cantidad . (!is_null($i->vida_util_restante_meses) ? ' - Vida restante: ' . $i->vida_util_restante_meses . ' meses' : ''),
       ];
   });
 @endphp

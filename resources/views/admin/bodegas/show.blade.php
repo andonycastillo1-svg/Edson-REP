@@ -508,6 +508,14 @@
                     {{ number_format($inventarios->count()) }} productos en pantalla
                 </span>
 
+                <select name="stock_tipo" class="inv-search" style="max-width:220px;">
+                    <option value="">Todos los estados</option>
+                    <option value="nuevo" @selected(request('stock_tipo') === 'nuevo')>Stock nuevo</option>
+                    <option value="usado" @selected(request('stock_tipo') === 'usado')>Usado reutilizable</option>
+                    <option value="danado" @selected(request('stock_tipo') === 'danado')>Dañado/no reutilizable</option>
+                    <option value="descuento" @selected(request('stock_tipo') === 'descuento')>Pendiente de descuento</option>
+                </select>
+
                 <button class="inv-btn inv-btn-blue" type="submit">
                     Filtrar
                 </button>
@@ -526,6 +534,7 @@
                                 <th>Código</th>
                                 <th>Producto</th>
                                 <th>Categoría</th>
+                                <th>Tipo stock</th>
                                 <th class="text-right">Cantidad</th>
                                 <th class="text-right">Vida útil</th>
                                 <th class="text-right">Costo unitario</th>
@@ -558,6 +567,16 @@
 
                                     <td>
                                         {{ $inv->categoria ?? '—' }}
+                                    </td>
+
+                                    <td>
+                                        @php($tipoStock = $inv->stock_tipo ?? 'nuevo')
+                                        <span class="inv-stock-pill">
+                                            {{ ['nuevo' => 'Nuevo', 'usado' => 'Usado reutilizable', 'danado' => 'Dañado/no reutilizable', 'descuento' => 'Pendiente descuento'][$tipoStock] ?? ucfirst($tipoStock) }}
+                                        </span>
+                                        @if($tipoStock === 'usado' && !is_null($inv->vida_util_restante_meses))
+                                            <div class="inv-muted" style="font-size:11px; margin-top:4px;">Vida restante: {{ $inv->vida_util_restante_meses }} meses</div>
+                                        @endif
                                     </td>
 
                                     <td class="text-right">

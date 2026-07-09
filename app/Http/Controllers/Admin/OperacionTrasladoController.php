@@ -151,6 +151,7 @@ class OperacionTrasladoController extends Controller
         foreach ($agrupadas as $codigo => $cantidad) {
             $inventario = Inventario::where('producto_codigo', $codigo)
                 ->where('bodega_id', $origenId)
+                ->where('stock_tipo', 'nuevo')
                 ->first();
 
             $disponible = (int) (optional($inventario)->cantidad ?? 0);
@@ -288,6 +289,7 @@ class OperacionTrasladoController extends Controller
 
                 $inventarioOrigen = Inventario::where('producto_codigo', $codigo)
                     ->where('bodega_id', $origenId)
+                    ->where('stock_tipo', 'nuevo')
                     ->lockForUpdate()
                     ->first();
 
@@ -304,6 +306,7 @@ class OperacionTrasladoController extends Controller
 
                 $inventarioDestino = Inventario::where('producto_codigo', $codigo)
                     ->where('bodega_id', $destinoId)
+                    ->where('stock_tipo', 'nuevo')
                     ->lockForUpdate()
                     ->first();
 
@@ -312,6 +315,7 @@ class OperacionTrasladoController extends Controller
                         'producto_codigo' => $codigo,
                         'bodega_id'       => $destinoId,
                         'cantidad'        => 0,
+                        'stock_tipo'      => 'nuevo',
                     ]);
                 }
 

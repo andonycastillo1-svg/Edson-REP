@@ -7,6 +7,7 @@ use App\Models\AlertaReemplazo;
 use App\Services\NotificacionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Bodega;
 use Maatwebsite\Excel\Facades\Excel;
 
 class RrhhDashboardController extends Controller
@@ -22,6 +23,7 @@ class RrhhDashboardController extends Controller
 
     public function alertas(Request $request)
     {
+        $this->autorizarVisualizacionAlertas($request);
         $alertas = $this->buildQuery($request)
             ->latest('alertas_reemplazos_rrhh.created_at')
             ->paginate(20)
@@ -52,6 +54,7 @@ class RrhhDashboardController extends Controller
 
     public function export(Request $request)
     {
+        $this->autorizarVisualizacionAlertas($request);
         $alertas = $this->buildQuery($request)
             ->latest('alertas_reemplazos_rrhh.created_at')
             ->get()
@@ -75,6 +78,25 @@ class RrhhDashboardController extends Controller
             new AlertasRrhhExport($alertas, $request->user()->name, $filters),
             'alertas_rrhh_'.now()->format('Y-m-d_Hi').'.xlsx'
         );
+    }
+
+    private function autorizarVisualizacionAlertas(Request $request): void
+    {
+        $user = $request->user();
+
+        if ((int) $user->role_id === 4) {
+            return;
+        }
+
+        if ((int) $user->role_id === 2) {
+            $bodega = $user->bodega_id ? Bodega::find($user->bodega_id) : null;
+
+            if ($bodega && $bodega->tipo === 'Principal') {
+                return;
+            }
+        }
+
+        abort(403);
     }
 
     private function buildQuery(Request $request)
