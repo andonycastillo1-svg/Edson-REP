@@ -242,7 +242,7 @@
                                     </td>
 
                                     <td class="px-3 py-2 whitespace-nowrap text-right">
-                                        @if(($a->estado ?? 'pendiente') === 'pendiente')
+                                        @if(($a->estado ?? 'pendiente') === 'pendiente' && (int) auth()->user()->role_id === 4)
                                             <form method="POST"
                                                   action="{{ route('rrhh.alertas.finalizar', $a) }}"
                                                   onsubmit="return confirm('¿Confirmas marcar esta alerta de descuento como finalizada?');">
@@ -253,6 +253,8 @@
                                                     Finalizar
                                                 </button>
                                             </form>
+                                        @elseif(($a->estado ?? 'pendiente') === 'pendiente')
+                                            <span class="text-xs font-semibold text-slate-400">Solo lectura</span>
                                         @else
                                             <span class="text-xs font-semibold text-slate-400">Gestionada</span>
                                         @endif

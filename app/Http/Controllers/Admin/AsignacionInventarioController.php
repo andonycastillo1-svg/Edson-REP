@@ -129,7 +129,7 @@ class AsignacionInventarioController extends Controller
             $bodegasQuery->where('id', $bodegaId);
         }
 
-        $inventarios = $inventariosQuery->get();
+        $inventarios = $inventariosQuery->whereIn('stock_tipo', ['nuevo', 'usado'])->where('cantidad', '>', 0)->get();
         $colaboradores = Colaborador::where('estado', 'Activo')->get();
         $bodegas = $bodegasQuery->get();
 
@@ -190,6 +190,8 @@ class AsignacionInventarioController extends Controller
             $inventario = Inventario::query()
                 ->where('producto_codigo', $solicitud['producto_codigo'])
                 ->where('bodega_id', $solicitud['bodega_id'])
+                ->whereIn('stock_tipo', ['nuevo', 'usado'])
+                ->selectRaw('SUM(cantidad) as cantidad')
                 ->first();
 
             if (!$inventario || (int) $inventario->cantidad < $solicitud['cantidad_total']) {
@@ -229,9 +231,16 @@ class AsignacionInventarioController extends Controller
                 $inventario = Inventario::with('producto')
                     ->where('producto_codigo', $item['producto_codigo'])
                     ->where('bodega_id', $item['bodega_id'])
+                    ->whereIn('stock_tipo', ['usado', 'nuevo'])
+                    ->where('cantidad', '>', 0)
+                    ->orderByRaw("CASE WHEN stock_tipo = 'usado' THEN 0 ELSE 1 END")
                     ->firstOrFail();
 
-                $inventario->decrement('cantidad', (int) $item['cantidad_asignada']);
+                $stockTipoAsignado = $this->descontarStockReutilizable(
+                    $item['producto_codigo'],
+                    (int) $item['bodega_id'],
+                    (int) $item['cantidad_asignada']
+                );
 
                 $costoUnitario = $data['costo_unitario'] ?? null;
 
@@ -259,12 +268,18 @@ class AsignacionInventarioController extends Controller
                     'imagen' => $imagenPath,
                     'observaciones' => $data['observaciones'] ?? null,
                     'estado' => 'Activa',
+                    'stock_tipo' => $stockTipoAsignado,
+                    'vida_util_original_meses' => (int) ($inventario->producto?->vida_util_meses ?? 0),
                     'estado_evidencia' => 'pendiente',
                 ];
 
                 if (!empty($inventario->producto?->vida_util_meses)) {
-                    $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])
-                        ->addMonths($inventario->producto->vida_util_meses);
+                    $mesesAsignacion = $stockTipoAsignado === 'usado' && $inventario->vida_util_restante_meses !== null
+                        ? max(0, (int) $inventario->vida_util_restante_meses)
+                        : (int) $inventario->producto->vida_util_meses;
+
+                    $payload['vida_util_restante_meses'] = $mesesAsignacion;
+                    $payload['fecha_vencimiento'] = Carbon::parse($data['fecha'])->addMonths($mesesAsignacion);
                 }
 
                 if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
@@ -566,6 +581,8 @@ class AsignacionInventarioController extends Controller
         $data = $request->validate([
             'cantidad_devuelta' => ['required', 'integer', 'min:1'],
             'detalle_devolucion' => ['nullable', 'string', 'max:1000'],
+            'estado_devolucion' => ['nullable', 'in:buen_estado,danado,sin_vida_util,descuento'],
+            'aplica_descuento' => ['nullable', 'boolean'],
         ]);
 
         $cantidadDevuelta = min((int) $data['cantidad_devuelta'], (int) $asignacion->cantidad_asignada);
@@ -582,10 +599,7 @@ class AsignacionInventarioController extends Controller
 
             $asignacion->save();
 
-            Inventario::query()
-                ->where('bodega_id', $asignacion->bodega_id)
-                ->where('producto_codigo', $asignacion->producto_codigo)
-                ->increment('cantidad', $cantidadDevuelta);
+            $retorno = $this->registrarRetornoInventario($asignacion, $cantidadDevuelta, $data['estado_devolucion'] ?? 'buen_estado');
 
             if (Schema::hasTable('asignacion_movimientos')) {
                 AsignacionMovimiento::create([
@@ -594,6 +608,7 @@ class AsignacionInventarioController extends Controller
                     'cantidad' => $cantidadDevuelta,
                     'detalle' => $data['detalle_devolucion'] ?? 'Devolución de producto.',
                     'grupo_devolucion' => $grupoDevolucion,
+                    ...$retorno,
                     'user_id' => auth()->id(),
                 ]);
             }
@@ -623,6 +638,8 @@ class AsignacionInventarioController extends Controller
             'devoluciones' => ['required', 'array', 'min:1'],
             'devoluciones.*' => ['nullable', 'integer', 'min:1'],
             'detalle_devolucion' => ['nullable', 'string', 'max:1000'],
+            'estado_devolucion' => ['nullable', 'in:buen_estado,danado,sin_vida_util,descuento'],
+            'aplica_descuento' => ['nullable', 'boolean'],
         ]);
 
         $ids = collect($data['seleccionadas'])
@@ -681,10 +698,7 @@ class AsignacionInventarioController extends Controller
 
                 $asignacion->save();
 
-                Inventario::query()
-                    ->where('bodega_id', $asignacion->bodega_id)
-                    ->where('producto_codigo', $asignacion->producto_codigo)
-                    ->increment('cantidad', $cantidadDevuelta);
+                $retorno = $this->registrarRetornoInventario($asignacion, $cantidadDevuelta, $data['estado_devolucion'] ?? 'buen_estado');
 
                 if (Schema::hasTable('asignacion_movimientos')) {
                     AsignacionMovimiento::create([
@@ -693,6 +707,7 @@ class AsignacionInventarioController extends Controller
                         'cantidad' => $cantidadDevuelta,
                         'detalle' => $data['detalle_devolucion'] ?? 'Devolución múltiple.',
                         'grupo_devolucion' => $grupoDevolucion,
+                        ...$retorno,
                         'user_id' => auth()->id(),
                     ]);
                 }
@@ -727,6 +742,8 @@ class AsignacionInventarioController extends Controller
 
         $data = $request->validate([
             'detalle_devolucion' => ['nullable', 'string', 'max:1000'],
+            'estado_devolucion' => ['nullable', 'in:buen_estado,danado,sin_vida_util,descuento'],
+            'aplica_descuento' => ['nullable', 'boolean'],
         ]);
 
         $query = AsignacionInventario::query()
@@ -758,10 +775,7 @@ class AsignacionInventarioController extends Controller
                 $asignacion->estado = 'Devuelta';
                 $asignacion->save();
 
-                Inventario::query()
-                    ->where('bodega_id', $asignacion->bodega_id)
-                    ->where('producto_codigo', $asignacion->producto_codigo)
-                    ->increment('cantidad', $cantidadDevuelta);
+                $retorno = $this->registrarRetornoInventario($asignacion, $cantidadDevuelta, $data['estado_devolucion'] ?? 'buen_estado');
 
                 if (Schema::hasTable('asignacion_movimientos')) {
                     AsignacionMovimiento::create([
@@ -770,6 +784,7 @@ class AsignacionInventarioController extends Controller
                         'cantidad' => $cantidadDevuelta,
                         'detalle' => $data['detalle_devolucion'] ?? 'Devolución total por colaborador.',
                         'grupo_devolucion' => $grupoDevolucion,
+                        ...$retorno,
                         'user_id' => auth()->id(),
                     ]);
                 }
@@ -841,6 +856,7 @@ class AsignacionInventarioController extends Controller
             'asignacion.colaborador',
             'asignacion.producto',
             'asignacion.bodega',
+            'bodegaRetorno',
             'user',
         ])
             ->where('tipo', 'Devolucion')
@@ -852,6 +868,83 @@ class AsignacionInventarioController extends Controller
         }
 
         return $query->get();
+    }
+
+    private function descontarStockReutilizable(string $productoCodigo, int $bodegaId, int $cantidad): string
+    {
+        $pendiente = $cantidad;
+        $tiposUsados = [];
+
+        foreach (['usado', 'nuevo'] as $tipo) {
+            $inventario = Inventario::where('producto_codigo', $productoCodigo)
+                ->where('bodega_id', $bodegaId)
+                ->where('stock_tipo', $tipo)
+                ->where('cantidad', '>', 0)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $inventario || $pendiente <= 0) {
+                continue;
+            }
+
+            $descontar = min($pendiente, (int) $inventario->cantidad);
+            $inventario->decrement('cantidad', $descontar);
+            $pendiente -= $descontar;
+            $tiposUsados[] = $tipo;
+        }
+
+        if ($pendiente > 0) {
+            throw new \RuntimeException('Stock insuficiente para completar la asignación.');
+        }
+
+        return in_array('usado', $tiposUsados, true) ? 'usado' : 'nuevo';
+    }
+
+    private function registrarRetornoInventario(AsignacionInventario $asignacion, int $cantidad, string $estadoDevolucion): array
+    {
+        $vidaOriginal = (int) ($asignacion->vida_util_original_meses ?: ($asignacion->producto->vida_util_meses ?? 0));
+        $fechaAsignacion = Carbon::parse($asignacion->fecha);
+        $consumida = max(0, $fechaAsignacion->diffInMonths(now(), false));
+        $restante = max(0, (int) ($asignacion->vida_util_restante_meses ?? $vidaOriginal) - $consumida);
+
+        $stockTipo = match ($estadoDevolucion) {
+            'buen_estado' => $restante > 0 ? 'usado' : 'danado',
+            'descuento' => 'descuento',
+            default => 'danado',
+        };
+
+        // Solo el producto en buen estado y con vida útil restante vuelve como usado reutilizable; nunca incrementa stock nuevo.
+        if ($stockTipo === 'usado') {
+            Inventario::firstOrCreate([
+                'bodega_id' => $asignacion->bodega_id,
+                'producto_codigo' => $asignacion->producto_codigo,
+                'stock_tipo' => 'usado',
+            ], ['cantidad' => 0, 'vida_util_restante_meses' => $restante]);
+            DB::table('inventarios')
+                ->where('bodega_id', $asignacion->bodega_id)
+                ->where('producto_codigo', $asignacion->producto_codigo)
+                ->where('stock_tipo', 'usado')
+                ->update([
+                    'cantidad' => DB::raw('cantidad + '.(int) $cantidad),
+                    'vida_util_restante_meses' => $restante,
+                    'updated_at' => now(),
+                ]);
+        } elseif (in_array($stockTipo, ['danado', 'descuento'], true)) {
+            Inventario::firstOrCreate([
+                'bodega_id' => $asignacion->bodega_id,
+                'producto_codigo' => $asignacion->producto_codigo,
+                'stock_tipo' => $stockTipo,
+            ], ['cantidad' => 0])->increment('cantidad', $cantidad);
+        }
+
+        return [
+            'estado_devolucion' => $estadoDevolucion,
+            'stock_tipo_resultante' => $stockTipo,
+            'vida_util_original_meses' => $vidaOriginal,
+            'vida_util_consumida_meses' => $consumida,
+            'vida_util_restante_meses' => $restante,
+            'bodega_retorno_id' => $asignacion->bodega_id,
+        ];
     }
 
     private function requiereRestriccionBodega(): bool

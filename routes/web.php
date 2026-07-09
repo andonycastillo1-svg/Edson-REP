@@ -329,6 +329,12 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::get('operaciones/traslados/{operacion}/archivo-excel', [OperacionTrasladoController::class, 'archivo'])
             ->name('operaciones.traslados.archivo');
+
+        Route::get('alertas-descuento', [RrhhDashboardController::class, 'alertas'])
+            ->name('alertas.index');
+
+        Route::get('alertas-descuento/export', [RrhhDashboardController::class, 'export'])
+            ->name('alertas.export');
     });
 
 /*
