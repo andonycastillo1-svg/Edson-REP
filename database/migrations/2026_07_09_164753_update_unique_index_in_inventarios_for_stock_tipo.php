@@ -3,30 +3,55 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
-return new class extends Migration
+class UpdateUniqueIndexInInventariosForStockTipo extends Migration
 {
     public function up(): void
     {
-        Schema::table('inventarios', function (Blueprint $table) {
-            $table->dropUnique('uq_producto_bodega');
+        $indexes = collect(DB::select("SHOW INDEX FROM inventarios"))
+            ->pluck('Key_name')
+            ->unique()
+            ->values()
+            ->toArray();
 
-            $table->unique(
-                ['producto_codigo', 'bodega_id', 'stock_tipo'],
-                'uq_producto_bodega_stock_tipo'
-            );
-        });
+        if (in_array('uq_producto_bodega', $indexes)) {
+            Schema::table('inventarios', function (Blueprint $table) {
+                $table->dropUnique('uq_producto_bodega');
+            });
+        }
+
+        if (!in_array('uq_producto_bodega_stock_tipo', $indexes)) {
+            Schema::table('inventarios', function (Blueprint $table) {
+                $table->unique(
+                    ['producto_codigo', 'bodega_id', 'stock_tipo'],
+                    'uq_producto_bodega_stock_tipo'
+                );
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('inventarios', function (Blueprint $table) {
-            $table->dropUnique('uq_producto_bodega_stock_tipo');
+        $indexes = collect(DB::select("SHOW INDEX FROM inventarios"))
+            ->pluck('Key_name')
+            ->unique()
+            ->values()
+            ->toArray();
 
-            $table->unique(
-                ['producto_codigo', 'bodega_id'],
-                'uq_producto_bodega'
-            );
-        });
+        if (in_array('uq_producto_bodega_stock_tipo', $indexes)) {
+            Schema::table('inventarios', function (Blueprint $table) {
+                $table->dropUnique('uq_producto_bodega_stock_tipo');
+            });
+        }
+
+        if (!in_array('uq_producto_bodega', $indexes)) {
+            Schema::table('inventarios', function (Blueprint $table) {
+                $table->unique(
+                    ['producto_codigo', 'bodega_id'],
+                    'uq_producto_bodega'
+                );
+            });
+        }
     }
-};
+}

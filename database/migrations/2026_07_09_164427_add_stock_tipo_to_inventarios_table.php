@@ -1,19 +1,38 @@
-public function up(): void
-{
-    Schema::table('inventarios', function (Blueprint $table) {
-        $table->enum('stock_tipo', ['nuevo', 'usado'])
-            ->default('nuevo')
-            ->after('cantidad');
+<?php
 
-        $table->integer('vida_util_restante_meses')
-            ->nullable()
-            ->after('stock_tipo');
-    });
-}
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-public function down(): void
+class AddStockTipoToInventariosTable extends Migration
 {
-    Schema::table('inventarios', function (Blueprint $table) {
-        $table->dropColumn(['stock_tipo', 'vida_util_restante_meses']);
-    });
+    public function up(): void
+    {
+        Schema::table('inventarios', function (Blueprint $table) {
+            if (!Schema::hasColumn('inventarios', 'stock_tipo')) {
+                $table->string('stock_tipo', 30)
+                    ->default('nuevo')
+                    ->after('cantidad');
+            }
+
+            if (!Schema::hasColumn('inventarios', 'vida_util_restante_meses')) {
+                $table->integer('vida_util_restante_meses')
+                    ->nullable()
+                    ->after('stock_tipo');
+            }
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('inventarios', function (Blueprint $table) {
+            if (Schema::hasColumn('inventarios', 'vida_util_restante_meses')) {
+                $table->dropColumn('vida_util_restante_meses');
+            }
+
+            if (Schema::hasColumn('inventarios', 'stock_tipo')) {
+                $table->dropColumn('stock_tipo');
+            }
+        });
+    }
 }
