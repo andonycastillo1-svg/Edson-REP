@@ -60,7 +60,7 @@ class OperacionTrasladoController extends Controller
             })
             ->orderByDesc('created_at');
 
-        $operaciones = $q->paginate(20)->withQueryString();
+        $operaciones = $q->paginate(10)->withQueryString();
         $bodegas = Bodega::orderBy('nombre')->get();
 
         return view('admin.traslados.index', compact(

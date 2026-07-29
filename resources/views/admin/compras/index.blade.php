@@ -1,407 +1,332 @@
-@extends('layouts.admin')
+@extends((int) auth()->user()->role_id === 2 ? 'layouts.operador' : 'layouts.admin')
 
 @section('title', 'Compras')
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+@php
+    $routePrefix = (int) auth()->user()->role_id === 2 ? 'operador' : 'admin';
+@endphp
 
-<div class="w-full">
-    <x-internal-navigation :back-url="route('dashboard')" />
+<div class="mx-auto w-full max-w-7xl">
 
-    <div class="overflow-hidden rounded-3xl border border-sky-200 bg-white shadow-xl shadow-sky-100/70">
-
-        {{-- HEADER --}}
-        <div class="border-b border-sky-100 bg-gradient-to-r from-white via-sky-50 to-blue-50 px-6 py-5">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
-                <div class="flex items-start gap-4">
-                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-sky-200 bg-white shadow-sm">
-                        <span class="text-xl text-blue-700">🧾</span>
-                    </div>
-
-                    <div>
-                        <h1 class="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
-                            Compras <span class="font-bold text-blue-700">(Facturas)</span>
-                        </h1>
-                        <p class="mt-1 text-sm text-slate-500">
-                            Registrar facturas y generar entradas automáticas al inventario.
-                        </p>
-                    </div>
-                </div>
-
-            </div>
+    @if(session('success'))
+        <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+            {{ session('success') }}
         </div>
+    @endif
 
-        {{-- MENSAJES --}}
-        <div class="px-6 pt-5">
-            @if(session('success'))
-                <div class="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                    <strong>Correcto:</strong> {{ session('success') }}
-                </div>
-            @endif
-
-            @if(session('error'))
-                <div class="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                    <strong>Error:</strong> {{ session('error') }}
-                </div>
-            @endif
+    @if(session('error'))
+        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            {{ session('error') }}
         </div>
+    @endif
 
-        {{-- BARRA DE HERRAMIENTAS --}}
-        <div class="px-6 pb-5">
-            <div class="rounded-3xl border border-sky-200 bg-sky-50/70 px-5 py-4 shadow-sm">
+    <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+
+        {{-- Encabezado --}}
+        <header class="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div class="flex items-center gap-4">
+                <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6">
+                        <path fill-rule="evenodd"
+                              d="M4.5 3.75A2.25 2.25 0 016.75 1.5h7.69c.597 0 1.17.237 1.591.659l3.31 3.31c.422.421.659.994.659 1.591v13.19a2.25 2.25 0 01-2.25 2.25h-11A2.25 2.25 0 014.5 20.25V3.75zM8.25 11.25a.75.75 0 000 1.5h7.5a.75.75 0 000-1.5h-7.5zm0 4a.75.75 0 000 1.5h7.5a.75.75 0 000-1.5h-7.5z"
+                              clip-rule="evenodd"/>
+                    </svg>
+                </span>
 
                 <div>
-                    <h2 class="text-base font-black text-slate-900">
-                        Listado de compras
-                    </h2>
-                    <p class="mt-0.5 text-sm text-slate-500">
-                        Busca por ID, factura, proveedor, proyecto, fecha o total.
-                    </p>
-
-                    <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-
-                        <input
-                            id="buscarCompra"
-                            type="text"
-                            placeholder="Buscar compra..."
-                            class="w-full rounded-2xl border border-sky-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 lg:w-[360px]"
-                        >
-
-                        <select
-                            id="filasPorPagina"
-                            class="w-full rounded-2xl border border-sky-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 lg:w-36"
-                        >
-                            <option value="10">10 filas</option>
-                            <option value="15">15 filas</option>
-                            <option value="25">25 filas</option>
-                            <option value="50">50 filas</option>
-                        </select>
-
-                        <button onclick="abrirModal()"
-                            type="button"
-                            class="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-700 px-7 py-3 text-sm font-black text-white shadow-md shadow-blue-200 transition hover:bg-blue-800 active:scale-[0.98] lg:w-auto">
-                            <span class="text-lg leading-none">+</span>
-                            Nueva compra
-                        </button>
-
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        {{-- TABLA --}}
-        <div class="px-6 pb-6">
-            <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm" id="tablaCompras">
-                        <thead class="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-sky-50">
-                            <tr class="text-left text-xs font-black uppercase tracking-wide text-slate-600">
-                                <th class="px-4 py-3 whitespace-nowrap">ID</th>
-                                <th class="px-4 py-3 whitespace-nowrap">Fecha de compra</th>
-                                <th class="px-4 py-3 whitespace-nowrap">No. Factura</th>
-                                <th class="px-4 py-3 whitespace-nowrap">Proveedor</th>
-                                <th class="px-4 py-3 whitespace-nowrap">Proyecto</th>
-                                <th class="px-4 py-3 text-right whitespace-nowrap">Total</th>
-                                <th class="px-4 py-3 text-right whitespace-nowrap">Acciones</th>
-                            </tr>
-                        </thead>
-
-                        <tbody class="divide-y divide-slate-100">
-                            @forelse($compras as $c)
-                                <tr class="fila-compra transition hover:bg-sky-50/70"
-                                    data-search="{{ strtolower($c->id . ' ' . $c->fecha_compra . ' ' . $c->no_factura . ' ' . $c->proveedor_nombre . ' ' . ($c->proyecto ?? '') . ' ' . number_format($c->total_factura, 2)) }}">
-
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="inline-flex items-center rounded-xl bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
-                                            #{{ $c->id }}
-                                        </span>
-                                    </td>
-
-                                    <td class="px-4 py-3 whitespace-nowrap font-medium text-slate-700">
-                                        {{ $c->fecha_compra }}
-                                    </td>
-
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="font-black text-slate-900">
-                                            {{ $c->no_factura }}
-                                        </span>
-                                    </td>
-
-                                    <td class="px-4 py-3">
-                                        <div class="max-w-[330px]">
-                                            <p class="truncate font-bold text-slate-800">
-                                                {{ $c->proveedor_nombre }}
-                                            </p>
-                                        </div>
-                                    </td>
-
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        @if($c->proyecto)
-                                            <span class="inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-                                                {{ $c->proyecto }}
-                                            </span>
-                                        @else
-                                            <span class="text-slate-400">—</span>
-                                        @endif
-                                    </td>
-
-                                    <td class="px-4 py-3 text-right whitespace-nowrap">
-                                        <span class="font-black text-slate-950">
-                                            {{ number_format($c->total_factura, 2) }}
-                                        </span>
-                                    </td>
-
-                                    <td class="px-4 py-3 text-right whitespace-nowrap">
-                                        <a href="{{ route($routePrefix . '.compras.show', $c->id) }}"
-                                           class="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2 text-xs font-bold text-blue-700 transition hover:border-blue-700 hover:bg-blue-700 hover:text-white">
-                                            Ver
-                                        </a>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr id="sinRegistrosOriginal">
-                                    <td colspan="7" class="px-4 py-12 text-center">
-                                        <div class="flex flex-col items-center">
-                                            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-2xl">
-                                                🧾
-                                            </div>
-                                            <p class="text-base font-bold text-slate-800">
-                                                No hay compras registradas
-                                            </p>
-                                            <p class="mt-1 text-sm text-slate-500">
-                                                Cuando registres una compra aparecerá en este listado.
-                                            </p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-
-                            <tr id="sinResultados" class="hidden">
-                                <td colspan="7" class="px-4 py-12 text-center">
-                                    <div class="flex flex-col items-center">
-                                        <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-2xl">
-                                            🔍
-                                        </div>
-                                        <p class="text-base font-bold text-slate-800">
-                                            No se encontraron resultados
-                                        </p>
-                                        <p class="mt-1 text-sm text-slate-500">
-                                            Intenta buscar por otro dato de la compra.
-                                        </p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                {{-- FOOTER TABLA / PAGINACIÓN --}}
-                <div class="flex flex-col gap-3 border-t border-slate-200 bg-sky-50/70 px-4 py-3 md:flex-row md:items-center md:justify-between">
-                    <div class="text-sm text-slate-500">
-                        Mostrando
-                        <span id="desdeRegistro" class="font-bold text-slate-800">0</span>
-                        -
-                        <span id="hastaRegistro" class="font-bold text-slate-800">0</span>
-                        de
-                        <span id="totalRegistros" class="font-bold text-slate-800">0</span>
-                        compras
-                    </div>
-
-                    <div class="flex items-center justify-end gap-2">
-                        <button type="button" id="btnAnterior"
-                            class="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">
-                            Anterior
-                        </button>
-
-                        <div id="numerosPagina" class="flex items-center gap-1"></div>
-
-                        <button type="button" id="btnSiguiente"
-                            class="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">
-                            Siguiente
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-</div>
-
-
-{{-- -------- MODAL NUEVA COMPRA -------- --}}
-<div id="modalCompra" class="fixed inset-0 z-50 hidden">
-
-    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="cerrarModal()"></div>
-
-    <div class="relative mx-auto mt-6 w-[95%] max-w-5xl">
-        <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-
-            <div class="flex items-center justify-between border-b border-slate-200 bg-sky-50 px-6 py-4">
-                <div>
-                    <h2 class="text-lg font-black text-slate-900">
-                        Registrar compra
-                    </h2>
-                    <p class="text-sm text-slate-500">
-                        Ingresa los datos de la factura y productos.
+                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-950">
+                        Compras
+                    </h1>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Registra facturas y genera entradas automáticas al inventario.
                     </p>
                 </div>
+            </div>
 
-                <button onclick="cerrarModal()"
-                    type="button"
-                    class="h-10 w-10 rounded-2xl border border-slate-200 bg-white text-2xl leading-none text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">
-                    &times;
+            <button type="button"
+                    onclick="abrirModal()"
+                    class="inline-flex items-center justify-center rounded-xl !border-blue-600 !bg-blue-600 px-5 py-2.5 text-sm font-extrabold !text-white shadow-sm hover:!bg-blue-700">
+                + Nueva compra
+            </button>
+        </header>
+
+        {{-- Herramientas --}}
+        <div class="grid grid-cols-1 gap-3 border-t border-slate-200 p-4 sm:grid-cols-[minmax(0,1fr)_150px]">
+            <input id="buscarCompra"
+                   type="search"
+                   placeholder="Buscar por ID, factura, proveedor, proyecto, fecha o total..."
+                   class="w-full rounded-xl border-slate-300 px-4 py-2.5 text-sm">
+
+            <select id="filasPorPagina"
+                    class="w-full rounded-xl border-slate-300 px-4 py-2.5 text-sm font-semibold">
+                <option value="10">10 filas</option>
+                <option value="15">15 filas</option>
+                <option value="25">25 filas</option>
+                <option value="50">50 filas</option>
+            </select>
+        </div>
+
+        {{-- Tabla --}}
+        <div class="overflow-x-auto border-t border-slate-200">
+            <table id="tablaCompras" class="w-full min-w-[900px] text-sm">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="w-20 px-4 py-3 text-left text-xs font-extrabold uppercase text-slate-500">ID</th>
+                        <th class="w-36 px-4 py-3 text-left text-xs font-extrabold uppercase text-slate-500">Fecha</th>
+                        <th class="w-44 px-4 py-3 text-left text-xs font-extrabold uppercase text-slate-500">Factura</th>
+                        <th class="px-4 py-3 text-left text-xs font-extrabold uppercase text-slate-500">Proveedor</th>
+                        <th class="w-32 px-4 py-3 text-left text-xs font-extrabold uppercase text-slate-500">Proyecto</th>
+                        <th class="w-36 px-4 py-3 text-right text-xs font-extrabold uppercase text-slate-500">Total</th>
+                        <th class="w-24 px-4 py-3 text-right text-xs font-extrabold uppercase text-slate-500">Acción</th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($compras as $compra)
+                        <tr class="fila-compra transition hover:bg-slate-50"
+                            data-search="{{ strtolower(
+                                $compra->id.' '.
+                                $compra->fecha_compra.' '.
+                                $compra->no_factura.' '.
+                                $compra->proveedor_nombre.' '.
+                                ($compra->proyecto ?? '').' '.
+                                number_format($compra->total_factura, 2)
+                            ) }}">
+
+                            <td class="px-4 py-3">
+                                <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700">
+                                    #{{ $compra->id }}
+                                </span>
+                            </td>
+
+                            <td class="whitespace-nowrap px-4 py-3 font-medium text-slate-700">
+                                {{ $compra->fecha_compra }}
+                            </td>
+
+                            <td class="whitespace-nowrap px-4 py-3 font-extrabold text-slate-900">
+                                {{ $compra->no_factura }}
+                            </td>
+
+                            <td class="px-4 py-3">
+                                <p class="max-w-sm truncate font-bold text-slate-800">
+                                    {{ $compra->proveedor_nombre }}
+                                </p>
+                            </td>
+
+                            <td class="px-4 py-3">
+                                @if($compra->proyecto)
+                                    <span class="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                                        {{ $compra->proyecto }}
+                                    </span>
+                                @else
+                                    <span class="text-slate-400">—</span>
+                                @endif
+                            </td>
+
+                            <td class="whitespace-nowrap px-4 py-3 text-right font-extrabold text-slate-950">
+                                {{ number_format($compra->total_factura, 2) }}
+                            </td>
+
+                            <td class="px-4 py-3 text-right">
+                                <a href="{{ route($routePrefix.'.compras.show', $compra->id) }}"
+                                   class="inline-flex rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-extrabold text-blue-700 hover:bg-blue-600 hover:text-white">
+                                    Ver
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr id="sinRegistrosOriginal">
+                            <td colspan="7" class="px-6 py-14 text-center">
+                                <p class="font-extrabold text-slate-900">
+                                    No hay compras registradas
+                                </p>
+                                <p class="mt-1 text-sm text-slate-500">
+                                    Cuando registres una compra aparecerá aquí.
+                                </p>
+                            </td>
+                        </tr>
+                    @endforelse
+
+                    <tr id="sinResultados" class="hidden">
+                        <td colspan="7" class="px-6 py-14 text-center">
+                            <p class="font-extrabold text-slate-900">
+                                No se encontraron resultados
+                            </p>
+                            <p class="mt-1 text-sm text-slate-500">
+                                Prueba buscando por otro dato.
+                            </p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Paginación local --}}
+        <footer class="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-sm text-slate-500">
+                Mostrando
+                <strong id="desdeRegistro" class="text-slate-900">0</strong>
+                a
+                <strong id="hastaRegistro" class="text-slate-900">0</strong>
+                de
+                <strong id="totalRegistros" class="text-slate-900">0</strong>
+                compras
+            </p>
+
+            <div class="flex items-center gap-2">
+                <button type="button" id="btnAnterior"
+                        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 disabled:opacity-40">
+                    Anterior
+                </button>
+
+                <div id="numerosPagina" class="flex items-center gap-1"></div>
+
+                <button type="button" id="btnSiguiente"
+                        class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 disabled:opacity-40">
+                    Siguiente
                 </button>
             </div>
+        </footer>
 
-            <div class="max-h-[80vh] overflow-y-auto bg-white p-6">
-                @include('admin.compras._form')
-            </div>
-
-        </div>
-    </div>
-
+    </section>
 </div>
 
+{{-- Modal --}}
+<div id="modalCompra" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+         onclick="cerrarModal()"></div>
 
-{{-- -------- SCRIPT MODAL + BÚSQUEDA + PAGINACIÓN -------- --}}
+    <div class="relative mx-auto mt-6 w-[95%] max-w-5xl">
+        <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <header class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-950">
+                        Registrar compra
+                    </h2>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Ingresa los datos de la factura y los productos.
+                    </p>
+                </div>
+
+                <button type="button"
+                        onclick="cerrarModal()"
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-xl text-slate-500 hover:bg-slate-100">
+                    ×
+                </button>
+            </header>
+
+            <div class="max-h-[80vh] overflow-y-auto p-6">
+                @include('admin.compras._form')
+            </div>
+        </section>
+    </div>
+</div>
+
 <script>
+const modal = document.getElementById('modalCompra');
+
 function abrirModal() {
-    const modal = document.getElementById('modalCompra');
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 }
 
 function cerrarModal() {
-    const modal = document.getElementById('modalCompra');
     modal.classList.add('hidden');
     document.body.classList.remove('overflow-hidden');
 }
 
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', e => {
     if (e.key === 'Escape') cerrarModal();
 });
 
-document.addEventListener('DOMContentLoaded', function () {
-    const inputBuscar = document.getElementById('buscarCompra');
-    const selectFilas = document.getElementById('filasPorPagina');
-    const filas = Array.from(document.querySelectorAll('.fila-compra'));
-    const sinResultados = document.getElementById('sinResultados');
+document.addEventListener('DOMContentLoaded', () => {
+    const search = document.getElementById('buscarCompra');
+    const perPageSelect = document.getElementById('filasPorPagina');
+    const rows = [...document.querySelectorAll('.fila-compra')];
+    const noResults = document.getElementById('sinResultados');
+    const previous = document.getElementById('btnAnterior');
+    const next = document.getElementById('btnSiguiente');
+    const numbers = document.getElementById('numerosPagina');
+    const from = document.getElementById('desdeRegistro');
+    const to = document.getElementById('hastaRegistro');
+    const total = document.getElementById('totalRegistros');
 
-    const btnAnterior = document.getElementById('btnAnterior');
-    const btnSiguiente = document.getElementById('btnSiguiente');
-    const numerosPagina = document.getElementById('numerosPagina');
+    let page = 1;
+    let perPage = Number(perPageSelect.value);
 
-    const desdeRegistro = document.getElementById('desdeRegistro');
-    const hastaRegistro = document.getElementById('hastaRegistro');
-    const totalRegistros = document.getElementById('totalRegistros');
+    const normalize = text => text.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
 
-    let paginaActual = 1;
-    let filasPorPagina = parseInt(selectFilas.value);
+    const filteredRows = () => {
+        const value = normalize(search.value);
+        return rows.filter(row => normalize(row.dataset.search || '').includes(value));
+    };
 
-    function normalizarTexto(texto) {
-        return texto
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim();
-    }
+    function render() {
+        const filtered = filteredRows();
+        const count = filtered.length;
+        const pages = Math.max(1, Math.ceil(count / perPage));
 
-    function obtenerFilasFiltradas() {
-        const texto = normalizarTexto(inputBuscar.value);
+        page = Math.min(page, pages);
+        rows.forEach(row => row.classList.add('hidden'));
 
-        return filas.filter(fila => {
-            const contenido = normalizarTexto(fila.dataset.search || '');
-            return contenido.includes(texto);
-        });
-    }
+        const start = (page - 1) * perPage;
+        const visible = filtered.slice(start, start + perPage);
+        visible.forEach(row => row.classList.remove('hidden'));
 
-    function renderTabla() {
-        const filtradas = obtenerFilasFiltradas();
-        const total = filtradas.length;
-        const totalPaginas = Math.max(1, Math.ceil(total / filasPorPagina));
+        noResults.classList.toggle('hidden', count !== 0 || rows.length === 0);
+        from.textContent = count ? start + 1 : 0;
+        to.textContent = Math.min(start + perPage, count);
+        total.textContent = count;
+        previous.disabled = page === 1;
+        next.disabled = page >= pages || count === 0;
 
-        if (paginaActual > totalPaginas) {
-            paginaActual = totalPaginas;
-        }
+        numbers.innerHTML = '';
 
-        filas.forEach(fila => fila.classList.add('hidden'));
+        for (let i = 1; i <= pages && i <= 5; i++) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = i;
+            button.className = i === page
+                ? 'h-9 min-w-9 rounded-lg bg-blue-600 px-3 text-sm font-extrabold text-white'
+                : 'h-9 min-w-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600';
 
-        const inicio = (paginaActual - 1) * filasPorPagina;
-        const fin = inicio + filasPorPagina;
-        const visibles = filtradas.slice(inicio, fin);
+            button.onclick = () => {
+                page = i;
+                render();
+            };
 
-        visibles.forEach(fila => fila.classList.remove('hidden'));
-
-        sinResultados.classList.toggle('hidden', total !== 0 || filas.length === 0);
-
-        desdeRegistro.textContent = total === 0 ? 0 : inicio + 1;
-        hastaRegistro.textContent = Math.min(fin, total);
-        totalRegistros.textContent = total;
-
-        btnAnterior.disabled = paginaActual <= 1;
-        btnSiguiente.disabled = paginaActual >= totalPaginas || total === 0;
-
-        renderNumeros(totalPaginas, total);
-    }
-
-    function renderNumeros(totalPaginas, total) {
-        numerosPagina.innerHTML = '';
-
-        if (total === 0) return;
-
-        const maxBotones = 5;
-        let inicio = Math.max(1, paginaActual - 2);
-        let fin = Math.min(totalPaginas, inicio + maxBotones - 1);
-
-        if (fin - inicio < maxBotones - 1) {
-            inicio = Math.max(1, fin - maxBotones + 1);
-        }
-
-        for (let i = inicio; i <= fin; i++) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.textContent = i;
-
-            btn.className = i === paginaActual
-                ? 'h-9 min-w-9 rounded-xl bg-blue-700 px-3 text-sm font-black text-white shadow-sm'
-                : 'h-9 min-w-9 rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-600 transition hover:bg-slate-100';
-
-            btn.addEventListener('click', function () {
-                paginaActual = i;
-                renderTabla();
-            });
-
-            numerosPagina.appendChild(btn);
+            numbers.appendChild(button);
         }
     }
 
-    inputBuscar.addEventListener('input', function () {
-        paginaActual = 1;
-        renderTabla();
+    search.addEventListener('input', () => {
+        page = 1;
+        render();
     });
 
-    selectFilas.addEventListener('change', function () {
-        filasPorPagina = parseInt(this.value);
-        paginaActual = 1;
-        renderTabla();
+    perPageSelect.addEventListener('change', () => {
+        perPage = Number(perPageSelect.value);
+        page = 1;
+        render();
     });
 
-    btnAnterior.addEventListener('click', function () {
-        if (paginaActual > 1) {
-            paginaActual--;
-            renderTabla();
+    previous.onclick = () => {
+        if (page > 1) {
+            page--;
+            render();
         }
-    });
+    };
 
-    btnSiguiente.addEventListener('click', function () {
-        paginaActual++;
-        renderTabla();
-    });
+    next.onclick = () => {
+        page++;
+        render();
+    };
 
-    renderTabla();
+    render();
 });
 </script>
-
 @endsection

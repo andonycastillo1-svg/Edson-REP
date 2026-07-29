@@ -1,198 +1,168 @@
-{{-- MODAL CENTRO RRHH --}}
-<div x-show="centroRRHHOpen"
-     x-cloak
-     class="fixed inset-0 z-[80] flex items-start justify-center p-2">
+{{-- MODAL REVISIÓN RRHH --}}
+<div
+    x-show="centroRRHHOpen"
+    x-cloak
+    x-transition.opacity
+    @keydown.escape.window="cerrarCentroRRHH()"
+    class="fixed inset-0 z-[80] flex items-center justify-center p-4"
+>
+    <div
+        class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+        @click="cerrarCentroRRHH()"
+    ></div>
 
-  <div class="absolute inset-0 bg-black/50" @click="cerrarCentroRRHH()"></div>
+    <section class="relative flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
 
-  <div class="relative w-[96vw] max-w-none max-h-[94vh] overflow-hidden rounded-2xl bg-white shadow-xl">
+        {{-- Encabezado --}}
+        <header class="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+            <div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-600">
+                    Revisión RRHH
+                </p>
 
-    {{-- HEADER --}}
-    <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-slate-200 px-4 py-3">
-      <div>
-        <div class="text-[11px] font-semibold uppercase tracking-wide text-rose-600">
-          Centro de revisión RRHH
+                <h2 class="mt-1 text-lg font-bold text-slate-900">
+                    Descuento sugerido
+                </h2>
+
+                <p class="mt-1 text-xs text-slate-500">
+                    Información principal del caso.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                @click="cerrarCentroRRHH()"
+                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                aria-label="Cerrar"
+            >
+                ×
+            </button>
+        </header>
+
+        {{-- Selector --}}
+        <div
+            x-show="cobros.length > 1"
+            class="border-b border-slate-200 bg-slate-50/60 px-5 py-3"
+        >
+            <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Caso
+            </label>
+
+            <select
+                x-model.number="cobroActivoIndex"
+                @change="seleccionarCobroRRHH(cobroActivoIndex)"
+                class="w-full rounded-lg border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+                <template x-for="(cobro, index) in cobros" :key="'caso-'+index">
+                    <option
+                        :value="index"
+                        x-text="`${cobro.producto || 'Sin producto'} · Q ${money(cobro.monto_cobro)}`"
+                    ></option>
+                </template>
+            </select>
         </div>
 
-        <h3 class="mt-1 text-base font-bold text-slate-900">
-          Descuento sugerido
-        </h3>
+        {{-- Contenido --}}
+        <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
 
-        <p class="text-xs text-slate-500">
-          Revisa el caso antes de aplicar, descartar o trasladar a nómina.
-        </p>
-      </div>
+            <template x-if="cobros.length === 0">
+                <div class="py-8 text-center">
+                    <p class="text-sm font-semibold text-slate-800">
+                        No hay casos pendientes
+                    </p>
 
-      <button type="button"
-              class="rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100"
-              @click="cerrarCentroRRHH()">
-        ✕
-      </button>
-    </div>
-
-    {{-- BODY --}}
-    <div class="grid max-h-[78vh] grid-cols-1 overflow-hidden md:grid-cols-12">
-
-      {{-- LISTA IZQUIERDA --}}
-      <div class="border-r border-slate-200 md:col-span-4 overflow-y-auto">
-        <template x-if="cobros.length === 0">
-          <div class="p-4 text-sm text-slate-600">
-            No hay casos pendientes.
-          </div>
-        </template>
-
-        <template x-if="cobros.length > 0">
-          <div class="divide-y divide-slate-200">
-            <template x-for="(cobro, index) in cobros" :key="'centro-rrhh-' + index">
-              <button type="button"
-                      class="w-full px-3 py-3 text-left hover:bg-slate-50"
-                      :class="cobroActivoIndex === index ? 'bg-rose-50' : 'bg-white'"
-                      @click="seleccionarCobroRRHH(index)">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0">
-                    <div class="text-xs font-semibold text-slate-900 truncate" x-text="cobro.producto || '—'"></div>
-                    <div class="mt-1 text-[11px] text-slate-500">
-                      Código: <span x-text="cobro.producto_codigo || '—'"></span>
-                    </div>
-                  </div>
-
-                  <div class="text-right shrink-0">
-                    <div class="text-xs font-bold"
-                         :class="Number(cobro.monto_cobro || 0) > 0 ? 'text-rose-700' : 'text-slate-500'">
-                      Q <span x-text="money(cobro.monto_cobro)"></span>
-                    </div>
-                  </div>
+                    <p class="mt-1 text-xs text-slate-500">
+                        No existen descuentos por revisar.
+                    </p>
                 </div>
-
-                <div class="mt-2">
-                  <span class="inline-flex rounded-full px-2 py-1 text-[11px] font-semibold"
-                        :class="badgeCobro(cobro.estado)"
-                        x-text="estadoCobroTexto(cobro.estado)">
-                  </span>
-                </div>
-              </button>
             </template>
-          </div>
-        </template>
-      </div>
 
-      {{-- DETALLE DERECHA --}}
-      <div class="md:col-span-8 overflow-y-auto">
-        <template x-if="!cobroActivo">
-          <div class="p-4 text-sm text-slate-600">
-            Selecciona un caso para revisar.
-          </div>
-        </template>
+            <template x-if="cobroActivo">
+                <div>
 
-        <template x-if="cobroActivo">
-          <div class="p-4">
+                    {{-- Producto y monto --}}
+                    <div class="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="min-w-0">
+                            <h3
+                                class="truncate text-base font-semibold text-slate-900"
+                                x-text="cobroActivo.producto || '—'"
+                            ></h3>
 
-            <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h4 class="text-lg font-bold text-slate-900" x-text="cobroActivo.producto || '—'"></h4>
-                <div class="mt-1 text-xs text-slate-500">
-                  Código: <span x-text="cobroActivo.producto_codigo || '—'"></span>
+                            <p class="mt-1 text-xs text-slate-500">
+                                Código:
+                                <span
+                                    class="font-medium text-slate-700"
+                                    x-text="cobroActivo.producto_codigo || '—'"
+                                ></span>
+                            </p>
+                        </div>
+
+                        <div class="shrink-0 sm:text-right">
+                            <p class="text-[11px] font-medium text-rose-600">
+                                Monto sugerido
+                            </p>
+
+                            <p class="mt-0.5 text-xl font-bold text-rose-700">
+                                Q <span x-text="money(cobroActivo.monto_cobro)"></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    {{-- Datos --}}
+                    <dl class="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                        <div class="py-3 sm:pr-4">
+                            <dt class="text-[11px] font-medium text-slate-500">
+                                Costo original
+                            </dt>
+
+                            <dd class="mt-1 text-sm font-semibold text-slate-900">
+                                Q <span x-text="money(cobroActivo.costo_producto)"></span>
+                            </dd>
+                        </div>
+
+                        <div class="py-3 sm:px-4">
+                            <dt class="text-[11px] font-medium text-slate-500">
+                                Vida útil / restante
+                            </dt>
+
+                            <dd class="mt-1 text-sm font-semibold text-slate-900">
+                                <span x-text="cobroActivo.vida_util_meses || 0"></span>
+                                /
+                                <span x-text="cobroActivo.meses_restantes || 0"></span>
+                                meses
+                            </dd>
+                        </div>
+
+                        <div class="py-3 sm:pl-4">
+                            <dt class="text-[11px] font-medium text-slate-500">
+                                Estado
+                            </dt>
+
+                            <dd class="mt-1">
+                                <span
+                                    class="inline-flex rounded-full px-2 py-1 text-[11px] font-semibold"
+                                    :class="badgeCobro(cobroActivo.estado)"
+                                    x-text="estadoCobroTexto(cobroActivo.estado)"
+                                ></span>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    {{-- Justificación --}}
+                    <div class="border-t border-slate-200 pt-4">
+                        <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                            Justificación
+                        </p>
+
+                        <p
+                            class="mt-2 border-l-2 border-slate-300 pl-3 text-sm leading-6 text-slate-600"
+                            x-text="cobroActivo.detalle || 'Sin justificación registrada.'"
+                        ></p>
+                    </div>
+
                 </div>
-              </div>
+            </template>
 
-              <div class="rounded-xl border px-4 py-3 text-right"
-                   :class="Number(cobroActivo.monto_cobro || 0) > 0 ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-slate-50'">
-                <div class="text-xs font-semibold"
-                     :class="Number(cobroActivo.monto_cobro || 0) > 0 ? 'text-rose-700' : 'text-slate-600'">
-                  Monto sugerido
-                </div>
-
-                <div class="mt-1 text-xl font-bold"
-                     :class="Number(cobroActivo.monto_cobro || 0) > 0 ? 'text-rose-950' : 'text-slate-700'">
-                  Q <span x-text="money(cobroActivo.monto_cobro)"></span>
-                </div>
-
-                <div class="mt-1 text-[11px] text-slate-500">
-                  No aplicado automáticamente
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                <div class="text-[11px] font-semibold text-slate-500">Costo producto</div>
-                <div class="mt-1 text-sm font-bold text-slate-900">
-                  Q <span x-text="money(cobroActivo.costo_producto)"></span>
-                </div>
-              </div>
-
-              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                <div class="text-[11px] font-semibold text-slate-500">Vida útil</div>
-                <div class="mt-1 text-sm font-bold text-slate-900" x-text="(cobroActivo.vida_util_meses || 0) + ' meses'"></div>
-              </div>
-
-              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                <div class="text-[11px] font-semibold text-slate-500">Vida restante</div>
-                <div class="mt-1 text-sm font-bold text-slate-900" x-text="(cobroActivo.meses_restantes || 0) + ' meses'"></div>
-              </div>
-
-              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                <div class="text-[11px] font-semibold text-slate-500">Estado</div>
-                <div class="mt-1">
-                  <span class="inline-flex rounded-full px-2 py-1 text-[11px] font-semibold"
-                        :class="badgeCobro(cobroActivo.estado)"
-                        x-text="estadoCobroTexto(cobroActivo.estado)">
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div class="rounded-xl border border-slate-200 px-3 py-3">
-                <div class="text-[11px] font-semibold text-slate-500">Fecha de asignación anterior</div>
-                <div class="mt-1 text-sm font-medium text-slate-900" x-text="cobroActivo.fecha_asignacion_anterior || '—'"></div>
-              </div>
-
-              <div class="rounded-xl border border-slate-200 px-3 py-3">
-                <div class="text-[11px] font-semibold text-slate-500">Fecha de daño o reemplazo</div>
-                <div class="mt-1 text-sm font-medium text-slate-900" x-text="cobroActivo.fecha_dano_reemplazo || '—'"></div>
-              </div>
-            </div>
-
-            <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-              <div class="text-[11px] font-semibold text-slate-500">
-                Justificación registrada por el sistema
-              </div>
-
-              <div class="mt-2 text-sm leading-6 text-slate-700 whitespace-pre-line"
-                   x-text="cobroActivo.detalle || 'Sin justificación registrada.'">
-              </div>
-            </div>
-
-            <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
-              RRHH debe revisar este caso antes de aplicar cualquier descuento en nómina.
-            </div>
-
-            <div class="mt-4 flex flex-wrap justify-end gap-2">
-              <button type="button"
-                      class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                No aplicar
-              </button>
-
-              <button type="button"
-                      class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100">
-                Dejar pendiente
-              </button>
-
-              <button type="button"
-                      class="rounded-xl bg-rose-700 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-800">
-                Aprobar descuento
-              </button>
-            </div>
-
-            <div class="mt-2 text-right text-xs text-slate-500">
-              Estos botones son visuales por ahora. Para guardar cambios hay que agregar rutas y controlador.
-            </div>
-
-          </div>
-        </template>
-      </div>
-
-    </div>
-  </div>
+        </div>
+    </section>
 </div>

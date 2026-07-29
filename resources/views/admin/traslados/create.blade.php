@@ -1,272 +1,334 @@
-  @extends('layouts.admin')
+@extends((int) auth()->user()->role_id === 2 ? 'layouts.operador' : 'layouts.admin')
 
-  @section('content')
-  @php
-    $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
-    $esOperador = auth()->user()->role_id == 2;
-    $origenSeleccionado = old('bodega_origen_id', $origenId ?? ($esOperador ? auth()->user()->bodega_id : null));
-  @endphp
+@section('title', 'Nueva solicitud de traslado')
 
-  <div class="min-h-[calc(100vh-120px)] px-6 py-10">
-    <div class="max-w-4xl mx-auto">
-      <x-internal-navigation :back-url="route($routePrefix . '.operaciones.traslados.index')" />
+@section('content')
+@php
+    $routePrefix = (int) auth()->user()->role_id === 2 ? 'operador' : 'admin';
+    $esOperador = (int) auth()->user()->role_id === 2;
+    $origenId = old(
+        'bodega_origen_id',
+        $origenId ?? ($esOperador ? auth()->user()->bodega_id : null)
+    );
+    $lineas = old('lineas', [['producto_codigo' => '', 'cantidad' => 1]]);
+@endphp
 
-      <div class="mb-6">
-        <h1 class="text-3xl font-bold text-slate-900 mt-2">Nueva solicitud de traslado</h1>
-        <p class="text-sm text-slate-50000">El encargado de la bodega destino debe aprobar o rechazar.</p>
-      </div>
+<div class="mx-auto w-full max-w-5xl">
 
-      @if ($errors->any())
-        <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-800">
-          <div class="font-semibold mb-1">Revisa estos datos:</div>
-          <ul class="list-disc ml-5 text-sm">
-            @foreach ($errors->all() as $error)
-              <li>{{ $error }}</li>
-            @endforeach
-          </ul>
+    @if($errors->any())
+        <div class="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+            <p class="font-extrabold">Revisa los siguientes datos:</p>
+            <ul class="mt-2 list-disc space-y-1 pl-5">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
         </div>
-      @endif
+    @endif
 
-      <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.store') }}"
-            enctype="multipart/form-data"
-            class="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
+    <form
+        method="POST"
+        action="{{ route($routePrefix.'.operaciones.traslados.store') }}"
+        enctype="multipart/form-data"
+        class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+    >
         @csrf
 
-        <div class="px-6 py-4 border-b border-slate-100">
-          <div class="text-sm font-semibold text-slate-800">Origen y destino</div>
-          <div class="text-xs text-slate-500">Tip: si entraste desde bodegas, el origen viene precargado.</div>
-        </div>
+        {{-- Encabezado --}}
+        <header class="border-b border-slate-200 px-5 py-5 sm:px-7">
+            <div class="flex items-center gap-4">
+                <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white">
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="h-6 w-6">
+                        <path d="M7.28 3.22a.75.75 0 011.06 1.06L6.62 6h10.63a.75.75 0 010 1.5H6.62l1.72 1.72a.75.75 0 11-1.06 1.06l-3-3a.75.75 0 010-1.06l3-3zM16.72 13.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06L18.44 18H7.75a.75.75 0 010-1.5h10.69l-1.72-1.72a.75.75 0 010-1.06z"/>
+                    </svg>
+                </span>
 
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="text-sm font-semibold text-slate-700">Bodega origen</label>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-950">
+                        Nueva solicitud de traslado
+                    </h1>
+                    <p class="mt-1 text-sm text-slate-500">
+                        La bodega de destino deberá aprobar o rechazar la solicitud.
+                    </p>
+                </div>
+            </div>
+        </header>
 
-            @if($esOperador)
-              <input type="hidden" name="bodega_origen_id" value="{{ auth()->user()->bodega_id }}">
-              <div class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-slate-100">
-                {{ optional($bodegas->firstWhere('id', auth()->user()->bodega_id))->nombre }}
-              </div>
-            @else
-              <select name="bodega_origen_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                <option value="">Selecciona...</option>
-                @foreach($bodegas as $b)
-                  <option value="{{ $b->id }}"
-                    {{ (string) old('bodega_origen_id', $origenId) === (string) $b->id ? 'selected' : '' }}>
-                    {{ $b->nombre }}
-                  </option>
-                @endforeach
-              </select>
-            @endif
-          </div>
+        {{-- Información general --}}
+        <section class="grid grid-cols-1 gap-5 p-5 sm:p-7 md:grid-cols-2">
+            <div>
+                <label class="ui-label">Bodega de origen</label>
 
-          <div>
-            <label class="text-sm font-semibold text-slate-700">Bodega destino</label>
-            <select id="bodega_destino_id" name="bodega_destino_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-              <option value="">Selecciona...</option>
-              @foreach($bodegas as $b)
-                @if((string)$b->id !== (string)$origenSeleccionado)
-                  <option value="{{ $b->id }}" {{ (string) old('bodega_destino_id') === (string) $b->id ? 'selected' : '' }}>
-                    {{ $b->nombre }}
-                  </option>
-                @endif
-              @endforeach
-            </select>
-          </div>
-        </div>
+                @if($esOperador)
+                    <input
+                        type="hidden"
+                        name="bodega_origen_id"
+                        value="{{ auth()->user()->bodega_id }}"
+                    >
 
-        <div class="px-6 pb-6">
-          <label class="text-sm font-semibold text-slate-700">Observación (opcional)</label>
-          <textarea name="observacion" rows="2"
-            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Ej: Enviar con guía #123, frágil, etc.">{{ old('observacion') }}</textarea>
-        </div>
-
-        <div class="px-6 pb-6">
-          <label class="text-sm font-semibold text-slate-700">Excel de destinatarios (opcional)</label>
-          <input type="file" name="archivo_excel" accept=".xlsx,.xls,.csv"
-            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white">
-          <p class="mt-1 text-xs text-slate-500">
-            Puedes adjuntar un archivo .xlsx, .xls o .csv con las personas destinatarias de los productos trasladados.
-          </p>
-        </div>
-
-        <div class="px-6 py-4 border-t border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <div class="text-sm font-semibold text-slate-800">Productos</div>
-            <div class="text-xs text-slate-500">Agrega una o varias líneas.</div>
-          </div>
-        </div>
-
-        <div class="p-6">
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="bg-slate-50 text-slate-600">
-                <tr>
-                  <th class="text-left px-3 py-2 font-semibold">Producto</th>
-                  <th class="text-left px-3 py-2 font-semibold w-40">Cantidad</th>
-                  <th class="px-3 py-2 w-20"></th>
-                </tr>
-              </thead>
-
-              <tbody id="linesBody" class="divide-y divide-slate-100">
-                @php
-                  $oldLines = old('lineas', [
-                    ['producto_codigo' => '', 'cantidad' => 1],
-                  ]);
-                @endphp
-
-                @foreach($oldLines as $i => $line)
-                  <tr class="line-row">
-                    <td class="px-3 py-3">
-                      <select required
-                              name="lineas[{{ $i }}][producto_codigo]"
-                              data-searchable="true"
-                              data-search-placeholder="Buscar producto..."
-                              class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    <div class="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700">
+                        {{ optional($bodegas->firstWhere('id', auth()->user()->bodega_id))->nombre }}
+                    </div>
+                @else
+                    <select
+                        id="bodega_origen_id"
+                        name="bodega_origen_id"
+                        required
+                        class="ui-input"
+                    >
                         <option value="">Selecciona...</option>
-                        @foreach($productos as $p)
-                          <option value="{{ $p->codigo }}"
-                            {{ ($line['producto_codigo'] ?? '') === $p->codigo ? 'selected' : '' }}>
-                            {{ $p->descripcion ?: $p->nombre }} — {{ $p->codigo }}
-                          </option>
+                        @foreach($bodegas as $bodega)
+                            <option
+                                value="{{ $bodega->id }}"
+                                @selected((string) $origenId === (string) $bodega->id)
+                            >
+                                {{ $bodega->nombre }}
+                            </option>
                         @endforeach
-                      </select>
-                    </td>
+                    </select>
+                @endif
+            </div>
 
-                    <td class="px-3 py-3">
-                      <input type="number" min="1" required
-                            name="lineas[{{ $i }}][cantidad]"
-                            value="{{ $line['cantidad'] ?? 1 }}"
-                            class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"/>
-                    </td>
+            <div>
+                <label class="ui-label">Bodega de destino</label>
 
-                    <td class="px-3 py-3 text-right">
-                      <button type="button"
-                              class="btnRemove inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                @endforeach
+                <select
+                    id="bodega_destino_id"
+                    name="bodega_destino_id"
+                    required
+                    class="ui-input"
+                >
+                    <option value="">Selecciona...</option>
+                    @foreach($bodegas as $bodega)
+                        @if((string) $bodega->id !== (string) $origenId)
+                            <option
+                                value="{{ $bodega->id }}"
+                                @selected((string) old('bodega_destino_id') === (string) $bodega->id)
+                            >
+                                {{ $bodega->nombre }}
+                            </option>
+                        @endif
+                    @endforeach
+                </select>
+            </div>
 
-                <tr class="bg-slate-50">
-                  <td colspan="3" class="px-3 py-3">
-                    <button type="button" id="btnAddLine"
-                            class="inline-flex items-center gap-2 rounded-xl border border-blue-700 bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700"
-                            style="background-color:#2563eb;color:#fff;">
-                      + Agregar línea
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+            <div>
+                <label class="ui-label">Observación opcional</label>
+                <textarea
+                    name="observacion"
+                    rows="3"
+                    class="ui-input resize-y"
+                    placeholder="Ejemplo: enviar con guía #123, producto frágil..."
+                >{{ old('observacion') }}</textarea>
+            </div>
 
-        <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
-          <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}"
-            class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            Cancelar
-          </a>
+            <div>
+                <label class="ui-label">Destinatarios opcionales</label>
 
-          <button class="rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
-            Crear solicitud
-          </button>
-        </div>
-      </form>
+                <input
+                    type="file"
+                    name="archivo_excel"
+                    accept=".xlsx,.xls,.csv"
+                    class="block w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-600
+                           file:mr-4 file:border-0 file:border-r file:border-slate-200
+                           file:bg-slate-50 file:px-4 file:py-2.5 file:text-sm
+                           file:font-bold file:text-slate-700 hover:file:bg-slate-100"
+                >
 
-      <template id="lineTemplate">
-        <tr class="line-row">
-          <td class="px-3 py-3">
-            <select required data-searchable="true" data-search-placeholder="Buscar producto..." class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-              <option value="">Selecciona...</option>
-              @foreach($productos as $p)
-                <option value="{{ $p->codigo }}">{{ $p->descripcion ?: $p->nombre }} — {{ $p->codigo }}</option>
-              @endforeach
-            </select>
-          </td>
-          <td class="px-3 py-3">
-            <input type="number" min="1" value="1" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"/>
-          </td>
-          <td class="px-3 py-3 text-right">
-            <button type="button" class="btnRemove inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              ✕
+                <p class="mt-2 text-xs leading-5 text-slate-500">
+                    Formatos permitidos: XLSX, XLS o CSV.
+                </p>
+            </div>
+        </section>
+
+        {{-- Productos --}}
+        <section class="border-t border-slate-200">
+            <div class="flex items-center justify-between px-5 py-4 sm:px-7">
+                <div>
+                    <h2 class="font-extrabold text-slate-950">Productos</h2>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Agrega los productos y cantidades que serán trasladados.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    id="btnAddLine"
+                    class="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-700 hover:bg-blue-100"
+                >
+                    + Agregar producto
+                </button>
+            </div>
+
+            <div class="overflow-x-auto border-t border-slate-200">
+                <table class="w-full min-w-[680px] text-sm">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-5 py-3 text-left text-xs font-extrabold uppercase text-slate-500">
+                                Producto
+                            </th>
+                            <th class="w-40 px-5 py-3 text-left text-xs font-extrabold uppercase text-slate-500">
+                                Cantidad
+                            </th>
+                            <th class="w-20 px-5 py-3"></th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="linesBody" class="divide-y divide-slate-100">
+                        @foreach($lineas as $i => $linea)
+                            <tr class="line-row">
+                                <td class="px-5 py-4">
+                                    <select
+                                        required
+                                        name="lineas[{{ $i }}][producto_codigo]"
+                                        data-searchable="true"
+                                        data-search-placeholder="Buscar producto..."
+                                        class="ui-input"
+                                    >
+                                        <option value="">Selecciona...</option>
+
+                                        @foreach($productos as $producto)
+                                            <option
+                                                value="{{ $producto->codigo }}"
+                                                @selected(($linea['producto_codigo'] ?? '') === $producto->codigo)
+                                            >
+                                                {{ $producto->descripcion ?: $producto->nombre }}
+                                                — {{ $producto->codigo }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </td>
+
+                                <td class="px-5 py-4">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        required
+                                        name="lineas[{{ $i }}][cantidad]"
+                                        value="{{ $linea['cantidad'] ?? 1 }}"
+                                        class="ui-input"
+                                    >
+                                </td>
+
+                                <td class="px-5 py-4 text-right">
+                                    <button
+                                        type="button"
+                                        class="btnRemove inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 font-bold text-rose-600 hover:bg-rose-100"
+                                        aria-label="Eliminar producto"
+                                    >
+                                        ×
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        {{-- Acciones --}}
+        <footer class="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+            <a
+                href="{{ route($routePrefix.'.operaciones.traslados.index') }}"
+                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-extrabold text-slate-700 hover:bg-slate-100"
+            >
+                Cancelar
+            </a>
+
+            <button
+                type="submit"
+                class="inline-flex items-center justify-center rounded-xl !border-blue-600 !bg-blue-600 px-5 py-2.5 text-sm font-extrabold !text-white hover:!bg-blue-700"
+            >
+                Crear solicitud
             </button>
-          </td>
-        </tr>
-      </template>
+        </footer>
+    </form>
+</div>
 
-      <script>
-        (function () {
-          const body = document.getElementById('linesBody');
-          const tpl  = document.getElementById('lineTemplate');
-          const btn  = document.getElementById('btnAddLine');
-          const origenSelect = document.querySelector('select[name=\"bodega_origen_id\"]');
-          const destinoSelect = document.getElementById('bodega_destino_id');
+<template id="lineTemplate">
+    <tr class="line-row">
+        <td class="px-5 py-4">
+            <select
+                required
+                data-searchable="true"
+                data-search-placeholder="Buscar producto..."
+                class="ui-input"
+            >
+                <option value="">Selecciona...</option>
+                @foreach($productos as $producto)
+                    <option value="{{ $producto->codigo }}">
+                        {{ $producto->descripcion ?: $producto->nombre }}
+                        — {{ $producto->codigo }}
+                    </option>
+                @endforeach
+            </select>
+        </td>
 
-          function reindex() {
-            const rows = body.querySelectorAll('.line-row');
-            rows.forEach((row, idx) => {
-              const sel = row.querySelector('select');
-              const inp = row.querySelector('input[type="number"]');
-              sel.name = `lineas[${idx}][producto_codigo]`;
-              inp.name = `lineas[${idx}][cantidad]`;
-            });
-          }
+        <td class="px-5 py-4">
+            <input type="number" min="1" value="1" required class="ui-input">
+        </td>
 
-          function bindRemove(row) {
-            row.querySelector('.btnRemove').addEventListener('click', () => {
-              const rows = body.querySelectorAll('.line-row');
-              if (rows.length <= 1) return;
-              row.remove();
-              reindex();
-            });
-          }
+        <td class="px-5 py-4 text-right">
+            <button
+                type="button"
+                class="btnRemove inline-flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 font-bold text-rose-600 hover:bg-rose-100"
+            >
+                ×
+            </button>
+        </td>
+    </tr>
+</template>
 
-          body.querySelectorAll('.line-row').forEach(bindRemove);
-          body.querySelectorAll('.line-row select[data-searchable="true"]').forEach((sel) => {
-            if (window.enhanceSearchableSelect) window.enhanceSearchableSelect(sel);
-          });
+<script>
+(() => {
+    const body = document.getElementById('linesBody');
+    const template = document.getElementById('lineTemplate');
+    const addButton = document.getElementById('btnAddLine');
+    const origin = document.getElementById('bodega_origen_id');
+    const destination = document.getElementById('bodega_destino_id');
 
-          btn.addEventListener('click', () => {
-            const fragment = tpl.content.cloneNode(true);
-            const row = fragment.querySelector('.line-row');
+    const reindex = () => {
+        body.querySelectorAll('.line-row').forEach((row, index) => {
+            row.querySelector('select').name = `lineas[${index}][producto_codigo]`;
+            row.querySelector('input[type="number"]').name = `lineas[${index}][cantidad]`;
+        });
+    };
 
-            const addRow = btn.closest('tr');
-            addRow.parentNode.insertBefore(row, addRow);
-
-            bindRemove(row);
-            const productSelect = row.querySelector('select[data-searchable="true"]');
-            if (productSelect && window.enhanceSearchableSelect) {
-              window.enhanceSearchableSelect(productSelect);
-            }
+    const bindRemove = row => {
+        row.querySelector('.btnRemove').addEventListener('click', () => {
+            if (body.querySelectorAll('.line-row').length === 1) return;
+            row.remove();
             reindex();
-          });
+        });
+    };
 
-          reindex();
+    body.querySelectorAll('.line-row').forEach(bindRemove);
 
-          function syncDestinoOptions() {
-            if (!origenSelect || !destinoSelect) return;
-            const origenId = (origenSelect.value || '').toString();
+    addButton.addEventListener('click', () => {
+        const row = template.content.cloneNode(true).querySelector('.line-row');
+        body.appendChild(row);
+        bindRemove(row);
+        reindex();
 
-            Array.from(destinoSelect.options).forEach((opt) => {
-              if (!opt.value) return;
-              opt.hidden = opt.value === origenId;
-              opt.disabled = opt.value === origenId;
-            });
+        const select = row.querySelector('[data-searchable="true"]');
+        window.enhanceSearchableSelect?.(select);
+    });
 
-            if (destinoSelect.value === origenId) {
-              destinoSelect.value = '';
-            }
-          }
+    const syncDestination = () => {
+        if (!origin || !destination) return;
 
-          if (origenSelect && destinoSelect) {
-            origenSelect.addEventListener('change', syncDestinoOptions);
-            syncDestinoOptions();
-          }
-        })();
-      </script>
+        [...destination.options].forEach(option => {
+            if (!option.value) return;
+            option.disabled = option.value === origin.value;
+            option.hidden = option.value === origin.value;
+        });
 
-    </div>
-  </div>
-  @endsection
+        if (destination.value === origin.value) destination.value = '';
+    };
+
+    origin?.addEventListener('change', syncDestination);
+    syncDestination();
+    reindex();
+})();
+</script>
+@endsection

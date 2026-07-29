@@ -1,439 +1,144 @@
-@extends(auth()->user()->role_id == 1 ? 'layouts.admin' : 'layouts.operador')
+@extends((int) auth()->user()->role_id === 1 ? 'layouts.admin' : 'layouts.operador')
 
 @section('title', 'Bodegas')
 
 @section('content')
 @php
     $user = auth()->user();
-
     $esAdmin = (int) $user->role_id === 1;
     $esOperador = (int) $user->role_id === 2;
-    $bodegaOperadorId = $user->bodega_id;
-
-    $totalBodegas = $bodegas->count();
-    $totalPrincipales = $bodegas->where('tipo', 'Principal')->count();
-    $totalRegionales = $bodegas->where('tipo', 'Regional')->count();
+    $bodegaOperadorId = (int) $user->bodega_id;
 @endphp
 
-<style>
-    .bodega-page {
-        width: 100%;
-        min-height: calc(100vh - 64px);
-        background: #f8fafc;
-        padding: 18px 14px;
-    }
+<div class="mx-auto w-full max-w-6xl">
 
-    .bodega-container {
-        width: 100%;
-        max-width: 1080px;
-        margin: 0 auto;
-    }
-
-    .bodega-header {
-        background: #ffffff;
-        border: 1px solid #dbe3ea;
-        border-radius: 14px;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-        padding: 14px 16px;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .bodega-title {
-        margin: 0;
-        font-size: 22px;
-        line-height: 1.1;
-        font-weight: 800;
-        color: #0f172a;
-    }
-
-    .bodega-subtitle {
-        margin-top: 5px;
-        font-size: 13px;
-        color: #64748b;
-    }
-
-    .bodega-header-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .metric {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 30px;
-        padding: 0 11px;
-        border-radius: 8px;
-        font-size: 12px;
-        font-weight: 700;
-        border: 1px solid #dbe3ea;
-        background: #f8fafc;
-        color: #334155;
-    }
-
-    .metric-green {
-        border-color: #bbf7d0;
-        background: #ecfdf5;
-        color: #047857;
-    }
-
-    .metric-blue {
-        border-color: #bfdbfe;
-        background: #eff6ff;
-        color: #1d4ed8;
-    }
-
-    .btn-new {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 30px;
-        padding: 0 12px;
-        border-radius: 8px;
-        background: #2563eb !important;
-        color: #ffffff !important;
-        font-size: 12px;
-        font-weight: 800;
-        text-decoration: none !important;
-        border: 1px solid #2563eb;
-    }
-
-    .btn-new:hover {
-        background: #1d4ed8 !important;
-    }
-
-    .bodega-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-    }
-
-    .bodega-card {
-        background: #ffffff;
-        border: 1px solid #dbe3ea;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    }
-
-    .bodega-card-body {
-        padding: 10px 14px;
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-    }
-
-    .bodega-info {
-        display: flex;
-        gap: 10px;
-        min-width: 0;
-    }
-
-    .bodega-letter {
-        width: 28px;
-        height: 28px;
-        border-radius: 7px;
-        background: #f1f5f9;
-        color: #0f172a;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: 800;
-        flex-shrink: 0;
-    }
-
-    .bodega-name {
-        margin: 0;
-        font-size: 13px;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1.15;
-    }
-
-    .bodega-location {
-        margin-top: 2px;
-        font-size: 11px;
-        color: #64748b;
-    }
-
-    .bodega-id {
-        margin-top: 3px;
-        font-size: 12px;
-        color: #0f172a;
-    }
-
-    .bodega-badge {
-        height: fit-content;
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 4px 10px;
-        font-size: 12px;
-        font-weight: 800;
-        white-space: nowrap;
-    }
-
-    .badge-principal {
-        background: #ecfdf5;
-        color: #047857;
-    }
-
-    .badge-regional {
-        background: #eff6ff;
-        color: #1d4ed8;
-    }
-
-    .access-label {
-        margin-top: 6px;
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 3px 9px;
-        font-size: 11px;
-        font-weight: 700;
-    }
-
-    .access-own {
-        background: #ecfdf5;
-        color: #047857;
-    }
-
-    .access-read {
-        background: #f1f5f9;
-        color: #64748b;
-    }
-
-    .bodega-card-actions {
-        border-top: 1px solid #e2e8f0;
-        background: #f8fafc;
-        padding: 8px 14px;
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        flex-wrap: wrap;
-    }
-
-    .action-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 28px;
-        padding: 0 11px;
-        border-radius: 7px;
-        font-size: 11px;
-        font-weight: 800;
-        text-decoration: none !important;
-        border: 1px solid transparent;
-        cursor: pointer;
-        line-height: 1;
-    }
-
-    .btn-inventario {
-        background: #0f172a !important;
-        color: #ffffff !important;
-        border-color: #0f172a !important;
-    }
-
-    .btn-trasladar {
-        background: #4f46e5 !important;
-        color: #ffffff !important;
-        border-color: #4f46e5 !important;
-    }
-
-    .btn-aprobacion {
-        background: #0891b2 !important;
-        color: #ffffff !important;
-        border-color: #0891b2 !important;
-    }
-
-    .btn-editar {
-        background: #f59e0b !important;
-        color: #ffffff !important;
-        border-color: #f59e0b !important;
-    }
-
-    .btn-eliminar {
-        background: #e11d48 !important;
-        color: #ffffff !important;
-        border-color: #e11d48 !important;
-    }
-
-    .btn-volver {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 34px;
-        padding: 0 16px;
-        border-radius: 8px;
-        border: 1px solid #cbd5e1;
-        background: #ffffff !important;
-        color: #334155 !important;
-        font-size: 12px;
-        font-weight: 800;
-        text-decoration: none !important;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-    }
-
-    .volver-wrap {
-        margin-top: 14px;
-        display: flex;
-        justify-content: flex-end;
-    }
-
-    .empty-box {
-        grid-column: 1 / -1;
-        border: 1px solid #fde68a;
-        background: #fffbeb;
-        color: #92400e;
-        border-radius: 12px;
-        padding: 18px;
-    }
-
-    @media (max-width: 900px) {
-        .bodega-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .bodega-header {
-            align-items: stretch;
-        }
-
-        .bodega-header-actions {
-            justify-content: flex-start;
-        }
-    }
-</style>
-
-<div class="bodega-page">
-    <div class="bodega-container">
-        <x-internal-navigation :back-url="route('dashboard')" />
-
-        <div class="bodega-header">
-            <div>
-                <h1 class="bodega-title">Bodegas</h1>
-                <div class="bodega-subtitle">
-                    Consulta inventario, traslados y administración de bodegas.
-                </div>
-            </div>
-
-            <div class="bodega-header-actions">
-                <span class="metric">Total: {{ $totalBodegas }}</span>
-                <span class="metric metric-green">Principales: {{ $totalPrincipales }}</span>
-                <span class="metric metric-blue">Regionales: {{ $totalRegionales }}</span>
-
-                @if($esAdmin)
-                    <a href="{{ route('admin.bodegas.create') }}" class="btn-new">
-                        + Nueva bodega
-                    </a>
-                @endif
-            </div>
+    {{-- Encabezado --}}
+    <div class="mb-4 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-extrabold text-slate-950">Bodegas</h1>
+            <p class="mt-1 text-sm text-slate-500">
+                Consulta inventario, traslados y administración de bodegas.
+            </p>
         </div>
 
-        <div class="bodega-grid">
-            @forelse($bodegas as $bodega)
-                @php
-                    $esMiBodega = (int) $bodega->id === (int) $bodegaOperadorId;
-                    $isPrincipal = ($bodega->tipo === 'Principal');
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-extrabold text-slate-700">
+                Total: {{ $bodegas->count() }}
+            </span>
 
-                    $rutaInventario = $esOperador
-                        ? route('operador.bodegas.show', $bodega->id)
-                        : route('admin.bodegas.show', $bodega->id);
-                @endphp
+            <span class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-extrabold text-emerald-700">
+                Principales: {{ $bodegas->where('tipo', 'Principal')->count() }}
+            </span>
 
-                <article class="bodega-card">
-                    <div class="bodega-card-body">
-                        <div>
-                            <div class="bodega-info">
-                                <div class="bodega-letter">
-                                    {{ strtoupper(mb_substr($bodega->nombre ?? 'B', 0, 1)) }}
-                                </div>
+            <span class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-extrabold text-blue-700">
+                Regionales: {{ $bodegas->where('tipo', 'Regional')->count() }}
+            </span>
 
-                                <div>
-                                    <h2 class="bodega-name">
-                                        {{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}
-                                    </h2>
+            @if($esAdmin)
+                <a href="{{ route('admin.bodegas.create') }}" class="btn-new">
+                    + Nueva bodega
+                </a>
+            @endif
+        </div>
+    </div>
 
-                                    <div class="bodega-location">
-                                        {{ $bodega->ubicacion ?? 'Sin ubicación registrada' }}
-                                    </div>
+    {{-- Bodegas --}}
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        @forelse($bodegas as $bodega)
+            @php
+                $esMiBodega = (int) $bodega->id === $bodegaOperadorId;
+                $esPrincipal = $bodega->tipo === 'Principal';
 
-                                    <div class="bodega-id">
-                                        ID: {{ $bodega->id }}
-                                    </div>
-                                </div>
-                            </div>
+                $rutaInventario = $esOperador
+                    ? route('operador.bodegas.show', $bodega->id)
+                    : route('admin.bodegas.show', $bodega->id);
+            @endphp
+
+            <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div class="flex items-start justify-between gap-4 p-5">
+                    <div class="flex min-w-0 gap-3">
+                        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-extrabold text-slate-900">
+                            {{ strtoupper(mb_substr($bodega->nombre ?? 'B', 0, 1)) }}
+                        </span>
+
+                        <div class="min-w-0">
+                            <h2 class="font-extrabold text-slate-950">
+                                {{ $bodega->nombre ?? 'Bodega #'.$bodega->id }}
+                            </h2>
+
+                            <p class="mt-1 text-sm text-slate-500">
+                                {{ $bodega->ubicacion ?? 'Sin ubicación registrada' }}
+                            </p>
+
+                            <p class="mt-1 text-xs font-semibold text-slate-600">
+                                ID: {{ $bodega->id }}
+                            </p>
 
                             @if($esOperador)
-                                @if($esMiBodega)
-                                    <span class="access-label access-own">Tu bodega asignada</span>
-                                @else
-                                    <span class="access-label access-read">Solo consulta</span>
-                                @endif
+                                <span class="mt-3 inline-flex rounded-full px-3 py-1 text-xs font-extrabold
+                                    {{ $esMiBodega
+                                        ? 'bg-emerald-50 text-emerald-700'
+                                        : 'bg-slate-100 text-slate-600' }}">
+                                    {{ $esMiBodega ? 'Tu bodega asignada' : 'Solo consulta' }}
+                                </span>
                             @endif
                         </div>
-
-                        <span class="bodega-badge {{ $isPrincipal ? 'badge-principal' : 'badge-regional' }}">
-                            {{ $bodega->tipo ?? '—' }}
-                        </span>
                     </div>
 
-                    <div class="bodega-card-actions">
-                        <a href="{{ $rutaInventario }}" class="action-btn btn-inventario">
-                            Inventario
+                    <span class="shrink-0 rounded-full border px-3 py-1 text-xs font-extrabold
+                        {{ $esPrincipal
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            : 'border-amber-200 bg-amber-50 text-blue-700' }}">
+                        {{ $bodega->tipo ?? '—' }}
+                    </span>
+                </div>
+
+                <div class="flex flex-wrap gap-2 border-t border-slate-200 bg-slate-50 p-3">
+                    <a href="{{ $rutaInventario }}" class="action-btn btn-inventario">
+                        Inventario
+                    </a>
+
+                    @if($esAdmin)
+                        <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}"
+                           class="action-btn btn-trasladar">
+                            Trasladar
                         </a>
 
-                        @if($esAdmin)
-                            <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}"
-                               class="action-btn btn-trasladar">
-                                Trasladar
-                            </a>
+                        <a href="{{ route('admin.operaciones.traslados.index') }}"
+                           class="action-btn btn-aprobacion">
+                            Aprobación
+                        </a>
 
-                            <a href="{{ route('admin.operaciones.traslados.index') }}"
-                               class="action-btn btn-aprobacion">
-                                Aprobación
-                            </a>
+                        <a href="{{ route('admin.bodegas.edit', $bodega->id) }}"
+                           class="action-btn btn-editar">
+                            Editar
+                        </a>
 
-                            <a href="{{ route('admin.bodegas.edit', $bodega->id) }}"
-                               class="action-btn btn-editar">
-                                Editar
-                            </a>
+                        <form method="POST"
+                              action="{{ route('admin.bodegas.destroy', $bodega->id) }}"
+                              onsubmit="return confirm('¿Eliminar esta bodega?')">
+                            @csrf
+                            @method('DELETE')
 
-                            <form method="POST"
-                                  action="{{ route('admin.bodegas.destroy', $bodega->id) }}"
-                                  onsubmit="return confirm('¿Eliminar esta bodega?')">
-                                @csrf
-                                @method('DELETE')
-
-                                <button type="submit" class="action-btn btn-eliminar">
-                                    Eliminar
-                                </button>
-                            </form>
-                        @endif
-
-                        @if($esOperador && $esMiBodega)
-                            <a href="{{ route('operador.operaciones.traslados.create', ['origen' => $bodega->id]) }}"
-                               class="action-btn btn-trasladar">
-                                Trasladar
-                            </a>
-                        @endif
-                    </div>
-                </article>
-            @empty
-                <div class="empty-box">
-                    <div style="font-weight: 800;">No hay bodegas registradas aún.</div>
-                    <div style="margin-top: 4px; font-size: 13px;">Crea una nueva bodega para empezar.</div>
+                            <button type="submit" class="action-btn btn-eliminar">
+                                Eliminar
+                            </button>
+                        </form>
+                    @elseif($esMiBodega)
+                        <a href="{{ route('operador.operaciones.traslados.create', ['origen' => $bodega->id]) }}"
+                           class="action-btn btn-trasladar">
+                            Trasladar
+                        </a>
+                    @endif
                 </div>
-            @endforelse
-        </div>
-
+            </article>
+        @empty
+            <div class="col-span-full rounded-2xl border border-dashed border-amber-300 bg-amber-50 p-8 text-center">
+                <h2 class="font-extrabold text-amber-900">No hay bodegas registradas</h2>
+                <p class="mt-1 text-sm text-amber-700">Crea una nueva bodega para comenzar.</p>
+            </div>
+        @endforelse
     </div>
+
 </div>
 @endsection

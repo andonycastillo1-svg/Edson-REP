@@ -7,8 +7,7 @@
     $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
 @endphp
 
-<div class="w-full max-w-7xl mx-auto">
-    <x-internal-navigation :back-url="route('dashboard')" />
+<div class="mx-auto w-full max-w-7xl">
 
     @if(session('error'))
         <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -26,12 +25,10 @@
 
         {{-- Encabezado --}}
         <div class="border-b border-slate-200 px-6 py-4">
-            <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <div class="flex items-center gap-3">
-                        <h1 class="text-2xl font-bold tracking-tight text-slate-900">
-                            Usuarios
-                        </h1>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <h1 class="text-2xl font-bold tracking-tight text-slate-900">Usuarios</h1>
 
                         @if(method_exists($usuarios, 'total'))
                             <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
@@ -52,40 +49,33 @@
             </div>
         </div>
 
-        {{-- Filtros compactos --}}
+        {{-- Filtros --}}
         <div class="border-b border-slate-100 bg-slate-50/70 px-6 py-4">
             <form method="GET"
                   action="{{ route($routePrefix . '.usuarios.index') }}"
                   class="flex flex-col gap-3 lg:flex-row lg:items-center">
 
-                <div class="w-full lg:w-[420px]">
-                    <input
-                        type="text"
-                        name="q"
-                        value="{{ request('q') }}"
-                        placeholder="Buscar por nombre o correo..."
-                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-blue-500 focus:ring-blue-500"
-                    >
-                </div>
+                <input type="text"
+                       name="q"
+                       value="{{ request('q') }}"
+                       placeholder="Buscar por nombre o correo..."
+                       class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 lg:w-[420px]">
 
-                <div class="w-full lg:w-64">
-                    <select
-                        name="role_id"
-                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-blue-500 focus:ring-blue-500"
-                    >
-                        <option value="">Todos los roles</option>
-                        @foreach($rolesFiltro as $rol)
-                            <option value="{{ $rol->id }}" {{ (string) request('role_id') === (string) $rol->id ? 'selected' : '' }}>
-                                {{ $rol->nombre }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+                <select name="role_id"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 lg:w-64">
+                    <option value="">Todos los roles</option>
+
+                    @foreach($rolesFiltro as $rol)
+                        <option value="{{ $rol->id }}"
+                            {{ (string) request('role_id') === (string) $rol->id ? 'selected' : '' }}>
+                            {{ $rol->nombre }}
+                        </option>
+                    @endforeach
+                </select>
 
                 <div class="flex gap-2">
-                    <button
-                        type="submit"
-                        class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+                    <button type="submit"
+                            class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
                         Filtrar
                     </button>
 
@@ -110,6 +100,7 @@
                         @php
                             $rolActivo = $rolesFiltro->firstWhere('id', request('role_id'));
                         @endphp
+
                         <span class="rounded-full bg-indigo-50 px-3 py-1 font-semibold text-indigo-700">
                             Rol: {{ $rolActivo->nombre ?? request('role_id') }}
                         </span>
@@ -123,21 +114,11 @@
             <table class="min-w-full divide-y divide-slate-100">
                 <thead class="bg-white">
                     <tr>
-                        <th class="w-20 px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
-                            ID
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
-                            Usuario
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
-                            Correo
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
-                            Rol
-                        </th>
-                        <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500">
-                            Acciones
-                        </th>
+                        <th class="w-20 px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Usuario</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Correo</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Rol</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500">Acciones</th>
                     </tr>
                 </thead>
 
@@ -156,7 +137,8 @@
                                 default => 'bg-slate-50 text-slate-700 border-slate-200',
                             };
 
-                            $puedeEditar = auth()->user()->role_id == 1 || (int) $u->created_by === (int) auth()->id();
+                            $puedeEditar = auth()->user()->role_id == 1
+                                || (int) $u->created_by === (int) auth()->id();
                         @endphp
 
                         <tr class="transition hover:bg-slate-50">
@@ -165,12 +147,8 @@
                             </td>
 
                             <td class="px-6 py-4">
-                                <div class="text-sm font-bold text-slate-900">
-                                    {{ $nombreUsuario }}
-                                </div>
-                                <div class="mt-0.5 text-xs text-slate-500">
-                                    ID interno: {{ $u->id }}
-                                </div>
+                                <div class="text-sm font-bold text-slate-900">{{ $nombreUsuario }}</div>
+                                <div class="mt-0.5 text-xs text-slate-500">ID interno: {{ $u->id }}</div>
                             </td>
 
                             <td class="px-6 py-4 text-sm text-slate-700">
@@ -221,12 +199,10 @@
                                     Crea un usuario nuevo o limpia los filtros aplicados.
                                 </p>
 
-                                <div class="mt-5">
-                                    <a href="{{ route($routePrefix . '.usuarios.create') }}"
-                                       class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
-                                        + Nuevo usuario
-                                    </a>
-                                </div>
+                                <a href="{{ route($routePrefix . '.usuarios.create') }}"
+                                   class="mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+                                    + Nuevo usuario
+                                </a>
                             </td>
                         </tr>
                     @endforelse
@@ -239,7 +215,7 @@
                 {{ $usuarios->links() }}
             </div>
         @endif
-    </div>
 
+    </div>
 </div>
 @endsection

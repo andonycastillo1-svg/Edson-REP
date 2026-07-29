@@ -1,53 +1,112 @@
 @extends('layouts.admin')
 
-@section('title', 'Editar Bodega')
+@section('title', 'Editar bodega')
 
 @section('content')
-<div class="w-full max-w-xl bg-white/90 rounded-2xl shadow-2xl p-8">
-    <x-internal-navigation :back-url="route('admin.bodegas.index')" />
+<div class="mx-auto w-full max-w-2xl">
 
-    <h1 class="text-2xl font-bold text-slate-800 mb-1">Editar bodega</h1>
-    <p class="text-slate-500 text-sm mb-6">Actualiza la información de la bodega.</p>
+    <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
 
-    <form method="POST" action="{{ route('admin.bodegas.update', $bodega->id) }}" class="space-y-4">
-        @csrf
-        @method('PUT')
+        <header class="border-b border-slate-200 px-6 py-5">
+            <h1 class="text-2xl font-extrabold tracking-tight text-slate-950">
+                Editar bodega
+            </h1>
 
-        <div>
-            <label class="text-sm font-semibold text-slate-700">Nombre</label>
-            <input name="nombre" value="{{ old('nombre', $bodega->nombre) }}"
-                   class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                   required>
-            @error('nombre') <div class="text-rose-600 text-sm mt-1">{{ $message }}</div> @enderror
-        </div>
+            <p class="mt-1 text-sm text-slate-500">
+                Actualiza la información de {{ $bodega->nombre }}.
+            </p>
+        </header>
 
-        <div>
-            <label class="text-sm font-semibold text-slate-700">Ubicación</label>
-            <input name="ubicacion" value="{{ old('ubicacion', $bodega->ubicacion) }}"
-                   class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
-            @error('ubicacion') <div class="text-rose-600 text-sm mt-1">{{ $message }}</div> @enderror
-        </div>
+        <form
+            method="POST"
+            action="{{ route('admin.bodegas.update', $bodega->id) }}"
+        >
+            @csrf
+            @method('PUT')
 
-        <div>
-            <label class="text-sm font-semibold text-slate-700">Tipo</label>
-            <select name="tipo"
-                    class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    required>
-                <option value="Principal" @selected(old('tipo', $bodega->tipo) === 'Principal')>Principal</option>
-                <option value="Regional" @selected(old('tipo', $bodega->tipo) === 'Regional')>Regional</option>
-            </select>
-            @error('tipo') <div class="text-rose-600 text-sm mt-1">{{ $message }}</div> @enderror
-        </div>
+            <div class="space-y-5 p-6">
 
-        <div class="flex gap-2 justify-end pt-4">
-            <a href="{{ route('admin.bodegas.index') }}"
-               class="px-4 py-2 rounded-xl bg-slate-700 text-white font-semibold shadow-sm transition hover:bg-slate-800">
-                Cancelar
-            </a>
-            <button class="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
-                Guardar cambios
-            </button>
-        </div>
-    </form>
+                <div>
+                    <label for="nombre" class="ui-label">Nombre</label>
+
+                    <input
+                        id="nombre"
+                        name="nombre"
+                        value="{{ old('nombre', $bodega->nombre) }}"
+                        required
+                        class="ui-input"
+                    >
+
+                    @error('nombre')
+                        <p class="mt-1 text-sm font-semibold text-rose-600">
+                            {{ $message }}
+                        </p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label for="ubicacion" class="ui-label">Ubicación</label>
+
+                    <input
+                        id="ubicacion"
+                        name="ubicacion"
+                        value="{{ old('ubicacion', $bodega->ubicacion) }}"
+                        class="ui-input"
+                    >
+
+                    @error('ubicacion')
+                        <p class="mt-1 text-sm font-semibold text-rose-600">
+                            {{ $message }}
+                        </p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label for="tipo" class="ui-label">Tipo</label>
+
+                    <select id="tipo" name="tipo" required class="ui-input">
+                        <option
+                            value="Principal"
+                            @selected(old('tipo', $bodega->tipo) === 'Principal')
+                        >
+                            Principal
+                        </option>
+
+                        <option
+                            value="Regional"
+                            @selected(old('tipo', $bodega->tipo) === 'Regional')
+                        >
+                            Regional
+                        </option>
+                    </select>
+
+                    @error('tipo')
+                        <p class="mt-1 text-sm font-semibold text-rose-600">
+                            {{ $message }}
+                        </p>
+                    @enderror
+                </div>
+
+            </div>
+
+            <footer class="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
+                <a
+                    href="{{ route('admin.bodegas.index') }}"
+                    class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-extrabold text-slate-700 hover:bg-slate-100"
+                >
+                    Cancelar
+                </a>
+
+                <button
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded-xl !border-blue-600 !bg-blue-600 px-5 py-2.5 text-sm font-extrabold !text-white hover:!bg-blue-700"
+                >
+                    Guardar cambios
+                </button>
+            </footer>
+        </form>
+
+    </section>
+
 </div>
 @endsection
