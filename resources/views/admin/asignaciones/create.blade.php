@@ -63,6 +63,7 @@
         {{-- Encabezado --}}
         <header class="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div>
+<<<<<<< HEAD
                 <p class="text-xs font-bold uppercase tracking-[0.15em] text-blue-600">
                     Inventario / Asignaciones
                 </p>
@@ -73,6 +74,111 @@
 
                 <p class="mt-1 text-sm text-slate-500">
                     Registra la entrega de productos a un colaborador.
+=======
+              <h2 class="text-base font-extrabold text-slate-900">
+                Datos generales
+              </h2>
+              <p class="text-sm text-slate-500">
+                Información principal de la asignación.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
+          <div class="md:col-span-2">
+            <label class="mb-1 block text-sm font-bold text-slate-700">
+              Colaborador
+            </label>
+            <select id="colaborador_codigo" name="colaborador_codigo"
+              data-searchable="true"
+              data-search-placeholder="Buscar colaborador..."
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              required>
+              @foreach($colaboradores as $c)
+                <option value="{{ $c->codigo }}" {{ old('colaborador_codigo') === $c->codigo ? 'selected' : '' }}>
+                  {{ $c->nombre }}
+                </option>
+              @endforeach
+            </select>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-bold text-slate-700">
+              Fecha
+            </label>
+            <input type="date"
+              name="fecha"
+              value="{{ old('fecha', date('Y-m-d')) }}"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              required>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-bold text-slate-700">
+              Aprobado por
+            </label>
+            <select name="aprobado_por"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              required>
+              @foreach($aprobadores as $a)
+                <option value="{{ $a }}" {{ old('aprobado_por') === $a ? 'selected' : '' }}>
+                  {{ $a }}
+                </option>
+              @endforeach
+            </select>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-bold text-slate-700">
+              Medio de solicitud
+            </label>
+            <select name="medio_solicitud"
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              required>
+              <option value="WhatsApp" {{ old('medio_solicitud') === 'WhatsApp' ? 'selected' : '' }}>WhatsApp</option>
+              <option value="Correo" {{ old('medio_solicitud') === 'Correo' ? 'selected' : '' }}>Correo</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-bold text-slate-700">
+              Adjuntar evidencia
+            </label>
+            <input type="file"
+              name="imagen"
+              class="w-full cursor-pointer rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-sm file:mr-4 file:rounded-xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white hover:bg-slate-100">
+            <p class="mt-2 text-xs text-slate-500">
+              Puedes adjuntar imagen como respaldo de la solicitud.
+            </p>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="mb-1 block text-sm font-bold text-slate-700">
+              Observaciones
+            </label>
+            <textarea name="observaciones"
+              rows="4"
+              placeholder="Escribe una observación si aplica..."
+              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100">{{ old('observaciones') }}</textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+        <div class="border-b border-slate-200 bg-slate-50 px-6 py-5">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-sm font-black text-white">
+                2
+              </div>
+              <div>
+                <h2 class="text-base font-extrabold text-slate-900">
+                  Productos a asignar
+                </h2>
+                <p class="text-sm text-slate-500">
+                  Detalla producto, bodega, cantidad y reemplazo si aplica.
+>>>>>>> cf5628ec7affd0ee1a2a7529bfb3c956fd09ef6a
                 </p>
             </div>
 
@@ -127,6 +233,7 @@
                     >
                 </div>
 
+<<<<<<< HEAD
                 <div>
                     <label for="aprobado_por" class="{{ $labelClass }}">
                         Aprobado por
@@ -199,6 +306,97 @@
                         placeholder="Escribe una observación si aplica..."
                         class="{{ $inputClass }}"
                     >{{ old('observaciones') }}</textarea>
+=======
+                <button type="button"
+                  class="remove-item inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-extrabold text-red-700 transition hover:bg-red-100">
+                  Quitar
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-12">
+                <div class="md:col-span-5">
+                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                    Producto
+                  </label>
+                  <select data-name="producto_codigo"
+                    data-searchable="true"
+                    data-search-placeholder="Buscar producto..."
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    required></select>
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">Condición</label>
+                  <select data-name="stock_tipo" class="stock-tipo w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm" required>
+                    <option value="nuevo">Nuevo</option>
+                    <option value="usado">Usado</option>
+                  </select>
+                  <p class="stock-warning mt-2 text-xs font-semibold text-amber-700"></p>
+                </div>
+
+                <div class="md:col-span-3">
+                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                    Bodega
+                  </label>
+                  <select data-name="bodega_id"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    required>
+                    @foreach($bodegas as $b)
+                      <option value="{{ $b->id }}">{{ $b->nombre }}</option>
+                    @endforeach
+                  </select>
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                    Cantidad
+                  </label>
+                  <input type="number"
+                    min="1"
+                    data-name="cantidad_asignada"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    value="1"
+                    required>
+                </div>
+
+                <div class="replacement-panel hidden md:col-span-12 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div class="replacement-status text-sm font-extrabold text-amber-900"></div>
+                  <div class="replacement-summary mt-2 grid gap-1 text-xs text-amber-800 sm:grid-cols-2 lg:grid-cols-4"></div>
+
+                  <div class="replacement-fields mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                    <div class="lg:col-span-2">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Asignación anterior</label>
+                      <select data-name="asignacion_anterior_id" class="previous-assignment w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"></select>
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Tipo de entrega</label>
+                      <select data-name="modo_entrega" class="delivery-mode w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
+                        <option value="reposicion">Reemplaza el anterior</option>
+                        <option value="adicional">Entrega adicional</option>
+                      </select>
+                    </div>
+                    <div class="requested-by-field">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Solicitado por</label>
+                      <input data-name="solicitado_por" maxlength="150" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div class="reason-field lg:col-span-2">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Motivo</label>
+                      <select data-name="motivo_reposicion" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
+                        <option value="">Selecciona un motivo</option>
+                        <option value="desgaste_prematuro">Desgaste prematuro</option>
+                        <option value="dano_accidental">Daño accidental</option>
+                        <option value="mal_uso">Mal uso</option>
+                        <option value="perdida">Pérdida</option>
+                        <option value="cambio_especificacion">Cambio de talla o especificación</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                    </div>
+                    <div class="justification-field lg:col-span-2">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Justificación</label>
+                      <textarea data-name="justificacion_reposicion" maxlength="1000" rows="2" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"></textarea>
+                    </div>
+                  </div>
+>>>>>>> cf5628ec7affd0ee1a2a7529bfb3c956fd09ef6a
                 </div>
             </div>
         </section>
@@ -353,11 +551,33 @@
 </template>
 
 <script>
+<<<<<<< HEAD
 (() => {
     const inventory = @json($inventarioOptions);
     const wrapper = document.getElementById('items-wrapper');
     const template = document.getElementById('item-template');
     const addButton = document.getElementById('add-item');
+=======
+  const inventarioOptions = @json($inventarioOptions);
+  const itemsWrapper = document.getElementById('items-wrapper');
+  const addItemBtn = document.getElementById('add-item');
+  const template = document.getElementById('item-template');
+  const colaboradorSelect = document.getElementById('colaborador_codigo');
+  const activeAssignmentsUrl = @json(route($routePrefix . '.asignaciones.activas_producto'));
+
+  function durationLabel(seconds) {
+    if (seconds === null || typeof seconds === 'undefined') return 'No aplica';
+    const days = Math.floor(Number(seconds) / 86400);
+    const months = Math.floor(days / 30);
+    return `${months} mes(es), ${days % 30} día(s)`;
+  }
+
+  function escapeHtml(value) {
+    const element = document.createElement('span');
+    element.textContent = String(value ?? '');
+    return element.innerHTML;
+  }
+>>>>>>> cf5628ec7affd0ee1a2a7529bfb3c956fd09ef6a
 
     const buildProducts = select => {
         select.innerHTML = '';

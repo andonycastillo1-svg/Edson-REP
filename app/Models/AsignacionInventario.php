@@ -24,6 +24,12 @@ class AsignacionInventario extends Model
         'fecha_vencimiento',
         'estado',
         'stock_tipo',
+        'tipo_entrega',
+        'asignacion_anterior_id',
+        'solicitado_por',
+        'motivo_reposicion',
+        'justificacion_reposicion',
+        'vida_restante_anterior_segundos',
         'vida_util_original_meses',
         'vida_util_restante_meses',
         'estado_evidencia',
@@ -37,6 +43,7 @@ class AsignacionInventario extends Model
         'costo_unitario' => 'decimal:2',
         'vida_util_original_meses' => 'integer',
         'vida_util_restante_meses' => 'integer',
+        'vida_restante_anterior_segundos' => 'integer',
     ];
 
     public function colaborador()
