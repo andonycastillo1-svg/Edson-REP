@@ -377,19 +377,8 @@
     const cantidadInput = clone.querySelector('[data-name="cantidad_asignada"]');
     const stockTipoInput = clone.querySelector('[data-name="stock_tipo"]');
     const stockWarning = clone.querySelector('.stock-warning');
-    const panel = clone.querySelector('.replacement-panel');
-    const status = clone.querySelector('.replacement-status');
-    const summary = clone.querySelector('.replacement-summary');
-    const previousSelect = clone.querySelector('.previous-assignment');
-    const deliveryMode = clone.querySelector('.delivery-mode');
-    const requestedByField = clone.querySelector('.requested-by-field');
-    const reasonField = clone.querySelector('.reason-field');
-    const justificationField = clone.querySelector('.justification-field');
-    const requestedBy = clone.querySelector('[data-name="solicitado_por"]');
-    const reason = clone.querySelector('[data-name="motivo_reposicion"]');
-    const justification = clone.querySelector('[data-name="justificacion_reposicion"]');
-    let activeAssignments = [];
-    let requestController;
+    const reemplazoInput = clone.querySelector('[data-name="es_reemplazo"]');
+    const fechaDanioInput = clone.querySelector('[data-name="fecha_dano"]');
 
     buildProductoOptions(productoSelect);
 
@@ -401,10 +390,8 @@
     if (defaults.bodega_id) bodegaSelect.value = defaults.bodega_id;
     if (defaults.cantidad_asignada) cantidadInput.value = defaults.cantidad_asignada;
     if (defaults.stock_tipo) stockTipoInput.value = defaults.stock_tipo;
-    if (defaults.modo_entrega) deliveryMode.value = defaults.modo_entrega;
-    if (defaults.solicitado_por) requestedBy.value = defaults.solicitado_por;
-    if (defaults.motivo_reposicion) reason.value = defaults.motivo_reposicion;
-    if (defaults.justificacion_reposicion) justification.value = defaults.justificacion_reposicion;
+    if (typeof defaults.es_reemplazo !== 'undefined') reemplazoInput.checked = defaults.es_reemplazo == 1 || defaults.es_reemplazo === true;
+    if (defaults.fecha_dano) fechaDanioInput.value = defaults.fecha_dano;
 
     const updateStockMessage = () => {
       const selected = inventarioOptions.filter((item) => item.producto_codigo === productoSelect.value && String(item.bodega_id) === String(bodegaSelect.value));
@@ -423,61 +410,6 @@
     };
     [productoSelect, bodegaSelect, stockTipoInput].forEach((element) => element.addEventListener('change', updateStockMessage));
     updateStockMessage();
-
-    const renderPrevious = () => {
-      const previous = activeAssignments.find((item) => String(item.id) === String(previousSelect.value));
-      if (!previous) return;
-      const hasLife = previous.vida_restante_segundos !== null && previous.vida_restante_segundos > 0;
-      const additional = deliveryMode.value === 'adicional';
-      status.textContent = additional
-        ? 'Entrega adicional: el producto anterior continuará asignado.'
-        : (hasLife ? 'Reposición anticipada: el producto anterior todavía tiene vida útil.' : 'Reposición normal: la vida útil anterior finalizó o no aplica.');
-      summary.innerHTML = `
-        <span><strong>Producto:</strong> ${escapeHtml(previous.producto || previous.producto_codigo)}</span>
-        <span><strong>Código:</strong> ${escapeHtml(previous.producto_codigo)}</span>
-        <span><strong>Asignación:</strong> #${previous.id}</span>
-        <span><strong>Fecha:</strong> ${new Date(previous.fecha).toLocaleDateString('es-GT')}</span>
-        <span><strong>Vida total:</strong> ${previous.vida_total_meses ?? 'No aplica'} mes(es)</span>
-        <span><strong>Tiempo utilizado:</strong> ${durationLabel(previous.tiempo_utilizado_segundos)}</span>
-        <span><strong>Vida restante:</strong> ${durationLabel(previous.vida_restante_segundos)}</span>
-        <span><strong>Cantidad activa:</strong> ${previous.cantidad_activa}</span>`;
-      requestedByField.classList.toggle('hidden', additional || !hasLife);
-      reasonField.classList.toggle('hidden', additional || !hasLife);
-      justificationField.classList.toggle('hidden', !additional && !hasLife);
-      requestedBy.required = !additional && hasLife;
-      reason.required = !additional && hasLife;
-      justification.required = additional || hasLife;
-    };
-
-    const loadPrevious = async () => {
-      if (!colaboradorSelect.value || !productoSelect.value) {
-        panel.classList.add('hidden');
-        return;
-      }
-      requestController?.abort();
-      requestController = new AbortController();
-      const params = new URLSearchParams({ colaborador_codigo: colaboradorSelect.value, producto_codigo: productoSelect.value });
-      try {
-        const response = await fetch(`${activeAssignmentsUrl}?${params}`, { headers: { Accept: 'application/json' }, signal: requestController.signal });
-        if (!response.ok) throw new Error('No fue posible consultar las asignaciones activas.');
-        activeAssignments = (await response.json()).data || [];
-        panel.classList.toggle('hidden', activeAssignments.length === 0);
-        previousSelect.innerHTML = activeAssignments.map((item) => `<option value="${item.id}">#${item.id} · ${new Date(item.fecha).toLocaleDateString('es-GT')} · ${item.cantidad_activa} activa(s)</option>`).join('');
-        if (defaults.asignacion_anterior_id && activeAssignments.some((item) => String(item.id) === String(defaults.asignacion_anterior_id))) {
-          previousSelect.value = defaults.asignacion_anterior_id;
-        }
-        if (activeAssignments.length) renderPrevious();
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          panel.classList.remove('hidden');
-          status.textContent = error.message;
-        }
-      }
-    };
-
-    [productoSelect, bodegaSelect, stockTipoInput, colaboradorSelect].forEach((element) => element.addEventListener('change', loadPrevious));
-    [previousSelect, deliveryMode].forEach((element) => element.addEventListener('change', renderPrevious));
-    loadPrevious();
 
     clone.querySelector('.remove-item').addEventListener('click', () => {
       clone.remove();

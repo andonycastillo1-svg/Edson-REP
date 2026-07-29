@@ -111,14 +111,4 @@ class AsignacionInventario extends Model
     {
         return $this->hasMany(AsignacionPeriodo::class, 'asignacion_inventario_id');
     }
-
-    public function asignacionAnterior()
-    {
-        return $this->belongsTo(self::class, 'asignacion_anterior_id');
-    }
-
-    public function reposiciones()
-    {
-        return $this->hasMany(self::class, 'asignacion_anterior_id');
-    }
 }

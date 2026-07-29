@@ -17,7 +17,6 @@ use Illuminate\Support\Str;
 use App\Services\AsignacionVidaUtilService;
 use App\Services\NotificacionService;
 use App\Services\InventarioLifecycleService;
-use App\Services\AsignacionReplacementService;
 use Carbon\Carbon;
 use App\Models\Role;
 
@@ -182,11 +181,8 @@ class AsignacionInventarioController extends Controller
             'items.*.bodega_id' => ['required', 'exists:bodegas,id'],
             'items.*.cantidad_asignada' => ['required', 'integer', 'min:1'],
             'items.*.stock_tipo' => ['required', 'in:nuevo,usado'],
-            'items.*.modo_entrega' => ['nullable', 'in:reposicion,adicional'],
-            'items.*.asignacion_anterior_id' => ['nullable', 'integer'],
-            'items.*.solicitado_por' => ['nullable', 'string', 'max:150'],
-            'items.*.motivo_reposicion' => ['nullable', 'in:' . implode(',', AsignacionReplacementService::MOTIVOS)],
-            'items.*.justificacion_reposicion' => ['nullable', 'string', 'max:1000'],
+            'items.*.es_reemplazo' => ['nullable', 'boolean'],
+            'items.*.fecha_dano' => ['nullable', 'date'],
         ]);
 
         $imagenPath = null;
@@ -229,12 +225,6 @@ class AsignacionInventarioController extends Controller
         DB::transaction(function () use ($data, $items, $imagenPath, $grupoAsignacion, $request) {
             $vidaUtilService = app(AsignacionVidaUtilService::class);
             $lifecycleService = app(InventarioLifecycleService::class);
-            $replacementService = app(AsignacionReplacementService::class);
-            $tracking = $items->map(fn (array $item) => $replacementService->clasificarYValidar(
-                $request->user(),
-                $item,
-                $data['colaborador_codigo']
-            ));
 
             foreach ($items as $indice => $item) {
                 $inventario = Inventario::with('producto')
