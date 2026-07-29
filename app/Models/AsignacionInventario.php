@@ -99,4 +99,9 @@ class AsignacionInventario extends Model
     {
         return $this->hasMany(AsignacionEstadoHistorial::class, 'asignacion_inventario_id');
     }
+
+    public function periodos()
+    {
+        return $this->hasMany(AsignacionPeriodo::class, 'asignacion_inventario_id');
+    }
 }
