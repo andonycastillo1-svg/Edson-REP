@@ -14,7 +14,7 @@
     >
 
     <title>
-        @yield('title', 'Inventario')
+        @yield('title', 'Sistema de inventario')
     </title>
 
     @vite([
@@ -23,11 +23,14 @@
     ])
 </head>
 
-<body class="ui-shell admin-shell">
+<body
+    class="min-h-screen font-sans text-slate-900 antialiased"
+    style="background-color: var(--ui-bg);"
+>
 
-    @include('partials.app-topbar')
+    @include('partials.portal.topbar')
 
-    <main class="ui-main">
+    <main class="mx-auto min-h-[calc(100vh-80px)] w-full max-w-7xl px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
         @yield('content')
     </main>
 

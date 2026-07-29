@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --ui-bg: #eaf4ff;
+    --ui-bg: #b9dcf2;
     --ui-surface: rgba(255, 255, 255, 0.96);
     --ui-surface-solid: #ffffff;
     --ui-border: #dbeafe;
@@ -49,22 +49,36 @@
     color: #0f172a;
   }
 
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     color: var(--ui-text);
     letter-spacing: -0.025em;
   }
 
-  p, label, td, .text-slate-500, .text-slate-600, .text-gray-500, .text-gray-600 {
+  p,
+  label,
+  td,
+  .text-slate-500,
+  .text-slate-600,
+  .text-gray-500,
+  .text-gray-600 {
     color: var(--ui-muted);
   }
 
-  input, select, textarea {
+  input,
+  select,
+  textarea {
     border-color: var(--ui-border-strong) !important;
     border-radius: 0.875rem !important;
     color: var(--ui-text) !important;
-    background-color: #fff !important;
+    background-color: #ffffff !important;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      background-color 0.18s ease;
   }
 
   input[type="checkbox"],
@@ -76,12 +90,15 @@
     background-color: initial !important;
   }
 
-  input:focus, select:focus, textarea:focus {
+  input:focus,
+  select:focus,
+  textarea:focus {
     border-color: var(--ui-primary) !important;
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
   }
 
-  input::placeholder, textarea::placeholder {
+  input::placeholder,
+  textarea::placeholder {
     color: #94a3b8;
   }
 }
@@ -93,6 +110,10 @@
       radial-gradient(circle at 8% 0%, rgba(14, 165, 233, 0.14), transparent 28rem),
       radial-gradient(circle at 100% 20%, rgba(37, 99, 235, 0.10), transparent 30rem),
       linear-gradient(135deg, #e0f2fe 0%, #eff6ff 50%, #ffffff 100%);
+  }
+
+  .admin-shell {
+    background: var(--ui-bg);
   }
 
   .ui-topbar {
@@ -108,7 +129,7 @@
   }
 
   .ui-brand-logo {
-    @apply h-12 w-12 rounded-2xl border border-sky-100 bg-white p-1 object-contain shadow-sm md:h-14 md:w-14;
+    @apply h-auto w-20 object-contain md:w-24;
   }
 
   .ui-brand-name {
@@ -537,7 +558,7 @@
 @media print {
   html,
   body {
-    background: #fff !important;
+    background: #ffffff !important;
   }
 
   .ui-topbar,
@@ -555,5 +576,136 @@
   .card,
   table {
     box-shadow: none !important;
+  }
+}
+
+/* =========================================================
+   LOGIN
+   Estilos exclusivos de la pantalla de inicio de sesión
+   ========================================================= */
+
+@layer components {
+  .login-page {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    overflow-y: auto;
+    background-color: var(--ui-bg);
+  }
+
+  .login-page-inner {
+    display: flex;
+    min-height: 100%;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 28rem;
+    overflow: hidden;
+    border: 1px solid #cfe4f3;
+    border-radius: 1.5rem;
+    background-color: #ffffff;
+    box-shadow: 0 24px 60px rgba(26, 53, 94, 0.16);
+  }
+
+  .login-header {
+    border-bottom: 1px solid #dbeafe;
+    padding: 2rem 2rem 1.75rem;
+    text-align: center;
+  }
+
+  .login-logo {
+    display: block;
+    width: 100%;
+    max-width: 15rem;
+    height: auto;
+    max-height: 9rem;
+    margin: 0 auto 1.25rem;
+    object-fit: contain;
+  }
+
+  .login-kicker {
+    display: block;
+    color: #0971ce;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .login-title {
+    margin-top: 0.5rem;
+    color: #1a355e;
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 2rem;
+  }
+
+  .login-description {
+    margin-top: 0.25rem;
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .login-body {
+    padding: 2rem;
+  }
+
+  .login-submit {
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #0971ce !important;
+    border-radius: 0.75rem;
+    background-color: #0971ce !important;
+    padding: 0.75rem 1rem;
+    color: #ffffff !important;
+    font-size: 0.875rem;
+    font-weight: 800;
+    line-height: 1.25rem;
+    box-shadow: 0 6px 16px rgba(9, 113, 206, 0.22);
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .login-submit:hover {
+    border-color: #075da9 !important;
+    background-color: #075da9 !important;
+    box-shadow: 0 8px 20px rgba(9, 113, 206, 0.28);
+    transform: translateY(-1px);
+  }
+
+  .login-submit:focus {
+    outline: none;
+    box-shadow:
+      0 0 0 4px rgba(9, 113, 206, 0.2),
+      0 8px 20px rgba(9, 113, 206, 0.22);
+  }
+}
+
+@media (max-width: 640px) {
+  .login-page-inner {
+    padding: 1rem;
+  }
+
+  .login-header {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .login-body {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .login-logo {
+    max-width: 12rem;
+    max-height: 7rem;
   }
 }

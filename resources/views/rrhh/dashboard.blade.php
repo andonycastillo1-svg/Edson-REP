@@ -1,79 +1,98 @@
-@extends('layouts.admin')
+@extends('layouts.portal')
 
 @section('title', 'RRHH - Inicio')
 
 @section('content')
-<div class="mx-auto w-full max-w-6xl">
+<div class="w-full">
 
-    <div class="ui-page-header">
-        <div class="ui-page-header-body">
-            <div class="flex items-center gap-4">
-                <div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-sky-100 bg-white shadow-sm">
-                    <img src="{{ asset('img/logo1.png') }}" alt="Logo" class="h-11 w-11 object-contain">
-                </div>
+    <x-dashboard-header
+        title="Recursos Humanos"
+        description="Gestiona al personal, las cuentas de usuario y las alertas de reemplazo del sistema."
+    />
 
-                <div>
-                    <span class="ui-kicker">Panel principal</span>
-                    <h1 class="ui-page-title">Panel RRHH</h1>
-                    <p class="ui-page-subtitle">
-                        Bienvenido, <span class="font-bold text-slate-700">{{ auth()->user()->name }}</span>. Gestión de personal, cuentas y alertas por reemplazo antes de vida útil.
-                    </p>
-                </div>
-            </div>
+    <section>
+
+        <div class="mb-5">
+            <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-blue-600">
+                Módulos
+            </p>
+
+            <h2 class="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">
+                Herramientas disponibles
+            </h2>
+
+            <p class="mt-1 text-sm font-medium text-slate-500">
+                Selecciona el módulo que deseas administrar.
+            </p>
         </div>
-    </div>
 
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <a href="{{ route('rrhh.colaboradores.index') }}" class="dashboard-card group">
-            <div class="flex items-center justify-between gap-4">
-                <div class="flex items-center gap-4">
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-xl text-emerald-700">🧑‍💼</span>
-                    <div>
-                        <h2 class="text-base font-extrabold text-slate-950">Colaboradores</h2>
-                        <p class="mt-1 text-sm text-slate-500">Altas, bajas y gestión de personal</p>
-                    </div>
-                </div>
-                <span class="text-2xl text-slate-300 transition group-hover:text-emerald-600">›</span>
-            </div>
-        </a>
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
 
-        <a href="{{ route('rrhh.usuarios.index') }}" class="dashboard-card group">
-            <div class="flex items-center justify-between gap-4">
-                <div class="flex items-center gap-4">
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-xl text-blue-700">👥</span>
-                    <div>
-                        <h2 class="text-base font-extrabold text-slate-950">Usuarios</h2>
-                        <p class="mt-1 text-sm text-slate-500">Cuentas y permisos</p>
-                    </div>
-                </div>
-                <span class="text-2xl text-slate-300 transition group-hover:text-blue-600">›</span>
-            </div>
-        </a>
+            <x-dashboard-card
+                :href="route('rrhh.colaboradores.index')"
+                title="Colaboradores"
+                description="Administra altas, bajas y actualización de información del personal."
+                tone="emerald"
+            >
+                <x-slot:icon>
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        class="h-7 w-7"
+                        aria-hidden="true"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M8.25 6.75a3.75 3.75 0 117.5 0 3.75 3.75 0 01-7.5 0zM4.5 20.118a7.5 7.5 0 0115 0 .632.632 0 01-.326.557A13.448 13.448 0 0112 22.5a13.448 13.448 0 01-7.174-1.825.632.632 0 01-.326-.557z"
+                            clip-rule="evenodd"
+                        />
+                    </svg>
+                </x-slot:icon>
+            </x-dashboard-card>
 
-        <a href="{{ route('rrhh.alertas.index') }}" class="dashboard-card group">
-            <div class="flex items-center justify-between gap-4">
-                <div class="flex items-center gap-4">
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-xl text-amber-700">⚠️</span>
-                    <div>
-                        <h2 class="text-base font-extrabold text-slate-950">Alertas</h2>
-                        <p class="mt-1 text-sm text-slate-500">{{ $totalAlertas ?? 0 }} alerta(s) pendiente(s)</p>
-                    </div>
-                </div>
-                <span class="text-2xl text-slate-300 transition group-hover:text-amber-600">›</span>
-            </div>
-        </a>
-    </div>
+            <x-dashboard-card
+                :href="route('rrhh.usuarios.index')"
+                title="Usuarios"
+                description="Administra cuentas, accesos y permisos de los usuarios."
+                tone="blue"
+            >
+                <x-slot:icon>
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        class="h-7 w-7"
+                        aria-hidden="true"
+                    >
+                        <path d="M6.75 6a3 3 0 116 0 3 3 0 01-6 0zM2.25 18a6 6 0 0112 0v.75h-12V18z"/>
+                        <path d="M15.75 7.5A2.25 2.25 0 1118 9.75a2.25 2.25 0 01-2.25-2.25zM15 18a7.47 7.47 0 00-1.113-3.933A4.5 4.5 0 0121.75 17v.75H15V18z"/>
+                    </svg>
+                </x-slot:icon>
+            </x-dashboard-card>
 
-    <div class="ui-panel mt-5 px-5 py-4">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p class="text-sm font-semibold text-slate-500">Sesión activa como RRHH.</p>
+            <x-dashboard-card
+                :href="route('rrhh.alertas.index')"
+                title="Alertas"
+                :description="($totalAlertas ?? 0) . ' alerta(s) pendiente(s) de revisión.'"
+                tone="amber"
+            >
+                <x-slot:icon>
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        class="h-7 w-7"
+                        aria-hidden="true"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M9.401 3.003c1.155-2.004 4.043-2.004 5.198 0l7.355 12.75c1.154 2-.289 4.497-2.599 4.497H4.645c-2.31 0-3.753-2.497-2.599-4.497l7.355-12.75zM12 8.25a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 9a.75.75 0 100-1.5.75.75 0 000 1.5z"
+                            clip-rule="evenodd"
+                        />
+                    </svg>
+                </x-slot:icon>
+            </x-dashboard-card>
 
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button class="ui-btn-danger text-xs">Cerrar sesión</button>
-            </form>
         </div>
-    </div>
+    </section>
 
 </div>
 @endsection

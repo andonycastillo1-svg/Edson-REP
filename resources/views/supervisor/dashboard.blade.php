@@ -1,40 +1,56 @@
-@extends('layouts.operador')
+@extends('layouts.portal')
 
 @section('title', 'Supervisor - Inicio')
 
 @section('content')
-<div class="mx-auto w-full max-w-5xl">
-    <div class="ui-panel px-6 py-7">
-        <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Supervisor</p>
-        <h1 class="mt-2 text-2xl font-extrabold text-slate-950">Panel de supervisión</h1>
-        <p class="mt-2 text-sm text-slate-500">
-            Consulta las asignaciones creadas por los almacenistas relacionados y carga sus evidencias de entrega.
-        </p>
-    </div>
+<div class="w-full">
 
-    <div class="mt-5 grid gap-4 md:grid-cols-2">
-        <a href="{{ route('supervisor.asignaciones.index') }}" class="dashboard-card group">
-            <div class="flex items-center justify-between gap-4">
-                <div class="flex items-center gap-4">
-                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-xl text-amber-700">📦</span>
-                    <div>
-                        <h2 class="text-base font-extrabold text-slate-950">Asignaciones relacionadas</h2>
-                        <p class="mt-1 text-sm text-slate-500">Revisar pendientes y subir evidencias</p>
-                    </div>
-                </div>
-                <span class="text-2xl text-slate-300 transition group-hover:text-blue-600">›</span>
-            </div>
-        </a>
-    </div>
+    <x-dashboard-header
+        title="Panel de supervisión"
+        description="Consulta las asignaciones relacionadas con los almacenistas y administra las evidencias de entrega."
+    />
 
-    <div class="ui-panel mt-5 px-5 py-4">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p class="text-sm font-semibold text-slate-500">Sesión activa como Supervisor.</p>
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button class="ui-btn-danger text-xs">Cerrar sesión</button>
-            </form>
+    <section>
+
+        <div class="mb-5">
+            <p class="text-xs font-extrabold uppercase tracking-[0.16em] text-blue-600">
+                Módulos
+            </p>
+
+            <h2 class="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">
+                Herramientas de supervisión
+            </h2>
+
+            <p class="mt-1 text-sm font-medium text-slate-500">
+                Selecciona el módulo que deseas consultar.
+            </p>
         </div>
-    </div>
+
+        <div class="grid max-w-2xl grid-cols-1 gap-5">
+
+            <x-dashboard-card
+                :href="route('supervisor.asignaciones.index')"
+                title="Asignaciones relacionadas"
+                description="Revisa las asignaciones pendientes y carga las evidencias correspondientes a cada entrega."
+                tone="amber"
+            >
+                <x-slot:icon>
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        class="h-7 w-7"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M12 2.25l8.25 4.5v10.5L12 21.75l-8.25-4.5V6.75L12 2.25zm0 1.71L6.06 7.2 12 10.44l5.94-3.24L12 3.96zm-6.75 4.5v7.9l6 3.27v-7.9l-6-3.27zm7.5 11.17l6-3.27v-7.9l-6 3.27v7.9z"
+                        />
+                    </svg>
+                </x-slot:icon>
+            </x-dashboard-card>
+
+        </div>
+
+    </section>
+
 </div>
 @endsection
