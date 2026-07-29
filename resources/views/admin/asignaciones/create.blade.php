@@ -551,19 +551,12 @@
 </template>
 
 <script>
-<<<<<<< HEAD
-(() => {
-    const inventory = @json($inventarioOptions);
-    const wrapper = document.getElementById('items-wrapper');
-    const template = document.getElementById('item-template');
-    const addButton = document.getElementById('add-item');
-=======
   const inventarioOptions = @json($inventarioOptions);
   const itemsWrapper = document.getElementById('items-wrapper');
   const addItemBtn = document.getElementById('add-item');
   const template = document.getElementById('item-template');
   const colaboradorSelect = document.getElementById('colaborador_codigo');
-  const activeAssignmentsUrl = @json(route($routePrefix . '.asignaciones.activas_producto'));
+  const activeAssignmentsUrl = @json(route($prefix . '.asignaciones.activas_producto'));
 
   function durationLabel(seconds) {
     if (seconds === null || typeof seconds === 'undefined') return 'No aplica';
@@ -577,7 +570,6 @@
     element.textContent = String(value ?? '');
     return element.innerHTML;
   }
->>>>>>> cf5628ec7affd0ee1a2a7529bfb3c956fd09ef6a
 
     const buildProducts = select => {
         select.innerHTML = '';
