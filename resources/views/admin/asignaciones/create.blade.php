@@ -13,6 +13,9 @@
       return [
           'producto_codigo' => $i->producto_codigo,
           'bodega_id' => $i->bodega_id,
+          'stock_tipo' => $i->stock_tipo ?? 'nuevo',
+          'cantidad' => (int) $i->cantidad,
+          'vida_restante_meses' => $i->vida_util_restante_meses,
           'label' => (optional($i->producto)->descripcion ?: optional($i->producto)->nombre) . ' - ' . $i->producto_codigo . ' (' . optional($i->bodega)->nombre . ') - ' . (($i->stock_tipo ?? 'nuevo') === 'usado' ? 'Usado reutilizable' : 'Nuevo') . ' - Stock: ' . $i->cantidad . (!is_null($i->vida_util_restante_meses) ? ' - Vida restante: ' . $i->vida_util_restante_meses . ' meses' : ''),
       ];
   });
@@ -97,7 +100,7 @@
             <label class="mb-1 block text-sm font-bold text-slate-700">
               Colaborador
             </label>
-            <select name="colaborador_codigo"
+            <select id="colaborador_codigo" name="colaborador_codigo"
               data-searchable="true"
               data-search-placeholder="Buscar colaborador..."
               class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
@@ -219,7 +222,7 @@
               </div>
 
               <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-12">
-                <div class="md:col-span-7">
+                <div class="md:col-span-5">
                   <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
                     Producto
                   </label>
@@ -228,6 +231,15 @@
                     data-search-placeholder="Buscar producto..."
                     class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                     required></select>
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">Condición</label>
+                  <select data-name="stock_tipo" class="stock-tipo w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm" required>
+                    <option value="nuevo">Nuevo</option>
+                    <option value="usado">Usado</option>
+                  </select>
+                  <p class="stock-warning mt-2 text-xs font-semibold text-amber-700"></p>
                 </div>
 
                 <div class="md:col-span-3">
@@ -255,31 +267,43 @@
                     required>
                 </div>
 
-                <div class="md:col-span-5">
-                  <div class="h-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                    <label class="inline-flex items-center gap-3 text-sm font-bold text-amber-800">
-                      <input type="checkbox"
-                        value="1"
-                        data-name="es_reemplazo"
-                        class="reemplazo-dano-checkbox rounded border-amber-300 text-blue-600 focus:ring-blue-500">
-                      Reemplazo por daño
-                    </label>
-                    <p class="mt-1 text-xs text-amber-700">
-                      Úsalo solo si reemplaza una asignación activa previa.
-                    </p>
-                  </div>
-                </div>
+                <div class="replacement-panel hidden md:col-span-12 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div class="replacement-status text-sm font-extrabold text-amber-900"></div>
+                  <div class="replacement-summary mt-2 grid gap-1 text-xs text-amber-800 sm:grid-cols-2 lg:grid-cols-4"></div>
 
-                <div class="md:col-span-7">
-                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
-                    Fecha daño/reemplazo
-                  </label>
-                  <input type="date"
-                    data-name="fecha_dano"
-                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
-                  <p class="mt-2 text-xs text-slate-500">
-                    Opcional. Si queda vacío, se usará la fecha de asignación.
-                  </p>
+                  <div class="replacement-fields mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                    <div class="lg:col-span-2">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Asignación anterior</label>
+                      <select data-name="asignacion_anterior_id" class="previous-assignment w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"></select>
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Tipo de entrega</label>
+                      <select data-name="modo_entrega" class="delivery-mode w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
+                        <option value="reposicion">Reemplaza el anterior</option>
+                        <option value="adicional">Entrega adicional</option>
+                      </select>
+                    </div>
+                    <div class="requested-by-field">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Solicitado por</label>
+                      <input data-name="solicitado_por" maxlength="150" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div class="reason-field lg:col-span-2">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Motivo</label>
+                      <select data-name="motivo_reposicion" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
+                        <option value="">Selecciona un motivo</option>
+                        <option value="desgaste_prematuro">Desgaste prematuro</option>
+                        <option value="dano_accidental">Daño accidental</option>
+                        <option value="mal_uso">Mal uso</option>
+                        <option value="perdida">Pérdida</option>
+                        <option value="cambio_especificacion">Cambio de talla o especificación</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                    </div>
+                    <div class="justification-field lg:col-span-2">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Justificación</label>
+                      <textarea data-name="justificacion_reposicion" maxlength="1000" rows="2" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"></textarea>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -308,6 +332,21 @@
   const itemsWrapper = document.getElementById('items-wrapper');
   const addItemBtn = document.getElementById('add-item');
   const template = document.getElementById('item-template');
+  const colaboradorSelect = document.getElementById('colaborador_codigo');
+  const activeAssignmentsUrl = @json(route($routePrefix . '.asignaciones.activas_producto'));
+
+  function durationLabel(seconds) {
+    if (seconds === null || typeof seconds === 'undefined') return 'No aplica';
+    const days = Math.floor(Number(seconds) / 86400);
+    const months = Math.floor(days / 30);
+    return `${months} mes(es), ${days % 30} día(s)`;
+  }
+
+  function escapeHtml(value) {
+    const element = document.createElement('span');
+    element.textContent = String(value ?? '');
+    return element.innerHTML;
+  }
 
   function buildProductoOptions(selectElement) {
     selectElement.innerHTML = '';
@@ -336,8 +375,21 @@
     const productoSelect = clone.querySelector('[data-name="producto_codigo"]');
     const bodegaSelect = clone.querySelector('[data-name="bodega_id"]');
     const cantidadInput = clone.querySelector('[data-name="cantidad_asignada"]');
-    const reemplazoInput = clone.querySelector('[data-name="es_reemplazo"]');
-    const fechaDanioInput = clone.querySelector('[data-name="fecha_dano"]');
+    const stockTipoInput = clone.querySelector('[data-name="stock_tipo"]');
+    const stockWarning = clone.querySelector('.stock-warning');
+    const panel = clone.querySelector('.replacement-panel');
+    const status = clone.querySelector('.replacement-status');
+    const summary = clone.querySelector('.replacement-summary');
+    const previousSelect = clone.querySelector('.previous-assignment');
+    const deliveryMode = clone.querySelector('.delivery-mode');
+    const requestedByField = clone.querySelector('.requested-by-field');
+    const reasonField = clone.querySelector('.reason-field');
+    const justificationField = clone.querySelector('.justification-field');
+    const requestedBy = clone.querySelector('[data-name="solicitado_por"]');
+    const reason = clone.querySelector('[data-name="motivo_reposicion"]');
+    const justification = clone.querySelector('[data-name="justificacion_reposicion"]');
+    let activeAssignments = [];
+    let requestController;
 
     buildProductoOptions(productoSelect);
 
@@ -348,8 +400,84 @@
     if (defaults.producto_codigo) productoSelect.value = defaults.producto_codigo;
     if (defaults.bodega_id) bodegaSelect.value = defaults.bodega_id;
     if (defaults.cantidad_asignada) cantidadInput.value = defaults.cantidad_asignada;
-    if (typeof defaults.es_reemplazo !== 'undefined') reemplazoInput.checked = defaults.es_reemplazo == 1 || defaults.es_reemplazo === true;
-    if (defaults.fecha_dano) fechaDanioInput.value = defaults.fecha_dano;
+    if (defaults.stock_tipo) stockTipoInput.value = defaults.stock_tipo;
+    if (defaults.modo_entrega) deliveryMode.value = defaults.modo_entrega;
+    if (defaults.solicitado_por) requestedBy.value = defaults.solicitado_por;
+    if (defaults.motivo_reposicion) reason.value = defaults.motivo_reposicion;
+    if (defaults.justificacion_reposicion) justification.value = defaults.justificacion_reposicion;
+
+    const updateStockMessage = () => {
+      const selected = inventarioOptions.filter((item) => item.producto_codigo === productoSelect.value && String(item.bodega_id) === String(bodegaSelect.value));
+      const usado = selected.find((item) => item.stock_tipo === 'usado');
+      const actual = selected.find((item) => item.stock_tipo === stockTipoInput.value);
+      cantidadInput.max = actual ? actual.cantidad : 0;
+      if (stockTipoInput.value === 'nuevo' && usado && usado.cantidad > 0) {
+        stockWarning.textContent = `Advertencia: existen ${usado.cantidad} unidades usadas disponibles.`;
+      } else if (stockTipoInput.value === 'usado' && actual) {
+        stockWarning.textContent = actual.vida_restante_meses === null
+          ? 'Producto sin vida útil configurada.'
+          : (actual.vida_restante_meses <= 0 ? 'Vida útil agotada; su asignación está permitida.' : `La siguiente unidad tiene aproximadamente ${actual.vida_restante_meses} meses restantes.`);
+      } else {
+        stockWarning.textContent = 'No hay existencias de esta condición en la bodega seleccionada.';
+      }
+    };
+    [productoSelect, bodegaSelect, stockTipoInput].forEach((element) => element.addEventListener('change', updateStockMessage));
+    updateStockMessage();
+
+    const renderPrevious = () => {
+      const previous = activeAssignments.find((item) => String(item.id) === String(previousSelect.value));
+      if (!previous) return;
+      const hasLife = previous.vida_restante_segundos !== null && previous.vida_restante_segundos > 0;
+      const additional = deliveryMode.value === 'adicional';
+      status.textContent = additional
+        ? 'Entrega adicional: el producto anterior continuará asignado.'
+        : (hasLife ? 'Reposición anticipada: el producto anterior todavía tiene vida útil.' : 'Reposición normal: la vida útil anterior finalizó o no aplica.');
+      summary.innerHTML = `
+        <span><strong>Producto:</strong> ${escapeHtml(previous.producto || previous.producto_codigo)}</span>
+        <span><strong>Código:</strong> ${escapeHtml(previous.producto_codigo)}</span>
+        <span><strong>Asignación:</strong> #${previous.id}</span>
+        <span><strong>Fecha:</strong> ${new Date(previous.fecha).toLocaleDateString('es-GT')}</span>
+        <span><strong>Vida total:</strong> ${previous.vida_total_meses ?? 'No aplica'} mes(es)</span>
+        <span><strong>Tiempo utilizado:</strong> ${durationLabel(previous.tiempo_utilizado_segundos)}</span>
+        <span><strong>Vida restante:</strong> ${durationLabel(previous.vida_restante_segundos)}</span>
+        <span><strong>Cantidad activa:</strong> ${previous.cantidad_activa}</span>`;
+      requestedByField.classList.toggle('hidden', additional || !hasLife);
+      reasonField.classList.toggle('hidden', additional || !hasLife);
+      justificationField.classList.toggle('hidden', !additional && !hasLife);
+      requestedBy.required = !additional && hasLife;
+      reason.required = !additional && hasLife;
+      justification.required = additional || hasLife;
+    };
+
+    const loadPrevious = async () => {
+      if (!colaboradorSelect.value || !productoSelect.value) {
+        panel.classList.add('hidden');
+        return;
+      }
+      requestController?.abort();
+      requestController = new AbortController();
+      const params = new URLSearchParams({ colaborador_codigo: colaboradorSelect.value, producto_codigo: productoSelect.value });
+      try {
+        const response = await fetch(`${activeAssignmentsUrl}?${params}`, { headers: { Accept: 'application/json' }, signal: requestController.signal });
+        if (!response.ok) throw new Error('No fue posible consultar las asignaciones activas.');
+        activeAssignments = (await response.json()).data || [];
+        panel.classList.toggle('hidden', activeAssignments.length === 0);
+        previousSelect.innerHTML = activeAssignments.map((item) => `<option value="${item.id}">#${item.id} · ${new Date(item.fecha).toLocaleDateString('es-GT')} · ${item.cantidad_activa} activa(s)</option>`).join('');
+        if (defaults.asignacion_anterior_id && activeAssignments.some((item) => String(item.id) === String(defaults.asignacion_anterior_id))) {
+          previousSelect.value = defaults.asignacion_anterior_id;
+        }
+        if (activeAssignments.length) renderPrevious();
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          panel.classList.remove('hidden');
+          status.textContent = error.message;
+        }
+      }
+    };
+
+    [productoSelect, bodegaSelect, stockTipoInput, colaboradorSelect].forEach((element) => element.addEventListener('change', loadPrevious));
+    [previousSelect, deliveryMode].forEach((element) => element.addEventListener('change', renderPrevious));
+    loadPrevious();
 
     clone.querySelector('.remove-item').addEventListener('click', () => {
       clone.remove();

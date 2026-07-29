@@ -24,6 +24,12 @@ class AsignacionInventario extends Model
         'fecha_vencimiento',
         'estado',
         'stock_tipo',
+        'tipo_entrega',
+        'asignacion_anterior_id',
+        'solicitado_por',
+        'motivo_reposicion',
+        'justificacion_reposicion',
+        'vida_restante_anterior_segundos',
         'vida_util_original_meses',
         'vida_util_restante_meses',
         'estado_evidencia',
@@ -37,6 +43,7 @@ class AsignacionInventario extends Model
         'costo_unitario' => 'decimal:2',
         'vida_util_original_meses' => 'integer',
         'vida_util_restante_meses' => 'integer',
+        'vida_restante_anterior_segundos' => 'integer',
     ];
 
     public function colaborador()
@@ -98,5 +105,20 @@ class AsignacionInventario extends Model
     public function estadoHistorial()
     {
         return $this->hasMany(AsignacionEstadoHistorial::class, 'asignacion_inventario_id');
+    }
+
+    public function periodos()
+    {
+        return $this->hasMany(AsignacionPeriodo::class, 'asignacion_inventario_id');
+    }
+
+    public function asignacionAnterior()
+    {
+        return $this->belongsTo(self::class, 'asignacion_anterior_id');
+    }
+
+    public function reposiciones()
+    {
+        return $this->hasMany(self::class, 'asignacion_anterior_id');
     }
 }

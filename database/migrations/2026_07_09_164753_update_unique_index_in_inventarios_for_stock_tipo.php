@@ -9,8 +9,8 @@ class UpdateUniqueIndexInInventariosForStockTipo extends Migration
 {
     public function up(): void
     {
-        $indexes = collect(DB::select("SHOW INDEX FROM inventarios"))
-            ->pluck('Key_name')
+        $indexes = collect(Schema::getIndexes('inventarios'))
+            ->pluck('name')
             ->unique()
             ->values()
             ->toArray();
@@ -33,8 +33,8 @@ class UpdateUniqueIndexInInventariosForStockTipo extends Migration
 
     public function down(): void
     {
-        $indexes = collect(DB::select("SHOW INDEX FROM inventarios"))
-            ->pluck('Key_name')
+        $indexes = collect(Schema::getIndexes('inventarios'))
+            ->pluck('name')
             ->unique()
             ->values()
             ->toArray();

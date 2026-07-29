@@ -222,6 +222,9 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
+        Route::get('asignaciones/activas-producto', [AsignacionInventarioController::class, 'asignacionesActivas'])
+            ->name('asignaciones.activas_producto');
+
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
 
@@ -275,6 +278,9 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
+
+        Route::get('asignaciones/activas-producto', [AsignacionInventarioController::class, 'asignacionesActivas'])
+            ->name('asignaciones.activas_producto');
 
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
