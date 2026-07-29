@@ -13,6 +13,9 @@
       return [
           'producto_codigo' => $i->producto_codigo,
           'bodega_id' => $i->bodega_id,
+          'stock_tipo' => $i->stock_tipo ?? 'nuevo',
+          'cantidad' => (int) $i->cantidad,
+          'vida_restante_meses' => $i->vida_util_restante_meses,
           'label' => (optional($i->producto)->descripcion ?: optional($i->producto)->nombre) . ' - ' . $i->producto_codigo . ' (' . optional($i->bodega)->nombre . ') - ' . (($i->stock_tipo ?? 'nuevo') === 'usado' ? 'Usado reutilizable' : 'Nuevo') . ' - Stock: ' . $i->cantidad . (!is_null($i->vida_util_restante_meses) ? ' - Vida restante: ' . $i->vida_util_restante_meses . ' meses' : ''),
       ];
   });
@@ -219,7 +222,7 @@
               </div>
 
               <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-12">
-                <div class="md:col-span-7">
+                <div class="md:col-span-5">
                   <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
                     Producto
                   </label>
@@ -228,6 +231,15 @@
                     data-search-placeholder="Buscar producto..."
                     class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                     required></select>
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">Condición</label>
+                  <select data-name="stock_tipo" class="stock-tipo w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm" required>
+                    <option value="nuevo">Nuevo</option>
+                    <option value="usado">Usado</option>
+                  </select>
+                  <p class="stock-warning mt-2 text-xs font-semibold text-amber-700"></p>
                 </div>
 
                 <div class="md:col-span-3">
@@ -336,6 +348,8 @@
     const productoSelect = clone.querySelector('[data-name="producto_codigo"]');
     const bodegaSelect = clone.querySelector('[data-name="bodega_id"]');
     const cantidadInput = clone.querySelector('[data-name="cantidad_asignada"]');
+    const stockTipoInput = clone.querySelector('[data-name="stock_tipo"]');
+    const stockWarning = clone.querySelector('.stock-warning');
     const reemplazoInput = clone.querySelector('[data-name="es_reemplazo"]');
     const fechaDanioInput = clone.querySelector('[data-name="fecha_dano"]');
 
@@ -348,8 +362,27 @@
     if (defaults.producto_codigo) productoSelect.value = defaults.producto_codigo;
     if (defaults.bodega_id) bodegaSelect.value = defaults.bodega_id;
     if (defaults.cantidad_asignada) cantidadInput.value = defaults.cantidad_asignada;
+    if (defaults.stock_tipo) stockTipoInput.value = defaults.stock_tipo;
     if (typeof defaults.es_reemplazo !== 'undefined') reemplazoInput.checked = defaults.es_reemplazo == 1 || defaults.es_reemplazo === true;
     if (defaults.fecha_dano) fechaDanioInput.value = defaults.fecha_dano;
+
+    const updateStockMessage = () => {
+      const selected = inventarioOptions.filter((item) => item.producto_codigo === productoSelect.value && String(item.bodega_id) === String(bodegaSelect.value));
+      const usado = selected.find((item) => item.stock_tipo === 'usado');
+      const actual = selected.find((item) => item.stock_tipo === stockTipoInput.value);
+      cantidadInput.max = actual ? actual.cantidad : 0;
+      if (stockTipoInput.value === 'nuevo' && usado && usado.cantidad > 0) {
+        stockWarning.textContent = `Advertencia: existen ${usado.cantidad} unidades usadas disponibles.`;
+      } else if (stockTipoInput.value === 'usado' && actual) {
+        stockWarning.textContent = actual.vida_restante_meses === null
+          ? 'Producto sin vida útil configurada.'
+          : (actual.vida_restante_meses <= 0 ? 'Vida útil agotada; su asignación está permitida.' : `La siguiente unidad tiene aproximadamente ${actual.vida_restante_meses} meses restantes.`);
+      } else {
+        stockWarning.textContent = 'No hay existencias de esta condición en la bodega seleccionada.';
+      }
+    };
+    [productoSelect, bodegaSelect, stockTipoInput].forEach((element) => element.addEventListener('change', updateStockMessage));
+    updateStockMessage();
 
     clone.querySelector('.remove-item').addEventListener('click', () => {
       clone.remove();

@@ -622,8 +622,13 @@
                     <select name="estado_devolucion" class="asg-input" style="width:230px;">
                       <option value="buen_estado">Buen estado / reutilizable</option>
                       <option value="danado">Dañado / no reutilizable</option>
-                      <option value="sin_vida_util">Sin vida útil</option>
-                      <option value="descuento">Pendiente de descuento</option>
+                      <option value="perdido">Perdido / no devuelto</option>
+                      <option value="baja">Dar de baja</option>
+                    </select>
+                    <input name="motivo_devolucion" class="asg-input" maxlength="150" required placeholder="Motivo de devolución">
+                    <select name="bodega_retorno_id" class="asg-input" required>
+                      <option value="">Bodega de devolución</option>
+                      @foreach($bodegasRetorno as $bodegaRetorno)<option value="{{ $bodegaRetorno->id }}">{{ $bodegaRetorno->nombre }}</option>@endforeach
                     </select>
 
                     <button type="submit"
@@ -825,8 +830,13 @@
                       <select name="estado_devolucion" class="asg-input" style="width:230px;">
                         <option value="buen_estado">Buen estado / reutilizable</option>
                         <option value="danado">Dañado / no reutilizable</option>
-                        <option value="sin_vida_util">Sin vida útil</option>
-                        <option value="descuento">Pendiente de descuento</option>
+                        <option value="perdido">Perdido / no devuelto</option>
+                        <option value="baja">Dar de baja</option>
+                      </select>
+                      <input name="motivo_devolucion" class="asg-input" maxlength="150" required placeholder="Motivo de devolución">
+                      <select name="bodega_retorno_id" class="asg-input" required>
+                        <option value="">Bodega de devolución</option>
+                        @foreach($bodegasRetorno as $bodegaRetorno)<option value="{{ $bodegaRetorno->id }}">{{ $bodegaRetorno->nombre }}</option>@endforeach
                       </select>
 
                       <button type="submit"

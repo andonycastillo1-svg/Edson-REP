@@ -7,6 +7,7 @@ use App\Models\Bodega;
 use App\Services\BodegaAccessService;
 use App\Services\InventarioStockService;
 use App\Services\NotificacionService;
+use App\Services\InventarioLifecycleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,8 @@ class InventarioController extends Controller
 {
     public function __construct(
         private BodegaAccessService $bodegaAccess,
-        private InventarioStockService $stockService
+        private InventarioStockService $stockService,
+        private InventarioLifecycleService $lifecycleService
     ) {
     }
 
@@ -60,6 +62,7 @@ class InventarioController extends Controller
             ]);
 
             $this->stockService->incrementar((int) $bodega->id, $data['producto_codigo'], (int) $data['cantidad']);
+            $this->lifecycleService->crearNuevas($data['producto_codigo'], (int) $bodega->id, (int) $data['cantidad']);
         });
 
         app(NotificacionService::class)->safeAction(

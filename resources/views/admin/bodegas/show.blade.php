@@ -534,7 +534,7 @@
                                 <th>Código</th>
                                 <th>Producto</th>
                                 <th>Categoría</th>
-                                <th>Tipo stock</th>
+                                <th>Disponibilidad agrupada</th>
                                 <th class="text-right">Cantidad</th>
                                 <th class="text-right">Vida útil</th>
                                 <th class="text-right">Costo unitario</th>
@@ -570,12 +570,13 @@
                                     </td>
 
                                     <td>
-                                        @php($tipoStock = $inv->stock_tipo ?? 'nuevo')
-                                        <span class="inv-stock-pill">
-                                            {{ ['nuevo' => 'Nuevo', 'usado' => 'Usado reutilizable', 'danado' => 'Dañado/no reutilizable', 'descuento' => 'Pendiente descuento'][$tipoStock] ?? ucfirst($tipoStock) }}
-                                        </span>
-                                        @if($tipoStock === 'usado' && !is_null($inv->vida_util_restante_meses))
-                                            <div class="inv-muted" style="font-size:11px; margin-top:4px;">Vida restante: {{ $inv->vida_util_restante_meses }} meses</div>
+                                        <div><strong>Nuevos:</strong> {{ (int) $inv->nuevos_disponibles }}</div>
+                                        <div><strong>Usados:</strong> {{ (int) $inv->usados_disponibles }}</div>
+                                        <div><strong>Dañados:</strong> {{ (int) $inv->danados }}</div>
+                                        @if((int) $inv->perdidos > 0)<div><strong>Perdidos:</strong> {{ (int) $inv->perdidos }}</div>@endif
+                                        @if((int) $inv->bajas > 0)<div><strong>Bajas:</strong> {{ (int) $inv->bajas }}</div>@endif
+                                        @if((int) $inv->usados_disponibles > 0)
+                                            <div class="inv-muted" style="font-size:11px; margin-top:4px;">Menor vida usada: {{ is_null($inv->vida_util_restante_meses) ? 'No aplica' : $inv->vida_util_restante_meses.' meses' }}</div>
                                         @endif
                                     </td>
 

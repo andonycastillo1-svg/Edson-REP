@@ -11,4 +11,9 @@ class Producto extends Model
     protected $keyType = 'string';
 
     protected $fillable = ['codigo', 'nombre', 'descripcion', 'unidad_medida', 'vida_util_meses', 'categoria'];
+
+    public function existencias()
+    {
+        return $this->hasMany(InventarioExistencia::class, 'producto_codigo', 'codigo');
+    }
 }
