@@ -714,6 +714,10 @@
 
                           <td>
                             <span class="asg-status asg-status-gray">{{ ($a->stock_tipo ?? 'nuevo') === 'usado' ? 'Usado reutilizable' : 'Nuevo' }}</span>
+                            <div style="font-size:11px; color:#475569; margin-top:4px;">
+                              Entrega: {{ str_replace('_', ' ', ucfirst($a->tipo_entrega ?? 'inicial')) }}
+                              @if($a->asignacion_anterior_id) · Ref. #{{ $a->asignacion_anterior_id }} @endif
+                            </div>
                             @if(!is_null($a->vida_util_restante_meses))
                               <div style="font-size:11px; color:#64748b; margin-top:4px;">Restante: {{ $a->vida_util_restante_meses }} meses</div>
                             @endif

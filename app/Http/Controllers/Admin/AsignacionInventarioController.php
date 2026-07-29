@@ -9,7 +9,6 @@ use App\Models\Colaborador;
 use App\Models\Bodega;
 use App\Models\AsignacionMovimiento;
 use App\Models\AsignacionInventarioArchivo;
-use App\Models\AlertaReemplazo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
@@ -151,6 +150,22 @@ class AsignacionInventarioController extends Controller
         ));
     }
 
+    public function asignacionesActivas(Request $request)
+    {
+        $data = $request->validate([
+            'colaborador_codigo' => ['required', 'exists:colaboradores,codigo'],
+            'producto_codigo' => ['required', 'exists:productos,codigo'],
+        ]);
+
+        $asignaciones = app(AsignacionReplacementService::class)->activas(
+            $request->user(),
+            $data['colaborador_codigo'],
+            $data['producto_codigo']
+        );
+
+        return response()->json(['data' => $asignaciones]);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -205,34 +220,13 @@ class AsignacionInventarioController extends Controller
             }
         }
 
-        foreach ($items as $item) {
-            if (empty($item['es_reemplazo'])) {
-                continue;
-            }
-
-            $asignacionActiva = AsignacionInventario::query()
-                ->where('colaborador_codigo', $data['colaborador_codigo'])
-                ->where('producto_codigo', $item['producto_codigo'])
-                ->where('estado', 'Activa')
-                ->where('cantidad_asignada', '>', 0)
-                ->latest('fecha')
-                ->first();
-
-            if (!$asignacionActiva) {
-                return back()
-                    ->withInput()
-                    ->with('error', 'Marcaste reemplazo por daño pero no existe una asignación activa previa para el producto seleccionado.');
-            }
-        }
-
         $grupoAsignacion = (string) Str::uuid();
-        $alertasRrhhIds = [];
 
-        DB::transaction(function () use ($data, $items, $imagenPath, $grupoAsignacion, &$alertasRrhhIds) {
+        DB::transaction(function () use ($data, $items, $imagenPath, $grupoAsignacion, $request) {
             $vidaUtilService = app(AsignacionVidaUtilService::class);
             $lifecycleService = app(InventarioLifecycleService::class);
 
-            foreach ($items as $item) {
+            foreach ($items as $indice => $item) {
                 $inventario = Inventario::with('producto')
                     ->where('producto_codigo', $item['producto_codigo'])
                     ->where('bodega_id', $item['bodega_id'])
@@ -270,6 +264,7 @@ class AsignacionInventarioController extends Controller
                     'stock_tipo' => $stockTipoAsignado,
                     'vida_util_original_meses' => (int) ($inventario->producto?->vida_util_meses ?? 0),
                     'estado_evidencia' => 'pendiente',
+                    ...$tracking[$indice],
                 ];
 
                 if (!empty($inventario->producto?->vida_util_meses)) {
@@ -304,45 +299,13 @@ class AsignacionInventarioController extends Controller
                         'asignacion_inventario_id' => $asignacion->id,
                         'tipo' => 'Asignacion',
                         'cantidad' => $asignacion->cantidad_asignada,
-                        'detalle' => 'Asignación inicial del producto.',
+                        'detalle' => 'Entrega registrada como ' . str_replace('_', ' ', $tracking[$indice]['tipo_entrega']) . '.',
                         'user_id' => auth()->id(),
                     ]);
                 }
 
                 $vidaUtilService->registrarEstado($asignacion, 'activo', 'Producto asignado al colaborador.');
 
-                if (!empty($item['es_reemplazo'])) {
-                    $anterior = AsignacionInventario::with('producto')
-                        ->where('colaborador_codigo', $data['colaborador_codigo'])
-                        ->where('producto_codigo', $item['producto_codigo'])
-                        ->where('estado', 'Activa')
-                        ->where('id', '!=', $asignacion->id)
-                        ->where('cantidad_asignada', '>', 0)
-                        ->latest('fecha')
-                        ->first();
-
-                    if ($anterior) {
-                        $fechaDanio = !empty($item['fecha_dano'])
-                            ? Carbon::parse($item['fecha_dano'])
-                            : Carbon::parse($data['fecha']);
-
-                        $alertaRrhh = $vidaUtilService->procesarReemplazoPorDanio($anterior, $asignacion, $fechaDanio);
-
-                        if ($alertaRrhh) {
-                            $alertasRrhhIds[] = $alertaRrhh->id;
-                        }
-
-                        if (Schema::hasTable('asignacion_movimientos')) {
-                            AsignacionMovimiento::create([
-                                'asignacion_inventario_id' => $anterior->id,
-                                'tipo' => 'Reemplazo',
-                                'cantidad' => $anterior->cantidad_asignada,
-                                'detalle' => 'Reemplazo por daño registrado al asignar nuevo producto.',
-                                'user_id' => auth()->id(),
-                            ]);
-                        }
-                    }
-                }
             }
         });
 
@@ -367,11 +330,6 @@ class AsignacionInventarioController extends Controller
                 $urlAsignaciones
             );
 
-            if ($alertasRrhhIds !== []) {
-                foreach (AlertaReemplazo::whereIn('id', $alertasRrhhIds)->get() as $alertaRrhh) {
-                    $notificacionService->notificarAlertaRrhh($alertaRrhh, $request->user());
-                }
-            }
         } catch (\Throwable $exception) {
             report($exception);
         }

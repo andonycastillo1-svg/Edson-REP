@@ -100,7 +100,7 @@
             <label class="mb-1 block text-sm font-bold text-slate-700">
               Colaborador
             </label>
-            <select name="colaborador_codigo"
+            <select id="colaborador_codigo" name="colaborador_codigo"
               data-searchable="true"
               data-search-placeholder="Buscar colaborador..."
               class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
@@ -267,31 +267,43 @@
                     required>
                 </div>
 
-                <div class="md:col-span-5">
-                  <div class="h-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                    <label class="inline-flex items-center gap-3 text-sm font-bold text-amber-800">
-                      <input type="checkbox"
-                        value="1"
-                        data-name="es_reemplazo"
-                        class="reemplazo-dano-checkbox rounded border-amber-300 text-blue-600 focus:ring-blue-500">
-                      Reemplazo por daño
-                    </label>
-                    <p class="mt-1 text-xs text-amber-700">
-                      Úsalo solo si reemplaza una asignación activa previa.
-                    </p>
-                  </div>
-                </div>
+                <div class="replacement-panel hidden md:col-span-12 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div class="replacement-status text-sm font-extrabold text-amber-900"></div>
+                  <div class="replacement-summary mt-2 grid gap-1 text-xs text-amber-800 sm:grid-cols-2 lg:grid-cols-4"></div>
 
-                <div class="md:col-span-7">
-                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
-                    Fecha daño/reemplazo
-                  </label>
-                  <input type="date"
-                    data-name="fecha_dano"
-                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
-                  <p class="mt-2 text-xs text-slate-500">
-                    Opcional. Si queda vacío, se usará la fecha de asignación.
-                  </p>
+                  <div class="replacement-fields mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                    <div class="lg:col-span-2">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Asignación anterior</label>
+                      <select data-name="asignacion_anterior_id" class="previous-assignment w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"></select>
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Tipo de entrega</label>
+                      <select data-name="modo_entrega" class="delivery-mode w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
+                        <option value="reposicion">Reemplaza el anterior</option>
+                        <option value="adicional">Entrega adicional</option>
+                      </select>
+                    </div>
+                    <div class="requested-by-field">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Solicitado por</label>
+                      <input data-name="solicitado_por" maxlength="150" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
+                    </div>
+                    <div class="reason-field lg:col-span-2">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Motivo</label>
+                      <select data-name="motivo_reposicion" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
+                        <option value="">Selecciona un motivo</option>
+                        <option value="desgaste_prematuro">Desgaste prematuro</option>
+                        <option value="dano_accidental">Daño accidental</option>
+                        <option value="mal_uso">Mal uso</option>
+                        <option value="perdida">Pérdida</option>
+                        <option value="cambio_especificacion">Cambio de talla o especificación</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                    </div>
+                    <div class="justification-field lg:col-span-2">
+                      <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">Justificación</label>
+                      <textarea data-name="justificacion_reposicion" maxlength="1000" rows="2" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"></textarea>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -320,6 +332,21 @@
   const itemsWrapper = document.getElementById('items-wrapper');
   const addItemBtn = document.getElementById('add-item');
   const template = document.getElementById('item-template');
+  const colaboradorSelect = document.getElementById('colaborador_codigo');
+  const activeAssignmentsUrl = @json(route($routePrefix . '.asignaciones.activas_producto'));
+
+  function durationLabel(seconds) {
+    if (seconds === null || typeof seconds === 'undefined') return 'No aplica';
+    const days = Math.floor(Number(seconds) / 86400);
+    const months = Math.floor(days / 30);
+    return `${months} mes(es), ${days % 30} día(s)`;
+  }
+
+  function escapeHtml(value) {
+    const element = document.createElement('span');
+    element.textContent = String(value ?? '');
+    return element.innerHTML;
+  }
 
   function buildProductoOptions(selectElement) {
     selectElement.innerHTML = '';
