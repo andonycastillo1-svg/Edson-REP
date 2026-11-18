@@ -23,6 +23,9 @@ class AsignacionInventario extends Model
         'observaciones',
         'fecha_vencimiento',
         'estado',
+        'stock_tipo',
+        'vida_util_original_meses',
+        'vida_util_restante_meses',
         'estado_evidencia',
         'pdf_firmado',
     ];
@@ -93,5 +96,15 @@ class AsignacionInventario extends Model
     public function estadoHistorial()
     {
         return $this->hasMany(AsignacionEstadoHistorial::class, 'asignacion_inventario_id');
+    }
+    public function periodos()
+    {
+        return $this->hasMany(AsignacionPeriodo::class, 'asignacion_inventario_id');
+    }
+
+    public function movimientoInicial()
+    {
+        return $this->hasOne(AsignacionMovimiento::class, 'asignacion_inventario_id')
+            ->ofMany(['id' => 'min'], fn ($query) => $query->where('tipo', 'Asignacion'));
     }
 }

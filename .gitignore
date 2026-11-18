@@ -22,3 +22,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Los respaldos deben quedar fuera del repositorio.
+/*.zip
+/*.sql
+*.sqlite

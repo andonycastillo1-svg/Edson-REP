@@ -46,12 +46,12 @@ class AsignacionVehiculo extends Model
     public function pdfAsignacionFirmado()
     {
         return $this->hasOne(AsignacionVehiculoArchivo::class, 'asignacion_vehiculo_id')
-            ->where('tipo_documento', 'asignacion_firmada');
+            ->where('tipo_documento', 'asignacion_firmada')->latestOfMany();
     }
 
     public function pdfDevolucionFirmado()
     {
         return $this->hasOne(AsignacionVehiculoArchivo::class, 'asignacion_vehiculo_id')
-            ->where('tipo_documento', 'devolucion_firmada');
+            ->where('tipo_documento', 'devolucion_firmada')->latestOfMany();
     }
 }

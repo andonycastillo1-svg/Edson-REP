@@ -40,6 +40,17 @@ class BodegaAccessService
         return $this->canModifyStock($user, $bodegaId);
     }
 
+    public function canViewCompras(User $user): bool
+    {
+        if ((int) $user->role_id === 1) {
+            return true;
+        }
+
+        $principal = Bodega::where('tipo', 'Principal')->orderBy('id')->value('id');
+
+        return $principal !== null && $this->canView($user, (int) $principal);
+    }
+
     public function visibleBodegaIds(User $user): ?array
     {
         if ((int) $user->role_id === 1) {

@@ -484,7 +484,7 @@
                 <div class="inv-stat">
                     <div class="inv-stat-label">Stock total</div>
                     <div class="inv-stat-value">{{ number_format($stockTotal ?? 0) }}</div>
-                    <div class="inv-stat-note">Suma total de unidades disponibles.</div>
+                    <div class="inv-stat-note">Suma de unidades para la condición seleccionada.</div>
                 </div>
 
                 <div class="inv-stat">
@@ -501,8 +501,15 @@
             <form method="GET" class="inv-toolbar">
                 <input type="text"
                        id="inventarioSearch"
+                       name="q" value="{{ request()->query('q') }}"
                        class="inv-search"
                        placeholder="Buscar por código, producto, descripción o unidad...">
+
+                <select name="stock_tipo" class="inv-search" aria-label="Condición del inventario">
+                    @foreach(['' => 'Disponible', 'nuevo' => 'Nuevo', 'usado' => 'Usado', 'danado' => 'Dañado', 'perdido' => 'Perdido', 'baja' => 'Baja'] as $tipo => $label)
+                        <option value="{{ $tipo }}" @selected(request()->query('stock_tipo', '') === $tipo)>{{ $label }}</option>
+                    @endforeach
+                </select>
 
                 <span class="inv-counter" id="inventarioCounter">
                     {{ number_format($inventarios->count()) }} productos en pantalla

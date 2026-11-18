@@ -564,6 +564,7 @@
           @if($puedeGestionarDevoluciones)
             <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}">
               @csrf
+              <input type="hidden" name="solicitud_id" value="{{ \Illuminate\Support\Str::uuid() }}">
             </form>
           @endif
 
@@ -606,6 +607,7 @@
                 <form method="POST"
                       action="{{ route($routePrefix . '.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}">
                   @csrf
+                  <input type="hidden" name="solicitud_id" value="{{ \Illuminate\Support\Str::uuid() }}">
 
                   <div>
                     <p class="asg-mini-title">Acciones del colaborador</p>

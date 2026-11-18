@@ -13,6 +13,7 @@
       return [
           'producto_codigo' => $i->producto_codigo,
           'bodega_id' => $i->bodega_id,
+          'stock_tipo' => $i->stock_tipo,
           'label' => (optional($i->producto)->descripcion ?: optional($i->producto)->nombre) . ' - ' . $i->producto_codigo . ' (' . optional($i->bodega)->nombre . ') - Stock: ' . $i->cantidad,
       ];
   });
@@ -74,6 +75,7 @@
       enctype="multipart/form-data"
       class="ui-form space-y-6">
       @csrf
+      <input type="hidden" name="solicitud_id" value="{{ old('solicitud_id', (string) \Illuminate\Support\Str::uuid()) }}">
 
       <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
         <div class="border-b border-slate-200 bg-slate-50 px-6 py-5">
@@ -256,6 +258,17 @@
                 </div>
 
                 <div class="md:col-span-5">
+                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                    Tipo de stock
+                    <select data-name="stock_tipo"
+                      class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800" required>
+                      <option value="nuevo">Nuevo</option>
+                      <option value="usado">Usado</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="md:col-span-5">
                   <div class="h-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
                     <label class="inline-flex items-center gap-3 text-sm font-bold text-amber-800">
                       <input type="checkbox"
@@ -280,6 +293,15 @@
                   <p class="mt-2 text-xs text-slate-500">
                     Opcional. Si queda vacío, se usará la fecha de asignación.
                   </p>
+                </div>
+                <div class="md:col-span-12" data-reemplazo-anterior hidden>
+                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                    Asignación anterior
+                    <select data-name="asignacion_anterior_id"
+                      class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800" disabled>
+                      <option value="">Seleccionar asignación</option>
+                    </select>
+                  </label>
                 </div>
               </div>
             </div>
@@ -309,14 +331,16 @@
   const addItemBtn = document.getElementById('add-item');
   const template = document.getElementById('item-template');
 
-  function buildProductoOptions(selectElement) {
-    selectElement.innerHTML = '';
-    inventarioOptions.forEach((item) => {
-      const option = document.createElement('option');
-      option.value = item.producto_codigo;
-      option.textContent = item.label;
-      selectElement.appendChild(option);
-    });
+  const colaboradorSelect = document.querySelector('select[name="colaborador_codigo"]');
+  const urlActivas = @json(route($routePrefix . '.asignaciones.activas_producto'));
+
+  function buildProductoOptions(selectElement, bodega, tipo, selected) {
+    const opciones = inventarioOptions
+      .filter(item => String(item.bodega_id) === bodega && item.stock_tipo === tipo)
+      .map(item => new Option(item.label, item.producto_codigo));
+    selectElement.replaceChildren(new Option('Selecciona un producto', ''), ...opciones);
+    selectElement.value = opciones.some(option => option.value === selected) ? selected : '';
+    selectElement.dispatchEvent(new Event('options:updated'));
   }
 
   function renumberRows() {
@@ -339,19 +363,67 @@
     const reemplazoInput = clone.querySelector('[data-name="es_reemplazo"]');
     const fechaDanioInput = clone.querySelector('[data-name="fecha_dano"]');
 
-    buildProductoOptions(productoSelect);
-
-    if (window.enhanceSearchableSelect) {
-      window.enhanceSearchableSelect(productoSelect);
-    }
-
-    if (defaults.producto_codigo) productoSelect.value = defaults.producto_codigo;
+    const tipoSelect = clone.querySelector('[data-name="stock_tipo"]');
+    const anteriorSelect = clone.querySelector('[data-name="asignacion_anterior_id"]');
+    const contenedorAnterior = clone.querySelector('[data-reemplazo-anterior]');
     if (defaults.bodega_id) bodegaSelect.value = defaults.bodega_id;
+    if (defaults.stock_tipo) tipoSelect.value = defaults.stock_tipo;
     if (defaults.cantidad_asignada) cantidadInput.value = defaults.cantidad_asignada;
     if (typeof defaults.es_reemplazo !== 'undefined') reemplazoInput.checked = defaults.es_reemplazo == 1 || defaults.es_reemplazo === true;
     if (defaults.fecha_dano) fechaDanioInput.value = defaults.fecha_dano;
 
+    let consultaAnterior;
+    async function cargarAnteriores(seleccionada = '') {
+      consultaAnterior?.abort();
+      contenedorAnterior.hidden = !reemplazoInput.checked;
+      anteriorSelect.disabled = !reemplazoInput.checked;
+      anteriorSelect.required = reemplazoInput.checked;
+      anteriorSelect.replaceChildren(new Option('Seleccionar asignación', ''));
+      if (!reemplazoInput.checked || !colaboradorSelect.value || !productoSelect.value) return;
+
+      consultaAnterior = new AbortController();
+      const parametros = new URLSearchParams({
+        colaborador_codigo: colaboradorSelect.value,
+        producto_codigo: productoSelect.value,
+      });
+
+      try {
+        const response = await fetch(urlActivas + '?' + parametros, {
+          headers: { Accept: 'application/json' },
+          signal: consultaAnterior.signal,
+        });
+        if (!response.ok) throw new Error('No se pudieron consultar las asignaciones.');
+        const { data } = await response.json();
+        data.filter(item => String(item.bodega_id) === bodegaSelect.value).forEach(item => {
+          const fecha = item.fecha ? item.fecha.slice(0, 10) : '';
+          anteriorSelect.add(new Option('#' + item.id + ' · ' + fecha + ' · ' + item.cantidad_activa + ' disponibles', item.id));
+        });
+        if (seleccionada) anteriorSelect.value = seleccionada;
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          anteriorSelect.replaceChildren(new Option('No se pudieron consultar las asignaciones', ''));
+        }
+      }
+    }
+
+    function actualizarProductos(seleccionado = productoSelect.value) {
+      buildProductoOptions(productoSelect, bodegaSelect.value, tipoSelect.value, seleccionado);
+      cargarAnteriores();
+    }
+
+    buildProductoOptions(productoSelect, bodegaSelect.value, tipoSelect.value, defaults.producto_codigo);
+    if (window.enhanceSearchableSelect) window.enhanceSearchableSelect(productoSelect);
+    cargarAnteriores(defaults.asignacion_anterior_id);
+    productoSelect.addEventListener('change', () => cargarAnteriores());
+    reemplazoInput.addEventListener('change', () => cargarAnteriores());
+    bodegaSelect.addEventListener('change', () => actualizarProductos());
+    tipoSelect.addEventListener('change', () => actualizarProductos());
+    const actualizarColaborador = () => cargarAnteriores();
+    colaboradorSelect.addEventListener('change', actualizarColaborador);
+
     clone.querySelector('.remove-item').addEventListener('click', () => {
+      consultaAnterior?.abort();
+      colaboradorSelect.removeEventListener('change', actualizarColaborador);
       clone.remove();
 
       if (!itemsWrapper.querySelector('.item-row')) {

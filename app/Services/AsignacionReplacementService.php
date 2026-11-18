@@ -139,6 +139,7 @@ class AsignacionReplacementService
             'id' => $asignacion->id,
             'producto' => $asignacion->producto?->descripcion ?: $asignacion->producto?->nombre,
             'producto_codigo' => $asignacion->producto_codigo,
+            'bodega_id' => (int) $asignacion->bodega_id,
             'fecha' => $asignacion->fecha?->toIso8601String(),
             'vida_total_meses' => $vidaTotal,
             'tiempo_utilizado_segundos' => $utilizado,

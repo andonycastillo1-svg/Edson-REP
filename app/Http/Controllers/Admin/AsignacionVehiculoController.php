@@ -14,7 +14,10 @@ use App\Models\Vehiculo;
 use App\Models\VehiculoProductoAsignacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use App\Services\DocumentoPrivado;
+use App\Services\InventarioStockService;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class AsignacionVehiculoController extends Controller
@@ -48,7 +51,7 @@ class AsignacionVehiculoController extends Controller
             ->get();
 
         $inventarios = Inventario::with(['producto', 'bodega'])
-            ->where('cantidad', '>', 0)
+            ->disponiblesAgrupados()
             ->whereHas('producto', function ($query) {
                 $query->whereRaw('LOWER(TRIM(categoria)) = ?', ['refacciones']);
             })
@@ -63,11 +66,11 @@ class AsignacionVehiculoController extends Controller
         ));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, InventarioStockService $stock)
     {
         $data = $request->validate([
             'vehiculo_vin' => ['required', 'exists:vehiculos,vin'],
-            'colaborador_codigo' => ['required', 'exists:colaboradores,codigo'],
+            'colaborador_codigo' => ['required', Rule::exists('colaboradores', 'codigo')->where('estado', 'Activo')],
             'fecha_inicio' => ['required', 'date'],
             'estado_inicial_vehiculo' => ['required', 'string', 'max:60'],
             'observaciones_asignacion' => ['nullable', 'string'],
@@ -80,28 +83,16 @@ class AsignacionVehiculoController extends Controller
             'productos.*.observaciones' => ['nullable', 'string'],
         ]);
 
-        $yaAsignado = AsignacionVehiculo::where('vehiculo_vin', $data['vehiculo_vin'])
-            ->where('activa', true)
-            ->exists();
-
-        if ($yaAsignado) {
-            return back()
-                ->withInput()
-                ->with('error', 'El vehículo ya tiene una asignación activa.');
-        }
-
-        $personaConVehiculo = AsignacionVehiculo::where('colaborador_codigo', $data['colaborador_codigo'])
-            ->where('activa', true)
-            ->exists();
-
-        if ($personaConVehiculo) {
-            return back()
-                ->withInput()
-                ->with('error', 'La persona ya tiene un vehículo activo asignado.');
-        }
-
         try {
-            $asignacion = DB::transaction(function () use ($data) {
+            $asignacion = DB::transaction(function () use ($data, $stock) {
+                Vehiculo::whereKey($data['vehiculo_vin'])->lockForUpdate()->firstOrFail();
+                $colaborador = Colaborador::whereKey($data['colaborador_codigo'])->lockForUpdate()->firstOrFail();
+                if ($colaborador->estado !== 'Activo'
+                    || AsignacionVehiculo::where('vehiculo_vin', $data['vehiculo_vin'])->where('activa', true)->exists()
+                    || AsignacionVehiculo::where('colaborador_codigo', $colaborador->codigo)->where('activa', true)->exists()) {
+                    throw ValidationException::withMessages(['vehiculo_vin' => 'El vehículo o el colaborador ya tienen una asignación activa, o el colaborador está inactivo.']);
+                }
+
                 $asignacion = AsignacionVehiculo::create([
                     'vehiculo_vin' => $data['vehiculo_vin'],
                     'colaborador_codigo' => $data['colaborador_codigo'],
@@ -115,34 +106,17 @@ class AsignacionVehiculoController extends Controller
                 Vehiculo::where('vin', $data['vehiculo_vin'])
                     ->update(['estado' => 'En uso']);
 
-                foreach (($data['productos'] ?? []) as $prod) {
+                foreach (collect($data['productos'] ?? [])->sortBy('producto_codigo') as $prod) {
                     $productoCodigo = $prod['producto_codigo'];
                     $bodegaId = $prod['bodega_id'];
                     $cantidad = (int) $prod['cantidad'];
 
-                    $inv = Inventario::with('producto')
-                        ->where('producto_codigo', $productoCodigo)
-                        ->where('bodega_id', $bodegaId)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (!$inv) {
-                        throw new \RuntimeException('No existe inventario para el producto y bodega seleccionados.');
+                    $producto = \App\Models\Producto::findOrFail($productoCodigo);
+                    if (strtolower(trim((string) $producto->categoria)) !== 'refacciones') {
+                        throw ValidationException::withMessages(['productos' => 'Solo se pueden asignar productos con categoría refacciones.']);
                     }
 
-                    $categoriaProducto = strtolower(trim(optional($inv->producto)->categoria ?? ''));
-
-                    if ($categoriaProducto !== 'refacciones') {
-                        throw new \RuntimeException('Solo se pueden asignar productos con categoría refacciones.');
-                    }
-
-                    if ((int) $inv->cantidad < $cantidad) {
-                        throw new \RuntimeException('Stock insuficiente para uno de los productos seleccionados.');
-                    }
-
-                    $inv->decrement('cantidad', $cantidad);
-
-                    VehiculoProductoAsignacion::create([
+                    $refaccion = VehiculoProductoAsignacion::create([
                         'asignacion_vehiculo_id' => $asignacion->id,
                         'vehiculo_vin' => $data['vehiculo_vin'],
                         'producto_codigo' => $productoCodigo,
@@ -155,6 +129,8 @@ class AsignacionVehiculoController extends Controller
                         'observaciones' => $prod['observaciones'] ?? null,
                         'activa' => true,
                     ]);
+
+                    $stock->asignarAVehiculo($refaccion);
 
                     Movimiento::create([
                         'producto_codigo' => $productoCodigo,
@@ -169,11 +145,13 @@ class AsignacionVehiculoController extends Controller
                 }
 
                 return $asignacion;
-            });
+            }, 3);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Throwable $e) {
-            return back()
-                ->withInput()
-                ->with('error', $e->getMessage());
+            report($e);
+
+            return back()->withInput()->with('error', 'No se pudo asignar el vehículo.');
         }
 
         try {
@@ -192,23 +170,28 @@ class AsignacionVehiculoController extends Controller
             ->with('pdf_url', route('admin.vehiculos.asignaciones.pdf_asignacion', $asignacion));
     }
 
-    public function desasignar(Request $request, AsignacionVehiculo $asignacion)
+    public function desasignar(Request $request, AsignacionVehiculo $asignacion, InventarioStockService $stock)
     {
         $data = $request->validate([
             'fecha_fin' => ['required', 'date'],
             'estado_final_vehiculo' => ['required', 'string', 'max:60'],
             'observaciones_desasignacion' => ['nullable', 'string'],
             'productos' => ['nullable', 'array'],
-            'productos.*.id' => ['required_with:productos', 'exists:vehiculo_producto_asignaciones,id'],
+            'productos.*.id' => ['required_with:productos', 'integer', 'distinct'],
             'productos.*.accion' => ['required_with:productos', 'in:consumido,regresar,danado'],
             'productos.*.cantidad' => ['required_with:productos', 'integer', 'min:1'],
         ]);
 
-        if (!$asignacion->activa) {
-            return back()->with('error', 'La asignación ya está cerrada.');
-        }
+        DB::transaction(function () use ($data, $asignacion, $stock) {
+            Vehiculo::whereKey($asignacion->vehiculo_vin)->lockForUpdate()->firstOrFail();
+            $asignacion = AsignacionVehiculo::whereKey($asignacion->id)->lockForUpdate()->firstOrFail();
+            if (!$asignacion->activa) {
+                throw ValidationException::withMessages(['fecha_fin' => 'La asignación ya está cerrada.']);
+            }
+            if (\Illuminate\Support\Carbon::parse($data['fecha_fin'])->lt($asignacion->fecha_inicio->startOfDay())) {
+                throw ValidationException::withMessages(['fecha_fin' => 'La fecha final es anterior a la asignación.']);
+            }
 
-        DB::transaction(function () use ($data, $asignacion) {
             $asignacion->update([
                 'fecha_fin' => $data['fecha_fin'],
                 'estado_final_vehiculo' => $data['estado_final_vehiculo'],
@@ -220,28 +203,29 @@ class AsignacionVehiculoController extends Controller
             Vehiculo::where('vin', $asignacion->vehiculo_vin)
                 ->update(['estado' => 'Disponible']);
 
-            foreach (($data['productos'] ?? []) as $item) {
-                $rel = VehiculoProductoAsignacion::lockForUpdate()->findOrFail($item['id']);
-                $cantidad = min((int) $item['cantidad'], (int) $rel->cantidad);
+            $items = collect($data['productos'] ?? [])->keyBy('id');
+            $refacciones = VehiculoProductoAsignacion::where('asignacion_vehiculo_id', $asignacion->id)
+                ->where('vehiculo_vin', $asignacion->vehiculo_vin)
+                ->where('activa', true)->whereKey($items->keys()->all())
+                ->orderBy('producto_codigo')->orderBy('id')->lockForUpdate()->get();
+
+            if ($refacciones->count() !== $items->count()) {
+                throw ValidationException::withMessages(['productos' => 'Una refacción no pertenece a esta asignación o ya fue cerrada.']);
+            }
+
+            foreach ($refacciones as $refaccion) {
+                $item = $items->get($refaccion->id);
+                $cantidad = (int) $item['cantidad'];
                 $accion = $item['accion'];
+                if ($cantidad > (int) $refaccion->cantidad) {
+                    throw ValidationException::withMessages(['productos' => 'La cantidad supera el saldo activo de la refacción.']);
+                }
 
+                $stock->cerrarDeVehiculo($refaccion, $cantidad, $accion);
                 if ($accion === 'regresar') {
-                    $inv = Inventario::firstOrCreate(
-                        [
-                            'producto_codigo' => $rel->producto_codigo,
-                            'bodega_id' => $rel->bodega_id,
-                        ],
-                        [
-                            'cantidad' => 0,
-                        ]
-                    );
-
-                    $inv->increment('cantidad', $cantidad);
-
                     Movimiento::create([
-                        'producto_codigo' => $rel->producto_codigo,
-                        'bodega_origen_id' => null,
-                        'bodega_destino_id' => $rel->bodega_id,
+                        'producto_codigo' => $refaccion->producto_codigo,
+                        'bodega_destino_id' => $refaccion->bodega_id,
                         'tipo_movimiento' => 'Entrada',
                         'cantidad' => $cantidad,
                         'fecha' => now(),
@@ -250,18 +234,27 @@ class AsignacionVehiculoController extends Controller
                     ]);
                 }
 
-                $rel->activa = false;
-                $rel->observaciones = trim(($rel->observaciones ? $rel->observaciones . ' | ' : '') . 'Cierre: ' . $accion);
-                $rel->save();
+                $cerrada = $refaccion;
+                if ($cantidad < (int) $refaccion->cantidad) {
+                    $cerrada = $refaccion->replicate();
+                    $refaccion->decrement('cantidad', $cantidad);
+                }
+                $cerrada->fill([
+                    'cantidad' => $cantidad,
+                    'estado' => $accion === 'regresar' ? 'regresado' : $accion,
+                    'activa' => false,
+                    'fecha_cierre' => now(),
+                    'accion_cierre' => $accion,
+                    'cerrado_por_user_id' => auth()->id(),
+                ])->save();
             }
-        });
+        }, 3);
 
         app(NotificacionService::class)->safeAction(
             fn (NotificacionService $service) => $service->notificarCambioEstadoAsignacion(
                 [$asignacion->fresh()],
                 $request->user(),
-                'una desasignación de vehículo',
-                route('admin.vehiculos.asignaciones.index')
+                'una desasignación de vehículo'
             )
         );
 
@@ -297,48 +290,27 @@ class AsignacionVehiculoController extends Controller
 
         $file = $request->file('archivo');
 
-        $path = $file->store(
-            'vehiculos/asignaciones/' . $asignacion->id,
-            'public'
-        );
-
-        $anterior = AsignacionVehiculoArchivo::where('asignacion_vehiculo_id', $asignacion->id)
-            ->where('tipo_documento', $data['tipo_documento'])
-            ->latest()
-            ->first();
-
-        if ($anterior && Storage::disk('public')->exists($anterior->ruta)) {
-            Storage::disk('public')->delete($anterior->ruta);
+        $path = DocumentoPrivado::guardar($file, 'vehiculos/asignaciones/' . $asignacion->id);
+        try {
+            AsignacionVehiculoArchivo::create([
+                'asignacion_vehiculo_id' => $asignacion->id,
+                'tipo_documento' => $data['tipo_documento'],
+                'ruta' => $path,
+                'nombre_original' => $file->getClientOriginalName(),
+                'mime' => $file->getMimeType(),
+                'tamano' => $file->getSize(),
+                'subido_por_user_id' => auth()->id(),
+            ]);
+        } catch (Throwable $e) {
+            DocumentoPrivado::descartar($path);
+            throw $e;
         }
-
-        if ($anterior) {
-            $anterior->delete();
-        }
-
-        AsignacionVehiculoArchivo::create([
-            'asignacion_vehiculo_id' => $asignacion->id,
-            'tipo_documento' => $data['tipo_documento'],
-            'ruta' => $path,
-            'nombre_original' => $file->getClientOriginalName(),
-            'mime' => $file->getMimeType(),
-            'tamano' => $file->getSize(),
-            'subido_por_user_id' => auth()->id(),
-        ]);
 
         return back()->with('success', 'PDF firmado subido correctamente.');
     }
 
     public function verPdfFirmado(AsignacionVehiculoArchivo $archivo)
     {
-        if (!Storage::disk('public')->exists($archivo->ruta)) {
-            abort(404, 'El archivo no existe.');
-        }
-
-        return response()->file(
-            Storage::disk('public')->path($archivo->ruta),
-            [
-                'Content-Type' => $archivo->mime ?? 'application/pdf',
-            ]
-        );
+        return DocumentoPrivado::responder($archivo->ruta, $archivo->nombre_original);
     }
 }

@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\AsignacionInventario;
 use App\Models\InventarioExistencia;
 use App\Services\InventarioLifecycleService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -94,6 +94,7 @@ class InventarioLifecycleServiceTest extends TestCase
         $this->service->devolver($asignacion, 1, 'buen_estado', 1, 'Parcial', null, Carbon::parse('2026-01-02'));
         $this->assertSame(1, InventarioExistencia::where('condicion', 'usado')->count());
         $this->assertSame(1, InventarioExistencia::where('condicion', 'asignado')->count());
+        $asignacion->update(['cantidad_asignada' => 1]);
         $this->service->devolver($asignacion, 1, 'perdido', 1, 'No devuelto', null, Carbon::parse('2026-01-03'));
         $this->expectException(\Illuminate\Validation\ValidationException::class);
         $this->service->devolver($asignacion, 1, 'buen_estado', 1, 'Duplicada', null, Carbon::parse('2026-01-04'));

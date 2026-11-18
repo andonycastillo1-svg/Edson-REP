@@ -5,11 +5,16 @@ namespace App\Services;
 use App\Models\AlertaReemplazo;
 use App\Models\AsignacionInventario;
 use App\Models\AsignacionVehiculo;
+use App\Models\Bodega;
 use App\Models\Inventario;
 use App\Models\Operacion;
 use App\Models\User;
 use App\Models\VehiculoProductoAsignacion;
+use App\Notifications\AlertaGeneralNotification;
 use App\Notifications\AlertaRrhhNotification;
+use App\Notifications\CambioEstadoAsignacionNotification;
+use App\Notifications\MovimientoInventarioNotification;
+use App\Notifications\RelacionUsuarioNotification;
 use App\Notifications\AsignacionPendienteNotification;
 use App\Notifications\NuevaAsignacionNotification;
 use App\Notifications\StockBajoNotification;
@@ -241,6 +246,76 @@ class NotificacionService
         );
     }
 
+    public function notificarMovimientoInventario(Bodega $bodega, User $actor, string $mensaje, ?string $entidadId = null): void
+    {
+        $data = $this->payload('Movimiento de inventario', $mensaje, $bodega, $actor, $entidadId);
+        $this->safeNotify($this->administradores($actor->id), new MovimientoInventarioNotification($data + [
+            'url' => route('admin.bodegas.show', $bodega),
+        ]));
+        $this->safeNotify($this->almacenistasDeBodega($bodega->id, $actor->id), new MovimientoInventarioNotification($data + [
+            'url' => route('operador.bodegas.show', $bodega),
+        ]));
+    }
+
+    public function notificarCambioEstadoAsignacion(iterable $asignaciones, User $actor, string $estado): void
+    {
+        $asignaciones = collect($asignaciones)->filter()->unique('id');
+        $primera = $asignaciones->first();
+        if (!$primera) {
+            return;
+        }
+
+        $data = $this->payload('Cambio en asignación', 'Se registró ' . $estado . ' en ' . $asignaciones->count() . ' asignación(es).', $primera, $actor);
+        $dataAdmin = $data + ['url' => $primera instanceof AsignacionVehiculo
+            ? route('admin.vehiculos.asignaciones.index') : route('admin.asignaciones.index')];
+        $this->safeNotify($this->administradores($actor->id), new CambioEstadoAsignacionNotification($dataAdmin));
+
+        $creadores = User::whereIn('id', $asignaciones->map(fn (Model $item) => $item->user_id ?? $item->asignado_por_user_id)
+            ->filter()->unique())->where('role_id', 2)->get();
+        $this->safeNotify($creadores, new CambioEstadoAsignacionNotification($data + [
+            'url' => $primera instanceof AsignacionInventario ? route('operador.asignaciones.index') : route('dashboard'),
+        ]), $actor->id);
+        $supervisores = $creadores->flatMap(fn (User $creador) => $creador->supervisoresAsignados()->where('users.role_id', 3)->get());
+        $this->safeNotify($supervisores, new CambioEstadoAsignacionNotification($data + [
+            'url' => route('supervisor.asignaciones.index'),
+        ]), $actor->id);
+    }
+
+    public function notificarRelacionSupervisorAlmacenista(User $supervisor, User $almacenista, User $actor): void
+    {
+        $data = $this->payload('Relación de supervisión actualizada', '', $supervisor, $actor) + ['url' => route('dashboard')];
+        $this->safeNotify([$almacenista], new RelacionUsuarioNotification(array_replace($data, [
+            'mensaje' => 'Se te asignó el supervisor ' . $supervisor->name . '.',
+        ])), $actor->id);
+        $this->safeNotify([$supervisor], new RelacionUsuarioNotification(array_replace($data, [
+            'mensaje' => 'Fuiste asignado al almacenista ' . $almacenista->name . '.',
+        ])), $actor->id);
+    }
+
+    public function notificarResolucionAlertaRrhh(AlertaReemplazo $alerta, User $actor): void
+    {
+        $data = $this->payload('Alerta RRHH finalizada', 'Se finalizó la alerta de RRHH #' . $alerta->id . '.', $alerta, $actor)
+            + ['url' => route('dashboard')];
+        $destinatarios = $this->administradores($actor->id);
+        if ($alerta->registrado_por_user_id) {
+            $destinatarios->push(User::find($alerta->registrado_por_user_id));
+        }
+        $this->safeNotify($destinatarios, new AlertaGeneralNotification($data), $actor->id);
+    }
+
+    private function payload(string $titulo, string $mensaje, Model $entidad, User $actor, ?string $entidadId = null): array
+    {
+        return [
+            'titulo' => $titulo,
+            'mensaje' => $mensaje,
+            'entidad_id' => $entidadId ?? (string) $entidad->getKey(),
+            'entidad_tipo' => class_basename($entidad),
+            'creado_por_id' => (string) $actor->id,
+            'creado_por_nombre' => $actor->name,
+            'fecha' => now()->toDateTimeString(),
+        ];
+    }
+
     public function notificarStockBajo(Inventario $inventario, ?User $creador = null): void
     {
         if (!Schema::hasTable('notifications') || !Schema::hasColumn('productos', 'stock_minimo')) {
@@ -321,18 +396,25 @@ class NotificacionService
             ->get();
     }
 
-    private function notificarUsuarios($usuarios, Notification $notification): void
+    private function notificarUsuarios(iterable $usuarios, Notification $notification): void
     {
-        $usuarios = collect($usuarios)
-            ->filter()
-            ->unique('id')
-            ->values();
+        $this->safeNotify($usuarios, $notification);
+    }
 
-        if ($usuarios->isEmpty()) {
-            return;
-        }
+    public function safeNotify(iterable $usuarios, Notification $notification, ?int $exceptUserId = null): void
+    {
+        $this->safeAction(function () use ($usuarios, $notification, $exceptUserId) {
+            if (!Schema::hasTable('notifications')) {
+                return;
+            }
 
-        NotificationFacade::send($usuarios, $notification);
+            $destinatarios = collect($usuarios)
+                ->filter(fn ($usuario) => $usuario instanceof User && (int) $usuario->id !== $exceptUserId)
+                ->unique('id')->values();
+            if ($destinatarios->isNotEmpty()) {
+                NotificationFacade::send($destinatarios, $notification);
+            }
+        });
     }
 
     private function urlTraslado(Operacion $operacion, User $user): string
