@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Sistema\Auditoria;
+use App\Sistema\Permisos;
+use App\Sistema\Seguridad;
+use App\Sistema\ValoresCampos;
 use App\Http\Controllers\Controller;
 use App\Models\Bodega;
 use App\Models\Role;
@@ -49,7 +53,7 @@ class UsuarioController extends Controller
         $rolSupervisorId = $this->rolSupervisorId();
 
         $almacenistas = User::query()
-            ->where('role_id', $rolAlmacenistaId)
+            ->deAmbito($rolAlmacenistaId)
             ->orderBy('name')
             ->get();
 
@@ -68,50 +72,60 @@ class UsuarioController extends Controller
         $rolSupervisorId = $this->rolSupervisorId();
 
         $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
+        $ambito = Role::find($request->integer('role_id'))?->ambito();
+        $almacenistasValidos = User::deAmbito($rolAlmacenistaId)->select('users.id');
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role_id' => ['required', 'exists:roles,id', Rule::in($rolesPermitidos)],
 
             'bodega_id' => [
-                Rule::requiredIf(fn () => (int) $request->role_id === $rolAlmacenistaId),
+                Rule::requiredIf(fn () => $ambito === $rolAlmacenistaId),
                 'nullable',
                 'exists:bodegas,id',
             ],
 
             'almacenista_id' => [
-                Rule::requiredIf(fn () => (int) $request->role_id === $rolSupervisorId),
+                Rule::requiredIf(fn () => $ambito === $rolSupervisorId),
                 'nullable',
-                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role_id', $rolAlmacenistaId)),
+                Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('id', $almacenistasValidos)),
             ],
         ];
 
         $data = $request->validate($rules);
 
-        $usuario = DB::transaction(function () use ($data, $rolAlmacenistaId, $rolSupervisorId) {
+        $campos = app(ValoresCampos::class);
+        $valores = $campos->preparar($request, 'usuarios', true);
+        $seguridad = app(Seguridad::class);
+        $usuario = DB::transaction(function () use ($request, $data, $rolAlmacenistaId, $rolSupervisorId, $campos, $valores, $seguridad) {
+            $seguridad->bloquear();
+            $rol = Role::findOrFail($data['role_id']);
+            abort_unless($seguridad->rolAsignable($request->user(), $rol), 403);
             $usuario = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => bcrypt($data['password']),
                 'role_id' => $data['role_id'],
-                'bodega_id' => (int) $data['role_id'] === $rolAlmacenistaId
+                'bodega_id' => $rol->ambito() === $rolAlmacenistaId
                     ? ($data['bodega_id'] ?? null)
                     : null,
                 'created_by' => auth()->id(),
             ]);
 
-            if ((int) $usuario->role_id === $rolSupervisorId) {
+            if ($usuario->rolOperativo() === $rolSupervisorId) {
                 $usuario->almacenistasAsignados()->sync([
                     (int) $data['almacenista_id'],
                 ]);
             }
 
+            $campos->guardar('usuarios', $usuario->id, $valores);
+            app(Auditoria::class)->registrar('seguridad', 'crear_usuario', $usuario->id, null, $usuario->only(['role_id', 'bodega_id']));
             return $usuario;
         });
 
-        if ((int) $usuario->role_id === $rolSupervisorId) {
+        if ($usuario->rolOperativo() === $rolSupervisorId) {
             $almacenista = User::find((int) $data['almacenista_id']);
 
             if ($almacenista) {
@@ -143,7 +157,7 @@ class UsuarioController extends Controller
         $rolSupervisorId = $this->rolSupervisorId();
 
         $almacenistas = User::query()
-            ->where('role_id', $rolAlmacenistaId)
+            ->deAmbito($rolAlmacenistaId)
             ->where('id', '!=', $usuario->id)
             ->orderBy('name')
             ->get();
@@ -171,37 +185,47 @@ class UsuarioController extends Controller
         $rolSupervisorId = $this->rolSupervisorId();
 
         $rolesPermitidos = $this->rolesPermitidosParaGestion()->pluck('id')->all();
+        $ambito = Role::find($request->integer('role_id'))?->ambito();
+        $almacenistasValidos = User::deAmbito($rolAlmacenistaId)->select('users.id');
 
         $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($usuario->id)],
             'role_id' => ['required', 'exists:roles,id', Rule::in($rolesPermitidos)],
-            'password' => ['nullable', 'string', 'min:6', 'confirmed'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
 
             'bodega_id' => [
-                Rule::requiredIf(fn () => (int) $request->role_id === $rolAlmacenistaId),
+                Rule::requiredIf(fn () => $ambito === $rolAlmacenistaId),
                 'nullable',
                 'exists:bodegas,id',
             ],
 
             'almacenista_id' => [
-                Rule::requiredIf(fn () => (int) $request->role_id === $rolSupervisorId),
+                Rule::requiredIf(fn () => $ambito === $rolSupervisorId),
                 'nullable',
-                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role_id', $rolAlmacenistaId)),
+                Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('id', $almacenistasValidos)),
             ],
         ];
 
         $data = $request->validate($rules);
         $almacenistaAnteriorId = $usuario->almacenistasAsignados()->value('users.id');
 
-        DB::transaction(function () use ($data, $usuario, $rolAlmacenistaId, $rolSupervisorId) {
-            $nuevoRolId = (int) $data['role_id'];
+        $campos = app(ValoresCampos::class);
+        $seguridad = app(Seguridad::class);
+        DB::transaction(function () use ($request, $data, $usuario, $rolAlmacenistaId, $rolSupervisorId, $campos, $seguridad) {
+            $seguridad->bloquear();
+            $usuario = User::whereKey($usuario->id)->lockForUpdate()->firstOrFail();
+            $rol = Role::findOrFail($data['role_id']);
+            abort_unless($seguridad->puedeGestionar($request->user(), $usuario) && $seguridad->rolAsignable($request->user(), $rol), 403);
+            abort_if($request->user()->is($usuario) && (int) $usuario->role_id !== (int) $rol->id, 403);
+            $antes = $usuario->only(['role_id', 'bodega_id']);
+            $valores = $campos->preparar($request, 'usuarios', false, (string) $usuario->id);
 
             $payload = [
                 'name' => $data['name'],
                 'email' => $data['email'],
-                'role_id' => $nuevoRolId,
-                'bodega_id' => $nuevoRolId === $rolAlmacenistaId
+                'role_id' => $rol->id,
+                'bodega_id' => $rol->ambito() === $rolAlmacenistaId
                     ? ($data['bodega_id'] ?? null)
                     : null,
             ];
@@ -210,9 +234,16 @@ class UsuarioController extends Controller
                 $payload['password'] = bcrypt($data['password']);
             }
 
+            if ((int) $usuario->role_id !== (int) $rol->id && app(Permisos::class)->instalado()) {
+                $reglas = app(Permisos::class)->reglasUsuario($usuario);
+                DB::table('sistema_permisos_usuario')->where('user_id', $usuario->id)->delete();
+                if ($reglas !== []) {
+                    app(Auditoria::class)->registrar('seguridad', 'retirar_permisos_por_cambio_rol', $usuario->id, $reglas, []);
+                }
+            }
             $usuario->update($payload);
 
-            if ($nuevoRolId === $rolSupervisorId) {
+            if ($rol->ambito() === $rolSupervisorId) {
                 $usuario->almacenistasAsignados()->sync([
                     (int) $data['almacenista_id'],
                 ]);
@@ -220,12 +251,15 @@ class UsuarioController extends Controller
                 $usuario->almacenistasAsignados()->detach();
             }
 
-            if ($nuevoRolId !== $rolAlmacenistaId) {
+            if ($rol->ambito() !== $rolAlmacenistaId) {
                 $usuario->supervisoresAsignados()->detach();
             }
+            $campos->guardar('usuarios', $usuario->id, $valores);
+            app(Auditoria::class)->registrar('seguridad', 'actualizar_usuario', $usuario->id, $antes,
+                $usuario->only(['role_id', 'bodega_id']) + ['credencial_actualizada' => isset($payload['password'])]);
         });
 
-        $nuevoAlmacenistaId = (int) $data['role_id'] === $rolSupervisorId
+        $nuevoAlmacenistaId = $ambito === $rolSupervisorId
             ? (int) $data['almacenista_id']
             : null;
 
@@ -254,38 +288,34 @@ class UsuarioController extends Controller
                 ->with('error', 'No tienes permiso para eliminar este usuario.');
         }
 
-        $usuario->delete();
+        $seguridad = app(Seguridad::class);
+        abort_unless(app(Permisos::class)->instalado(), 503);
+        DB::transaction(function () use ($seguridad, $usuario) {
+            $seguridad->bloquear();
+            $usuario = User::whereKey($usuario->id)->lockForUpdate()->firstOrFail();
+            abort_unless($seguridad->puedeGestionar(auth()->user(), $usuario) && !auth()->user()->is($usuario), 403);
+            $seguridad->activarCuenta($usuario, false);
+        });
 
         return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
-            ->with('ok', 'Usuario eliminado correctamente.');
+            ->with('ok', 'Usuario desactivado.');
     }
 
     private function usuariosRoutePrefix(): string
     {
-        return auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+        return auth()->user()->rolOperativo() == 4 ? 'rrhh' : 'admin';
     }
 
     private function rolesPermitidosParaGestion()
     {
-        $query = Role::query()->orderBy('nombre');
+        $seguridad = app(Seguridad::class);
 
-        if (!$this->esAdmin()) {
-            $query->whereIn('id', array_filter([
-                $this->rolAlmacenistaId(),
-                $this->rolSupervisorId(),
-            ]));
-        }
-
-        return $query->get();
+        return Role::orderBy('nombre')->get()->filter(fn (Role $rol) => $seguridad->rolAsignable(auth()->user(), $rol));
     }
 
     private function puedeEditarUsuario(User $usuario): bool
     {
-        if ($this->esAdmin()) {
-            return true;
-        }
-
-        return (int) $usuario->created_by === (int) auth()->id();
+        return app(Seguridad::class)->puedeGestionar(auth()->user(), $usuario);
     }
 
     private function rolAlmacenistaId(): int
@@ -300,6 +330,6 @@ class UsuarioController extends Controller
 
     private function esAdmin(): bool
     {
-        return (int) auth()->user()->role_id === 1;
+        return auth()->user()->rolOperativo() === 1;
     }
 }

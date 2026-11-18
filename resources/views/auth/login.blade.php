@@ -9,6 +9,7 @@
     <div class="border-b border-sky-100 bg-gradient-to-br from-white to-sky-50 px-8 py-8 text-center">
         <div class="mx-auto mb-5 flex h-28 w-48 items-center justify-center rounded-3xl border border-sky-100 bg-white p-4 shadow-sm">
             <x-logo-image class="max-h-20 w-auto" />
+            @if(config('app.empresa'))<p class="mt-2 font-semibold text-slate-800">{{ config('app.empresa') }}</p>@endif
         </div>
         <span class="ui-kicker">Sistema corporativo</span>
         <h2 class="mt-2 text-2xl font-extrabold text-slate-950">Iniciar sesión</h2>

@@ -210,9 +210,33 @@ class InventarioStockService
         if ($fila) {
             $consulta->update($datos);
         } else {
-            DB::table('inventarios')->insert($datos + [
+            $id = DB::table('inventarios')->insertGetId($datos + [
                 'bodega_id' => $bodega, 'producto_codigo' => $codigo, 'stock_tipo' => $tipo, 'created_at' => now(),
             ]);
+            $campos = app(\App\Sistema\ValoresCampos::class);
+            $campos->guardar('inventario', $id, $campos->predeterminadosAutomaticos('inventario'));
+        }
+        app(\App\Sistema\Auditoria::class)->registrar('inventario', 'movimiento', $codigo.'@'.$bodega.'@'.$tipo, [
+            'cantidad' => (int) ($fila->cantidad ?? 0),
+        ], ['cantidad' => $datos['cantidad']]);
+
+        $minimo = app(\App\Sistema\Ajustes::class)->general('stock_minimo');
+        if ($minimo && in_array($tipo, ['nuevo', 'usado'], true)) {
+            $disponible = DB::table('inventarios')->where('producto_codigo', $codigo)->where('bodega_id', $bodega)
+                ->whereIn('stock_tipo', ['nuevo', 'usado'])->lockForUpdate()->pluck('cantidad')->sum();
+            if ($disponible < $minimo && $disponible - $delta >= $minimo) {
+                $id = $consulta->value('id');
+                $actor = auth()->user();
+                DB::afterCommit(function () use ($id, $disponible, $actor) {
+                    $inventario = \App\Models\Inventario::find($id);
+                    if ($inventario) {
+                        $inventario->cantidad = $disponible;
+                        app(NotificacionService::class)->safeAction(
+                            fn ($notificaciones) => $notificaciones->notificarStockBajo($inventario, $actor)
+                        );
+                    }
+                });
+            }
         }
     }
 

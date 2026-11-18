@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Sistema\ValoresCampos;
+use App\Sistema\Presentacion;
+use Illuminate\Support\Facades\DB;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Vehiculo;
@@ -33,7 +37,14 @@ class VehiculoController extends Controller
             'estado' => 'required|in:Disponible,En uso,Mantenimiento'
         ]);
 
-        Vehiculo::create($data);
+        app(Presentacion::class)->validar($request, 'vehiculos', true);
+        $campos = app(ValoresCampos::class);
+        $valores = $campos->preparar($request, 'vehiculos', true);
+        DB::transaction(function () use ($data, $campos, $valores) {
+            $campos->verificarClaveDisponible('vehiculos', $data['vin']);
+            $vehiculo = Vehiculo::create($data);
+            $campos->guardar('vehiculos', $vehiculo->vin, $valores);
+        });
 
         return redirect()
             ->route('admin.vehiculos.index')
@@ -62,13 +73,20 @@ class VehiculoController extends Controller
         $vehiculo = Vehiculo::findOrFail($vin);
 
         $data = $request->validate([
-            'placa' => 'required|max:20|unique:vehiculos,placa,' . $vin . ',vin',
+            'placa' => ['required', 'max:20', \Illuminate\Validation\Rule::unique('vehiculos', 'placa')->ignore($vehiculo->vin, 'vin')],
             'marca' => 'nullable|max:50',
             'modelo' => 'nullable|max:50',
             'estado' => 'required|in:Disponible,En uso,Mantenimiento'
         ]);
 
-        $vehiculo->update($data);
+        app(Presentacion::class)->validar($request, 'vehiculos', false);
+        $campos = app(ValoresCampos::class);
+        DB::transaction(function () use ($request, $vehiculo, $data, $campos) {
+            $vehiculo = Vehiculo::whereKey($vehiculo->vin)->lockForUpdate()->firstOrFail();
+            $valores = $campos->preparar($request, 'vehiculos', false, $vehiculo->vin);
+            $vehiculo->update($data);
+            $campos->guardar('vehiculos', $vehiculo->vin, $valores);
+        });
 
         return redirect()
             ->route('admin.vehiculos.index')

@@ -245,6 +245,8 @@
 
 <div class="ui-panel w-full p-6 md:p-8">
     <x-internal-navigation :back-url="route('dashboard')" />
+    <x-sistema.enlace-datos modulo="vehiculos" />
+
     <div class="veh-wrap">
 
         <div class="veh-header">

@@ -41,7 +41,12 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $credenciales = $this->only('email', 'password');
+        if (app(\App\Sistema\Permisos::class)->instalado()) {
+            $credenciales[] = fn ($query) => $query->where('acceso_activo', true)
+                ->where(fn ($scope) => $scope->whereNull('role_id')->orWhereHas('role', fn ($rol) => $rol->where('activo', true)));
+        }
+        if (! Auth::attempt($credenciales, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

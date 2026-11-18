@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+    $routePrefix = auth()->user()->rolOperativo() == 4 ? 'rrhh' : 'admin';
 
     $rolSeleccionadoId = (int) old('role_id', $usuario->role_id);
 
@@ -35,7 +35,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route($routePrefix . '.usuarios.update', $usuario->id) }}" class="space-y-5">
+    <form enctype="multipart/form-data" method="POST" action="{{ route($routePrefix . '.usuarios.update', $usuario->id) }}" class="space-y-5">
         @csrf
         @method('PUT')
 
@@ -71,11 +71,11 @@
                         @php
                             $tipoRol = 'otro';
 
-                            if ((int) $rol->id === (int) $rolAlmacenistaId) {
+                            if ($rol->ambito() === (int) $rolAlmacenistaId) {
                                 $tipoRol = 'almacenista';
                             }
 
-                            if ((int) $rol->id === (int) $rolSupervisorId) {
+                            if ($rol->ambito() === (int) $rolSupervisorId) {
                                 $tipoRol = 'supervisor';
                             }
                         @endphp
@@ -167,6 +167,7 @@
             </button>
         </div>
 
+        <x-sistema.campos modulo="usuarios" :registro="$usuario->id" />
     </form>
 </div>
 

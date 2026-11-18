@@ -5,12 +5,14 @@
 
 @section('content')
 @php
-  $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+  $routePrefix = auth()->user()->rolOperativo() == 4 ? 'rrhh' : 'admin';
 @endphp
 
 <div x-data="colaboradoresPage('{{ $routePrefix }}')" class="min-h-screen bg-slate-50">
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
     <x-internal-navigation :back-url="route('dashboard')" />
+    <x-sistema.enlace-datos modulo="colaboradores" />
+
 
     {{-- ENCABEZADO --}}
     <div class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

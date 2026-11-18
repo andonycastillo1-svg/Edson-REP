@@ -47,4 +47,13 @@ class AlertaReemplazo extends Model
             'estado' => self::ESTADO_FINALIZADO,
         ])->save();
     }
+    public function colaborador()
+    {
+        return $this->belongsTo(Colaborador::class, 'colaborador_codigo', 'codigo');
+    }
+
+    public function producto()
+    {
+        return $this->belongsTo(Producto::class, 'producto_codigo', 'codigo');
+    }
 }

@@ -6,7 +6,7 @@
         4 => 'Recursos Humanos',
     ];
 
-    $roleLabel = $roleLabels[(int) auth()->user()->role_id] ?? 'Usuario';
+    $roleLabel = $roleLabels[auth()->user()->rolOperativo()] ?? 'Usuario';
 @endphp
 
 <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">

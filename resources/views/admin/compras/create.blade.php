@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+@php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
 <div class="min-h-[calc(100vh-64px)] flex items-center justify-center p-6"
      style="background: linear-gradient(180deg, #36a2ff 0%, #2b7dff 100%);">
   <div class="w-full max-w-5xl bg-white/90 backdrop-blur rounded-2xl shadow-xl border border-white/40">
@@ -100,33 +100,13 @@
             <p class="text-xs text-gray-500 mt-1">Se creará automáticamente al guardar.</p>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Proyecto</label>
-            <input name="proyecto" value="{{ old('proyecto') }}"
-                   class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                   placeholder="Opcional">
-          </div>
+          <x-sistema.campos-nativos modulo="compras" />
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Solicitado por</label>
-            <input name="solicitado_por" value="{{ old('solicitado_por') }}"
-                   class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                   placeholder="Opcional">
-          </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Autorizado por</label>
-            <input name="autorizado_por" value="{{ old('autorizado_por') }}"
-                   class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                   placeholder="Opcional">
-          </div>
 
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">A utilizarse</label>
-            <input name="a_utilizarse" value="{{ old('a_utilizarse') }}"
-                   class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-                   placeholder="Opcional">
-          </div>
+
+
+
 
           {{-- PDFs --}}
           <div>
@@ -183,7 +163,8 @@
           </button>
         </div>
 
-      </form>
+          <x-sistema.campos modulo="compras" />
+    </form>
 
     </div>
   </div>

@@ -9,7 +9,7 @@
         <div class="ui-page-header-body">
             <div class="flex items-center gap-4">
                 <div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-sky-100 bg-white shadow-sm">
-                    <img src="{{ asset('img/logo1.png') }}" alt="Logo" class="h-11 w-11 object-contain">
+                    <x-logo-image class="h-11 w-11 object-contain" />
                 </div>
 
                 <div>
@@ -23,6 +23,7 @@
         </div>
     </div>
 
+    <x-sistema.menu />
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <a href="{{ route('operador.bodegas.index') }}" class="dashboard-card group">
             <div class="flex items-center justify-between gap-4">

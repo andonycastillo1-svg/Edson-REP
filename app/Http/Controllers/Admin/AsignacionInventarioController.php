@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Sistema\ValoresCampos;
+use App\Sistema\Auditoria;
+use App\Sistema\Presentacion;
 use App\Http\Controllers\Controller;
 use App\Models\AsignacionInventario;
 use App\Models\Inventario;
@@ -51,14 +54,14 @@ class AsignacionInventarioController extends Controller
         $query = AsignacionInventario::with($relaciones)->latest();
 
         if (Schema::hasColumn('asignaciones_inventarios', 'user_id')) {
-            if ((int) $usuario->role_id === 2) {
+            if ($usuario->rolOperativo() === 2) {
                 $query->where('user_id', $usuario->id);
-            } elseif ((int) $usuario->role_id === 3) {
+            } elseif ($usuario->rolOperativo() === 3) {
                 $query->whereIn('user_id', $usuario->almacenistasAsignados()->select('users.id'));
-            } elseif ((int) $usuario->role_id !== 1) {
+            } elseif ($usuario->rolOperativo() !== 1) {
                 $query->whereRaw('1 = 0');
             }
-        } elseif ((int) $usuario->role_id === 3) {
+        } elseif ($usuario->rolOperativo() === 3) {
             // Sin el campo creador no es posible demostrar la relación; se niega por seguridad.
             $query->whereRaw('1 = 0');
         }
@@ -87,12 +90,12 @@ class AsignacionInventarioController extends Controller
                 ->latest()
                 ->limit(30);
 
-            if ((int) $usuario->role_id === 2) {
+            if ($usuario->rolOperativo() === 2) {
                 $movimientosQuery->whereHas('asignacion', fn ($query) => $query->where('user_id', $usuario->id));
-            } elseif ((int) $usuario->role_id === 3) {
+            } elseif ($usuario->rolOperativo() === 3) {
                 $almacenistaIds = $usuario->almacenistasAsignados()->pluck('users.id');
                 $movimientosQuery->whereHas('asignacion', fn ($query) => $query->whereIn('user_id', $almacenistaIds));
-            } elseif ((int) $usuario->role_id !== 1) {
+            } elseif ($usuario->rolOperativo() !== 1) {
                 $movimientosQuery->whereRaw('1 = 0');
             }
 
@@ -135,7 +138,7 @@ class AsignacionInventarioController extends Controller
             ->whereIn('stock_tipo', ['nuevo', 'usado'])->where('cantidad', '>', 0);
         $bodegasQuery = Bodega::query();
 
-        if ((int) auth()->user()->role_id !== 1) {
+        if (auth()->user()->rolOperativo() !== 1) {
             $bodegaId = (int) (auth()->user()->bodega_id ?? 0);
             $inventariosQuery->where('bodega_id', $bodegaId);
             $bodegasQuery->where('id', $bodegaId);
@@ -193,6 +196,10 @@ class AsignacionInventarioController extends Controller
             'items.*.fecha_dano' => ['nullable', 'date'],
         ]);
 
+        app(Presentacion::class)->validar($request, 'asignaciones', true);
+        $campos = app(ValoresCampos::class);
+        $valores = $campos->preparar($request, 'asignaciones', true);
+
         $items = collect($data['items'])->sortBy('producto_codigo')->values();
 
         foreach ($items as $item) {
@@ -204,7 +211,7 @@ class AsignacionInventarioController extends Controller
         $grupoAsignacion = (string) Str::uuid();
 
         try {
-            $alertasRrhhIds = DB::transaction(function () use ($data, $items, $imagenPath, $grupoAsignacion, $request) {
+            $alertasRrhhIds = DB::transaction(function () use ($data, $items, $imagenPath, $grupoAsignacion, $request, $campos, $valores) {
                 SolicitudInventarioService::registrar('asignacion', $data['solicitud_id'] ?? null);
                 $colaborador = Colaborador::whereKey($data['colaborador_codigo'])->lockForUpdate()->firstOrFail();
                 if ($colaborador->estado !== 'Activo') {
@@ -264,6 +271,10 @@ class AsignacionInventarioController extends Controller
                     }
                     $asignacion->vida_util_restante_meses = $vidaRestante;
                     $asignacion->save();
+                    $campos->guardar('asignaciones', $asignacion->id, $valores);
+                    app(Auditoria::class)->registrar('asignaciones', 'registrar', $asignacion->id, null, [
+                        'bodega_id' => $asignacion->bodega_id, 'cantidad' => $asignacion->cantidad_asignada,
+                    ]);
 
                     if (Schema::hasTable('asignacion_movimientos')) {
                         AsignacionMovimiento::create([
@@ -574,7 +585,7 @@ class AsignacionInventarioController extends Controller
     {
         $data = $request->validate($this->reglasDevolucion());
         $query = AsignacionInventario::where('colaborador_codigo', $colaboradorCodigo)->where('estado', 'Activa');
-        if ((int) $request->user()->role_id !== 1) {
+        if ($request->user()->rolOperativo() !== 1) {
             $query->where('user_id', $request->user()->id);
         }
 
@@ -613,6 +624,7 @@ class AsignacionInventarioController extends Controller
                     throw ValidationException::withMessages(['cantidad_devuelta' => 'La devolución supera el saldo activo o ya se procesó.']);
                 }
 
+                $anterior = $asignacion->cantidad_asignada;
                 $this->stock->devolver($asignacion, $cantidad, $estado, $detalle);
                 $asignacion->cantidad_asignada -= $cantidad;
                 if ($asignacion->cantidad_asignada === 0) {
@@ -629,6 +641,9 @@ class AsignacionInventarioController extends Controller
                     'stock_tipo_resultante' => $estado === 'buen_estado' ? 'usado' : $estado,
                     'bodega_retorno_id' => $asignacion->bodega_id,
                     'user_id' => $request->user()->id,
+                ]);
+                app(Auditoria::class)->registrar('asignaciones', 'devolver', $asignacion->id, ['cantidad' => $anterior], [
+                    'cantidad' => $asignacion->cantidad_asignada, 'condicion' => $estado,
                 ]);
                 $procesadas[] = $asignacion->id;
             }
@@ -669,16 +684,16 @@ class AsignacionInventarioController extends Controller
     {
         $usuario = auth()->user();
 
-        if ((int) $usuario->role_id === 1) {
+        if ($usuario->rolOperativo() === 1) {
             return;
         }
 
-        if ((int) $usuario->role_id === 2 && (int) $asignacion->user_id === (int) $usuario->id) {
+        if ($usuario->rolOperativo() === 2 && (int) $asignacion->user_id === (int) $usuario->id) {
             return;
         }
 
         if (
-            (int) $usuario->role_id === 3
+            $usuario->rolOperativo() === 3
             && $usuario->almacenistasAsignados()->whereKey($asignacion->user_id)->exists()
         ) {
             return;
@@ -709,7 +724,7 @@ class AsignacionInventarioController extends Controller
             ->where('grupo_devolucion', $grupo)
             ->orderBy('created_at');
 
-        if ((int) auth()->user()->role_id !== 1) {
+        if (auth()->user()->rolOperativo() !== 1) {
             $query->where('user_id', auth()->id());
         }
 
@@ -727,7 +742,7 @@ class AsignacionInventarioController extends Controller
             ->where('producto_codigo', $item['producto_codigo'])
             ->where('bodega_id', $item['bodega_id'])
             ->where('estado', 'Activa')
-            ->when((int) $request->user()->role_id === 2, fn ($query) => $query->where('user_id', $request->user()->id))
+            ->when($request->user()->rolOperativo() === 2, fn ($query) => $query->where('user_id', $request->user()->id))
             ->lockForUpdate()->first();
 
         if (!$anterior) {

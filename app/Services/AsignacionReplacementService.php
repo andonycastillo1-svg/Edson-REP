@@ -109,7 +109,7 @@ class AsignacionReplacementService
             ->where('producto_codigo', $productoCodigo)
             ->where('estado', 'Activa')
             ->where('cantidad_asignada', '>', 0)
-            ->when((int) $usuario->role_id === 2, fn (Builder $query) => $query->where('user_id', $usuario->id));
+            ->when($usuario->rolOperativo() === 2, fn (Builder $query) => $query->where('user_id', $usuario->id));
     }
 
     private function resumen(AsignacionInventario $asignacion): array

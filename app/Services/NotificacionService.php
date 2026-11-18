@@ -68,7 +68,7 @@ class NotificacionService
             $creador->id
         );
 
-        if ((int) $creador->role_id === 2) {
+        if ($creador->rolOperativo() === 2) {
             $mensajeSupervisor = 'Nueva asignación creada por ' . $creador->name;
 
             if ($colaboradorNombre) {
@@ -105,8 +105,8 @@ class NotificacionService
             'fecha' => now()->toDateTimeString(),
         ];
 
-        if ((int) $creador->role_id === 2) {
-            $creador->notify(new AsignacionPendienteNotification($data));
+        if ($creador->rolOperativo() === 2) {
+            $this->safeNotify([$creador], new AsignacionPendienteNotification($data));
 
             $this->notificarSupervisoresDeAlmacenista(
                 $creador,
@@ -147,10 +147,10 @@ class NotificacionService
         $destinatarios = $destinatarios->merge($this->administradores($creador->id));
         $destinatarios = $destinatarios->merge($this->almacenistasDeBodega((int) $operacion->bodega_destino_id, $creador->id));
 
-        if ((int) $creador->role_id === 2) {
+        if ($creador->rolOperativo() === 2) {
             $destinatarios = $destinatarios->merge(
                 $creador->supervisoresAsignados()
-                    ->where('users.role_id', 3)
+                    ->deAmbito(3)
                     ->where('users.id', '!=', $creador->id)
                     ->get()
             );
@@ -231,11 +231,11 @@ class NotificacionService
         ];
 
         $rrhh = User::query()
-            ->where('role_id', 4)
+            ->deAmbito(4)
             ->when($creador, fn ($query) => $query->where('id', '!=', $creador->id))
             ->get();
 
-        NotificationFacade::send($rrhh, new AlertaRrhhNotification($data));
+        $this->safeNotify($rrhh, new AlertaRrhhNotification($data));
 
         $adminData = $data;
         $adminData['url'] = route('dashboard');
@@ -271,11 +271,11 @@ class NotificacionService
         $this->safeNotify($this->administradores($actor->id), new CambioEstadoAsignacionNotification($dataAdmin));
 
         $creadores = User::whereIn('id', $asignaciones->map(fn (Model $item) => $item->user_id ?? $item->asignado_por_user_id)
-            ->filter()->unique())->where('role_id', 2)->get();
+            ->filter()->unique())->deAmbito(2)->get();
         $this->safeNotify($creadores, new CambioEstadoAsignacionNotification($data + [
             'url' => $primera instanceof AsignacionInventario ? route('operador.asignaciones.index') : route('dashboard'),
         ]), $actor->id);
-        $supervisores = $creadores->flatMap(fn (User $creador) => $creador->supervisoresAsignados()->where('users.role_id', 3)->get());
+        $supervisores = $creadores->flatMap(fn (User $creador) => $creador->supervisoresAsignados()->deAmbito(3)->get());
         $this->safeNotify($supervisores, new CambioEstadoAsignacionNotification($data + [
             'url' => route('supervisor.asignaciones.index'),
         ]), $actor->id);
@@ -318,13 +318,13 @@ class NotificacionService
 
     public function notificarStockBajo(Inventario $inventario, ?User $creador = null): void
     {
-        if (!Schema::hasTable('notifications') || !Schema::hasColumn('productos', 'stock_minimo')) {
+        if (!Schema::hasTable('notifications')) {
             return;
         }
 
         $inventario->loadMissing(['producto', 'bodega']);
 
-        $stockMinimo = (int) ($inventario->producto?->stock_minimo ?? 0);
+        $stockMinimo = (int) ($inventario->producto?->stock_minimo ?? app(\App\Sistema\Ajustes::class)->general('stock_minimo', 0));
 
         if ($stockMinimo <= 0 || (int) $inventario->cantidad >= $stockMinimo) {
             return;
@@ -349,12 +349,12 @@ class NotificacionService
         $this->notificarAdministradores($notification, $creador?->id);
 
         $almacenistas = User::query()
-            ->where('role_id', 2)
+            ->deAmbito(2)
             ->where('bodega_id', $inventario->bodega_id)
             ->when($creador, fn ($query) => $query->where('id', '!=', $creador->id))
             ->get();
 
-        NotificationFacade::send($almacenistas, new StockBajoNotification($data));
+        $this->safeNotify($almacenistas, new StockBajoNotification($data));
     }
 
     public function notificarAdministradores(Notification $notification, ?int $exceptUserId = null): void
@@ -368,7 +368,7 @@ class NotificacionService
     public function notificarSupervisoresDeAlmacenista(User $almacenista, Notification $notification): void
     {
         $supervisores = $almacenista->supervisoresAsignados()
-            ->where('users.role_id', 3)
+            ->deAmbito(3)
             ->where('users.id', '!=', $almacenista->id)
             ->get();
 
@@ -378,7 +378,7 @@ class NotificacionService
     private function administradores(?int $exceptUserId = null): Collection
     {
         return User::query()
-            ->where('role_id', 1)
+            ->deAmbito(1)
             ->when($exceptUserId, fn ($query) => $query->where('id', '!=', $exceptUserId))
             ->get();
     }
@@ -390,7 +390,7 @@ class NotificacionService
         }
 
         return User::query()
-            ->where('role_id', 2)
+            ->deAmbito(2)
             ->where('bodega_id', $bodegaId)
             ->when($exceptUserId, fn ($query) => $query->where('id', '!=', $exceptUserId))
             ->get();
@@ -409,17 +409,53 @@ class NotificacionService
             }
 
             $destinatarios = collect($usuarios)
-                ->filter(fn ($usuario) => $usuario instanceof User && (int) $usuario->id !== $exceptUserId)
+                ->filter(fn ($usuario) => $usuario instanceof User && (int) $usuario->id !== $exceptUserId
+                    && $usuario->acceso_activo !== false && $usuario->role?->activo !== false)
                 ->unique('id')->values();
+            if ($destinatarios->isEmpty()) {
+                return;
+            }
+            $datos = method_exists($notification, 'toDatabase') ? $notification->toDatabase($destinatarios->first()) : [];
+            $evento = $datos['tipo'] ?? '';
+            if (isset(\App\Sistema\Ajustes::EVENTOS[$evento])) {
+                $regla = app(\App\Sistema\Ajustes::class)->leer('notificaciones', [])[$evento] ?? [];
+                if (($regla['activo'] ?? true) === false) {
+                    return;
+                }
+                $roles = $regla['roles'] ?? [];
+                $usuarios = $regla['usuarios'] ?? [];
+                if ($roles !== [] || $usuarios !== []) {
+                    $destinatarios = $destinatarios->filter(fn (User $user) => in_array((int) $user->role_id, $roles, true)
+                        || in_array((int) $user->id, $usuarios, true));
+                }
+            }
+            $ruta = $this->rutaDeNotificacion($datos['url'] ?? null);
+            if ($ruta !== null && preg_match('/^(admin|operador|supervisor|rrhh)\./', $ruta)) {
+                $permisos = app(\App\Sistema\Permisos::class);
+                $destinatarios = $destinatarios->filter(fn (User $user) => $permisos->ruta($user, $ruta));
+            }
             if ($destinatarios->isNotEmpty()) {
                 NotificationFacade::send($destinatarios, $notification);
             }
         });
     }
 
+    private function rutaDeNotificacion(?string $url): ?string
+    {
+        if (!$url) {
+            return null;
+        }
+
+        try {
+            return app('router')->getRoutes()->match(\Illuminate\Http\Request::create($url))->getName();
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException) {
+            return null;
+        }
+    }
+
     private function urlTraslado(Operacion $operacion, User $user): string
     {
-        $prefix = (int) $user->role_id === 2 ? 'operador' : 'admin';
+        $prefix = $user->rolOperativo() === 2 ? 'operador' : 'admin';
         $route = $prefix . '.operaciones.traslados.show';
 
         return route($route, $operacion);

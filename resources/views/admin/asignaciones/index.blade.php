@@ -507,6 +507,8 @@
 <div class="asg-page">
   <div class="asg-container">
     <x-internal-navigation :back-url="route('dashboard')" />
+    <x-sistema.enlace-datos modulo="asignaciones" />
+
 
     <div class="asg-header">
       <div>

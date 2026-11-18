@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Sistema\ValoresCampos;
+use App\Sistema\Presentacion;
 use App\Exports\InventarioBodegaExport;
 use App\Http\Controllers\Controller;
 use App\Models\Bodega;
@@ -71,7 +73,7 @@ class BodegaController extends Controller
      */
     public function create()
     {
-        if ((int) auth()->user()->role_id !== 1) {
+        if (auth()->user()->rolOperativo() !== 1) {
             abort(403);
         }
 
@@ -83,7 +85,7 @@ class BodegaController extends Controller
      */
     public function store(Request $request)
     {
-        if ((int) auth()->user()->role_id !== 1) {
+        if (auth()->user()->rolOperativo() !== 1) {
             abort(403);
         }
 
@@ -93,7 +95,13 @@ class BodegaController extends Controller
             'tipo' => ['required', 'in:Principal,Regional'],
         ]);
 
-        Bodega::create($data);
+        app(Presentacion::class)->validar($request, 'bodegas', true);
+        $campos = app(ValoresCampos::class);
+        $valores = $campos->preparar($request, 'bodegas', true);
+        DB::transaction(function () use ($data, $campos, $valores) {
+            $bodega = Bodega::create($data);
+            $campos->guardar('bodegas', $bodega->id, $valores);
+        });
 
         return redirect()->route('admin.bodegas.index')
             ->with('success', 'Bodega creada correctamente.');
@@ -218,7 +226,7 @@ class BodegaController extends Controller
 
     public function edit(string $id)
     {
-        if ((int) auth()->user()->role_id !== 1) {
+        if (auth()->user()->rolOperativo() !== 1) {
             abort(403);
         }
 
@@ -229,7 +237,7 @@ class BodegaController extends Controller
 
     public function update(Request $request, string $id)
     {
-        if ((int) auth()->user()->role_id !== 1) {
+        if (auth()->user()->rolOperativo() !== 1) {
             abort(403);
         }
 
@@ -241,7 +249,21 @@ class BodegaController extends Controller
             'tipo' => ['required', 'in:Principal,Regional'],
         ]);
 
-        $bodega->update($data);
+        app(Presentacion::class)->validar($request, 'bodegas', false);
+        $campos = app(ValoresCampos::class);
+        DB::transaction(function () use ($request, $bodega, $data, $campos) {
+            app(\App\Sistema\Seguridad::class)->bloquear();
+            $ajustes = app(\App\Sistema\Ajustes::class);
+            $ajustes->refrescar('general');
+            $bodega = Bodega::whereKey($bodega->id)->lockForUpdate()->firstOrFail();
+            if ((int) $this->bodegaAccess->principal()?->id === (int) $bodega->id && $data['tipo'] !== 'Principal'
+                && ($ajustes->general('bodega_principal') !== null || $this->bodegaAccess->tieneHistorialOperativo())) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['tipo' => 'La bodega principal debe conservar su tipo.']);
+            }
+            $valores = $campos->preparar($request, 'bodegas', false, (string) $bodega->id);
+            $bodega->update($data);
+            $campos->guardar('bodegas', $bodega->id, $valores);
+        });
 
         return redirect()->route('admin.bodegas.index')
             ->with('success', 'Bodega actualizada correctamente.');
@@ -249,21 +271,29 @@ class BodegaController extends Controller
 
     public function destroy(string $id)
     {
-        if ((int) auth()->user()->role_id !== 1) {
+        if (auth()->user()->rolOperativo() !== 1) {
             abort(403);
         }
 
-        $bodega = Bodega::findOrFail($id);
+        $eliminada = DB::transaction(function () use ($id) {
+            app(\App\Sistema\Seguridad::class)->bloquear();
+            $ajustes = app(\App\Sistema\Ajustes::class);
+            $ajustes->refrescar('general');
+            $bodega = Bodega::whereKey($id)->lockForUpdate()->firstOrFail();
+            abort_if((int) $this->bodegaAccess->principal()?->id === (int) $bodega->id
+                && ($ajustes->general('bodega_principal') !== null || $this->bodegaAccess->tieneHistorialOperativo()), 422);
 
-        $tieneInventario = DB::table('inventarios')
-            ->where('bodega_id', $bodega->id)
-            ->exists();
+            if (DB::table('inventarios')->where('bodega_id', $bodega->id)->exists()) {
+                return false;
+            }
 
-        if ($tieneInventario) {
+            $bodega->delete();
+
+            return true;
+        });
+        if (!$eliminada) {
             return back()->with('error', 'No puedes eliminar una bodega con inventario.');
         }
-
-        $bodega->delete();
 
         return redirect()->route('admin.bodegas.index')
             ->with('success', 'Bodega eliminada correctamente.');

@@ -4,7 +4,7 @@
 @endsection
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin')
+@php($routePrefix = auth()->user()->rolOperativo() == 4 ? 'rrhh' : 'admin')
 <div class="min-h-screen bg-slate-50">
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <x-internal-navigation :back-url="route($routePrefix . '.colaboradores.index')" />
@@ -16,7 +16,7 @@
       </div>
     </div>
 
-    <form method="POST" action="{{ route($routePrefix . '.colaboradores.update', $colaborador) }}"
+    <form enctype="multipart/form-data" method="POST" action="{{ route($routePrefix . '.colaboradores.update', $colaborador) }}"
           class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       @csrf
       @method('PUT')
@@ -83,6 +83,7 @@
           Guardar cambios
         </button>
       </div>
+        <x-sistema.campos modulo="colaboradores" :registro="$colaborador->codigo" />
     </form>
 
   </div>

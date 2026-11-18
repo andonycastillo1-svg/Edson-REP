@@ -27,15 +27,18 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/dashboard', function () {
-    $roleId = auth()->user()->role_id;
+    $usuario = auth()->user();
+    $permiso = app(\App\Sistema\Permisos::class);
+    $prefijo = \App\Sistema\CatalogoPermisos::prefijo($usuario->rolOperativo());
+    if ($prefijo && $permiso->permite($usuario, 'panel.consultar')) {
+        return redirect()->route($prefijo.'.dashboard');
+    }
+    if ($permiso->esSuperadministrador($usuario) || collect(array_keys(\App\Sistema\CatalogoPermisos::CONFIGURACION))
+        ->contains(fn ($clave) => $permiso->permite($usuario, $clave))) {
+        return redirect()->route('sistema.configuracion');
+    }
 
-    return match ((int) $roleId) {
-        1 => redirect()->route('admin.dashboard'),
-        2 => redirect()->route('operador.dashboard'),
-        3 => redirect()->route('supervisor.dashboard'),
-        4 => redirect()->route('rrhh.dashboard'),
-        default => redirect()->route('login'),
-    };
+    return $prefijo ? redirect()->route('sistema.datos') : redirect()->route('login');
 })->middleware(['auth', 'auto.logout'])->name('dashboard');
 
 /*
@@ -410,3 +413,4 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 |--------------------------------------------------------------------------
 */
 require __DIR__ . '/auth.php';
+require __DIR__.'/sistema.php';

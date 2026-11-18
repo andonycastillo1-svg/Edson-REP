@@ -1,4 +1,4 @@
-@extends(auth()->user()->role_id == 1 ? 'layouts.admin' : 'layouts.operador')
+@extends(auth()->user()->rolOperativo() == 1 ? 'layouts.admin' : 'layouts.operador')
 
 @section('title', 'Bodegas')
 
@@ -6,8 +6,8 @@
 @php
     $user = auth()->user();
 
-    $esAdmin = (int) $user->role_id === 1;
-    $esOperador = (int) $user->role_id === 2;
+    $esAdmin = $user->rolOperativo() === 1;
+    $esOperador = $user->rolOperativo() === 2;
     $bodegaOperadorId = $user->bodega_id;
 
     $totalBodegas = $bodegas->count();
@@ -315,6 +315,8 @@
 <div class="bodega-page">
     <div class="bodega-container">
         <x-internal-navigation :back-url="route('dashboard')" />
+    <x-sistema.enlace-datos modulo="bodegas" />
+
 
         <div class="bodega-header">
             <div>

@@ -83,8 +83,16 @@ class AsignacionVehiculoController extends Controller
             'productos.*.observaciones' => ['nullable', 'string'],
         ]);
 
+        $campos = app(\App\Sistema\ValoresCampos::class);
+        $productos = $data['productos'] ?? [];
+        foreach ($productos as $i => &$producto) {
+            $entrada = $request->all('campos_refaccion')['campos_refaccion'][$i] ?? [];
+            $producto['campos'] = $campos->preparar($request, 'refacciones', true, entrada: $entrada);
+        }
+        unset($producto);
+
         try {
-            $asignacion = DB::transaction(function () use ($data, $stock) {
+            $asignacion = DB::transaction(function () use ($data, $stock, $productos, $campos) {
                 Vehiculo::whereKey($data['vehiculo_vin'])->lockForUpdate()->firstOrFail();
                 $colaborador = Colaborador::whereKey($data['colaborador_codigo'])->lockForUpdate()->firstOrFail();
                 if ($colaborador->estado !== 'Activo'
@@ -106,7 +114,7 @@ class AsignacionVehiculoController extends Controller
                 Vehiculo::where('vin', $data['vehiculo_vin'])
                     ->update(['estado' => 'En uso']);
 
-                foreach (collect($data['productos'] ?? [])->sortBy('producto_codigo') as $prod) {
+                foreach (collect($productos)->sortBy('producto_codigo') as $prod) {
                     $productoCodigo = $prod['producto_codigo'];
                     $bodegaId = $prod['bodega_id'];
                     $cantidad = (int) $prod['cantidad'];
@@ -131,6 +139,7 @@ class AsignacionVehiculoController extends Controller
                     ]);
 
                     $stock->asignarAVehiculo($refaccion);
+                    $campos->guardar('refacciones', $refaccion->id, $prod['campos']);
 
                     Movimiento::create([
                         'producto_codigo' => $productoCodigo,

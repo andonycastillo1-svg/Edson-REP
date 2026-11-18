@@ -11,7 +11,7 @@
     <header class="ui-topbar">
         <div class="ui-topbar-inner">
             <div class="ui-brand">
-                <img src="{{ asset('img/logo1.png') }}" alt="Logo" class="ui-brand-logo">
+                <x-logo-image class="ui-brand-logo" />
                 <span class="ui-brand-name">Grupo NetSolutions</span>
             </div>
 

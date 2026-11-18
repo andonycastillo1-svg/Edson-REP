@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Sistema\ValoresCampos;
+use App\Sistema\Auditoria;
+use App\Sistema\Presentacion;
 use App\Http\Controllers\Controller;
 use App\Models\Bodega;
 use App\Services\DocumentoPrivado;
@@ -44,7 +47,7 @@ class CompraController extends Controller
             ->orderBy('categoria')
             ->pluck('categoria')
             ->filter()
-            ->values();
+            ->merge(app(\App\Sistema\Ajustes::class)->general('categorias', []))->unique()->sort()->values();
 
         return view('admin.compras.index', compact(
             'compras',
@@ -71,7 +74,7 @@ class CompraController extends Controller
             ->orderBy('categoria')
             ->pluck('categoria')
             ->filter()
-            ->values();
+            ->merge(app(\App\Sistema\Ajustes::class)->general('categorias', []))->unique()->sort()->values();
 
         return view('admin.compras.create', compact(
             'proveedores',
@@ -82,7 +85,7 @@ class CompraController extends Controller
 
     public function store(Request $request)
     {
-        $bodega = Bodega::where('tipo', 'Principal')->orderBy('id')->firstOrFail();
+        $bodega = $this->bodegaAccess->principal() ?? abort(404, 'No hay bodega principal configurada.');
         abort_unless($this->bodegaAccess->canReceiveStock($request->user(), (int) $bodega->id), 403);
 
         $data = $request->validate([
@@ -120,8 +123,19 @@ class CompraController extends Controller
             'pdfs.*' => ['required', 'file', 'mimes:pdf', 'max:10240'],
         ]);
 
+        app(Presentacion::class)->validar($request, 'compras', true);
+        $campos = app(ValoresCampos::class);
+        $valores = $campos->preparar($request, 'compras', true);
         [$lineas, $total] = $this->lineasCompra($data);
+        foreach ($lineas as &$linea) {
+            if ($linea['nuevo']) {
+                $entrada = $request->all('campos_producto')['campos_producto'][$linea['indice']] ?? [];
+                $linea['campos'] = $campos->preparar($request, 'productos', true, entrada: $entrada);
+            }
+        }
+        unset($linea);
         $prefijo = $this->rutaPrefijo();
+        $bloquearPrincipal = !$this->bodegaAccess->tieneHistorialOperativo();
         $compra = null;
         $adjuntos = [];
 
@@ -135,7 +149,14 @@ class CompraController extends Controller
                 ];
             }
 
-            $compra = DB::transaction(function () use ($data, $bodega, $lineas, $total, $adjuntos, $request) {
+            $compra = DB::transaction(function () use ($data, $bodega, $lineas, $total, $adjuntos, $request, $campos, $valores, $bloquearPrincipal) {
+                if ($bloquearPrincipal) {
+                    app(\App\Sistema\Seguridad::class)->bloquear();
+                    app(\App\Sistema\Ajustes::class)->refrescar('general');
+                    if ((int) $this->bodegaAccess->principal()?->id !== (int) $bodega->id) {
+                        throw ValidationException::withMessages(['bodega_id' => 'La bodega principal cambió. Vuelve a enviar la compra.']);
+                    }
+                }
                 $proveedorId = $this->proveedor($data);
                 $compraId = DB::table('compras')->insertGetId([
                     'fecha_compra' => $data['fecha_compra'],
@@ -159,6 +180,7 @@ class CompraController extends Controller
                         }
 
                         DB::table('productos')->insert($linea['nuevo'] + ['codigo' => $codigo, 'created_at' => now(), 'updated_at' => now()]);
+                        $campos->guardar('productos', $codigo, $linea['campos']);
                     } elseif (!DB::table('productos')->where('codigo', $codigo)->exists()) {
                         throw ValidationException::withMessages(['producto_codigo' => "El producto {$codigo} no está en el catálogo."]);
                     }
@@ -193,6 +215,8 @@ class CompraController extends Controller
                     ]);
                 }
 
+                $campos->guardar('compras', $compraId, $valores);
+                app(Auditoria::class)->registrar('compras', 'registrar', $compraId, null, ['bodega_id' => $bodega->id, 'lineas' => count($lineas)]);
                 return $compraId;
             }, 3);
         } catch (UniqueConstraintViolationException $e) {
@@ -258,7 +282,7 @@ class CompraController extends Controller
                     'nombre' => mb_strtoupper($nombre),
                     'categoria' => $categoria,
                     'unidad_medida' => $data['producto_unidad'][$i] ?? 'UND',
-                    'vida_util_meses' => $data['producto_vida_util_meses'][$i] ?? null,
+                    'vida_util_meses' => $data['producto_vida_util_meses'][$i] ?? app(\App\Sistema\Ajustes::class)->general('vida_util'),
                     'descripcion' => $data['producto_descripcion'][$i] ?? null,
                 ];
             }
@@ -271,7 +295,7 @@ class CompraController extends Controller
                 throw ValidationException::withMessages(['precio_unitario' => 'El total supera el máximo permitido por factura.']);
             }
 
-            $lineas[$clave] = ['codigo' => $codigo, 'nuevo' => $catalogo, 'cantidad' => $cantidad, 'precio' => $precio];
+            $lineas[$clave] = ['codigo' => $codigo, 'nuevo' => $catalogo, 'cantidad' => $cantidad, 'precio' => $precio, 'indice' => $i];
         }
 
         ksort($lineas, SORT_STRING);
@@ -312,7 +336,7 @@ class CompraController extends Controller
 
     private function rutaPrefijo(): string
     {
-        return (int) auth()->user()->role_id === 2 ? 'operador' : 'admin';
+        return auth()->user()->rolOperativo() === 2 ? 'operador' : 'admin';
     }
 
     public function show(string $id)
