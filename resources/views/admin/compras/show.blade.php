@@ -3,7 +3,7 @@
 @section('title', 'Detalle Compra')
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+@php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
 <div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
     <x-internal-navigation :back-url="route($routePrefix . '.compras.index')" />
 

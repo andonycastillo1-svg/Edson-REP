@@ -13,6 +13,8 @@ class AutoLogoutOnInactivity
     {
         if (Auth::check()) {
             $timeoutMinutes = (int) env('AUTO_LOGOUT_MINUTES', (int) config('session.lifetime', 120));
+            $configurado = app(\App\Sistema\Ajustes::class)->general('inactividad');
+            $timeoutMinutes = $configurado ? min((int) $configurado, $timeoutMinutes) : $timeoutMinutes;
             $lastActivity = $request->session()->get('last_activity');
 
             if ($lastActivity && (time() - (int) $lastActivity) > ($timeoutMinutes * 60)) {

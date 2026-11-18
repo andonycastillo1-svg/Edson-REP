@@ -1,10 +1,10 @@
-@extends(auth()->user()->role_id == 1 ? 'layouts.admin' : 'layouts.operador')
+@extends(auth()->user()->rolOperativo() == 1 ? 'layouts.admin' : 'layouts.operador')
 
 @section('title', 'Solicitudes de traslado')
 
 @section('content')
 @php
-  $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+  $routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin';
 @endphp
 
 <style>
@@ -318,6 +318,8 @@
 <div class="tras-page">
   <div class="tras-container">
     <x-internal-navigation :back-url="route('dashboard')" />
+    <x-sistema.enlace-datos modulo="traslados" />
+
 
     <div class="tras-header">
       <div>

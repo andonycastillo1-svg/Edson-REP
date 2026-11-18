@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+    $routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin';
     $showRoute = \Illuminate\Support\Facades\Route::has($routePrefix . '.bodegas.show')
         ? $routePrefix . '.bodegas.show'
         : 'admin.bodegas.show';
@@ -40,7 +40,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route($storeRoute, $bodega->id) }}" class="ui-form space-y-5">
+    <form enctype="multipart/form-data" method="POST" action="{{ route($storeRoute, $bodega->id) }}" class="ui-form space-y-5">
         @csrf
 
         <div>
@@ -71,6 +71,7 @@
                 Registrar entrada
             </button>
         </div>
+        <x-sistema.campos modulo="inventario" :obligar="false" />
     </form>
 </div>
 @endsection

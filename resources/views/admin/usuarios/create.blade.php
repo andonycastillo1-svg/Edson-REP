@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+    $routePrefix = auth()->user()->rolOperativo() == 4 ? 'rrhh' : 'admin';
 
     $rolSeleccionadoId = (int) old('role_id', 0);
 
@@ -32,7 +32,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route($routePrefix . '.usuarios.store') }}" class="space-y-5">
+    <form enctype="multipart/form-data" method="POST" action="{{ route($routePrefix . '.usuarios.store') }}" class="space-y-5">
         @csrf
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -63,7 +63,7 @@
                         required
                         class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
 
-                    @if(auth()->user()->role_id != 4)
+                    @if(auth()->user()->rolOperativo() != 4)
                         <option value="">Seleccione...</option>
                     @endif
 
@@ -71,11 +71,11 @@
                         @php
                             $tipoRol = 'otro';
 
-                            if ((int) $rol->id === (int) $rolAlmacenistaId) {
+                            if ($rol->ambito() === (int) $rolAlmacenistaId) {
                                 $tipoRol = 'almacenista';
                             }
 
-                            if ((int) $rol->id === (int) $rolSupervisorId) {
+                            if ($rol->ambito() === (int) $rolSupervisorId) {
                                 $tipoRol = 'supervisor';
                             }
                         @endphp
@@ -166,6 +166,7 @@
                 Guardar
             </button>
         </div>
+        <x-sistema.campos modulo="usuarios" />
     </form>
 </div>
 

@@ -3,10 +3,13 @@
 @section('title', 'Compras')
 
 @section('content')
-@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+@php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
 
 <div class="w-full">
     <x-internal-navigation :back-url="route('dashboard')" />
+    <x-sistema.enlace-datos modulo="compras" />
+    <x-sistema.enlace-datos modulo="productos" />
+
 
     <div class="overflow-hidden rounded-3xl border border-sky-200 bg-white shadow-xl shadow-sky-100/70">
 

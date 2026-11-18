@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Sistema\ValoresCampos;
+use App\Sistema\Auditoria;
+use App\Sistema\Presentacion;
 use App\Http\Controllers\Controller;
 use App\Models\Bodega;
 use App\Models\Inventario;
@@ -40,7 +43,7 @@ class OperacionTrasladoController extends Controller
         | - solicitudes que él creó
         */
 
-        if ((int) $user->role_id === 1) {
+        if ($user->rolOperativo() === 1) {
             // Admin ve todas.
         } elseif ($user->isEncargado()) {
             $q->where(function ($query) use ($user) {
@@ -98,7 +101,7 @@ class OperacionTrasladoController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if ((int) $user->role_id === 2) {
+        if ($user->rolOperativo() === 2) {
             $request->merge([
                 'bodega_origen_id' => $user->bodega_id,
             ]);
@@ -124,7 +127,7 @@ class OperacionTrasladoController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if ((int) $user->role_id === 2 && (int) $data['bodega_origen_id'] !== (int) $user->bodega_id) {
+        if ($user->rolOperativo() === 2 && (int) $data['bodega_origen_id'] !== (int) $user->bodega_id) {
             abort(403);
         }
 
@@ -172,6 +175,10 @@ class OperacionTrasladoController extends Controller
         |--------------------------------------------------------------------------
         */
 
+        app(Presentacion::class)->validar($request, 'traslados', true);
+        $campos = app(ValoresCampos::class);
+        $valores = $campos->preparar($request, 'traslados', true);
+
         $archivoExcelPath = null;
         $archivoExcelNombre = null;
 
@@ -182,7 +189,7 @@ class OperacionTrasladoController extends Controller
         }
 
         try {
-            $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre) {
+            $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre, $campos, $valores) {
                 SolicitudInventarioService::registrar('traslado', $data['solicitud_id'] ?? null);
                 $operacion = new Operacion([
                     'tipo'                 => Operacion::TIPO_TRASLADO,
@@ -205,6 +212,10 @@ class OperacionTrasladoController extends Controller
                     ]);
                 }
 
+                $campos->guardar('traslados', $operacion->id, $valores);
+                app(Auditoria::class)->registrar('traslados', 'solicitar', $operacion->id, null, [
+                    'origen' => $operacion->bodega_origen_id, 'destino' => $operacion->bodega_destino_id,
+                ]);
                 return $operacion;
             }, 3);
         } catch (\Throwable $e) {
@@ -219,7 +230,7 @@ class OperacionTrasladoController extends Controller
             fn (NotificacionService $service) => $service->notificarNuevoTraslado($operacion, $user)
         );
 
-        $routePrefix = (int) $user->role_id === 2 ? 'operador' : 'admin';
+        $routePrefix = $user->rolOperativo() === 2 ? 'operador' : 'admin';
 
         return redirect()
             ->route($routePrefix . '.operaciones.traslados.show', $operacion)
@@ -282,6 +293,7 @@ class OperacionTrasladoController extends Controller
             $operacion->aprobado_por = $user->id;
             $operacion->aprobado_en = now();
             $operacion->save();
+            app(Auditoria::class)->registrar('traslados', 'aprobar', $operacion->id, ['estado' => Operacion::ESTADO_PENDIENTE], ['estado' => $operacion->estado]);
         }, 3);
 
         return $this->respuestaDecision($operacion, 'Solicitud aprobada. Inventario actualizado.');
@@ -300,6 +312,7 @@ class OperacionTrasladoController extends Controller
             $operacion->rechazado_en = now();
             $operacion->motivo_rechazo = $data['motivo_rechazo'];
             $operacion->save();
+            app(Auditoria::class)->registrar('traslados', 'rechazar', $operacion->id, ['estado' => Operacion::ESTADO_PENDIENTE], ['estado' => $operacion->estado]);
         }, 3);
 
         return $this->respuestaDecision($operacion, 'Solicitud rechazada.');
@@ -326,7 +339,7 @@ class OperacionTrasladoController extends Controller
             fn (NotificacionService $service) => $service->notificarCambioEstadoTraslado($operacion->fresh(), $user)
         );
 
-        $routePrefix = (int) $user->role_id === 2 ? 'operador' : 'admin';
+        $routePrefix = $user->rolOperativo() === 2 ? 'operador' : 'admin';
 
         return redirect()->route($routePrefix . '.operaciones.traslados.show', $operacion)->with('ok', $mensaje);
     }
@@ -344,7 +357,7 @@ class OperacionTrasladoController extends Controller
         abort_unless($operacion->tipo === Operacion::TIPO_TRASLADO, 404);
         $user = auth()->user();
 
-        $esAdmin = (int) $user->role_id === 1;
+        $esAdmin = $user->rolOperativo() === 1;
         $esCreador = (int) $user->id === (int) $operacion->creado_por;
         $esDestinoEncargado = $user->isEncargado()
             && (int) $user->bodega_id === (int) $operacion->bodega_destino_id;

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Sistema\ValoresCampos;
 use App\Http\Controllers\Controller;
 use App\Models\Bodega;
 use App\Services\BodegaAccessService;
@@ -43,7 +44,14 @@ class InventarioController extends Controller
             'cantidad' => ['required', 'integer', 'min:1'],
         ]);
 
-        DB::transaction(function () use ($data, $bodega) {
+        DB::transaction(function () use ($request, $data, $bodega) {
+            \App\Models\Producto::whereKey($data['producto_codigo'])->lockForUpdate()->firstOrFail();
+            $saldo = DB::table('inventarios')->where([
+                'producto_codigo' => $data['producto_codigo'], 'bodega_id' => $bodega->id, 'stock_tipo' => 'nuevo',
+            ]);
+            $id = $saldo->lockForUpdate()->value('id');
+            $campos = app(ValoresCampos::class);
+            $valores = $campos->preparar($request, 'inventario', $id === null, $id === null ? null : (string) $id);
 
             // 1) Crear movimiento "Entrada"
             DB::table('movimientos')->insert([
@@ -60,6 +68,7 @@ class InventarioController extends Controller
             ]);
 
             $this->stockService->incrementar((int) $bodega->id, $data['producto_codigo'], (int) $data['cantidad']);
+            $campos->guardar('inventario', $saldo->value('id'), $valores);
         });
 
         app(NotificacionService::class)->safeAction(
@@ -70,7 +79,7 @@ class InventarioController extends Controller
             )
         );
 
-        $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+        $routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin';
 
         return redirect()
             ->route($routePrefix . '.bodegas.show', $bodega->id)

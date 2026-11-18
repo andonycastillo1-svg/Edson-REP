@@ -3,6 +3,8 @@
 @section('title', 'Inventario')
 
 @section('content')
+    <x-sistema.enlace-datos modulo="inventario" />
+
 
 <style>
     .inv-page {
@@ -438,7 +440,7 @@
 
 <div class="inv-page">
     <div class="inv-wrapper">
-        <x-internal-navigation :back-url="route((auth()->user()->role_id == 2 ? 'operador' : 'admin') . '.bodegas.index')" />
+        <x-internal-navigation :back-url="route((auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin') . '.bodegas.index')" />
 
         <div class="inv-top">
             <div class="inv-header">
@@ -461,7 +463,7 @@
 
                 <div class="inv-actions">
                     <a class="inv-btn inv-btn-light"
-                       href="{{ route((auth()->user()->role_id == 2 ? 'operador' : 'admin') . '.bodegas.inventario.export', [$bodega->id] + request()->query()) }}">
+                       href="{{ route((auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin') . '.bodegas.inventario.export', [$bodega->id] + request()->query()) }}">
                         Descargar Excel
                     </a>
 
@@ -520,7 +522,7 @@
                 </button>
 
                 <a class="inv-btn inv-btn-light"
-                   href="{{ route((auth()->user()->role_id == 2 ? 'operador' : 'admin') . '.bodegas.show', $bodega->id) }}">
+                   href="{{ route((auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin') . '.bodegas.show', $bodega->id) }}">
                     Limpiar
                 </a>
             </form>

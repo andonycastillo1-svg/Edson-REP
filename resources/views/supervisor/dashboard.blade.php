@@ -37,4 +37,5 @@
         </div>
     </div>
 </div>
+<x-sistema.menu />
 @endsection

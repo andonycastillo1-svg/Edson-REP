@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Sistema\ValoresCampos;
 use App\Exports\ColaboradoresFichaExport;
 use App\Http\Controllers\Controller;
 use App\Models\AlertaReemplazo;
@@ -62,7 +63,13 @@ class ColaboradorController extends Controller
             'estado' => ['required', 'in:Activo,Inactivo'],
         ]);
 
-        Colaborador::create($data);
+        $campos = app(ValoresCampos::class);
+        $valores = $campos->preparar($request, 'colaboradores', true);
+        DB::transaction(function () use ($data, $campos, $valores) {
+            $campos->verificarClaveDisponible('colaboradores', $data['codigo']);
+            $colaborador = Colaborador::create($data);
+            $campos->guardar('colaboradores', $colaborador->codigo, $valores);
+        });
 
         return redirect()
             ->route($this->colaboradoresRoutePrefix().'.colaboradores.index')
@@ -83,7 +90,18 @@ class ColaboradorController extends Controller
             'estado' => ['required', 'in:Activo,Inactivo'],
         ]);
 
-        $colaborador->update($data);
+        $campos = app(ValoresCampos::class);
+        DB::transaction(function () use ($request, $data, $campos, $colaborador) {
+            $colaborador = Colaborador::whereKey($colaborador->codigo)->lockForUpdate()->firstOrFail();
+            $anterior = $colaborador->codigo;
+            $valores = $campos->preparar($request, 'colaboradores', false, $anterior);
+            if ($anterior !== $data['codigo']) {
+                $campos->verificarClaveDisponible('colaboradores', $data['codigo']);
+            }
+            $colaborador->update($data);
+            $campos->trasladarClave('colaboradores', $anterior, $colaborador->codigo);
+            $campos->guardar('colaboradores', $colaborador->codigo, $valores);
+        });
 
         return redirect()
             ->route($this->colaboradoresRoutePrefix().'.colaboradores.index')
@@ -512,6 +530,6 @@ class ColaboradorController extends Controller
 
     private function colaboradoresRoutePrefix(): string
     {
-        return auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+        return auth()->user()->rolOperativo() == 4 ? 'rrhh' : 'admin';
     }
 }

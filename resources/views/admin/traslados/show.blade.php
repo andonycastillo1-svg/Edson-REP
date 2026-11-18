@@ -1,10 +1,10 @@
-@extends(auth()->user()->role_id == 1 ? 'layouts.admin' : 'layouts.operador')
+@extends(auth()->user()->rolOperativo() == 1 ? 'layouts.admin' : 'layouts.operador')
 
 @section('title', 'Solicitud #' . $operacion->id)
 
 @section('content')
 @php
-  $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+  $routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin';
 
   if ($operacion->estado === 'PENDIENTE') {
       $badgeClass = 'badge-pendiente';

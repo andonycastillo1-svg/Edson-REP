@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Sistema\ValoresCampos;
+use App\Sistema\Presentacion;
+use App\Sistema\Auditoria;
 use App\Http\Controllers\Controller;
 use App\Services\NotificacionService;
 use App\Models\AlertaReemplazo;
@@ -99,8 +102,12 @@ class VehiculoProductoController extends Controller
                 ->with('error', 'No tienes permiso para asignar productos de esa bodega.');
         }
 
+        app(Presentacion::class)->validar($request, 'refacciones', true);
+        $campos = app(ValoresCampos::class);
+        $valores = $campos->preparar($request, 'refacciones', true);
+
         try {
-            $asignacion = DB::transaction(function () use ($data, $stock) {
+            $asignacion = DB::transaction(function () use ($data, $stock, $campos, $valores) {
                 Vehiculo::whereKey($data['vehiculo_vin'])->lockForUpdate()->firstOrFail();
                 $producto = Producto::findOrFail($data['producto_codigo']);
                 if (strtolower(trim((string) $producto->categoria)) !== 'refacciones') {
@@ -141,6 +148,8 @@ class VehiculoProductoController extends Controller
                     'vehiculo_vin' => $data['vehiculo_vin'],
                 ]);
 
+                $campos->guardar('refacciones', $asignacion->id, $valores);
+                app(Auditoria::class)->registrar('refacciones', 'asignar', $asignacion->id, null, ['cantidad' => $asignacion->cantidad]);
                 return $asignacion;
             }, 3);
         } catch (ValidationException $e) {
@@ -315,6 +324,9 @@ class VehiculoProductoController extends Controller
                     ]);
                 }
 
+                app(Auditoria::class)->registrar('refacciones', 'cerrar', $asignacion->id, ['cantidad_activa' => $cantidadActual], [
+                    'cantidad_activa' => $cantidadActual - $cantidadCerrar, 'accion' => $accion,
+                ]);
                 return $alertaGenerada;
             }, 3);
         } catch (ValidationException $e) {

@@ -4,11 +4,13 @@
 
 @section('content')
 @php
-    $routePrefix = auth()->user()->role_id == 4 ? 'rrhh' : 'admin';
+    $routePrefix = auth()->user()->rolOperativo() == 4 ? 'rrhh' : 'admin';
 @endphp
 
 <div class="w-full max-w-7xl mx-auto">
     <x-internal-navigation :back-url="route('dashboard')" />
+    <x-sistema.enlace-datos modulo="usuarios" />
+
 
     @if(session('error'))
         <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -156,7 +158,7 @@
                                 default => 'bg-slate-50 text-slate-700 border-slate-200',
                             };
 
-                            $puedeEditar = auth()->user()->role_id == 1 || (int) $u->created_by === (int) auth()->id();
+                            $puedeEditar = app(\App\Sistema\Seguridad::class)->puedeGestionar(auth()->user(), $u);
                         @endphp
 
                         <tr class="transition hover:bg-slate-50">
@@ -193,13 +195,13 @@
 
                                         <form action="{{ route($routePrefix . '.usuarios.destroy', $u->id) }}"
                                               method="POST"
-                                              onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
+                                              onsubmit="return confirm('¿Seguro que deseas desactivar este usuario?');">
                                             @csrf
                                             @method('DELETE')
 
                                             <button type="submit"
                                                     class="inline-flex items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100">
-                                                Eliminar
+                                                Desactivar
                                             </button>
                                         </form>
                                     @else

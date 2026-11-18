@@ -9,7 +9,7 @@
     <h1 class="text-2xl font-bold text-slate-800 mb-1">Editar bodega</h1>
     <p class="text-slate-500 text-sm mb-6">Actualiza la información de la bodega.</p>
 
-    <form method="POST" action="{{ route('admin.bodegas.update', $bodega->id) }}" class="space-y-4">
+    <form enctype="multipart/form-data" method="POST" action="{{ route('admin.bodegas.update', $bodega->id) }}" class="space-y-4">
         @csrf
         @method('PUT')
 
@@ -21,12 +21,7 @@
             @error('nombre') <div class="text-rose-600 text-sm mt-1">{{ $message }}</div> @enderror
         </div>
 
-        <div>
-            <label class="text-sm font-semibold text-slate-700">Ubicación</label>
-            <input name="ubicacion" value="{{ old('ubicacion', $bodega->ubicacion) }}"
-                   class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
-            @error('ubicacion') <div class="text-rose-600 text-sm mt-1">{{ $message }}</div> @enderror
-        </div>
+        <x-sistema.campos-nativos modulo="bodegas" :registro="$bodega" />
 
         <div>
             <label class="text-sm font-semibold text-slate-700">Tipo</label>
@@ -48,6 +43,7 @@
                 Guardar cambios
             </button>
         </div>
+        <x-sistema.campos modulo="bodegas" :registro="$bodega->id" />
     </form>
 </div>
 @endsection

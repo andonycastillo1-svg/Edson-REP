@@ -22,7 +22,7 @@
         </div>
     @endif
 
-    <form action="{{ route('admin.vehiculos.update', $vehiculo->vin) }}" method="POST" class="ui-form space-y-6">
+    <form enctype="multipart/form-data" action="{{ route('admin.vehiculos.update', $vehiculo->vin) }}" method="POST" class="ui-form space-y-6">
         @csrf
         @method('PUT')
 
@@ -40,19 +40,9 @@
                    maxlength="20" required>
         </div>
 
-        <div>
-            <label for="marca" class="block text-sm font-semibold text-slate-700 mb-2">Marca</label>
-            <input type="text" name="marca" id="marca" value="{{ old('marca', $vehiculo->marca) }}"
-                   class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                   maxlength="50">
-        </div>
+        <x-sistema.campos-nativos modulo="vehiculos" :registro="$vehiculo" />
 
-        <div>
-            <label for="modelo" class="block text-sm font-semibold text-slate-700 mb-2">Modelo</label>
-            <input type="text" name="modelo" id="modelo" value="{{ old('modelo', $vehiculo->modelo) }}"
-                   class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                   maxlength="50">
-        </div>
+
 
         <div>
             <label for="estado" class="block text-sm font-semibold text-slate-700 mb-2">Estado</label>
@@ -78,6 +68,7 @@
                 Guardar cambios
             </button>
         </div>
+        <x-sistema.campos modulo="vehiculos" :registro="$vehiculo->vin" />
     </form>
 </div>
 @endsection

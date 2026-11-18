@@ -1,4 +1,4 @@
-@php($routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin')
+@php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
 
 <form action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
 @csrf
@@ -86,26 +86,11 @@
         </div>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div>
-                <label class="mb-1 block text-sm font-semibold text-slate-700">Proyecto</label>
-                <input name="proyecto" value="{{ old('proyecto') }}"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                    placeholder="Opcional">
-            </div>
+            <x-sistema.campos-nativos modulo="compras" />
 
-            <div>
-                <label class="mb-1 block text-sm font-semibold text-slate-700">Solicitado por</label>
-                <input name="solicitado_por" value="{{ old('solicitado_por') }}"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                    placeholder="Opcional">
-            </div>
 
-            <div>
-                <label class="mb-1 block text-sm font-semibold text-slate-700">Autorizado por</label>
-                <input name="autorizado_por" value="{{ old('autorizado_por') }}"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                    placeholder="Opcional">
-            </div>
+
+
             <div>
                 <label class="mb-1 block text-sm font-semibold text-slate-700">PDF(s) Factura</label>
                 <input type="file" name="pdfs[]" multiple accept="application/pdf"
@@ -174,7 +159,8 @@
         </button>
     </div>
 
-</form>
+    <x-sistema.campos modulo="compras" />
+    </form>
 
 <template id="tplLinea">
     <tr class="align-top transition hover:bg-slate-50">
@@ -229,6 +215,7 @@
                 <input type="text" name="producto_descripcion[]"
                     class="productoDesc w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                     placeholder="Descripción (opcional)">
+                <x-sistema.campos modulo="productos" prefijo="campos_producto[INDICE_PRODUCTO]" :plantilla="true" />
             </div>
         </td>
 
@@ -284,7 +271,10 @@
     function recalcular() {
         let total = 0;
 
-        body.querySelectorAll('tr').forEach(tr => {
+        body.querySelectorAll('tr').forEach((tr, indice) => {
+            tr.querySelectorAll('[data-campos-plantilla] [name]').forEach(campo => {
+                campo.name = campo.name.replace(/^campos_producto\[[^\]]+\]/, 'campos_producto[' + indice + ']');
+            });
             const qty = parseFloat(tr.querySelector('.cantidad')?.value || 0);
             const prc = parseFloat(tr.querySelector('.precio')?.value || 0);
             const val = qty * prc;
@@ -305,6 +295,8 @@
 
         wrapEx.classList.toggle('hidden', isNuevo);
         wrapNu.classList.toggle('hidden', !isNuevo);
+        const campos = tr.querySelector('[data-campos-plantilla]');
+        if (campos) campos.disabled = !isNuevo;
 
         const codigoExistente = tr.querySelector('.productoCodigo');
         const nombreNuevo = tr.querySelector('.productoNombre');
@@ -317,7 +309,7 @@
             nombreNuevo.setAttribute('required', 'required');
             codigoNuevo.setAttribute('required', 'required');
             categoriaNuevo.setAttribute('required', 'required');
-            vidaUtilNuevo.setAttribute('required', 'required');
+            vidaUtilNuevo.removeAttribute('required');
         } else {
             codigoExistente.setAttribute('required', 'required');
             nombreNuevo.removeAttribute('required');

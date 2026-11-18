@@ -2,8 +2,8 @@
 
   @section('content')
   @php
-    $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
-    $esOperador = auth()->user()->role_id == 2;
+    $routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin';
+    $esOperador = auth()->user()->rolOperativo() == 2;
     $origenSeleccionado = old('bodega_origen_id', $origenId ?? ($esOperador ? auth()->user()->bodega_id : null));
   @endphp
 
@@ -75,12 +75,7 @@
           </div>
         </div>
 
-        <div class="px-6 pb-6">
-          <label class="text-sm font-semibold text-slate-700">Observación (opcional)</label>
-          <textarea name="observacion" rows="2"
-            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            placeholder="Ej: Enviar con guía #123, frágil, etc.">{{ old('observacion') }}</textarea>
-        </div>
+        <x-sistema.campos-nativos modulo="traslados" />
 
         <div class="px-6 pb-6">
           <label class="text-sm font-semibold text-slate-700">Excel de destinatarios (opcional)</label>
@@ -174,7 +169,8 @@
             Crear solicitud
           </button>
         </div>
-      </form>
+          <x-sistema.campos modulo="traslados" />
+    </form>
 
       <template id="lineTemplate">
         <tr class="line-row">

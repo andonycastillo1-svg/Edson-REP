@@ -5,7 +5,7 @@
 
 @section('content')
 @php
-  $routePrefix = auth()->user()->role_id == 2 ? 'operador' : 'admin';
+  $routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin';
 @endphp
 
 @php
@@ -162,15 +162,7 @@
             </p>
           </div>
 
-          <div class="md:col-span-2">
-            <label class="mb-1 block text-sm font-bold text-slate-700">
-              Observaciones
-            </label>
-            <textarea name="observaciones"
-              rows="4"
-              placeholder="Escribe una observación si aplica..."
-              class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100">{{ old('observaciones') }}</textarea>
-          </div>
+          <x-sistema.campos-nativos modulo="asignaciones" />
         </div>
       </section>
 
@@ -320,6 +312,7 @@
           </button>
         </div>
       </div>
+        <x-sistema.campos modulo="asignaciones" />
     </form>
 
   </div>

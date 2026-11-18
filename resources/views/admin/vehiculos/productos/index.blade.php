@@ -487,6 +487,8 @@
 
 <div class="ui-panel p-6 md:p-8">
     <x-internal-navigation :back-url="route('admin.vehiculos.index')" />
+    <x-sistema.enlace-datos modulo="refacciones" />
+
     <div class="vp-wrap">
         <div class="vp-header">
             <div>
@@ -541,7 +543,7 @@
                 Solo se listan productos de categoría <strong>Refacciones</strong> con stock disponible en bodegas autorizadas.
             </div>
 
-            <form method="POST" action="{{ route('admin.vehiculos.productos.store') }}">
+            <form enctype="multipart/form-data" method="POST" action="{{ route('admin.vehiculos.productos.store') }}">
                 @csrf
 
                 <div class="vp-grid">
@@ -609,10 +611,7 @@
                         >
                     </div>
 
-                    <div class="vp-field vp-field-full">
-                        <label>Observaciones</label>
-                        <textarea name="observaciones" placeholder="Observaciones de la asignación al vehículo">{{ old('observaciones') }}</textarea>
-                    </div>
+                    <x-sistema.campos-nativos modulo="refacciones" />
                 </div>
 
                 <div class="vp-form-actions">
@@ -620,7 +619,8 @@
                         Asignar producto/refacción
                     </button>
                 </div>
-            </form>
+                <x-sistema.campos modulo="refacciones" />
+    </form>
         </div>
 
         <div class="vp-card">

@@ -26,11 +26,35 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'acceso_activo' => 'boolean',
     ];
 
     public function role()
     {
         return $this->belongsTo(Role::class);
+    }
+
+    public function rolOperativo(): int
+    {
+        $rol = $this->role;
+
+        return $rol === null || $rol->activo === false ? 0 : $rol->ambito();
+    }
+
+    public function reglasSistema()
+    {
+        return $this->hasMany(\App\Sistema\ReglaUsuario::class);
+    }
+
+    public function scopeDeAmbito($query, int $ambito)
+    {
+        if (!app(\App\Sistema\Permisos::class)->instalado()) {
+            return $query->where('users.role_id', $ambito);
+        }
+
+        return $query->where('users.acceso_activo', true)->whereHas('role', fn ($rol) => $rol
+            ->where('activo', true)->where(fn ($q) => $q->where('id', $ambito)
+                ->orWhere(fn ($extra) => $extra->whereNotIn('id', [1, 2, 3, 4])->where('ambito_operativo', $ambito))));
     }
 
     public function bodega()
@@ -69,13 +93,11 @@ class User extends Authenticatable
      */
     public function isEncargado(): bool
     {
-        return in_array(strtolower(trim((string) optional($this->role)->nombre)), ['operador', 'encargado', 'almacenista'], true)
-            || (int) $this->role_id === 2;
+        return $this->rolOperativo() === 2;
     }
 
     public function isSupervisor(): bool
     {
-        return in_array(strtolower(trim((string) optional($this->role)->nombre)), ['supervisor', 'coordinador'], true)
-            || (int) $this->role_id === 3;
+        return $this->rolOperativo() === 3;
     }
 }
