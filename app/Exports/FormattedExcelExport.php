@@ -6,13 +6,17 @@ use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-abstract class FormattedExcelExport implements FromArray, ShouldAutoSize, WithEvents
+abstract class FormattedExcelExport extends DefaultValueBinder implements FromArray, ShouldAutoSize, WithEvents, WithCustomValueBinder
 {
     protected int $headingRow = 7;
 
@@ -34,6 +38,17 @@ abstract class FormattedExcelExport implements FromArray, ShouldAutoSize, WithEv
     protected function numberFormats(): array
     {
         return [];
+    }
+
+    public function bindValue(Cell $cell, $value): bool
+    {
+        if (is_string($value)) {
+            $cell->setValueExplicit($value, DataType::TYPE_STRING);
+
+            return true;
+        }
+
+        return parent::bindValue($cell, $value);
     }
 
     public function array(): array

@@ -10,9 +10,11 @@ use App\Models\Operacion;
 use App\Models\OperacionDetalle;
 use App\Models\Producto;
 use App\Services\NotificacionService;
+use App\Services\DocumentoPrivado;
+use App\Services\InventarioStockService;
+use App\Services\SolicitudInventarioService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class OperacionTrasladoController extends Controller
@@ -103,14 +105,15 @@ class OperacionTrasladoController extends Controller
         }
 
         $data = $request->validate([
+            'solicitud_id'           => ['nullable', 'uuid'],
             'bodega_origen_id'       => ['required', 'exists:bodegas,id', 'different:bodega_destino_id'],
             'bodega_destino_id'      => ['required', 'exists:bodegas,id'],
             'observacion'            => ['nullable', 'string', 'max:2000'],
             'archivo_excel'          => ['nullable', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
 
-            'lineas'                 => ['required', 'array', 'min:1'],
+            'lineas'                 => ['required', 'array', 'min:1', 'max:100'],
             'lineas.*.producto_codigo' => ['required', 'exists:productos,codigo'],
-            'lineas.*.cantidad'      => ['required', 'integer', 'min:1'],
+            'lineas.*.cantidad'      => ['required', 'integer', 'min:1', 'max:10000'],
         ], [
             'lineas.required' => 'Debes agregar al menos un producto.',
         ]);
@@ -151,6 +154,7 @@ class OperacionTrasladoController extends Controller
         foreach ($agrupadas as $codigo => $cantidad) {
             $inventario = Inventario::where('producto_codigo', $codigo)
                 ->where('bodega_id', $origenId)
+                ->where('stock_tipo', 'nuevo')
                 ->first();
 
             $disponible = (int) (optional($inventario)->cantidad ?? 0);
@@ -173,34 +177,43 @@ class OperacionTrasladoController extends Controller
 
         if ($request->hasFile('archivo_excel')) {
             $archivo = $request->file('archivo_excel');
-            $archivoExcelPath = $archivo->store('traslados', 'public');
+            $archivoExcelPath = DocumentoPrivado::guardar($archivo, 'traslados');
             $archivoExcelNombre = $archivo->getClientOriginalName();
         }
 
-        $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre) {
-            $operacion = new Operacion([
-                'tipo'                 => Operacion::TIPO_TRASLADO,
-                'estado'               => Operacion::ESTADO_PENDIENTE,
-                'bodega_origen_id'     => (int) $data['bodega_origen_id'],
-                'bodega_destino_id'    => (int) $data['bodega_destino_id'],
-                'creado_por'           => (int) auth()->id(),
-                'observacion'          => $data['observacion'] ?? null,
-                'archivo_excel_path'   => $archivoExcelPath,
-                'archivo_excel_nombre' => $archivoExcelNombre,
-            ]);
-
-            $operacion->save();
-
-            foreach ($agrupadas as $codigo => $cantidad) {
-                OperacionDetalle::create([
-                    'operacion_id'    => $operacion->id,
-                    'producto_codigo' => $codigo,
-                    'cantidad'        => (int) $cantidad,
+        try {
+            $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre) {
+                SolicitudInventarioService::registrar('traslado', $data['solicitud_id'] ?? null);
+                $operacion = new Operacion([
+                    'tipo'                 => Operacion::TIPO_TRASLADO,
+                    'estado'               => Operacion::ESTADO_PENDIENTE,
+                    'bodega_origen_id'     => (int) $data['bodega_origen_id'],
+                    'bodega_destino_id'    => (int) $data['bodega_destino_id'],
+                    'creado_por'           => (int) auth()->id(),
+                    'observacion'          => $data['observacion'] ?? null,
+                    'archivo_excel_path'   => $archivoExcelPath,
+                    'archivo_excel_nombre' => $archivoExcelNombre,
                 ]);
+
+                $operacion->save();
+
+                foreach ($agrupadas as $codigo => $cantidad) {
+                    OperacionDetalle::create([
+                        'operacion_id'    => $operacion->id,
+                        'producto_codigo' => $codigo,
+                        'cantidad'        => (int) $cantidad,
+                    ]);
+                }
+
+                return $operacion;
+            }, 3);
+        } catch (\Throwable $e) {
+            if ($archivoExcelPath !== null) {
+                DocumentoPrivado::descartar($archivoExcelPath);
             }
 
-            return $operacion;
-        });
+            throw $e;
+        }
 
         app(NotificacionService::class)->safeAction(
             fn (NotificacionService $service) => $service->notificarNuevoTraslado($operacion, $user)
@@ -215,6 +228,7 @@ class OperacionTrasladoController extends Controller
 
     public function show(Operacion $operacion)
     {
+        $this->autorizarVerOperacion($operacion);
         $operacion->load([
             'bodegaOrigen',
             'bodegaDestino',
@@ -226,33 +240,8 @@ class OperacionTrasladoController extends Controller
 
         $user = auth()->user();
 
-        $esAdmin = (int) $user->role_id === 1;
-
-        $esCreador = (int) $user->id === (int) $operacion->creado_por;
-
         $esDestinoEncargado = $user->isEncargado()
             && (int) $user->bodega_id === (int) $operacion->bodega_destino_id;
-
-        /*
-        |--------------------------------------------------------------------------
-        | Puede ver:
-        | - Admin
-        | - Usuario que creó la solicitud
-        | - Encargado de la bodega destino
-        |--------------------------------------------------------------------------
-        */
-
-        if (!$esAdmin && !$esCreador && !$esDestinoEncargado) {
-            abort(403);
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Puede decidir:
-        | - Encargado de la bodega destino
-        | - Solo si está pendiente
-        |--------------------------------------------------------------------------
-        */
 
         $puedeDecidir = $esDestinoEncargado
             && $operacion->estado === Operacion::ESTADO_PENDIENTE;
@@ -264,59 +253,19 @@ class OperacionTrasladoController extends Controller
         ));
     }
 
-    public function aprobar(Operacion $operacion)
+    public function aprobar(Operacion $operacion, InventarioStockService $stockService)
     {
         $user = auth()->user();
 
-        if (!$user->isEncargado() || (int) $user->bodega_id !== (int) $operacion->bodega_destino_id) {
-            abort(403);
-        }
-
-        if ($operacion->estado !== Operacion::ESTADO_PENDIENTE) {
-            return back()->with('error', 'Esta solicitud ya fue procesada.');
-        }
-
-        DB::transaction(function () use ($operacion, $user) {
-            $operacion->load('detalles');
-
+        DB::transaction(function () use ($operacion, $user, $stockService) {
+            $operacion = $this->bloquearPendiente($operacion);
             $origenId = (int) $operacion->bodega_origen_id;
             $destinoId = (int) $operacion->bodega_destino_id;
 
-            foreach ($operacion->detalles as $detalle) {
+            foreach ($operacion->detalles()->orderBy('producto_codigo')->get() as $detalle) {
                 $codigo = $detalle->producto_codigo;
                 $cantidad = (int) $detalle->cantidad;
-
-                $inventarioOrigen = Inventario::where('producto_codigo', $codigo)
-                    ->where('bodega_id', $origenId)
-                    ->lockForUpdate()
-                    ->first();
-
-                $stock = (int) (optional($inventarioOrigen)->cantidad ?? 0);
-
-                if ($stock < $cantidad) {
-                    throw ValidationException::withMessages([
-                        'error' => "Stock insuficiente en origen para {$codigo}. Disponible: {$stock}, solicitado: {$cantidad}.",
-                    ]);
-                }
-
-                $inventarioOrigen->cantidad = $stock - $cantidad;
-                $inventarioOrigen->save();
-
-                $inventarioDestino = Inventario::where('producto_codigo', $codigo)
-                    ->where('bodega_id', $destinoId)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$inventarioDestino) {
-                    $inventarioDestino = Inventario::create([
-                        'producto_codigo' => $codigo,
-                        'bodega_id'       => $destinoId,
-                        'cantidad'        => 0,
-                    ]);
-                }
-
-                $inventarioDestino->cantidad = (int) $inventarioDestino->cantidad + $cantidad;
-                $inventarioDestino->save();
+                $stockService->trasladar($origenId, $destinoId, $codigo, $cantidad);
 
                 Movimiento::create([
                     'producto_codigo'   => $codigo,
@@ -333,70 +282,66 @@ class OperacionTrasladoController extends Controller
             $operacion->aprobado_por = $user->id;
             $operacion->aprobado_en = now();
             $operacion->save();
-        });
+        }, 3);
 
+        return $this->respuestaDecision($operacion, 'Solicitud aprobada. Inventario actualizado.');
+    }
+
+    public function rechazar(Request $request, Operacion $operacion)
+    {
+        $data = $request->validate([
+            'motivo_rechazo' => ['required', 'string', 'min:3', 'max:2000'],
+        ]);
+
+        DB::transaction(function () use ($data, $operacion) {
+            $operacion = $this->bloquearPendiente($operacion);
+            $operacion->estado = Operacion::ESTADO_RECHAZADO;
+            $operacion->rechazado_por = auth()->id();
+            $operacion->rechazado_en = now();
+            $operacion->motivo_rechazo = $data['motivo_rechazo'];
+            $operacion->save();
+        }, 3);
+
+        return $this->respuestaDecision($operacion, 'Solicitud rechazada.');
+    }
+
+    private function bloquearPendiente(Operacion $operacion): Operacion
+    {
+        $operacion = Operacion::whereKey($operacion->id)->lockForUpdate()->firstOrFail();
+        abort_unless($operacion->tipo === Operacion::TIPO_TRASLADO, 404);
+        $user = auth()->user();
+        abort_unless($user->isEncargado() && (int) $user->bodega_id === (int) $operacion->bodega_destino_id, 403);
+
+        if ($operacion->estado !== Operacion::ESTADO_PENDIENTE) {
+            throw ValidationException::withMessages(['error' => 'Esta solicitud ya fue procesada.']);
+        }
+
+        return $operacion;
+    }
+
+    private function respuestaDecision(Operacion $operacion, string $mensaje)
+    {
+        $user = auth()->user();
         app(NotificacionService::class)->safeAction(
             fn (NotificacionService $service) => $service->notificarCambioEstadoTraslado($operacion->fresh(), $user)
         );
 
         $routePrefix = (int) $user->role_id === 2 ? 'operador' : 'admin';
 
-        return redirect()
-            ->route($routePrefix . '.operaciones.traslados.show', $operacion)
-            ->with('ok', 'Solicitud aprobada. Inventario actualizado.');
-    }
-
-    public function rechazar(Request $request, Operacion $operacion)
-    {
-        $user = auth()->user();
-
-        if (!$user->isEncargado() || (int) $user->bodega_id !== (int) $operacion->bodega_destino_id) {
-            abort(403);
-        }
-
-        if ($operacion->estado !== Operacion::ESTADO_PENDIENTE) {
-            return back()->with('error', 'Esta solicitud ya fue procesada.');
-        }
-
-        $data = $request->validate([
-            'motivo_rechazo' => ['required', 'string', 'min:3', 'max:2000'],
-        ]);
-
-        $operacion->estado = Operacion::ESTADO_RECHAZADO;
-        $operacion->rechazado_por = $user->id;
-        $operacion->rechazado_en = now();
-        $operacion->motivo_rechazo = $data['motivo_rechazo'];
-        $operacion->save();
-
-        app(NotificacionService::class)->safeAction(
-            fn (NotificacionService $service) => $service->notificarCambioEstadoTraslado($operacion, $user)
-        );
-
-        $routePrefix = (int) $user->role_id === 2 ? 'operador' : 'admin';
-
-        return redirect()
-            ->route($routePrefix . '.operaciones.traslados.show', $operacion)
-            ->with('ok', 'Solicitud rechazada.');
+        return redirect()->route($routePrefix . '.operaciones.traslados.show', $operacion)->with('ok', $mensaje);
     }
 
     public function archivo(Operacion $operacion)
     {
         $this->autorizarVerOperacion($operacion);
+        abort_unless($operacion->archivo_excel_path, 404, 'El archivo adjunto no existe.');
 
-        if (!$operacion->archivo_excel_path || !Storage::disk('public')->exists($operacion->archivo_excel_path)) {
-            abort(404, 'El archivo adjunto no existe.');
-        }
-
-        return response()->file(
-            Storage::disk('public')->path($operacion->archivo_excel_path),
-            [
-                'Content-Disposition' => 'inline; filename="' . addslashes($operacion->archivo_excel_nombre ?? basename($operacion->archivo_excel_path)) . '"',
-            ]
-        );
+        return DocumentoPrivado::responder($operacion->archivo_excel_path, $operacion->archivo_excel_nombre, true);
     }
 
     private function autorizarVerOperacion(Operacion $operacion): void
     {
+        abort_unless($operacion->tipo === Operacion::TIPO_TRASLADO, 404);
         $user = auth()->user();
 
         $esAdmin = (int) $user->role_id === 1;
@@ -418,18 +363,7 @@ class OperacionTrasladoController extends Controller
             'detalles.producto',
         ]);
 
-        $user = auth()->user();
-
-        $esAdmin = (int) $user->role_id === 1;
-
-        $esCreador = (int) $user->id === (int) $operacion->creado_por;
-
-        $esDestinoEncargado = $user->isEncargado()
-            && (int) $user->bodega_id === (int) $operacion->bodega_destino_id;
-
-        if (!$esAdmin && !$esCreador && !$esDestinoEncargado) {
-            abort(403);
-        }
+        $this->autorizarVerOperacion($operacion);
 
         return view('admin.traslados.hoja', compact('operacion'));
     }

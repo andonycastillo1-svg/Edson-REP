@@ -30,7 +30,11 @@ function enhanceSearchableSelect(select) {
     input.className = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm';
     wrapper.insertBefore(input, select);
 
-    const options = [...select.options];
+    let options = [...select.options];
+    select.addEventListener('options:updated', () => {
+        options = [...select.options];
+        input.value = '';
+    });
     const ranked = (query) => {
         const q = normalizeText(query);
         if (!q) return options;

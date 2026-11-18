@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Notifications\AlertaGeneralNotification;
 use App\Services\NotificacionService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 

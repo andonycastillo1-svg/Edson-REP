@@ -849,6 +849,7 @@
                                     onsubmit="return confirmarCierreProducto(this, {{ (int) $a->cantidad }});"
                                 >
                                     @csrf
+                                        <input type="hidden" name="solicitud_id" value="{{ \Illuminate\Support\Str::uuid() }}">
 
                                     <div class="vp-cierre-form-grid">
                                         <div>

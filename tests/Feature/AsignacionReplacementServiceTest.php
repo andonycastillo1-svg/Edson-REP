@@ -6,7 +6,7 @@ use App\Models\AsignacionInventario;
 use App\Models\User;
 use App\Services\AsignacionReplacementService;
 use App\Services\InventarioLifecycleService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -29,7 +29,7 @@ class AsignacionReplacementServiceTest extends TestCase
         ]);
         DB::table('bodegas')->insert(['id' => 1, 'nombre' => 'Principal', 'tipo' => 'Principal']);
         DB::table('users')->insert([
-            ['id' => 1, 'name' => 'Admin', 'email' => 'admin@local.test', 'password' => 'x', 'role_id' => 1],
+            ['id' => 1, 'name' => 'Admin', 'email' => 'admin@local.test', 'password' => 'x', 'role_id' => 1, 'bodega_id' => null],
             ['id' => 2, 'name' => 'Operador', 'email' => 'operador@local.test', 'password' => 'x', 'role_id' => 2, 'bodega_id' => 1],
         ]);
         DB::table('colaboradores')->insert([
