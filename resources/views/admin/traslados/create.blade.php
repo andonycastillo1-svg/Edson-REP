@@ -31,6 +31,7 @@
             enctype="multipart/form-data"
             class="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
         @csrf
+            <input type="hidden" name="solicitud_id" value="{{ old('solicitud_id', (string) \Illuminate\Support\Str::uuid()) }}">
 
         <div class="px-6 py-4 border-b border-slate-100">
           <div class="text-sm font-semibold text-slate-800">Origen y destino</div>

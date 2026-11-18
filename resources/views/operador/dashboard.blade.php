@@ -41,6 +41,7 @@
             </div>
         </a>
 
+        @if(app(\App\Services\BodegaAccessService::class)->canViewCompras(auth()->user()))
         <a href="{{ route('operador.compras.index') }}" class="dashboard-card group">
             <div class="flex items-center justify-between gap-4">
                 <div class="flex items-center gap-4">
@@ -53,6 +54,7 @@
                 <span class="text-2xl text-slate-300 transition group-hover:text-blue-600">›</span>
             </div>
         </a>
+        @endif
 
         <a href="{{ route('operador.asignaciones.create') }}" class="dashboard-card group">
             <div class="flex items-center justify-between gap-4">

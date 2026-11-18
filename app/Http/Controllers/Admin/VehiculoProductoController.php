@@ -17,7 +17,11 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
+use App\Models\Producto;
+use App\Services\DocumentoPrivado;
+use App\Services\InventarioStockService;
+use App\Services\SolicitudInventarioService;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class VehiculoProductoController extends Controller
@@ -41,6 +45,8 @@ class VehiculoProductoController extends Controller
                 'colaboradorResponsable',
                 'asignacionVehiculo.colaborador',
                 'cerradoPor',
+                'pdfAsignacionFirmado',
+                'pdfDevolucionFirmado',
             ])
             ->when($vehiculoVin, fn ($query) => $query->where('vehiculo_vin', $vehiculoVin))
             ->latest('fecha')
@@ -49,7 +55,7 @@ class VehiculoProductoController extends Controller
             ->withQueryString();
 
         $inventariosQuery = Inventario::with(['producto', 'bodega'])
-            ->where('cantidad', '>', 0)
+            ->disponiblesAgrupados()
             ->whereHas('producto', function ($query) {
                 $query->whereRaw('LOWER(TRIM(categoria)) = ?', ['refacciones']);
             })
@@ -75,13 +81,13 @@ class VehiculoProductoController extends Controller
         ));
     }
 
-    public function store(Request $request, BodegaAccessService $bodegaAccess)
+    public function store(Request $request, BodegaAccessService $bodegaAccess, InventarioStockService $stock)
     {
         $data = $request->validate([
             'vehiculo_vin' => ['required', 'exists:vehiculos,vin'],
             'producto_codigo' => ['required', 'exists:productos,codigo'],
             'bodega_id' => ['required', 'exists:bodegas,id'],
-            'cantidad' => ['required', 'integer', 'min:1'],
+            'cantidad' => ['required', 'integer', 'min:1', 'max:10000'],
             'fecha' => ['required', 'date'],
             'motivo' => ['required', 'string', 'max:150'],
             'observaciones' => ['nullable', 'string'],
@@ -94,31 +100,17 @@ class VehiculoProductoController extends Controller
         }
 
         try {
-            $asignacion = DB::transaction(function () use ($data) {
-                $inventario = Inventario::with('producto')
-                    ->where('producto_codigo', $data['producto_codigo'])
-                    ->where('bodega_id', $data['bodega_id'])
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$inventario) {
-                    throw new \RuntimeException('No existe inventario para el producto y bodega seleccionados.');
-                }
-
-                if (strtolower(trim((string) optional($inventario->producto)->categoria)) !== 'refacciones') {
-                    throw new \RuntimeException('Solo se pueden asignar productos con categoría Refacciones.');
-                }
-
-                if ((int) $inventario->cantidad < (int) $data['cantidad']) {
-                    throw new \RuntimeException('Stock insuficiente para asignar la cantidad solicitada.');
+            $asignacion = DB::transaction(function () use ($data, $stock) {
+                Vehiculo::whereKey($data['vehiculo_vin'])->lockForUpdate()->firstOrFail();
+                $producto = Producto::findOrFail($data['producto_codigo']);
+                if (strtolower(trim((string) $producto->categoria)) !== 'refacciones') {
+                    throw ValidationException::withMessages(['producto_codigo' => 'Solo se pueden asignar productos con categoría Refacciones.']);
                 }
 
                 $asignacionActiva = AsignacionVehiculo::where('vehiculo_vin', $data['vehiculo_vin'])
                     ->where('activa', true)
                     ->latest('fecha_inicio')
                     ->first();
-
-                $inventario->decrement('cantidad', (int) $data['cantidad']);
 
                 $asignacion = VehiculoProductoAsignacion::create([
                     'asignacion_vehiculo_id' => $asignacionActiva?->id,
@@ -136,6 +128,8 @@ class VehiculoProductoController extends Controller
                     'asignado_por_user_id' => auth()->id(),
                 ]);
 
+                $stock->asignarAVehiculo($asignacion);
+
                 Movimiento::create([
                     'producto_codigo' => $data['producto_codigo'],
                     'bodega_origen_id' => (int) $data['bodega_id'],
@@ -148,11 +142,13 @@ class VehiculoProductoController extends Controller
                 ]);
 
                 return $asignacion;
-            });
+            }, 3);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Throwable $e) {
-            return back()
-                ->withInput()
-                ->with('error', $e->getMessage());
+            report($e);
+
+            return back()->withInput()->with('error', 'No se pudo asignar la refacción.');
         }
 
         try {
@@ -219,9 +215,10 @@ class VehiculoProductoController extends Controller
         }
     }
 
-    public function cerrar(Request $request, VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)
+    public function cerrar(Request $request, VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess, InventarioStockService $stock)
     {
         $data = $request->validate([
+            'solicitud_id' => ['nullable', 'uuid'],
             'cantidad_cierre' => ['required', 'integer', 'min:1'],
             'accion_cierre' => ['required', 'in:regresar,consumido,danado,baja'],
             'observaciones_cierre' => ['nullable', 'string'],
@@ -237,7 +234,8 @@ class VehiculoProductoController extends Controller
         }
 
         try {
-            $alertaRrhh = DB::transaction(function () use ($data, $asignacion) {
+            $alertaRrhh = DB::transaction(function () use ($data, $asignacion, $stock) {
+                SolicitudInventarioService::registrar('cierre_refaccion', $data['solicitud_id'] ?? null);
                 $asignacion = VehiculoProductoAsignacion::with(['producto', 'vehiculo'])
                     ->lockForUpdate()
                     ->findOrFail($asignacion->id);
@@ -261,22 +259,26 @@ class VehiculoProductoController extends Controller
                 $estado = $accion === 'regresar' ? 'regresado' : $accion;
                 $malUso = $accion === 'danado' && (bool) ($data['mal_uso_colaborador'] ?? false);
 
+                $stock->cerrarDeVehiculo($asignacion, $cantidadCerrar, $accion);
                 $asignacionCerrada = $this->obtenerRegistroCierre($asignacion, $cantidadCerrar, $estado, $accion, $malUso, $data['observaciones_cierre'] ?? null);
 
                 if ($accion === 'regresar') {
-                    $this->regresarCantidadAInventario($asignacion, $cantidadCerrar);
+                    Movimiento::create([
+                        'producto_codigo' => $asignacion->producto_codigo,
+                        'bodega_destino_id' => $asignacion->bodega_id,
+                        'tipo_movimiento' => 'Entrada',
+                        'cantidad' => $cantidadCerrar,
+                        'fecha' => now(),
+                        'user_id' => auth()->id(),
+                        'vehiculo_vin' => $asignacion->vehiculo_vin,
+                    ]);
                 }
 
                 $responsable = null;
                 $alertaGenerada = null;
 
                 if ($malUso) {
-                    $vehiculoAsignado = AsignacionVehiculo::where('vehiculo_vin', $asignacion->vehiculo_vin)
-                        ->where('activa', true)
-                        ->latest('fecha_inicio')
-                        ->first();
-
-                    $responsable = $vehiculoAsignado?->colaborador_codigo;
+                    $responsable = $asignacion->asignacionVehiculo?->colaborador_codigo;
 
                     if ($responsable && Schema::hasTable('alertas_reemplazos_rrhh')) {
                         $alertaGenerada = $this->generarAlertaMalUsoVehiculo(
@@ -314,9 +316,13 @@ class VehiculoProductoController extends Controller
                 }
 
                 return $alertaGenerada;
-            });
+            }, 3);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Throwable $e) {
-            return back()->with('error', $e->getMessage());
+            report($e);
+
+            return back()->with('error', 'No se pudo cerrar la refacción.');
         }
 
         if ($alertaRrhh instanceof AlertaReemplazo) {
@@ -384,28 +390,42 @@ class VehiculoProductoController extends Controller
         return $cerrada;
     }
 
-    private function regresarCantidadAInventario(VehiculoProductoAsignacion $asignacion, int $cantidadCerrar): void
+    public function subirPdfFirmado(Request $request, VehiculoProductoAsignacion $asignacion, BodegaAccessService $bodegaAccess)
     {
-        $inventario = Inventario::firstOrCreate(
-            [
-                'producto_codigo' => $asignacion->producto_codigo,
-                'bodega_id' => $asignacion->bodega_id,
-            ],
-            ['cantidad' => 0]
-        );
-
-        $inventario->increment('cantidad', $cantidadCerrar);
-
-        Movimiento::create([
-            'producto_codigo' => $asignacion->producto_codigo,
-            'bodega_origen_id' => null,
-            'bodega_destino_id' => $asignacion->bodega_id,
-            'tipo_movimiento' => 'Entrada',
-            'cantidad' => $cantidadCerrar,
-            'fecha' => now(),
-            'user_id' => auth()->id(),
-            'vehiculo_vin' => $asignacion->vehiculo_vin,
+        $this->autorizarDocumento($asignacion, $bodegaAccess);
+        $data = $request->validate([
+            'tipo_documento' => ['required', 'in:asignacion_firmada,devolucion_firmada'],
+            'archivo' => ['required', 'file', 'mimes:pdf', 'max:10240'],
         ]);
+
+        if ($data['tipo_documento'] === 'devolucion_firmada' && $asignacion->activa) {
+            throw ValidationException::withMessages(['tipo_documento' => 'La refacción aún está activa.']);
+        }
+
+        $file = $data['archivo'];
+        $ruta = DocumentoPrivado::guardar($file, 'vehiculos/productos/' . $asignacion->id);
+        try {
+            $asignacion->archivosFirmados()->create([
+                'tipo_documento' => $data['tipo_documento'],
+                'ruta' => $ruta,
+                'nombre_original' => $file->getClientOriginalName(),
+                'mime' => $file->getMimeType(),
+                'tamano' => $file->getSize(),
+                'subido_por_user_id' => $request->user()->id,
+            ]);
+        } catch (Throwable $e) {
+            DocumentoPrivado::descartar($ruta);
+            throw $e;
+        }
+
+        return back()->with('success', 'PDF firmado subido correctamente.');
+    }
+
+    public function verPdfFirmado(VehiculoProductoArchivo $archivo, BodegaAccessService $bodegaAccess)
+    {
+        $this->autorizarDocumento($archivo->asignacion()->firstOrFail(), $bodegaAccess);
+
+        return DocumentoPrivado::responder($archivo->ruta, $archivo->nombre_original);
     }
 
     private function generarAlertaMalUsoVehiculo(

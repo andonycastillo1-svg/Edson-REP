@@ -14,6 +14,9 @@ class AsignacionMovimiento extends Model
         'cantidad',
         'detalle',
         'grupo_devolucion',
+        'estado_devolucion',
+        'stock_tipo_resultante',
+        'bodega_retorno_id',
         'user_id',
     ];
 

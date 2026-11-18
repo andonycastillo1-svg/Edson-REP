@@ -38,6 +38,12 @@ return [
             'report' => false,
         ],
 
+        'documentos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/documentos'),
+            'throw' => true,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

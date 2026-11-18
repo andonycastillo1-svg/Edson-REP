@@ -2,89 +2,224 @@
 
 namespace App\Services;
 
-use Illuminate\Database\QueryException;
+use App\Models\AsignacionInventario;
+use App\Models\InventarioExistencia;
+use App\Models\Producto;
+use App\Models\VehiculoProductoAsignacion;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class InventarioStockService
 {
-    public function incrementar(int $bodegaId, string $productoCodigo, int $cantidad): void
+    public function __construct(private InventarioLifecycleService $lifecycle) {}
+
+    public function incrementar(int $bodegaId, string $codigo, int $cantidad, ?float $valor = null): void
     {
-        if ($cantidad <= 0) {
-            return;
+        $this->bloquearProducto($codigo);
+        $this->saldo($bodegaId, $codigo, 'nuevo');
+
+        if ($this->porUnidad()) {
+            $this->lifecycle->crearNuevas($codigo, $bodegaId, $cantidad, $valor);
         }
 
-        $inventario = DB::table('inventarios')
-            ->where('bodega_id', $bodegaId)
-            ->where('producto_codigo', $productoCodigo)
-            ->lockForUpdate()
-            ->first();
+        $this->ajustar($bodegaId, $codigo, 'nuevo', $cantidad);
+    }
 
-        if ($inventario) {
-            DB::table('inventarios')
-                ->where('id', $inventario->id)
-                ->update([
-                    'cantidad' => (int) $inventario->cantidad + $cantidad,
-                    'updated_at' => now(),
-                ]);
+    public function trasladar(int $origen, int $destino, string $codigo, int $cantidad): void
+    {
+        $this->bloquearProducto($codigo);
+        $this->exigirStock($origen, $codigo, 'nuevo', $cantidad);
+        $this->saldo($destino, $codigo, 'nuevo');
 
-            return;
+        if ($this->porUnidad()) {
+            $ids = $this->existencias($origen, $codigo, 'nuevo')->orderBy('id')->limit($cantidad)->lockForUpdate()->pluck('id');
+            InventarioExistencia::whereKey($ids)->update(['bodega_id' => $destino]);
         }
 
-        try {
-            DB::table('inventarios')->insert([
-                'bodega_id' => $bodegaId,
-                'producto_codigo' => $productoCodigo,
-                'cantidad' => $cantidad,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        } catch (QueryException $e) {
-            // Si otra transaccion creo la fila entre la lectura y el insert, bloqueamos y sumamos.
-            $inventario = DB::table('inventarios')
-                ->where('bodega_id', $bodegaId)
-                ->where('producto_codigo', $productoCodigo)
-                ->lockForUpdate()
-                ->first();
+        $this->ajustar($origen, $codigo, 'nuevo', -$cantidad);
+        $this->ajustar($destino, $codigo, 'nuevo', $cantidad);
+    }
 
-            if (!$inventario) {
-                throw $e;
+    public function asignar(AsignacionInventario $asignacion, string $tipo): Collection
+    {
+        $bodega = (int) $asignacion->bodega_id;
+        $codigo = $asignacion->producto_codigo;
+        $cantidad = $asignacion->cantidad_asignada;
+        $this->bloquearProducto($codigo);
+        $this->exigirStock($bodega, $codigo, $tipo, $cantidad);
+
+        $unidades = $this->porUnidad()
+            ? $this->lifecycle->reservar($asignacion, $tipo, $cantidad, Carbon::parse($asignacion->fecha))
+            : collect();
+
+        $this->ajustar($bodega, $codigo, $tipo, -$cantidad);
+
+        return $unidades;
+    }
+
+    public function devolver(AsignacionInventario $asignacion, int $cantidad, string $estado, string $detalle): Collection
+    {
+        $bodega = (int) $asignacion->bodega_id;
+        $codigo = $asignacion->producto_codigo;
+        $tipo = $estado === 'buen_estado' ? 'usado' : $estado;
+        $this->bloquearProducto($codigo);
+        if ($tipo !== 'perdido') {
+            $this->saldo($bodega, $codigo, $tipo);
+        }
+
+        $periodos = collect();
+        if ($this->porUnidad()) {
+            $periodos = $this->lifecycle->devolver($asignacion, $cantidad, $estado, $bodega, $detalle);
+        }
+
+        if ($tipo !== 'perdido') {
+            $this->ajustar($bodega, $codigo, $tipo, $cantidad);
+        }
+
+        return $periodos;
+    }
+
+    public function asignarAVehiculo(VehiculoProductoAsignacion $asignacion): void
+    {
+        $bodega = (int) $asignacion->bodega_id;
+        $codigo = $asignacion->producto_codigo;
+        $cantidad = (int) $asignacion->cantidad;
+        $this->bloquearProducto($codigo);
+        $nuevo = min($cantidad, $this->saldo($bodega, $codigo, 'nuevo'));
+        $usado = $cantidad - $nuevo;
+        if ($usado > 0) {
+            $this->exigirStock($bodega, $codigo, 'usado', $usado);
+        }
+
+        foreach (['nuevo' => $nuevo, 'usado' => $usado] as $tipo => $unidades) {
+            if ($unidades === 0) {
+                continue;
             }
 
-            DB::table('inventarios')
-                ->where('id', $inventario->id)
-                ->update([
-                    'cantidad' => (int) $inventario->cantidad + $cantidad,
-                    'updated_at' => now(),
+            if ($this->porUnidad()) {
+                $ids = $this->existencias($bodega, $codigo, $tipo)->orderBy('id')->limit($unidades)->lockForUpdate()->pluck('id');
+                InventarioExistencia::whereKey($ids)->update([
+                    'condicion' => 'asignado_vehiculo',
+                    'bodega_id' => null,
+                    'disponible_desde' => null,
+                    'vehiculo_producto_asignacion_id' => $asignacion->id,
                 ]);
+            }
+            $this->ajustar($bodega, $codigo, $tipo, -$unidades);
         }
     }
 
-    public function descontar(int $bodegaId, string $productoCodigo, int $cantidad): void
+    public function cerrarDeVehiculo(VehiculoProductoAsignacion $asignacion, int $cantidad, string $accion): void
     {
-        if ($cantidad <= 0) {
-            return;
+        $bodega = (int) $asignacion->bodega_id;
+        $codigo = $asignacion->producto_codigo;
+        $tipo = match ($accion) {
+            'regresar' => 'usado',
+            'danado' => 'danado',
+            'baja' => 'baja',
+            default => null,
+        };
+        $this->bloquearProducto($codigo);
+        if ($tipo !== null) {
+            $this->saldo($bodega, $codigo, $tipo);
         }
 
-        $inventario = DB::table('inventarios')
-            ->where('bodega_id', $bodegaId)
-            ->where('producto_codigo', $productoCodigo)
-            ->lockForUpdate()
-            ->first();
+        if ($this->porUnidad()) {
+            $unidades = InventarioExistencia::where('vehiculo_producto_asignacion_id', $asignacion->id)
+                ->where('condicion', 'asignado_vehiculo')->orderBy('id')->lockForUpdate()->get();
+            if ($unidades->count() !== (int) $asignacion->cantidad) {
+                $this->requiereConciliacion($codigo, $bodega);
+            }
 
-        $disponible = (int) ($inventario->cantidad ?? 0);
-
-        if (!$inventario || $disponible < $cantidad) {
-            throw ValidationException::withMessages([
-                'stock' => "Stock insuficiente para {$productoCodigo}. Disponible: {$disponible}, solicitado: {$cantidad}.",
+            InventarioExistencia::whereKey($unidades->take($cantidad)->modelKeys())->update([
+                'condicion' => $tipo ?? 'consumido',
+                'bodega_id' => $tipo === null ? null : $bodega,
+                'disponible_desde' => $tipo === 'usado' ? now() : null,
+                'vida_util_restante_segundos' => null,
             ]);
         }
 
-        DB::table('inventarios')
-            ->where('id', $inventario->id)
-            ->update([
-                'cantidad' => $disponible - $cantidad,
-                'updated_at' => now(),
+        if ($tipo !== null) {
+            $this->ajustar($bodega, $codigo, $tipo, $cantidad);
+        }
+    }
+
+    private function porUnidad(): bool
+    {
+        return (bool) config('inventario.seguimiento_unidades');
+    }
+
+    private function bloquearProducto(string $codigo): void
+    {
+        if (DB::transactionLevel() === 0) {
+            throw new \LogicException('Las operaciones de inventario requieren una transacción.');
+        }
+
+        Producto::whereKey($codigo)->lockForUpdate()->firstOrFail();
+    }
+
+    private function existencias(int $bodega, string $codigo, string $tipo)
+    {
+        return InventarioExistencia::where('bodega_id', $bodega)
+            ->where('producto_codigo', $codigo)->where('condicion', $tipo);
+    }
+
+    private function inventario(int $bodega, string $codigo, string $tipo)
+    {
+        return DB::table('inventarios')->where([
+            'bodega_id' => $bodega, 'producto_codigo' => $codigo, 'stock_tipo' => $tipo,
+        ]);
+    }
+
+    private function saldo(int $bodega, string $codigo, string $tipo): int
+    {
+        $filas = $this->inventario($bodega, $codigo, $tipo)->lockForUpdate()->get();
+        $saldo = (int) ($filas->first()->cantidad ?? 0);
+        if ($filas->count() > 1 || $saldo < 0 ||
+            ($this->porUnidad() && $this->existencias($bodega, $codigo, $tipo)->lockForUpdate()->pluck('id')->count() !== $saldo)) {
+            $this->requiereConciliacion($codigo, $bodega);
+        }
+
+        return $saldo;
+    }
+
+    private function exigirStock(int $bodega, string $codigo, string $tipo, int $cantidad): void
+    {
+        if ($this->saldo($bodega, $codigo, $tipo) < $cantidad) {
+            throw ValidationException::withMessages(['stock' => "Stock {$tipo} insuficiente para {$codigo}."]);
+        }
+    }
+
+    private function ajustar(int $bodega, string $codigo, string $tipo, int $delta): void
+    {
+        $consulta = $this->inventario($bodega, $codigo, $tipo);
+        $fila = $consulta->lockForUpdate()->first();
+        $datos = [
+            'cantidad' => (int) ($fila->cantidad ?? 0) + $delta,
+            'updated_at' => now(),
+        ];
+        if ($this->porUnidad() && $tipo === 'usado') {
+            $vidaMinima = $this->existencias($bodega, $codigo, $tipo)
+                ->whereNotNull('vida_util_restante_segundos')->orderBy('vida_util_restante_segundos')
+                ->lockForUpdate()->value('vida_util_restante_segundos');
+            $datos['vida_util_restante_meses'] = $vidaMinima === null ? null : intdiv((int) $vidaMinima, 30 * 86400);
+        }
+
+        if ($fila) {
+            $consulta->update($datos);
+        } else {
+            DB::table('inventarios')->insert($datos + [
+                'bodega_id' => $bodega, 'producto_codigo' => $codigo, 'stock_tipo' => $tipo, 'created_at' => now(),
             ]);
+        }
+    }
+
+    private function requiereConciliacion(string $codigo, int $bodega): never
+    {
+        throw ValidationException::withMessages([
+            'stock' => "Inventario de {$codigo} en bodega {$bodega} requiere conciliación.",
+        ]);
     }
 }

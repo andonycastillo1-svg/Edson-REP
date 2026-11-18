@@ -81,7 +81,6 @@ class InventarioLifecycleService
             $existencia->update(['condicion' => 'asignado', 'bodega_id' => null, 'disponible_desde' => null]);
         }
 
-        $this->sincronizarResumen($asignacion->producto_codigo, (int) $asignacion->bodega_id);
         return $existencias;
     }
 
@@ -100,38 +99,18 @@ class InventarioLifecycleService
 
         $devueltoEn ??= now();
         $periodosActivos = AsignacionPeriodo::where('asignacion_inventario_id', $asignacion->id)
-            ->whereNull('devuelto_en')->count();
-        if ($periodosActivos === 0 && !AsignacionPeriodo::where('asignacion_inventario_id', $asignacion->id)->exists()) {
-            // Compatibilidad: se conserva el dato legado disponible sin reconstruir consumos desconocidos.
-            $vidaLegada = $asignacion->vida_util_restante_meses === null
-                ? null
-                : max(0, (int) $asignacion->vida_util_restante_meses) * 30 * 86400;
-            for ($i = 0; $i < (int) $asignacion->cantidad_asignada; $i++) {
-                $existencia = InventarioExistencia::create([
-                    'producto_codigo' => $asignacion->producto_codigo,
-                    'bodega_id' => null,
-                    'condicion' => 'asignado',
-                    'vida_util_inicial_segundos' => $asignacion->vida_util_original_meses === null ? null : (int) $asignacion->vida_util_original_meses * 30 * 86400,
-                    'vida_util_restante_segundos' => $vidaLegada,
-                    'valor_referencia' => $asignacion->costo_unitario,
-                ]);
-                AsignacionPeriodo::create([
-                    'asignacion_inventario_id' => $asignacion->id,
-                    'inventario_existencia_id' => $existencia->id,
-                    'tipo_inventario' => $asignacion->stock_tipo ?? 'nuevo',
-                    'asignado_en' => $asignacion->fecha,
-                    'vida_util_al_asignar_segundos' => $vidaLegada,
-                    'bodega_origen_id' => $asignacion->bodega_id,
-                    'asignado_por_user_id' => $asignacion->user_id,
-                    'valor_referencia' => $asignacion->costo_unitario,
-                ]);
-            }
+            ->whereNull('devuelto_en')->lockForUpdate()->pluck('id')->count();
+        if ($periodosActivos !== (int) $asignacion->cantidad_asignada) {
+            throw ValidationException::withMessages([
+                'stock' => 'Los períodos activos de esta asignación requieren conciliación.',
+            ]);
         }
+
         $periodos = AsignacionPeriodo::query()
             ->where('asignacion_inventario_id', $asignacion->id)
             ->whereNull('devuelto_en')
-            ->with('existencia')
             ->lockForUpdate()
+            ->orderBy('id')
             ->limit($cantidad)
             ->get();
 
@@ -139,6 +118,14 @@ class InventarioLifecycleService
             throw ValidationException::withMessages([
                 'cantidad_devuelta' => 'La cantidad supera las unidades activas o ya fueron devueltas.',
             ]);
+        }
+
+        $unidades = InventarioExistencia::whereKey($periodos->pluck('inventario_existencia_id'))
+            ->where('producto_codigo', $asignacion->producto_codigo)
+            ->where('condicion', 'asignado')->whereNull('bodega_id')
+            ->lockForUpdate()->get()->keyBy('id');
+        if ($unidades->count() !== $cantidad) {
+            throw ValidationException::withMessages(['stock' => 'Las unidades asignadas requieren conciliación.']);
         }
 
         foreach ($periodos as $periodo) {
@@ -179,7 +166,7 @@ class InventarioLifecycleService
                 ],
             ]);
 
-            $periodo->existencia->update([
+            $unidades->get($periodo->inventario_existencia_id)->update([
                 'condicion' => $condicion,
                 'bodega_id' => $estado === 'perdido' ? null : $bodegaRetornoId,
                 'vida_util_restante_segundos' => $restante,
@@ -187,24 +174,6 @@ class InventarioLifecycleService
             ]);
         }
 
-        $this->sincronizarResumen($asignacion->producto_codigo, (int) $asignacion->bodega_id);
-        if ($bodegaRetornoId !== (int) $asignacion->bodega_id) {
-            $this->sincronizarResumen($asignacion->producto_codigo, $bodegaRetornoId);
-        }
         return $periodos;
-    }
-
-    public function sincronizarResumen(string $productoCodigo, int $bodegaId): void
-    {
-        foreach (['nuevo', 'usado', 'danado', 'perdido', 'baja'] as $tipo) {
-            $query = InventarioExistencia::where('producto_codigo', $productoCodigo)
-                ->where('bodega_id', $bodegaId)->where('condicion', $tipo);
-            $cantidad = (clone $query)->count();
-            $vidaMinima = $tipo === 'usado' ? (clone $query)->min('vida_util_restante_segundos') : null;
-            DB::table('inventarios')->updateOrInsert(
-                ['producto_codigo' => $productoCodigo, 'bodega_id' => $bodegaId, 'stock_tipo' => $tipo],
-                ['cantidad' => $cantidad, 'vida_util_restante_meses' => $vidaMinima === null ? null : intdiv((int) $vidaMinima, 30 * 86400), 'updated_at' => now(), 'created_at' => now()]
-            );
-        }
     }
 }

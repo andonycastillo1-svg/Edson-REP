@@ -56,9 +56,8 @@ Route::middleware(['auth', 'auto.logout', 'role:3'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'auto.logout'])->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/profile', fn () => redirect()->route('dashboard'))->name('profile.edit');
+    Route::get('/profile/edit', fn () => redirect()->route('dashboard'));
 
     Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
     Route::patch('/notificaciones/leer-todas', [NotificacionController::class, 'marcarTodasLeidas'])->name('notificaciones.leer-todas');
@@ -79,7 +78,7 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::view('/dashboard', 'admin.dashboard')->name('dashboard');
 
-        Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
+        Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class)->except('show');
         Route::resource('bodegas', \App\Http\Controllers\Admin\BodegaController::class);
 
         Route::get('bodegas/{bodega}/inventario-export', [\App\Http\Controllers\Admin\BodegaController::class, 'exportInventario'])
@@ -98,7 +97,7 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
             ->name('colaboradores.estado');
 
         Route::resource('colaboradores', ColaboradorController::class)
-            ->parameters(['colaboradores' => 'colaborador']);
+            ->except(['show', 'destroy'])->parameters(['colaboradores' => 'colaborador']);
 
         /*
         |--------------------------------------------------------------------------
@@ -172,7 +171,10 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         | Compras
         |--------------------------------------------------------------------------
         */
-        Route::resource('compras', \App\Http\Controllers\Admin\CompraController::class);
+        Route::resource('compras', \App\Http\Controllers\Admin\CompraController::class)
+            ->only(['index', 'create', 'store', 'show']);
+        Route::get('compras/{compra}/archivos/{archivo}', [\App\Http\Controllers\Admin\CompraController::class, 'archivo'])
+            ->name('compras.archivo');
 
         /*
         |--------------------------------------------------------------------------
@@ -221,6 +223,9 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         */
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
+
+        Route::get('asignaciones/activas-producto', [AsignacionInventarioController::class, 'asignacionesActivas'])
+            ->name('asignaciones.activas_producto');
 
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
@@ -271,10 +276,16 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
         Route::get('bodegas/{bodega}/inventario-export', [\App\Http\Controllers\Admin\BodegaController::class, 'exportInventario'])
             ->name('bodegas.inventario.export');
 
-        Route::resource('compras', \App\Http\Controllers\Admin\CompraController::class);
+        Route::resource('compras', \App\Http\Controllers\Admin\CompraController::class)
+            ->only(['index', 'create', 'store', 'show']);
+        Route::get('compras/{compra}/archivos/{archivo}', [\App\Http\Controllers\Admin\CompraController::class, 'archivo'])
+            ->name('compras.archivo');
 
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
+
+        Route::get('asignaciones/activas-producto', [AsignacionInventarioController::class, 'asignacionesActivas'])
+            ->name('asignaciones.activas_producto');
 
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
@@ -375,7 +386,7 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
         Route::post('/alertas/{alerta}/finalizar', [RrhhDashboardController::class, 'finalizar'])
             ->name('alertas.finalizar');
 
-        Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class);
+        Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class)->except('show');
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
@@ -390,7 +401,7 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
             ->name('colaboradores.estado');
 
         Route::resource('colaboradores', ColaboradorController::class)
-            ->parameters(['colaboradores' => 'colaborador']);
+            ->except(['show', 'destroy'])->parameters(['colaboradores' => 'colaborador']);
     });
 
 /*
