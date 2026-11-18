@@ -1,0 +1,1 @@
+@include('errors.estado', ['codigo' => 403, 'titulo' => 'Acceso denegado', 'mensaje' => 'Tu cuenta no tiene acceso a esta acción o registro. Si necesitas consultarlo, comunícate con quien administra el sistema.'])

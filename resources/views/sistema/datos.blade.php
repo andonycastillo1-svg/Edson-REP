@@ -1,8 +1,8 @@
 <x-sistema.pagina :titulo="$nombre" :volver="route('sistema.datos')">
     <x-sistema.panel>
-        <form method="GET" class="mb-4 flex flex-wrap items-end gap-3">
+        <form method="GET" class="mb-4 flex flex-wrap items-end gap-3" aria-label="Filtros de {{ $nombre }}">
             @if(collect($columnas)->keys()->contains(fn ($c) => $presentacion[$c]['buscar'] ?? false))
-                <label class="text-sm font-semibold">Buscar<input name="q" value="{{ request('q') }}" class="mt-1 block rounded-xl border-slate-300"></label>
+                <label class="max-w-full text-sm font-semibold">Buscar<input type="search" name="q" value="{{ request('q') }}" maxlength="100" class="mt-1 block max-w-full"></label>
             @endif
             @foreach($columnas as $key => $etiqueta)
                 @if($presentacion[$key]['filtro'] ?? false)
@@ -26,21 +26,21 @@
                 </label>
             @endforeach
             @if($filtros->isNotEmpty() || collect($columnas)->keys()->contains(fn ($c) => ($presentacion[$c]['buscar'] ?? false) || ($presentacion[$c]['filtro'] ?? false)))
-                <button class="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold">Aplicar filtros</button>
-                <a href="{{ route('sistema.datos.lista', $modulo) }}" class="px-2 py-2 text-sm font-semibold text-blue-700">Limpiar</a>
+                <button type="submit" class="ui-btn-primary">Aplicar filtros</button>
+                <a href="{{ route('sistema.datos.lista', $modulo) }}" class="ui-btn-secondary">Limpiar filtros</a>
             @endif
             @if($puedeExportar)
-                <a href="{{ route('sistema.datos.exportar', ['modulo' => $modulo, ...request()->only('q','nativo','campo')]) }}" class="ml-auto rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-blue-700">Exportar CSV</a>
+                <a href="{{ route('sistema.datos.exportar', ['modulo' => $modulo, ...request()->only('q','nativo','campo')]) }}" class="ui-btn-secondary sm:ml-auto">Exportar CSV</a>
             @endif
         </form>
         @php($lector = app(\App\Sistema\ValoresCampos::class))
         @php($enlaces = app(\App\Sistema\Modulos::class))
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
+        <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Listado de {{ $nombre }}">
+            <table class="ui-table">
                 <thead class="bg-slate-100">
                     <tr>
-                        @foreach($distribucion as $columna)<th class="p-3">{{ $columna['etiqueta'] }}</th>@endforeach
-                        <th class="p-3">Detalles</th>
+                        @foreach($distribucion as $columna)<th scope="col">{{ $columna['etiqueta'] }}</th>@endforeach
+                        <th scope="col">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
@@ -48,16 +48,25 @@
                         <tr>
                             @php($actuales = $valores->get((string) $registro->{$id}) ?? collect())
                             @foreach($distribucion as $columna)
-                                <td class="p-3">{{ $columna['campo'] ? $lector->mostrar($columna['campo'], $actuales->get($columna['clave'])) : $registro->{$columna['clave']} }}</td>
+                                @php($valor = $columna['campo'] ? $lector->mostrar($columna['campo'], $actuales->get($columna['clave'])) : $registro->{$columna['clave']})
+                                <td>
+                                    @if(!$columna['campo'] && $columna['clave'] === 'estado' && filled($valor))
+                                        <span class="ui-badge ui-badge-info">{{ $valor }}</span>
+                                    @else
+                                        {{ filled($valor) ? $valor : '—' }}
+                                    @endif
+                                </td>
                             @endforeach
-                            <td class="flex flex-wrap gap-3 p-3">
-                                <a class="whitespace-nowrap font-semibold text-blue-700" href="{{ route('sistema.datos.ficha', [$modulo, $registro->{$id}]) }}">Ver campos</a>
-                                @if($operativo = $enlaces->enlaceOperativo(auth()->user(), $modulo, $registro))
-                                    <a class="whitespace-nowrap font-semibold text-blue-700" href="{{ $operativo }}">Abrir módulo</a>
-                                @endif
+                            <td>
+                                <div class="flex flex-wrap gap-2">
+                                    <a class="ui-btn-secondary ui-btn-sm" href="{{ route('sistema.datos.ficha', [$modulo, $registro->{$id}]) }}">Ver campos</a>
+                                    @if($operativo = $enlaces->enlaceOperativo(auth()->user(), $modulo, $registro))
+                                        <a class="ui-btn-secondary ui-btn-sm" href="{{ $operativo }}">Abrir módulo</a>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
-                    @empty<tr><td colspan="{{ count($columnas) + $campos->count() + 1 }}" class="p-3 text-slate-600">No hay registros para estos filtros.</td></tr>@endforelse
+                    @empty<tr><td colspan="{{ count($distribucion) + 1 }}"><p class="ui-empty-state">No hay registros para estos filtros.</p></td></tr>@endforelse
                 </tbody>
             </table>
         </div>

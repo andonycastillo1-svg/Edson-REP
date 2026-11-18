@@ -6,20 +6,20 @@
                     <option value="">Todos los módulos</option>
                     @foreach(\App\Sistema\Modulos::DEFINICIONES as $key => $spec)<option value="{{ $key }}" @selected($modulo === $key)>{{ $spec[0] }}</option>@endforeach
                 </select>
-                <button class="rounded-xl bg-slate-100 px-4 py-2 font-semibold">Filtrar</button>
+                <button type="submit" class="ui-btn-secondary">Filtrar</button>
             </form>
-            <a href="{{ route('sistema.campos.crear') }}" class="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Nuevo campo</a>
+            <a href="{{ route('sistema.campos.crear') }}" class="ui-btn-primary">Nuevo campo</a>
         </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-slate-100 text-left"><tr><th class="p-3">Campo</th><th class="p-3">Módulo</th><th class="p-3">Tipo</th><th class="p-3">Estado</th></tr></thead>
+        <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Listado de campos personalizados">
+            <table class="ui-table">
+                <thead><tr><th scope="col">Campo</th><th scope="col">Módulo</th><th scope="col">Tipo</th><th scope="col">Estado</th></tr></thead>
                 <tbody class="divide-y divide-slate-200">
                     @forelse($campos as $campo)
                         <tr>
                             <td class="p-3"><a class="font-semibold text-blue-700" href="{{ route('sistema.campos.editar', $campo) }}">{{ $campo->etiqueta }}</a><div class="text-xs text-slate-500">{{ $campo->clave }}</div></td>
                             <td class="p-3">{{ \App\Sistema\Modulos::DEFINICIONES[$campo->modulo][0] ?? $campo->modulo }}</td>
                             <td class="p-3">{{ \App\Sistema\ValoresCampos::TIPOS[$campo->tipo] }}</td>
-                            <td class="p-3">{{ $campo->archivado_en ? 'Archivado' : ($campo->activo ? 'Activo' : 'Inactivo') }}</td>
+                            <td class="p-3"><span @class(['ui-badge', 'ui-badge-success' => $campo->activo && !$campo->archivado_en, 'ui-badge-warning' => !$campo->activo && !$campo->archivado_en])>{{ $campo->archivado_en ? 'Archivado' : ($campo->activo ? 'Activo' : 'Inactivo') }}</span></td>
                         </tr>
                     @empty<tr><td colspan="4" class="p-3 text-slate-600">Sin campos para este filtro.</td></tr>@endforelse
                 </tbody>

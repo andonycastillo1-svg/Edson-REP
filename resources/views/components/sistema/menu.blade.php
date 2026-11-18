@@ -2,13 +2,19 @@
     @php
         $permisosMenu = app(\App\Sistema\Permisos::class);
         $usuarioMenu = auth()->user();
-        $configMenu = $permisosMenu->instalado() && ($permisosMenu->esSuperadministrador($usuarioMenu)
-            || collect(array_keys(\App\Sistema\CatalogoPermisos::CONFIGURACION))->contains(fn ($p) => $permisosMenu->permite($usuarioMenu, $p)));
+        $hayDatos = collect(array_keys(\App\Sistema\Modulos::DEFINICIONES))
+            ->contains(fn ($modulo) => app(\App\Sistema\Modulos::class)->consultar($usuarioMenu, $modulo));
+        $hayConfiguracion = $permisosMenu->esSuperadministrador($usuarioMenu)
+            || collect(array_keys(\App\Sistema\CatalogoPermisos::CONFIGURACION))->contains(fn ($p) => $permisosMenu->permite($usuarioMenu, $p));
     @endphp
-    @if($permisosMenu->instalado())
-        <nav aria-label="Gestión del sistema" class="flex flex-wrap items-center gap-2 text-sm font-semibold">
-            <a class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-blue-700" href="{{ route('sistema.datos') }}">Datos de los módulos</a>
-            @if($configMenu)<a class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-blue-700" href="{{ route('sistema.configuracion') }}">Configuración del sistema</a>@endif
-        </nav>
+    @if($permisosMenu->instalado() && ($hayDatos || $hayConfiguracion))
+        <div class="flex flex-wrap items-center gap-2">
+            @if($hayDatos)
+                <a class="ui-btn-secondary" href="{{ route('sistema.datos') }}" @if(request()->routeIs('sistema.datos*')) aria-current="page" @endif>Datos de los módulos</a>
+            @endif
+            @if($hayConfiguracion)
+                <a class="ui-btn-secondary" href="{{ route('sistema.configuracion') }}" @if(request()->routeIs('sistema.configuracion')) aria-current="page" @endif>Configuración del sistema</a>
+            @endif
+        </div>
     @endif
 @endauth

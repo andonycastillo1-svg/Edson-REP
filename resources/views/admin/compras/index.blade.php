@@ -32,26 +32,14 @@
                     </div>
                 </div>
 
+                @rutaDisponible($routePrefix.'.compras.create')
+                    <a class="ui-btn-primary" href="{{ route($routePrefix.'.compras.create') }}">Registrar compra</a>
+                @endrutaDisponible
             </div>
         </div>
 
-        {{-- MENSAJES --}}
-        <div class="px-6 pt-5">
-            @if(session('success'))
-                <div class="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                    <strong>Correcto:</strong> {{ session('success') }}
-                </div>
-            @endif
-
-            @if(session('error'))
-                <div class="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                    <strong>Error:</strong> {{ session('error') }}
-                </div>
-            @endif
-        </div>
-
         {{-- BARRA DE HERRAMIENTAS --}}
-        <div class="px-6 pb-5">
+        <div class="px-4 py-4 sm:px-6">
             <div class="rounded-3xl border border-sky-200 bg-sky-50/70 px-5 py-4 shadow-sm">
 
                 <div>

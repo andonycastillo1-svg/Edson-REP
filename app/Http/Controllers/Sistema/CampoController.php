@@ -35,6 +35,9 @@ class CampoController extends Controller
 
     public function guardar(Request $request, ValoresCampos $valores, Auditoria $auditoria, Seguridad $seguridad, ?Campo $campo = null)
     {
+        if ($request->input('seleccion_predeterminada') === [null]) {
+            $request->merge(['seleccion_predeterminada' => []]);
+        }
         $catalogo = collect(array_keys(CatalogoPermisos::AMBITOS))->flatMap(fn ($ambito) => CatalogoPermisos::disponibles($ambito))->unique()->all();
         $data = $request->validate([
             'modulo' => ['required', Rule::in(array_keys(Modulos::DEFINICIONES))],
@@ -49,6 +52,8 @@ class CampoController extends Controller
             'activo' => ['required', 'boolean'], 'obligatorio' => ['required', 'boolean'], 'formulario' => ['required', 'boolean'],
             'tabla' => ['required', 'boolean'], 'filtro' => ['required', 'boolean'], 'exportacion' => ['required', 'boolean'],
             'predeterminado' => ['nullable', 'string', 'max:5000'],
+            'seleccion_predeterminada' => ['nullable', 'array', 'max:100', 'prohibits:predeterminado'],
+            'seleccion_predeterminada.*' => ['required', 'integer', 'min:0', 'distinct'],
             'opciones' => ['nullable', 'array', 'max:100'],
             'opciones.*.id' => ['nullable', 'integer', 'distinct'],
             'opciones.*.etiqueta' => ['nullable', 'string', 'max:100'],
@@ -64,12 +69,16 @@ class CampoController extends Controller
         if ($data['tipo'] === 'archivo' && isset($data['predeterminado'])) {
             throw ValidationException::withMessages(['predeterminado' => 'Los archivos se adjuntan en cada registro.']);
         }
+        $seleccion = $data['seleccion_predeterminada'] ?? [];
+        if ($seleccion !== [] && ($data['tipo'] !== 'multiple' && ($data['tipo'] !== 'lista' || count($seleccion) !== 1))) {
+            throw ValidationException::withMessages(['seleccion_predeterminada' => 'Selecciona un valor permitido para este tipo de campo.']);
+        }
 
         $esCambioDeAcceso = collect(['permiso_lectura', 'permiso_edicion'])->contains(
             fn ($key) => array_key_exists($key, $data) && $data[$key] !== $campo?->{$key}
         );
-        $guardar = function () use ($campo, $data, $valores, $auditoria, $esCambioDeAcceso) {
-            $datos = Arr::except($data, ['opciones', 'predeterminado', 'current_password']);
+        $guardar = function () use ($campo, $data, $valores, $auditoria, $esCambioDeAcceso, $seleccion) {
+            $datos = Arr::except($data, ['opciones', 'predeterminado', 'seleccion_predeterminada', 'current_password']);
             if (!$esCambioDeAcceso) {
                 $datos = Arr::except($datos, ['permiso_lectura', 'permiso_edicion']);
             }
@@ -80,21 +89,28 @@ class CampoController extends Controller
             }
             $anterior = $actual->exists ? $actual->only(array_keys($datos)) : null;
             $actual->fill($datos)->save();
+            $opcionesActivas = [];
             if (in_array($actual->tipo, ['lista', 'multiple'], true)) {
-                foreach ($data['opciones'] ?? [] as $opcion) {
-                    if (empty($opcion['etiqueta'])) {
+                foreach ($data['opciones'] ?? [] as $fila => $opcion) {
+                    if (blank($opcion['etiqueta'] ?? null)) {
                         continue;
                     }
                     $opcionDatos = ['etiqueta' => $opcion['etiqueta'], 'orden' => $opcion['orden'] ?? 0, 'activo' => $opcion['activo']];
                     if (!empty($opcion['id'])) {
-                        $existente = $actual->opciones()->whereKey($opcion['id'])->firstOrFail();
+                        $existente = $actual->opciones()->find($opcion['id']);
+                        if (!$existente) {
+                            throw ValidationException::withMessages(['opciones' => 'Esta opción ya no está disponible para el campo.']);
+                        }
                         $antes = $existente->only(['etiqueta', 'orden', 'activo']);
                         $existente->update($opcionDatos);
                         if ($existente->wasChanged()) {
                             $auditoria->registrar('configuracion', 'opcion_campo', $actual->id, $antes, $existente->only(array_keys($antes)));
                         }
                     } else {
-                        $actual->opciones()->create($opcionDatos);
+                        $existente = $actual->opciones()->create($opcionDatos);
+                    }
+                    if ($opcionDatos['activo']) {
+                        $opcionesActivas[$fila] = $existente->id;
                     }
                 }
                 $actual->load('opciones');
@@ -105,6 +121,16 @@ class CampoController extends Controller
             $default = $data['predeterminado'] ?? null;
             if ($default !== null && $actual->tipo === 'multiple') {
                 $default = array_map('trim', explode(',', $default));
+            }
+            if ($seleccion !== []) {
+                $ids = [];
+                foreach ($seleccion as $fila) {
+                    if (!isset($opcionesActivas[$fila])) {
+                        throw ValidationException::withMessages(['seleccion_predeterminada' => 'Selecciona únicamente opciones activas que tengan etiqueta.']);
+                    }
+                    $ids[] = $opcionesActivas[$fila];
+                }
+                $default = $actual->tipo === 'lista' ? $ids[0] : $ids;
             }
             $actual->predeterminado = $valores->validar($actual, $default);
             if ($actual->modulo === 'inventario' && $actual->obligatorio && $actual->predeterminado === null) {

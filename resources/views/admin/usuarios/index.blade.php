@@ -12,18 +12,6 @@
     <x-sistema.enlace-datos modulo="usuarios" />
 
 
-    @if(session('error'))
-        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    @if(session('success'))
-        <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-            {{ session('success') }}
-        </div>
-    @endif
-
     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
         {{-- Encabezado --}}
@@ -47,10 +35,12 @@
                     </p>
                 </div>
 
+                @rutaDisponible($routePrefix . '.usuarios.create')
                 <a href="{{ route($routePrefix . '.usuarios.create') }}"
                    class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
                     + Nuevo usuario
                 </a>
+                @endrutaDisponible
             </div>
         </div>
 
@@ -188,11 +178,14 @@
                             <td class="px-6 py-4">
                                 <div class="flex justify-end gap-2">
                                     @if($puedeEditar)
+                                        @rutaDisponible($routePrefix . '.usuarios.edit')
                                         <a href="{{ route($routePrefix . '.usuarios.edit', $u->id) }}"
                                            class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
                                             Editar
                                         </a>
+                                        @endrutaDisponible
 
+                                        @rutaDisponible($routePrefix . '.usuarios.destroy')
                                         <form action="{{ route($routePrefix . '.usuarios.destroy', $u->id) }}"
                                               method="POST"
                                               onsubmit="return confirm('¿Seguro que deseas desactivar este usuario?');">
@@ -204,6 +197,7 @@
                                                 Desactivar
                                             </button>
                                         </form>
+                                        @endrutaDisponible
                                     @else
                                         <span class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">
                                             Solo lectura
@@ -224,10 +218,12 @@
                                 </p>
 
                                 <div class="mt-5">
+                                    @rutaDisponible($routePrefix . '.usuarios.create')
                                     <a href="{{ route($routePrefix . '.usuarios.create') }}"
                                        class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
                                         + Nuevo usuario
                                     </a>
+                                    @endrutaDisponible
                                 </div>
                             </td>
                         </tr>

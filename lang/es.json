@@ -1,0 +1,11 @@
+{
+    "Pagination Navigation": "Navegación de páginas",
+    "Showing": "Mostrando",
+    "to": "a",
+    "of": "de",
+    "results": "resultados",
+    "Go to page :page": "Ir a la página :page",
+    "The given data was invalid.": "Revisa los datos indicados.",
+    "(and :count more error)": "(y :count error más)",
+    "(and :count more errors)": "(y :count errores más)"
+}

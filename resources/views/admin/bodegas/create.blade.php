@@ -14,8 +14,8 @@
         @csrf
 
         <div>
-            <label class="text-sm font-semibold text-slate-700">Nombre</label>
-            <input name="nombre" value="{{ old('nombre') }}"
+            <label for="campo-nombre" class="text-sm font-semibold text-slate-700">Nombre</label>
+            <input id="campo-nombre" name="nombre" value="{{ old('nombre') }}"
                    class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
                    required>
             @error('nombre') <div class="text-rose-600 text-sm mt-1">{{ $message }}</div> @enderror
@@ -24,8 +24,8 @@
         <x-sistema.campos-nativos modulo="bodegas" />
 
         <div>
-            <label class="text-sm font-semibold text-slate-700">Tipo</label>
-            <select name="tipo"
+            <label for="campo-tipo" class="text-sm font-semibold text-slate-700">Tipo</label>
+            <select id="campo-tipo" name="tipo"
                     class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     required>
                 <option value="Principal" @selected(old('tipo') === 'Principal')>Principal</option>

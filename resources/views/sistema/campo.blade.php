@@ -3,30 +3,49 @@
         @if($campo?->archivado_en)
             <p class="text-sm text-slate-600">Archivado el {{ $campo->archivado_en->format('d/m/Y H:i') }}. Se conserva el historial de valores.</p>
         @else
-            <form method="POST" action="{{ $campo ? route('sistema.campos.actualizar', $campo) : route('sistema.campos.guardar') }}" class="space-y-5">
+            @php
+                $tipo = old('tipo', $campo?->tipo ?? array_key_first(\App\Sistema\ValoresCampos::TIPOS));
+                $opciones = array_filter((array) old('opciones', $campo?->opciones?->toArray() ?? []), 'is_array');
+                $esLista = in_array($tipo, ['lista', 'multiple'], true);
+                $esBooleano = in_array($tipo, ['casilla', 'booleano'], true);
+                $default = $campo?->predeterminado;
+                $defaultSimple = old('predeterminado', is_bool($default) ? (int) $default : $default);
+                $defaultSimple = is_scalar($defaultSimple) ? (string) $defaultSimple : '';
+                $seleccion = old('seleccion_predeterminada', session()->hasOldInput() ? [] : array_keys(array_filter(
+                    $opciones, fn ($opcion) => isset($opcion['id']) && in_array($opcion['id'], (array) $default)
+                )));
+            @endphp
+            <form method="POST" action="{{ $campo ? route('sistema.campos.actualizar', $campo) : route('sistema.campos.guardar') }}" class="space-y-5" data-formulario-campo>
                 @csrf @if($campo) @method('PUT') @endif
+                <p class="text-sm">Completa el módulo, el identificador, el tipo, la etiqueta y el orden. El módulo, el identificador y el tipo se conservan después del primer guardado.</p>
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <label class="text-sm font-semibold">Módulo
                         @if($campo)<input type="hidden" name="modulo" value="{{ $campo->modulo }}">@endif
-                        <select name="{{ $campo ? '' : 'modulo' }}" @disabled($campo) required class="mt-1 w-full rounded-xl border-slate-300">
+                        <select aria-label="Módulo" name="{{ $campo ? '' : 'modulo' }}" @disabled($campo) required class="mt-1 w-full rounded-xl border-slate-300">
                             @foreach(\App\Sistema\Modulos::DEFINICIONES as $key => $spec)<option value="{{ $key }}" @selected(old('modulo', $campo?->modulo) === $key)>{{ $spec[0] }}</option>@endforeach
                         </select>
                     </label>
                     <label class="text-sm font-semibold">Identificador
                         <input name="clave" value="{{ old('clave', $campo?->clave) }}" pattern="[a-z][a-z0-9_]{1,59}" @readonly($campo) required class="mt-1 w-full rounded-xl border-slate-300">
+                        <span class="mt-1 block text-xs font-normal">Usa de 2 a 60 caracteres. Empieza con una letra minúscula y usa minúsculas, números o guion bajo.</span>
                     </label>
                     <label class="text-sm font-semibold">Tipo de dato
                         @if($campo)<input type="hidden" name="tipo" value="{{ $campo->tipo }}">@endif
-                        <select id="sistema-tipo-campo" name="{{ $campo ? '' : 'tipo' }}" @disabled($campo) required class="mt-1 w-full rounded-xl border-slate-300">
-                            @foreach(\App\Sistema\ValoresCampos::TIPOS as $key => $etiqueta)<option value="{{ $key }}" @selected(old('tipo', $campo?->tipo) === $key)>{{ $etiqueta }}</option>@endforeach
+                        <select id="sistema-tipo-campo" aria-label="Tipo de dato" name="{{ $campo ? '' : 'tipo' }}" @disabled($campo) required class="mt-1 w-full rounded-xl border-slate-300">
+                            @foreach(\App\Sistema\ValoresCampos::TIPOS as $key => $etiqueta)<option value="{{ $key }}" @selected($tipo === $key)>{{ $etiqueta }}</option>@endforeach
                         </select>
                     </label>
                     <label class="text-sm font-semibold">Etiqueta<input name="etiqueta" value="{{ old('etiqueta', $campo?->etiqueta) }}" maxlength="100" required class="mt-1 w-full rounded-xl border-slate-300"></label>
                     <label class="text-sm font-semibold">Orden<input name="orden" type="number" min="0" max="65000" value="{{ old('orden', $campo?->orden ?? 0) }}" required class="mt-1 w-full rounded-xl border-slate-300"></label>
-                    @php($default = $campo?->predeterminado)
-                    <label class="text-sm font-semibold">Valor predeterminado
-                        <input name="predeterminado" value="{{ old('predeterminado', is_array($default) ? implode(',', $default) : (is_bool($default) ? (int) $default : $default)) }}" class="mt-1 w-full rounded-xl border-slate-300">
-                        <span class="mt-1 block text-xs font-normal text-slate-600">Usa 0 o 1 para Sí/No, e ID de opción para listas. Separa varios ID con comas.</span>
+                    <label data-default-texto @if($esLista || $esBooleano || $tipo === 'archivo') hidden @endif class="text-sm font-semibold">Valor predeterminado
+                        <input name="predeterminado" @disabled($esLista || $esBooleano || $tipo === 'archivo') value="{{ $defaultSimple }}" class="mt-1 w-full">
+                    </label>
+                    <label data-default-booleano @unless($esBooleano) hidden @endunless class="text-sm font-semibold">Valor predeterminado
+                        <select name="predeterminado" @disabled(!$esBooleano) class="mt-1 w-full">
+                            <option value="">Sin valor predeterminado</option>
+                            <option value="1" @selected($defaultSimple === '1')>Sí</option>
+                            <option value="0" @selected($defaultSimple === '0')>No</option>
+                        </select>
                     </label>
                     <label class="text-sm font-semibold sm:col-span-2 lg:col-span-3">Ayuda<textarea name="ayuda" maxlength="500" rows="2" class="mt-1 w-full rounded-xl border-slate-300">{{ old('ayuda', $campo?->ayuda) }}</textarea></label>
                     @if(app(\App\Sistema\Permisos::class)->esSuperadministrador(auth()->user()))
@@ -34,7 +53,7 @@
                         <label class="text-sm font-semibold">{{ $titulo }}
                             <select name="{{ $key }}" class="mt-1 w-full rounded-xl border-slate-300">
                                 <option value="">Usar acceso del módulo</option>
-                                @foreach($permisos as $valor)<option value="{{ $valor }}" @selected(old($key, $campo?->{$key}) === $valor)>{{ $valor }}</option>@endforeach
+                                @foreach($permisos as $valor)<option value="{{ $valor }}" @selected(old($key, $campo?->{$key}) === $valor)>{{ \App\Sistema\CatalogoPermisos::presentacion($valor)['titulo'] }}</option>@endforeach
                             </select>
                         </label>
                     @endforeach
@@ -43,50 +62,46 @@
                         </label>
                     @endif
                 </div>
-                <div class="grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-3">
-                    @foreach(['activo' => 'Activo', 'obligatorio' => 'Obligatorio en registros nuevos', 'formulario' => 'Mostrar en formularios', 'tabla' => 'Mostrar en tabla', 'filtro' => 'Habilitar filtro', 'exportacion' => 'Incluir al exportar'] as $key => $titulo)
-                        <label class="flex items-center gap-2 text-sm"><input type="hidden" name="{{ $key }}" value="0"><input type="checkbox" name="{{ $key }}" value="1" @checked(old($key, $campo?->{$key} ?? in_array($key, ['activo','formulario'])))>{{ $titulo }}</label>
-                    @endforeach
-                </div>
-                <section id="sistema-opciones-panel" hidden>
-                    <h2 class="mb-2 font-bold">Opciones</h2>
+                <fieldset class="rounded-lg border border-slate-200 p-3">
+                    <legend class="px-1 text-sm font-bold">Disponibilidad y visibilidad</legend>
+                    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach(['activo' => 'Activo', 'obligatorio' => 'Obligatorio en registros nuevos', 'formulario' => 'Mostrar en formularios', 'tabla' => 'Mostrar en tabla', 'filtro' => 'Habilitar filtro', 'exportacion' => 'Incluir al exportar'] as $key => $titulo)
+                            <x-sistema.casilla :name="$key" :id="'campo-'.$key" :marcada="old($key, $campo?->{$key} ?? in_array($key, ['activo','formulario']))">{{ $titulo }}</x-sistema.casilla>
+                        @endforeach
+                    </div>
+                    <p class="mt-2 text-xs">Un campo obligatorio debe mostrarse en el formulario. Los textos largos y archivos carecen de filtro.</p>
+                </fieldset>
+                <section id="sistema-opciones-panel" @unless($esLista) hidden @endunless>
+                    <h2 class="font-bold">Opciones de la lista</h2>
+                    <p class="mb-3 text-sm">Desactiva una opción para retirarla de nuevas selecciones. Sus valores anteriores se conservan.</p>
                     <div id="sistema-opciones" class="space-y-2">
-                        @foreach(old('opciones', $campo?->opciones?->toArray() ?? []) as $i => $opcion)
+                        @foreach($opciones as $i => $opcion)
                             @include('sistema.opcion', compact('i', 'opcion'))
                         @endforeach
                     </div>
                     <template id="sistema-opcion-plantilla">@include('sistema.opcion', ['i' => 'NUEVA_OPCION', 'opcion' => ['activo' => true]])</template>
-                    <button type="button" id="sistema-agregar-opcion" class="mt-3 rounded-xl border px-4 py-2 text-sm font-semibold">Agregar opción</button>
+                    <button type="button" id="sistema-agregar-opcion" class="ui-btn-secondary mt-3">Agregar opción</button>
+                    <label class="mt-4 block max-w-md text-sm font-semibold" for="sistema-default-lista">Valor predeterminado</label>
+                    <select id="sistema-default-lista" name="seleccion_predeterminada[]" aria-describedby="sistema-default-ayuda"
+                            class="mt-1 block w-full max-w-md" @disabled(!$esLista) @if($tipo === 'multiple') multiple size="4" @endif>
+                        @unless($tipo === 'multiple')<option value="">Sin valor predeterminado</option>@endunless
+                        @foreach($opciones as $i => $opcion)
+                            @if(!blank($opcion['etiqueta'] ?? null) && !empty($opcion['activo']))
+                                <option value="{{ $i }}" @selected(in_array($i, (array) $seleccion))>{{ $opcion['etiqueta'] }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+                    <p id="sistema-default-ayuda" class="mt-1 text-xs">Selecciona entre las opciones activas.</p>
+                    <button type="button" data-limpiar-default class="ui-btn-secondary mt-2" hidden>Quitar selección</button>
                 </section>
-                <button class="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Guardar campo</button>
+                <button class="ui-btn-primary" type="submit">Guardar campo</button>
             </form>
         @endif
     </x-sistema.panel>
     @if($campo && !$campo->archivado_en)
-        <form method="POST" action="{{ route('sistema.campos.archivar', $campo) }}">
+        <form method="POST" action="{{ route('sistema.campos.archivar', $campo) }}" data-confirmar="¿Archivar este campo? Dejará de mostrarse en nuevos registros y se conservarán sus valores históricos.">
             @csrf @method('PATCH')
-            <button class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">Archivar campo</button>
+            <button class="ui-btn-danger" type="submit">Archivar campo</button>
         </form>
     @endif
-    <script>
-        (() => {
-            const tipo = document.getElementById('sistema-tipo-campo');
-            if (!tipo) return;
-            const panel = document.getElementById('sistema-opciones-panel');
-            const lista = document.getElementById('sistema-opciones');
-            const plantilla = document.getElementById('sistema-opcion-plantilla');
-            let indice = lista.children.length + 1;
-            function reflejarTipo() {
-                panel.hidden = !['lista', 'multiple'].includes(tipo.value);
-            }
-            document.getElementById('sistema-agregar-opcion').addEventListener('click', () => {
-                const fila = plantilla.content.cloneNode(true);
-                fila.querySelectorAll('[name]').forEach(campo => campo.name = campo.name.replace('NUEVA_OPCION', String(indice)));
-                lista.appendChild(fila);
-                indice += 1;
-            });
-            tipo.addEventListener('change', reflejarTipo);
-            reflejarTipo();
-        })();
-    </script>
 </x-sistema.pagina>

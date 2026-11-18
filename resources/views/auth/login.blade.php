@@ -18,38 +18,23 @@
 
     <!-- Form -->
     <div class="px-8 py-8">
-        @if (session('status'))
-            <div class="ui-alert-success">
-                {{ session('status') }}
-            </div>
-        @endif
+        <x-mensajes />
 
-        @if ($errors->any())
-            <div class="ui-alert-error">
-                <ul class="list-disc pl-5">
-                    @foreach ($errors->all() as $e)
-                        <li>{{ $e }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
 
         <form method="POST" action="{{ route('login') }}" class="space-y-5">
             @csrf
 
             <div>
-                <label for="email" class="ui-label">Email</label>
-                <input id="email" name="email" type="email" value="{{ old('email') }}" required autofocus
+                <label for="email" class="ui-label">Correo electrónico</label>
+                <input id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="username" required autofocus
                        class="ui-input mt-1">
             </div>
 
             <div>
-                <label for="password" class="ui-label">Password</label>
-                <input id="password" name="password" type="password" required
+                <label for="password" class="ui-label">Contraseña</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required
                        class="ui-input mt-1">
             </div>
-            </div>
-
             <button type="submit" class="ui-btn-primary w-full">
                 Ingresar
             </button>

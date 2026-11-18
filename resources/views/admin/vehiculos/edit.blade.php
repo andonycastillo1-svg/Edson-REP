@@ -12,16 +12,6 @@
         </div>
     </div>
 
-    @if ($errors->any())
-        <div class="mb-6 rounded-xl bg-red-100 border border-red-300 text-red-700 p-4">
-            <ul class="list-disc list-inside">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     <form enctype="multipart/form-data" action="{{ route('admin.vehiculos.update', $vehiculo->vin) }}" method="POST" class="ui-form space-y-6">
         @csrf
         @method('PUT')

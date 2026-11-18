@@ -49,15 +49,15 @@
         <div class="mt-4">{{ $usuarios->links() }}</div>
     </x-sistema.panel>
     <x-sistema.panel>
-        <details>
+        <details @if(old('name') || old('email') || old('role_id')) open @endif>
             <summary class="cursor-pointer font-bold text-slate-900">Crear cuenta administrativa</summary>
             <form method="POST" enctype="multipart/form-data" action="{{ route('sistema.usuario.crear') }}" class="mt-3 grid gap-4 sm:grid-cols-2">
                 @csrf
-                <label class="text-sm font-semibold">Nombre<input name="name" required class="mt-1 w-full rounded-xl border-slate-300"></label>
-                <label class="text-sm font-semibold">Correo<input name="email" type="email" required class="mt-1 w-full rounded-xl border-slate-300"></label>
+                <label class="text-sm font-semibold">Nombre<input name="name" value="{{ old('name') }}" maxlength="255" required class="mt-1 w-full rounded-xl border-slate-300"></label>
+                <label class="text-sm font-semibold">Correo electrónico<input name="email" type="email" value="{{ old('email') }}" maxlength="255" required class="mt-1 w-full rounded-xl border-slate-300"></label>
                 <label class="text-sm font-semibold">Rol
                     <select name="role_id" required class="mt-1 w-full rounded-xl border-slate-300">
-                        @foreach($roles->filter(fn ($r) => $r->activo && $r->ambito() === 1) as $rol)<option value="{{ $rol->id }}">{{ $rol->nombre }}</option>@endforeach
+                        @foreach($roles->filter(fn ($r) => $r->activo && $r->ambito() === 1) as $rol)<option value="{{ $rol->id }}" @selected(old('role_id') == $rol->id)>{{ $rol->nombre }}</option>@endforeach
                     </select>
                 </label>
                 <label class="text-sm font-semibold">Contraseña inicial<input name="password" type="password" autocomplete="new-password" minlength="16" required class="mt-1 w-full rounded-xl border-slate-300"></label>

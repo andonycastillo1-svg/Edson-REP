@@ -25,16 +25,6 @@
         </div>
     </div>
 
-    @if ($errors->any())
-        <div class="mb-6 rounded-xl bg-red-50 text-red-700 px-4 py-3 text-sm">
-            <ul class="list-disc pl-5">
-                @foreach ($errors->all() as $e)
-                    <li>{{ $e }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     <form enctype="multipart/form-data" method="POST" action="{{ route($routePrefix . '.usuarios.update', $usuario->id) }}" class="space-y-5">
         @csrf
         @method('PUT')
@@ -42,8 +32,8 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
             <div>
-                <label class="block text-sm font-medium text-gray-700">Nombre</label>
-                <input type="text"
+                <label for="campo-name" class="block text-sm font-medium text-gray-700">Nombre</label>
+                <input id="campo-name" type="text"
                        name="name"
                        value="{{ old('name', $usuario->name) }}"
                        required
@@ -51,8 +41,8 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700">Correo</label>
-                <input type="email"
+                <label for="campo-email" class="block text-sm font-medium text-gray-700">Correo</label>
+                <input id="campo-email" type="email"
                        name="email"
                        value="{{ old('email', $usuario->email) }}"
                        required
@@ -60,7 +50,7 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700">Rol</label>
+                <label for="role_id" class="block text-sm font-medium text-gray-700">Rol</label>
 
                 <select name="role_id"
                         id="role_id"
@@ -90,7 +80,7 @@
             </div>
 
             <div id="bodega_wrap" class="{{ $mostrarBodega ? '' : 'hidden' }}">
-                <label class="block text-sm font-medium text-gray-700">Bodega</label>
+                <label for="bodega_id" class="block text-sm font-medium text-gray-700">Bodega</label>
 
                 <select name="bodega_id"
                         id="bodega_id"
@@ -113,7 +103,7 @@
             </div>
 
             <div id="almacenista_wrap" class="{{ $mostrarAlmacenista ? '' : 'hidden' }}">
-                <label class="block text-sm font-medium text-gray-700">Almacenista asignado</label>
+                <label for="almacenista_id" class="block text-sm font-medium text-gray-700">Almacenista asignado</label>
 
                 <select name="almacenista_id"
                         id="almacenista_id"
@@ -145,10 +135,10 @@
             </div>
 
             <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700">
+                <label for="campo-password-confirmation" class="block text-sm font-medium text-gray-700">
                     Confirmar nueva contraseña
                 </label>
-                <input type="password"
+                <input id="campo-password-confirmation" type="password"
                        name="password_confirmation"
                        class="mt-1 w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500">
             </div>

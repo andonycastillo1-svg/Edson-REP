@@ -335,24 +335,14 @@
 
       <div class="tras-header-actions">
         @if(!$user->isEncargado())
+          @rutaDisponible($routePrefix . '.operaciones.traslados.create')
           <a href="{{ route($routePrefix . '.operaciones.traslados.create') }}" class="btn-primary">
             + Nueva solicitud
           </a>
+          @endrutaDisponible
         @endif
       </div>
     </div>
-
-    @if(session('ok'))
-      <div class="tras-alert tras-alert-ok">
-        {{ session('ok') }}
-      </div>
-    @endif
-
-    @if(session('error'))
-      <div class="tras-alert tras-alert-error">
-        {{ session('error') }}
-      </div>
-    @endif
 
     <div class="filter-card">
       <form method="GET" class="filter-grid">

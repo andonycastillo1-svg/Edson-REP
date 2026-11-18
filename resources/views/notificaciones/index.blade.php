@@ -31,12 +31,6 @@
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="mx-5 mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 sm:mx-7">
-                {{ session('success') }}
-            </div>
-        @endif
-
         <div class="divide-y divide-slate-100">
             @forelse($notificaciones as $notificacion)
                 @php

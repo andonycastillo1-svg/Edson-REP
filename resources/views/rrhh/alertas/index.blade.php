@@ -37,24 +37,6 @@
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @if(session('info'))
-        <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">
-            {{ session('info') }}
-        </div>
-    @endif
-
-    @if($errors->any())
-        <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-            {{ $errors->first() }}
-        </div>
-    @endif
-
     {{-- Filtros --}}
     <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
@@ -243,6 +225,7 @@
 
                                     <td class="px-3 py-2 whitespace-nowrap text-right">
                                         @if(($a->estado ?? 'pendiente') === 'pendiente')
+                                            @rutaDisponible('rrhh.alertas.finalizar')
                                             <form method="POST"
                                                   action="{{ route('rrhh.alertas.finalizar', $a) }}"
                                                   onsubmit="return confirm('¿Confirmas marcar esta alerta de descuento como finalizada?');">
@@ -253,6 +236,7 @@
                                                     Finalizar
                                                 </button>
                                             </form>
+                                            @endrutaDisponible
                                         @else
                                             <span class="text-xs font-semibold text-slate-400">Gestionada</span>
                                         @endif

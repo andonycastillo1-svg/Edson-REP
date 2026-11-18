@@ -332,9 +332,11 @@
                 <span class="metric metric-blue">Regionales: {{ $totalRegionales }}</span>
 
                 @if($esAdmin)
+                    @rutaDisponible('admin.bodegas.create')
                     <a href="{{ route('admin.bodegas.create') }}" class="btn-new">
                         + Nueva bodega
                     </a>
+                    @endrutaDisponible
                 @endif
             </div>
         </div>
@@ -393,21 +395,28 @@
                         </a>
 
                         @if($esAdmin)
+                            @rutaDisponible('admin.operaciones.traslados.create')
                             <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}"
                                class="action-btn btn-trasladar">
                                 Trasladar
                             </a>
+                            @endrutaDisponible
 
+                            @rutaDisponible('admin.operaciones.traslados.index')
                             <a href="{{ route('admin.operaciones.traslados.index') }}"
                                class="action-btn btn-aprobacion">
                                 Aprobación
                             </a>
+                            @endrutaDisponible
 
+                            @rutaDisponible('admin.bodegas.edit')
                             <a href="{{ route('admin.bodegas.edit', $bodega->id) }}"
                                class="action-btn btn-editar">
                                 Editar
                             </a>
+                            @endrutaDisponible
 
+                            @rutaDisponible('admin.bodegas.destroy')
                             <form method="POST"
                                   action="{{ route('admin.bodegas.destroy', $bodega->id) }}"
                                   onsubmit="return confirm('¿Eliminar esta bodega?')">
@@ -418,13 +427,16 @@
                                     Eliminar
                                 </button>
                             </form>
+                            @endrutaDisponible
                         @endif
 
                         @if($esOperador && $esMiBodega)
+                            @rutaDisponible('operador.operaciones.traslados.create')
                             <a href="{{ route('operador.operaciones.traslados.create', ['origen' => $bodega->id]) }}"
                                class="action-btn btn-trasladar">
                                 Trasladar
                             </a>
+                            @endrutaDisponible
                         @endif
                     </div>
                 </article>

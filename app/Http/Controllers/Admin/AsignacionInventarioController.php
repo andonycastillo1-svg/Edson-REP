@@ -413,7 +413,7 @@ class AsignacionInventarioController extends Controller
         $this->autorizarAsignacionInventario($asignacion);
 
         if (!Schema::hasTable('asignacion_inventario_archivos')) {
-            return back()->with('error', 'La tabla para evidencias no existe. Ejecuta php artisan migrate.');
+            return back()->with('error', 'La carga de evidencias no está disponible. Comunícate con soporte.');
         }
 
         $request->validate([
@@ -491,13 +491,13 @@ class AsignacionInventarioController extends Controller
         }
 
         return redirect()->route($routePrefix . '.asignaciones.index')
-            ->with('error', 'Evidencias guardadas. La asignación sigue pendiente; falta: ' . implode(' y ', $faltantes) . '.');
+            ->with('warning', 'Evidencias guardadas. Para completar la asignación, adjunta ' . implode(' y ', $faltantes) . '.');
     }
 
     public function uploadPdfDevolucionFirmado(Request $request, string $grupo)
     {
         if (!Schema::hasTable('asignacion_inventario_archivos')) {
-            return back()->with('error', 'La tabla para PDFs firmados no existe. Ejecuta php artisan migrate.');
+            return back()->with('error', 'La carga de hojas de devolución firmadas no está disponible. Comunícate con soporte.');
         }
 
         $movimientos = $this->movimientosDevolucionAutorizados($grupo);

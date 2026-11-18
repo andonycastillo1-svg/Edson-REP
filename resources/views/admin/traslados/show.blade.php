@@ -371,30 +371,22 @@
       </div>
 
       <div class="show-actions">
+        @rutaDisponible($routePrefix . '.operaciones.traslados.hoja')
         <a href="{{ route($routePrefix . '.operaciones.traslados.hoja', $operacion) }}" class="btn btn-blue">
           🧾 Hoja
         </a>
+        @endrutaDisponible
 
 
         @if($operacion->archivo_excel_path)
+          @rutaDisponible($routePrefix . '.operaciones.traslados.archivo')
           <a href="{{ route($routePrefix . '.operaciones.traslados.archivo', $operacion) }}" target="_blank" rel="noopener" class="btn btn-white">
             📎 Ver Excel adjunto
           </a>
+          @endrutaDisponible
         @endif
       </div>
     </div>
-
-    @if(session('ok'))
-      <div class="alert alert-ok">
-        {{ session('ok') }}
-      </div>
-    @endif
-
-    @if(session('error'))
-      <div class="alert alert-error">
-        {{ session('error') }}
-      </div>
-    @endif
 
     <div class="main-card">
 
@@ -475,20 +467,26 @@
         <div class="decision-box">
           <div class="decision-grid">
 
-            <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.aprobar', $operacion) }}">
+            @rutaDisponible($routePrefix . '.operaciones.traslados.aprobar')
+            <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.aprobar', $operacion) }}"
+                  data-confirmar="¿Aprobar este traslado y mover las existencias a la bodega de destino?">
               @csrf
               <button class="btn btn-green">
                 ✅ Aprobar
               </button>
             </form>
+            @endrutaDisponible
 
+            @rutaDisponible($routePrefix . '.operaciones.traslados.rechazar')
             <form method="POST"
                   action="{{ route($routePrefix . '.operaciones.traslados.rechazar', $operacion) }}"
+                  data-confirmar="¿Rechazar esta solicitud de traslado?"
                   class="reject-form">
               @csrf
 
               <input name="motivo_rechazo"
                      required
+                     aria-label="Motivo de rechazo"
                      class="input"
                      placeholder="Motivo de rechazo...">
 
@@ -496,6 +494,7 @@
                 ❌ Rechazar
               </button>
             </form>
+            @endrutaDisponible
 
           </div>
         </div>

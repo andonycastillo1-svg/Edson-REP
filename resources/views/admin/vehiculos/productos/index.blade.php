@@ -517,18 +517,6 @@
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="vp-alert-success">{{ session('success') }}</div>
-        @endif
-
-        @if(session('error'))
-            <div class="vp-alert-error">{{ session('error') }}</div>
-        @endif
-
-        @if($errors->any())
-            <div class="vp-alert-error">{{ implode(' | ', $errors->all()) }}</div>
-        @endif
-
         <div class="vp-card">
             <div class="vp-card-header">
                 <div>
@@ -543,6 +531,7 @@
                 Solo se listan productos de categoría <strong>Refacciones</strong> con stock disponible en bodegas autorizadas.
             </div>
 
+            @rutaDisponible('admin.vehiculos.productos.store')
             <form enctype="multipart/form-data" method="POST" action="{{ route('admin.vehiculos.productos.store') }}">
                 @csrf
 
@@ -621,6 +610,7 @@
                 </div>
                 <x-sistema.campos modulo="refacciones" />
     </form>
+            @endrutaDisponible
         </div>
 
         <div class="vp-card">
@@ -713,14 +703,18 @@
                                     PDFs firmados
                                 </button>
 
+                                @rutaDisponible('admin.vehiculos.productos.pdf_asignacion')
                                 <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.pdf_asignacion', $a) }}" target="_blank" rel="noopener noreferrer">
                                     PDF asignación
                                 </a>
+                                @endrutaDisponible
 
                                 @unless($a->activa)
+                                    @rutaDisponible('admin.vehiculos.productos.pdf_devolucion')
                                     <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.pdf_devolucion', $a) }}" target="_blank" rel="noopener noreferrer">
                                         PDF devolución
                                     </a>
+                                    @endrutaDisponible
                                 @endunless
 
                                 @if($a->activa)
@@ -793,6 +787,7 @@
 
                             @if($puedeGestionarPdfsFirmadosVehiculo)
                                 <div class="vp-close-form">
+                                    @rutaDisponible('admin.vehiculos.productos.subir_pdf_firmado')
                                     <form method="POST" action="{{ route('admin.vehiculos.productos.subir_pdf_firmado', $a) }}" enctype="multipart/form-data">
                                         @csrf
 
@@ -809,8 +804,10 @@
                                             </a>
                                         @endif
                                     </form>
+                                    @endrutaDisponible
 
                                     @unless($a->activa)
+                                        @rutaDisponible('admin.vehiculos.productos.subir_pdf_firmado')
                                         <form method="POST" action="{{ route('admin.vehiculos.productos.subir_pdf_firmado', $a) }}" enctype="multipart/form-data">
                                             @csrf
 
@@ -827,6 +824,7 @@
                                                 </a>
                                             @endif
                                         </form>
+                                        @endrutaDisponible
                                     @endunless
                                 </div>
                             @else
@@ -843,6 +841,7 @@
                                     Puedes retirar una cantidad parcial. Si el vehículo tiene 4 llantas y retiras 1, quedarán 3 activas.
                                 </div>
 
+                                @rutaDisponible('admin.vehiculos.productos.cerrar')
                                 <form
                                     method="POST"
                                     action="{{ route('admin.vehiculos.productos.cerrar', $a) }}"
@@ -894,6 +893,7 @@
                                         Si marcas <strong>mal uso del colaborador</strong>, el sistema generará el cobro al colaborador que tenga asignado este vehículo actualmente. El cobro se calculará proporcionalmente según la vida útil restante del producto/refacción.
                                     </div>
                                 </form>
+                                @endrutaDisponible
                             </div>
                         @endif
                     </div>
@@ -927,14 +927,10 @@ function filtrarBodegas() {
     }
 
     const producto = productoSelect.value;
-
-    bodegaSelect.innerHTML = '';
-
-    allBodegas.forEach(option => {
-        if (!option.dataset.producto || !producto || option.dataset.producto === producto) {
-            bodegaSelect.appendChild(option.cloneNode(true));
-        }
-    });
+    const anterior = bodegaSelect.value;
+    const disponibles = allBodegas.filter(option => !option.dataset.producto || !producto || option.dataset.producto === producto);
+    bodegaSelect.replaceChildren(...disponibles.map(option => option.cloneNode(true)));
+    if (disponibles.some(option => option.value === anterior)) bodegaSelect.value = anterior;
 }
 
 function toggleDetalleProducto(id) {
