@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('no_nav')
-@endsection
 
 @section('content')
 @php
@@ -59,17 +57,6 @@
           </div>
         </form>
 
-        @if (session('success'))
-          <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-            {{ session('success') }}
-          </div>
-        @endif
-
-        @if (session('error'))
-          <div class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
-            {{ session('error') }}
-          </div>
-        @endif
       </div>
     </div>
 
@@ -112,10 +99,12 @@
               </button>
             </div>
 
+            @rutaDisponible($routePrefix . '.colaboradores.create')
             <a href="{{ route($routePrefix . '.colaboradores.create') }}"
                class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
               + Nuevo colaborador
             </a>
+            @endrutaDisponible
           </div>
         </div>
       </div>
@@ -161,6 +150,7 @@
               Limpiar selección
             </button>
 
+            @rutaDisponible($routePrefix . '.colaboradores.fichas_tecnicas_masivas')
             <form method="POST"
                   action="{{ route($routePrefix . '.colaboradores.fichas_tecnicas_masivas') }}"
                   x-ref="formFichasSeleccionadas"
@@ -177,6 +167,7 @@
                 Descargar fichas en Excel
               </button>
             </form>
+            @endrutaDisponible
           </div>
         </div>
       </div>
@@ -240,11 +231,14 @@
                         Expediente
                       </button>
 
+                      @rutaDisponible($routePrefix . '.colaboradores.edit')
                       <a href="{{ route($routePrefix . '.colaboradores.edit', $c) }}"
                          class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
                         Editar
                       </a>
+                      @endrutaDisponible
 
+                      @rutaDisponible($routePrefix . '.colaboradores.estado')
                       <form method="POST"
                             action="{{ route($routePrefix . '.colaboradores.estado', $c) }}"
                             onsubmit="return confirm('¿Deseas inactivar este colaborador?')">
@@ -256,6 +250,7 @@
                           Inactivar
                         </button>
                       </form>
+                      @endrutaDisponible
                     </div>
                   </td>
                 </tr>
@@ -340,11 +335,14 @@
                         Expediente
                       </button>
 
+                      @rutaDisponible($routePrefix . '.colaboradores.edit')
                       <a href="{{ route($routePrefix . '.colaboradores.edit', $c) }}"
                          class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
                         Editar
                       </a>
+                      @endrutaDisponible
 
+                      @rutaDisponible($routePrefix . '.colaboradores.estado')
                       <form method="POST"
                             action="{{ route($routePrefix . '.colaboradores.estado', $c) }}"
                             onsubmit="return confirm('¿Deseas activar este colaborador?')">
@@ -356,6 +354,7 @@
                           Activar
                         </button>
                       </form>
+                      @endrutaDisponible
                     </div>
                   </td>
                 </tr>

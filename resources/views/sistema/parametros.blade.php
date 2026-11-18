@@ -6,7 +6,7 @@
             <label class="text-sm font-semibold">Nombre de la empresa<input name="empresa" value="{{ old('empresa', $general['empresa'] ?? '') }}" maxlength="100" class="mt-1 w-full rounded-xl border-slate-300"></label>
             <label class="text-sm font-semibold">Logotipo<input name="logo" type="file" accept="image/png,image/jpeg,image/webp" class="mt-1 block w-full"></label>
             @if(isset($general['logo']))
-                <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="quitar_logo" value="1">Restaurar logotipo original</label>
+                <x-sistema.casilla name="quitar_logo" id="quitar-logo" :marcada="old('quitar_logo', false)">Restaurar logotipo original</x-sistema.casilla>
             @endif
             <label class="text-sm font-semibold">Mínimo disponible por producto y bodega<input type="number" name="stock_minimo" min="1" max="1000000" value="{{ old('stock_minimo', $general['stock_minimo'] ?? '') }}" class="mt-1 w-full rounded-xl border-slate-300"></label>
             <label class="text-sm font-semibold">Vida útil predeterminada de nuevos productos (meses)<input type="number" name="vida_util" min="1" max="1200" value="{{ old('vida_util', $general['vida_util'] ?? '') }}" class="mt-1 w-full rounded-xl border-slate-300"></label>

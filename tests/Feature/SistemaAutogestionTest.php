@@ -206,6 +206,57 @@ class SistemaAutogestionTest extends TestCase
             ->assertUnprocessable();
     }
 
+    public function test_selectores_predeterminados_vinculan_filas_nuevas_y_preservan_la_configuracion_ante_un_error(): void
+    {
+        $this->superadministrador();
+        $datos = $this->definicion([
+            'tipo' => 'multiple', 'obligatorio' => true, 'seleccion_predeterminada' => [2, 5],
+            'opciones' => [
+                2 => ['etiqueta' => 'Operación', 'activo' => true],
+                5 => ['etiqueta' => 'Mantenimiento', 'activo' => true],
+                8 => ['etiqueta' => 'Archivada', 'activo' => false],
+            ],
+        ]);
+        $this->post(route('sistema.campos.guardar'), $datos)->assertSessionHasNoErrors();
+        $campo = Campo::sole();
+        $ids = $campo->opciones->where('activo', true)->pluck('id')->all();
+        $this->assertSame($ids, $campo->predeterminado);
+        $this->get(route('sistema.campos.editar', $campo))->assertOk()->assertSee('Operación')->assertSee('Mantenimiento');
+        $this->post(route('admin.bodegas.store'), ['nombre' => 'Bodega con valores predeterminados', 'tipo' => 'Regional'])->assertSessionHasNoErrors();
+        $bodega = Bodega::where('nombre', 'Bodega con valores predeterminados')->firstOrFail();
+        $this->assertDatabaseHas('sistema_campo_valores', ['campo_id' => $campo->id, 'registro' => (string) $bodega->id, 'valor' => json_encode($ids)]);
+
+        $opciones = $campo->opciones->mapWithKeys(fn ($opcion) => [$opcion->id => $opcion->only('id', 'etiqueta', 'activo')])->all();
+        $opciones[$ids[0]]['activo'] = false;
+        $this->putJson(route('sistema.campos.actualizar', $campo), array_replace($datos, [
+            'tabla' => false, 'opciones' => $opciones, 'seleccion_predeterminada' => $ids,
+        ]))->assertUnprocessable()->assertJsonValidationErrors('seleccion_predeterminada');
+        $this->assertSame($ids, $campo->fresh()->predeterminado);
+        $this->assertTrue($campo->fresh()->tabla);
+        $this->assertTrue($campo->opciones()->find($ids[0])->activo);
+
+        $this->post(route('sistema.campos.guardar'), $this->definicion([
+            'tipo' => 'lista', 'clave' => 'otra_referencia', 'seleccion_predeterminada' => [''],
+            'opciones' => [['etiqueta' => 'Solo una', 'activo' => true]],
+        ]))->assertSessionHasNoErrors();
+        $this->assertNull(Campo::where('clave', 'otra_referencia')->sole()->predeterminado);
+    }
+
+    public function test_paneles_reflejan_las_reglas_efectivas_y_el_alcance_de_bodega(): void
+    {
+        $this->superadministrador();
+        $this->put(route('sistema.usuario.permisos', $this->operador), [
+            'reglas' => ['bodegas.consultar' => 'denegar', 'sistema.parametros' => 'permitir'], 'current_password' => 'password',
+        ])->assertSessionHasNoErrors();
+
+        $this->actingAs($this->operador->fresh())->get(route('operador.dashboard'))->assertOk()
+            ->assertDontSee(route('operador.bodegas.index'))
+            ->assertDontSee(route('operador.compras.index'))
+            ->assertSee(route('sistema.configuracion'));
+        $this->get(route('operador.bodegas.index'))->assertForbidden()->assertSee('Acceso denegado');
+        $this->get(route('sistema.presentacion'))->assertForbidden();
+    }
+
     public function test_archivo_privado_requiere_permiso_y_registro_en_su_bodega(): void
     {
         Storage::fake('documentos');

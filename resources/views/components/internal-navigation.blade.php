@@ -1,8 +1,10 @@
-@props(['backUrl'])
+@props(['backUrl', 'backRoute' => null])
+@php
+    $visible = !$backRoute || app(\App\Sistema\Permisos::class)->ruta(auth()->user(), $backRoute);
+@endphp
 
 <div {{ $attributes->class(['mb-4 flex flex-wrap items-center justify-end gap-2']) }}>
-    <a href="{{ $backUrl }}"
-       class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50">
-        ← Volver
+    <a href="{{ $visible ? $backUrl : route('dashboard') }}" class="ui-btn-secondary">
+        {{ $visible ? 'Volver' : 'Ir al inicio' }}
     </a>
 </div>

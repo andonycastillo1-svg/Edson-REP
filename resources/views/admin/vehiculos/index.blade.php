@@ -262,9 +262,11 @@
                     Asignaciones
                 </a>
 
+                @rutaDisponible('admin.vehiculos.create')
                 <a href="{{ route('admin.vehiculos.create') }}" class="veh-btn veh-btn-success">
                     + Nuevo vehículo
                 </a>
+                @endrutaDisponible
             </div>
         </div>
 
@@ -332,11 +334,14 @@
 
                                 <td>
                                     <div class="veh-row-actions">
+                                        @rutaDisponible('admin.vehiculos.edit')
                                         <a href="{{ route('admin.vehiculos.edit', $vehiculo->vin) }}"
                                            class="veh-btn-edit">
                                             Editar
                                         </a>
+                                        @endrutaDisponible
 
+                                        @rutaDisponible('admin.vehiculos.destroy')
                                         <form action="{{ route('admin.vehiculos.destroy', $vehiculo->vin) }}"
                                               method="POST"
                                               onsubmit="return confirm('¿Seguro que deseas eliminar este vehículo?');">
@@ -347,6 +352,7 @@
                                                 Eliminar
                                             </button>
                                         </form>
+                                        @endrutaDisponible
                                     </div>
                                 </td>
                             </tr>

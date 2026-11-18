@@ -7,25 +7,14 @@
     $origenSeleccionado = old('bodega_origen_id', $origenId ?? ($esOperador ? auth()->user()->bodega_id : null));
   @endphp
 
-  <div class="min-h-[calc(100vh-120px)] px-6 py-10">
-    <div class="max-w-4xl mx-auto">
-      <x-internal-navigation :back-url="route($routePrefix . '.operaciones.traslados.index')" />
+  <div class="max-w-4xl mx-auto">
+    <div>
+      <x-internal-navigation :back-url="route($routePrefix . '.operaciones.traslados.index')" :back-route="$routePrefix.'.operaciones.traslados.index'" />
 
       <div class="mb-6">
         <h1 class="text-3xl font-bold text-slate-900 mt-2">Nueva solicitud de traslado</h1>
-        <p class="text-sm text-slate-50000">El encargado de la bodega destino debe aprobar o rechazar.</p>
+        <p class="text-sm text-slate-600">La persona encargada de la bodega de destino debe aprobar o rechazar la solicitud.</p>
       </div>
-
-      @if ($errors->any())
-        <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-800">
-          <div class="font-semibold mb-1">Revisa estos datos:</div>
-          <ul class="list-disc ml-5 text-sm">
-            @foreach ($errors->all() as $error)
-              <li>{{ $error }}</li>
-            @endforeach
-          </ul>
-        </div>
-      @endif
 
       <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.store') }}"
             enctype="multipart/form-data"
@@ -40,7 +29,8 @@
 
         <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-semibold text-slate-700">Bodega origen</label>
+            @if($esOperador)<p class="text-sm font-semibold">Bodega de origen</p>
+            @else<label for="bodega_origen" class="text-sm font-semibold">Bodega de origen</label>@endif
 
             @if($esOperador)
               <input type="hidden" name="bodega_origen_id" value="{{ auth()->user()->bodega_id }}">
@@ -48,7 +38,7 @@
                 {{ optional($bodegas->firstWhere('id', auth()->user()->bodega_id))->nombre }}
               </div>
             @else
-              <select name="bodega_origen_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+              <select id="bodega_origen" name="bodega_origen_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 <option value="">Selecciona...</option>
                 @foreach($bodegas as $b)
                   <option value="{{ $b->id }}"
@@ -61,15 +51,14 @@
           </div>
 
           <div>
-            <label class="text-sm font-semibold text-slate-700">Bodega destino</label>
+            <label for="bodega_destino_id" class="text-sm font-semibold text-slate-700">Bodega de destino</label>
             <select id="bodega_destino_id" name="bodega_destino_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
               <option value="">Selecciona...</option>
               @foreach($bodegas as $b)
-                @if((string)$b->id !== (string)$origenSeleccionado)
-                  <option value="{{ $b->id }}" {{ (string) old('bodega_destino_id') === (string) $b->id ? 'selected' : '' }}>
+                  <option value="{{ $b->id }}" @selected((string) old('bodega_destino_id') === (string) $b->id)
+                    @if((string) $b->id === (string) $origenSeleccionado) hidden disabled @endif>
                     {{ $b->nombre }}
                   </option>
-                @endif
               @endforeach
             </select>
           </div>
@@ -78,11 +67,11 @@
         <x-sistema.campos-nativos modulo="traslados" />
 
         <div class="px-6 pb-6">
-          <label class="text-sm font-semibold text-slate-700">Excel de destinatarios (opcional)</label>
-          <input type="file" name="archivo_excel" accept=".xlsx,.xls,.csv"
+          <label for="campo-archivo-excel" class="text-sm font-semibold text-slate-700">Excel de destinatarios (opcional)</label>
+          <input id="campo-archivo-excel" type="file" name="archivo_excel" accept=".xlsx,.xls,.csv"
             class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white">
           <p class="mt-1 text-xs text-slate-500">
-            Puedes adjuntar un archivo .xlsx, .xls o .csv con las personas destinatarias de los productos trasladados.
+            Adjunta un archivo XLSX, XLS o CSV de hasta 10 MB con las personas destinatarias. Si el guardado falla, vuelve a adjuntarlo.
           </p>
         </div>
 

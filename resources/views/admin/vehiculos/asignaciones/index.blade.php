@@ -470,23 +470,11 @@
             </div>
 
             <div class="veh-top-actions">
+                @rutaDisponible('admin.vehiculos.asignaciones.create')
                 <a href="{{ route('admin.vehiculos.asignaciones.create') }}" class="veh-btn veh-btn-primary">+ Nueva asignación</a>
+                @endrutaDisponible
             </div>
         </div>
-
-        @if(session('success'))
-            <div class="veh-alert-success">{{ session('success') }}</div>
-        @endif
-
-        @if(session('error'))
-            <div class="veh-alert-error">{{ session('error') }}</div>
-        @endif
-
-        @if($errors->any())
-            <div class="veh-alert-error">
-                {{ implode(' | ', $errors->all()) }}
-            </div>
-        @endif
 
         <div class="filters-card">
             <input
@@ -601,19 +589,24 @@
                                         <div class="document-title">Asignación</div>
 
                                         <div class="action-row">
+                                            @rutaDisponible('admin.vehiculos.asignaciones.pdf_asignacion')
                                             <a class="small-btn" target="_blank" rel="noopener noreferrer"
                                                href="{{ route('admin.vehiculos.asignaciones.pdf_asignacion', $a) }}">
                                                 PDF generado
                                             </a>
+                                            @endrutaDisponible
 
                                             @if($pdfAsignacionFirmado)
+                                                @rutaDisponible('admin.vehiculos.asignaciones.ver_pdf_firmado')
                                                 <a class="small-btn green-btn" target="_blank" rel="noopener noreferrer"
                                                    href="{{ route('admin.vehiculos.asignaciones.ver_pdf_firmado', $pdfAsignacionFirmado) }}">
                                                     Ver firmado
                                                 </a>
+                                                @endrutaDisponible
                                             @endif
                                         </div>
 
+                                        @rutaDisponible('admin.vehiculos.asignaciones.subir_pdf_firmado')
                                         <form method="POST"
                                               action="{{ route('admin.vehiculos.asignaciones.subir_pdf_firmado', $a) }}"
                                               enctype="multipart/form-data"
@@ -627,6 +620,7 @@
                                                 Subir firmado
                                             </button>
                                         </form>
+                                        @endrutaDisponible
 
                                         <div class="muted-line">
                                             @if($pdfAsignacionFirmado)
@@ -642,19 +636,24 @@
 
                                         @if(!$a->activa)
                                             <div class="action-row">
+                                                @rutaDisponible('admin.vehiculos.asignaciones.pdf_desasignacion')
                                                 <a class="small-btn" target="_blank" rel="noopener noreferrer"
                                                    href="{{ route('admin.vehiculos.asignaciones.pdf_desasignacion', $a) }}">
                                                     PDF generado
                                                 </a>
+                                                @endrutaDisponible
 
                                                 @if($pdfDevolucionFirmado)
+                                                    @rutaDisponible('admin.vehiculos.asignaciones.ver_pdf_firmado')
                                                     <a class="small-btn green-btn" target="_blank" rel="noopener noreferrer"
                                                        href="{{ route('admin.vehiculos.asignaciones.ver_pdf_firmado', $pdfDevolucionFirmado) }}">
                                                         Ver firmado
                                                     </a>
+                                                    @endrutaDisponible
                                                 @endif
                                             </div>
 
+                                            @rutaDisponible('admin.vehiculos.asignaciones.subir_pdf_firmado')
                                             <form method="POST"
                                                   action="{{ route('admin.vehiculos.asignaciones.subir_pdf_firmado', $a) }}"
                                                   enctype="multipart/form-data"
@@ -668,6 +667,7 @@
                                                     Subir firmado
                                                 </button>
                                             </form>
+                                            @endrutaDisponible
 
                                             <div class="muted-line">
                                                 @if($pdfDevolucionFirmado)
@@ -689,6 +689,7 @@
                                 <div class="panel-title">Desasignación del vehículo</div>
 
                                 @if($a->activa)
+                                    @rutaDisponible('admin.vehiculos.asignaciones.desasignar')
                                     <form method="POST"
                                           action="{{ route('admin.vehiculos.asignaciones.desasignar', $a) }}"
                                           class="close-form"
@@ -701,6 +702,7 @@
 
                                         <button class="danger-btn" type="submit">Desasignar</button>
                                     </form>
+                                    @endrutaDisponible
                                 @else
                                     <div class="muted-line">
                                         Esta asignación ya fue cerrada. Puedes consultar el PDF generado de devolución o subir el PDF firmado.

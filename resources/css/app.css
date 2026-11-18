@@ -6,15 +6,15 @@
 
 @layer base {
   :root {
-    --ui-bg: #eaf4ff;
+    --ui-bg: #f1f5f9;
     --ui-surface: rgba(255, 255, 255, 0.96);
     --ui-surface-solid: #ffffff;
-    --ui-border: #dbeafe;
-    --ui-border-strong: #bfdbfe;
+    --ui-border: #dbe3ed;
+    --ui-border-strong: #a8b9cc;
     --ui-text: #0f172a;
     --ui-muted: #475569;
-    --ui-primary: #2563eb;
-    --ui-primary-dark: #1d4ed8;
+    --ui-primary: #1d4ed8;
+    --ui-primary-dark: #1e40af;
     --ui-success: #059669;
     --ui-success-dark: #047857;
     --ui-danger: #e11d48;
@@ -34,10 +34,7 @@
 
   body {
     min-height: 100vh;
-    background:
-      radial-gradient(circle at top left, rgba(37, 99, 235, 0.13), transparent 28rem),
-      radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.14), transparent 32rem),
-      linear-gradient(135deg, #e0f2fe 0%, #eff6ff 48%, #ffffff 100%);
+    background: var(--ui-bg);
     color: var(--ui-text);
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     text-rendering: optimizeLegibility;
@@ -58,32 +55,52 @@
     color: var(--ui-muted);
   }
 
-  input, select, textarea {
-    border-color: var(--ui-border-strong) !important;
-    border-radius: 0.875rem !important;
-    color: var(--ui-text) !important;
-    background-color: #fff !important;
+  input:not([type='checkbox'], [type='radio'], [type='hidden'], [type='range'], [type='color']), select, textarea {
+    max-width: 100%;
+    border-color: var(--ui-border-strong);
+    border-radius: 0.625rem;
+    color: var(--ui-text);
+    background-color: var(--ui-surface-solid);
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
   }
 
-  input:focus, select:focus, textarea:focus {
-    border-color: var(--ui-primary) !important;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+  input[type='checkbox'], input[type='radio'] {
+    color: var(--ui-primary);
+    border-color: var(--ui-muted);
+    flex-shrink: 0;
+  }
+
+  :is(input, select, textarea):is(:disabled, [readonly]) {
+    background-color: #e8edf4;
+    color: #475569;
+  }
+
+  input[type='file']::file-selector-button {
+    margin-inline-end: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: #e2e8f0;
+    color: var(--ui-text);
+    cursor: pointer;
+  }
+
+  @media (forced-colors: active) {
+    input[type='checkbox'], input[type='radio'] {
+      appearance: auto;
+    }
   }
 
   input::placeholder, textarea::placeholder {
-    color: #94a3b8;
+    color: #64748b;
   }
 }
 
 @layer components {
   .ui-shell {
     @apply min-h-screen text-slate-900;
-    background:
-      radial-gradient(circle at 8% 0%, rgba(14, 165, 233, 0.14), transparent 28rem),
-      radial-gradient(circle at 100% 20%, rgba(37, 99, 235, 0.10), transparent 30rem),
-      linear-gradient(135deg, #e0f2fe 0%, #eff6ff 50%, #ffffff 100%);
+    background: var(--ui-bg);
   }
 
   .ui-topbar {
@@ -91,7 +108,7 @@
   }
 
   .ui-topbar-inner {
-    @apply mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:h-20 md:px-6;
+    @apply mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-2 px-4 md:px-6;
   }
 
   .ui-brand {
@@ -115,11 +132,11 @@
   }
 
   .ui-main {
-    @apply mx-auto min-h-[calc(100vh-64px)] w-full max-w-7xl px-4 py-6 md:px-6 md:py-8;
+    @apply mx-auto min-h-[calc(100vh-64px)] w-full max-w-7xl px-4 py-5 md:px-6 md:py-6;
   }
 
   .ui-page-header {
-    @apply mb-5 overflow-hidden rounded-3xl border border-sky-100 bg-white/95 shadow-sm ring-1 ring-slate-900/5 backdrop-blur;
+    @apply mb-5 rounded-xl border border-slate-200 bg-white shadow-sm;
   }
 
   .ui-page-header-body {
@@ -139,7 +156,7 @@
   }
 
   .ui-panel {
-    @apply rounded-3xl border border-sky-100 bg-white/95 shadow-sm ring-1 ring-slate-900/5 backdrop-blur;
+    @apply min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm;
   }
 
   .ui-card {
@@ -237,8 +254,7 @@
   .btn-new,
   .veh-btn-success,
   .inv-btn-green,
-  .btn-aprobacion,
-  button[type='submit']:not(.ui-btn-danger):not(.ui-btn-warning):not(.btn-eliminar):not([class*='rose']):not([class*='red']) {
+  .btn-aprobacion {
     @apply border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-200;
   }
 
@@ -267,10 +283,7 @@
   }
 
   .ui-btn-download,
-  .asg-pdf-btn,
-  a[href*='pdf'],
-  a[href*='hoja'],
-  a[target='_blank'] {
+  .asg-pdf-btn {
     @apply border border-slate-700 bg-slate-800 text-white hover:bg-slate-900 focus:ring-slate-200;
   }
 
@@ -300,7 +313,7 @@
   .table-responsive,
   .asg-table-scroll,
   .inv-table-scroll {
-    @apply w-full overflow-x-auto rounded-2xl border border-sky-100 bg-white shadow-sm;
+    @apply max-w-full overflow-x-auto rounded-xl border border-slate-200 bg-white;
   }
 
   .ui-table,
@@ -324,7 +337,7 @@
   .veh-table th,
   .inv-table th,
   table:not(.header-table):not(.signature-table):not(.products-table):not(.info-table):not(.items-table) th {
-    @apply whitespace-nowrap border-b border-sky-100 px-4 py-3 text-left text-xs font-extrabold uppercase tracking-wide text-slate-600;
+    @apply border-b border-slate-200 px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-slate-700;
   }
 
   .ui-table td,
@@ -332,7 +345,7 @@
   .veh-table td,
   .inv-table td,
   table:not(.header-table):not(.signature-table):not(.products-table):not(.info-table):not(.items-table) td {
-    @apply border-b border-slate-100 px-4 py-3 align-middle text-sm;
+    @apply border-b border-slate-100 px-3 py-2.5 align-middle text-sm;
   }
 
   .ui-table tbody tr,
@@ -423,7 +436,7 @@
   .inv-header,
   .veh-header,
   .asg-header {
-    @apply mb-5 flex flex-col gap-4 rounded-3xl border border-sky-100 bg-white/95 p-5 shadow-sm ring-1 ring-slate-900/5 md:flex-row md:items-center md:justify-between;
+    @apply mb-5 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between;
   }
 
   .bodega-title,
@@ -460,7 +473,7 @@
   .panel,
   .card,
   .content {
-    @apply rounded-3xl border border-sky-100 bg-white/95 p-5 shadow-sm ring-1 ring-slate-900/5;
+    @apply min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm;
   }
 
   .bodega-card-body,
@@ -470,7 +483,69 @@
 
   .dashboard-card,
   .role-menu-single .ui-card {
-    @apply rounded-2xl border border-sky-100 bg-white/95 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md;
+    @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md;
+  }
+}
+
+.saltar-contenido {
+  position: fixed;
+  z-index: 100;
+  inset: 0.5rem auto auto 0.5rem;
+}
+
+.ui-shell :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ui-primary);
+  outline-offset: 3px;
+}
+
+.ui-shell [hidden]:not([hidden='until-found']) {
+  display: none !important;
+}
+
+.ui-shell :is(input, select, textarea)[aria-invalid='true'] {
+  border-color: #be123c;
+}
+
+.ui-alert-info {
+  @apply border-blue-200 bg-blue-50 text-blue-900;
+}
+
+.ui-table-scroll {
+  @apply max-w-full overflow-x-auto rounded-xl border border-slate-200;
+}
+
+.ui-table-scroll td {
+  overflow-wrap: anywhere;
+}
+
+.ui-check {
+  @apply inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-slate-800;
+}
+
+.ui-check:has(:checked) {
+  @apply bg-blue-50 text-blue-900;
+}
+
+.ui-check:not(:has(:disabled)) {
+  cursor: pointer;
+}
+
+.regla-permiso {
+  @apply grid grid-cols-1 gap-2 border-t border-slate-200 px-3 py-3 sm:grid-cols-[minmax(0,1.7fr)_minmax(8rem,0.85fr)_minmax(0,1fr)] sm:items-center;
+}
+
+.regla-permiso select:has(option[value='permitir']:checked) {
+  @apply border-emerald-600 bg-emerald-50 text-emerald-900;
+}
+
+.regla-permiso select:has(option[value='denegar']:checked) {
+  @apply border-rose-600 bg-rose-50 text-rose-900;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-shell *, .ui-shell *::before, .ui-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

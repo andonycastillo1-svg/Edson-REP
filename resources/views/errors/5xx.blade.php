@@ -1,0 +1,1 @@
+@include('errors.estado', ['codigo' => $exception->getStatusCode(), 'titulo' => 'Ocurrió un problema en el sistema', 'mensaje' => 'Vuelve a intentarlo en unos minutos. Si el problema continúa, comunícate con soporte.'])

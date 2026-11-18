@@ -14,6 +14,51 @@ class CatalogoPermisos
         'sistema.auditoria' => 'Consultar la bitácora operativa',
     ];
 
+    public static function presentacion(string $permiso): array
+    {
+        [$modulo, $accion] = explode('.', $permiso, 2);
+        $grupo = Modulos::DEFINICIONES[$modulo][0] ?? match ($modulo) {
+            'panel' => 'Panel principal',
+            'alertas' => 'Alertas',
+            'sistema' => 'Configuración del sistema',
+            default => 'Otros permisos',
+        };
+        $recurso = mb_strtolower($grupo);
+        [$titulo, $descripcion] = match ($permiso) {
+            'panel.consultar' => ['Abrir el panel principal', 'Ver los accesos disponibles para el ámbito.'],
+            'inventario.entrada' => ['Registrar entradas de inventario', 'Agregar existencias mediante una entrada manual.'],
+            'usuarios.crear' => ['Crear cuentas de usuarios', 'Dar de alta cuentas dentro del ámbito autorizado.'],
+            'usuarios.desactivar' => ['Desactivar cuentas de usuarios', 'Suspender el inicio de sesión de una cuenta.'],
+            'asignaciones.crear' => ['Asignar inventario', 'Entregar equipo a colaboradores y registrar la asignación.'],
+            'asignaciones.devolver' => ['Registrar devoluciones', 'Registrar el retorno parcial o total de equipo asignado.'],
+            'traslados.aprobar' => ['Resolver solicitudes de traslado', 'Aprobar o rechazar traslados de la bodega correspondiente.'],
+            'alertas.modificar' => ['Finalizar alertas', 'Registrar la resolución de una alerta de reemplazo.'],
+            'vehiculos.asignar' => ['Asignar y desasignar vehículos', 'Registrar la entrega y el retorno de unidades.'],
+            'refacciones.crear' => ['Asignar refacciones', 'Registrar refacciones entregadas a un vehículo.'],
+            'refacciones.cerrar' => ['Cerrar asignaciones de refacciones', 'Registrar el cierre o la devolución de refacciones.'],
+            'sistema.campos' => [self::CONFIGURACION[$permiso], 'Definir campos, opciones y visibilidad por módulo.'],
+            'sistema.presentacion' => [self::CONFIGURACION[$permiso], 'Configurar globalmente las columnas y los campos editables.'],
+            'sistema.parametros' => [self::CONFIGURACION[$permiso], 'Editar identidad, bodega principal y parámetros de sesión según la autorización.'],
+            'sistema.notificaciones' => [self::CONFIGURACION[$permiso], 'Configurar avisos y sus destinatarios.'],
+            'sistema.auditoria' => [self::CONFIGURACION[$permiso], 'Revisar el historial de cambios y eventos autorizados.'],
+            default => match ($accion) {
+                'consultar' => ["Consultar $recurso", 'Ver listados y registros autorizados.'],
+                'crear' => ["Registrar $recurso", 'Guardar registros nuevos en el módulo.'],
+                'modificar' => ["Editar $recurso", 'Actualizar los registros existentes.'],
+                'eliminar' => ["Eliminar registros de $recurso", 'Realizar las bajas que admite el módulo.'],
+                'exportar' => ["Exportar documentos de $recurso", 'Descargar los reportes o comprobantes propios del módulo.'],
+                'archivos' => ["Ver documentos de $recurso", 'Abrir archivos y comprobantes adjuntos.'],
+                'evidencias' => ["Adjuntar evidencias de $recurso", 'Cargar el documento firmado de la operación.'],
+                'campos_editar' => ["Editar campos de $recurso", 'Actualizar campos autorizados en la ficha de datos del módulo.'],
+                'datos_exportar' => ["Exportar datos de $recurso", 'Descargar el listado de datos y los campos habilitados para exportación.'],
+                'datos_archivos' => ["Ver archivos personalizados de $recurso", 'Descargar archivos de campos personalizados en la ficha de datos.'],
+                default => ["Administrar $recurso", 'Usar la operación autorizada de este módulo.'],
+            },
+        };
+
+        return compact('grupo', 'titulo', 'descripcion');
+    }
+
     public static function rutas(int $ambito): array
     {
         $crud = [

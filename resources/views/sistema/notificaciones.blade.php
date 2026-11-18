@@ -1,5 +1,6 @@
 <x-sistema.pagina titulo="Configuración de notificaciones" :volver="route('sistema.configuracion')">
     <p class="text-sm text-slate-700">Los destinatarios seleccionados deben tener acceso al evento en el módulo de origen. Una selección vacía conserva la regla de entrega del módulo.</p>
+    <p class="text-sm">Para seleccionar varios roles o cuentas, usa Ctrl, Cmd o Mayús. Guarda la regla antes de iniciar otra búsqueda.</p>
     <form method="GET" class="flex flex-wrap items-end gap-3">
         <label class="text-sm font-semibold">Buscar cuentas para los selectores
             <input name="q" value="{{ $q }}" maxlength="100" class="mt-1 block rounded-xl border-slate-300">
@@ -8,11 +9,17 @@
     </form>
     <div class="grid gap-5 lg:grid-cols-2">
         @foreach(\App\Sistema\Ajustes::EVENTOS as $evento => $titulo)
-            @php($regla = $reglas[$evento] ?? [])
+            @php
+                $regla = $reglas[$evento] ?? [];
+                if (old('evento_formulario') === $evento) {
+                    $regla = ['activo' => old('activo', true), 'roles' => (array) old('roles', []), 'usuarios' => (array) old('usuarios', [])];
+                }
+            @endphp
             <x-sistema.panel :titulo="$titulo">
                 <form method="POST" action="{{ route('sistema.notificaciones.guardar', $evento) }}" class="space-y-4">
                     @csrf @method('PUT')
-                    <label class="flex items-center gap-2 text-sm font-semibold"><input type="hidden" name="activo" value="0"><input type="checkbox" name="activo" value="1" @checked($regla['activo'] ?? true)> Notificación activa</label>
+                    <input type="hidden" name="evento_formulario" value="{{ $evento }}">
+                    <x-sistema.casilla name="activo" :id="'notificacion-'.$evento" :marcada="$regla['activo'] ?? true">Notificación activa</x-sistema.casilla>
                     <label class="block text-sm font-semibold">Roles
                         <select name="roles[]" multiple size="4" class="mt-1 block w-full rounded-xl border-slate-300">
                             @foreach($roles as $rol)<option value="{{ $rol->id }}" @selected(in_array($rol->id, $regla['roles'] ?? []))>{{ $rol->nombre }}</option>@endforeach
@@ -26,7 +33,7 @@
                     @if($evento === 'stock_bajo' && app(\App\Sistema\Permisos::class)->permite(auth()->user(), 'sistema.parametros'))
                         <p class="text-sm"><a class="text-blue-700 underline" href="{{ route('sistema.parametros') }}">Configurar el nivel mínimo</a></p>
                     @endif
-                    <button class="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Guardar regla</button>
+                    <button type="submit" class="ui-btn-primary">Guardar regla</button>
                 </form>
             </x-sistema.panel>
         @endforeach

@@ -30,14 +30,6 @@
             <h1 class="veh-title">Nueva asignación de vehículo</h1>
         </div>
 
-        @if(session('error'))
-            <div class="veh-error">{{ session('error') }}</div>
-        @endif
-
-        @if($errors->any())
-            <div class="veh-error">{{ implode(' | ', $errors->all()) }}</div>
-        @endif
-
         <div class="veh-info-note">
             Este formulario registra únicamente la relación <strong>Vehículo → Colaborador</strong>. Los productos/refacciones se administran en el módulo separado de Productos del vehículo.
         </div>
@@ -50,7 +42,7 @@
 
                 <div class="veh-grid-2">
                     <div class="veh-field">
-                        <label>Vehículo</label>
+                        <label for="vehiculo_vin">Vehículo</label>
                         <select name="vehiculo_vin" id="vehiculo_vin" required>
                             <option value="">Seleccione vehículo...</option>
                             @foreach($vehiculos as $v)
@@ -63,7 +55,7 @@
                     </div>
 
                     <div class="veh-field">
-                        <label>Colaborador</label>
+                        <label for="colaborador_codigo">Colaborador</label>
                         <select name="colaborador_codigo" id="colaborador_codigo" required>
                             <option value="">Seleccione colaborador...</option>
                             @foreach($colaboradores as $c)
@@ -76,19 +68,19 @@
                     </div>
 
                     <div class="veh-field">
-                        <label>Fecha de asignación</label>
-                        <input type="date" name="fecha_inicio" value="{{ old('fecha_inicio', date('Y-m-d')) }}" required>
+                        <label for="campo-fecha-inicio">Fecha de asignación</label>
+                        <input id="campo-fecha-inicio" type="date" name="fecha_inicio" value="{{ old('fecha_inicio', date('Y-m-d')) }}" required>
                     </div>
 
                     <div class="veh-field">
-                        <label>Estado inicial del vehículo</label>
-                        <input type="text" name="estado_inicial_vehiculo" value="{{ old('estado_inicial_vehiculo') }}" placeholder="Ejemplo: Bueno, regular, con rayones..." required>
+                        <label for="campo-estado-inicial-vehiculo">Estado inicial del vehículo</label>
+                        <input id="campo-estado-inicial-vehiculo" type="text" name="estado_inicial_vehiculo" value="{{ old('estado_inicial_vehiculo') }}" placeholder="Ejemplo: Bueno, regular, con rayones..." required>
                     </div>
                 </div>
 
                 <div class="veh-field" style="margin-top:16px;">
-                    <label>Observaciones</label>
-                    <textarea name="observaciones_asignacion" placeholder="Observaciones generales de la asignación">{{ old('observaciones_asignacion') }}</textarea>
+                    <label for="campo-observaciones-asignacion">Observaciones</label>
+                    <textarea id="campo-observaciones-asignacion" name="observaciones_asignacion" placeholder="Observaciones generales de la asignación">{{ old('observaciones_asignacion') }}</textarea>
                 </div>
 
                 <div class="veh-actions">

@@ -23,23 +23,6 @@
         </div>
     </div>
 
-    @if ($errors->any())
-        <div class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            <div class="mb-1 font-semibold">Corrige los siguientes errores:</div>
-            <ul class="list-disc pl-5">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {{ session('error') }}
-        </div>
-    @endif
-
     <form enctype="multipart/form-data" method="POST" action="{{ route($storeRoute, $bodega->id) }}" class="ui-form space-y-5">
         @csrf
 

@@ -5,10 +5,10 @@
             @csrf @method('PUT')
             <label class="block max-w-lg text-sm font-semibold">Nombre<input name="nombre" required maxlength="50" value="{{ old('nombre', $rol->nombre) }}" class="mt-1 w-full rounded-xl border-slate-300"></label>
             <label class="block max-w-lg text-sm font-semibold">Descripción<textarea name="descripcion" maxlength="500" class="mt-1 w-full rounded-xl border-slate-300">{{ old('descripcion', $rol->descripcion) }}</textarea></label>
-            <label class="flex items-center gap-2 text-sm font-semibold"><input type="hidden" name="activo" value="0"><input type="checkbox" name="activo" value="1" @checked($rol->activo)> Rol activo</label>
-            <x-sistema.reglas :catalogo="$catalogo" :reglas="$reglas" :efectivos="$efectivos" />
+            <x-sistema.casilla name="activo" id="rol-activo" :marcada="old('activo', $rol->activo)">Rol activo</x-sistema.casilla>
+            <x-sistema.reglas :catalogo="$catalogo" :reglas="$reglas" :efectivos="$efectivos" :rol-inactivo="!$rol->activo" />
             <x-sistema.confirmacion />
-            <button class="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Guardar rol</button>
+            <button class="ui-btn-primary" type="submit">Guardar rol</button>
         </form>
     </x-sistema.panel>
     <x-sistema.panel titulo="Cuentas asociadas">

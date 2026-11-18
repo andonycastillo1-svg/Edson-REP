@@ -462,14 +462,18 @@
                 </div>
 
                 <div class="inv-actions">
+                    @rutaDisponible((auth()->user()->rolOperativo() === 2 ? 'operador' : 'admin').'.bodegas.inventario.export')
                     <a class="inv-btn inv-btn-light"
                        href="{{ route((auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin') . '.bodegas.inventario.export', [$bodega->id] + request()->query()) }}">
                         Descargar Excel
                     </a>
+                    @endrutaDisponible
 
+                    @rutaDisponible('admin.bodegas.entrada')
                     <a href="{{ route('admin.bodegas.entrada', $bodega->id) }}" class="inv-btn inv-btn-purple">
                         + Agregar al inventario
                     </a>
+                    @endrutaDisponible
                 </div>
             </div>
         </div>

@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('no_nav')
-@endsection
 
 @section('content')
 @php($routePrefix = auth()->user()->rolOperativo() == 4 ? 'rrhh' : 'admin')
@@ -24,8 +22,8 @@
 
         {{-- Código --}}
         <div>
-          <label class="text-sm font-medium text-slate-700">Código</label>
-          <input name="codigo" value="{{ old('codigo') }}"
+          <label for="campo-codigo" class="text-sm font-medium text-slate-700">Código</label>
+          <input id="campo-codigo" name="codigo" value="{{ old('codigo') }}"
                  class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:ring-2 focus:ring-blue-500"
                  required />
           @error('codigo')
@@ -35,8 +33,8 @@
 
         {{-- Estado --}}
         <div>
-          <label class="text-sm font-medium text-slate-700">Estado</label>
-          <select name="estado"
+          <label for="campo-estado" class="text-sm font-medium text-slate-700">Estado</label>
+          <select id="campo-estado" name="estado"
                   class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:ring-2 focus:ring-blue-500"
                   required>
             <option value="Activo">Activo</option>
@@ -49,8 +47,8 @@
 
         {{-- Nombre --}}
         <div class="sm:col-span-2">
-          <label class="text-sm font-medium text-slate-700">Nombre</label>
-          <input name="nombre" value="{{ old('nombre') }}"
+          <label for="campo-nombre" class="text-sm font-medium text-slate-700">Nombre</label>
+          <input id="campo-nombre" name="nombre" value="{{ old('nombre') }}"
                  class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:ring-2 focus:ring-blue-500"
                  required />
           @error('nombre')
@@ -60,8 +58,8 @@
 
         {{-- Puesto --}}
         <div class="sm:col-span-2">
-          <label class="text-sm font-medium text-slate-700">Puesto</label>
-          <input name="puesto" value="{{ old('puesto') }}"
+          <label for="campo-puesto" class="text-sm font-medium text-slate-700">Puesto</label>
+          <input id="campo-puesto" name="puesto" value="{{ old('puesto') }}"
                  class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2 focus:ring-2 focus:ring-blue-500"
                  required />
           @error('puesto')

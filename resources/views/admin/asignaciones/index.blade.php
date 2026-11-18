@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('no_nav')
-@endsection
 
 @section('content')
 @php
@@ -525,27 +523,11 @@
       @endif
     </div>
 
-    @if(session('success'))
-      <div class="asg-alert asg-alert-success">
-        {{ session('success') }}
-
-        @if(session('grupo_devolucion'))
-          <div style="margin-top:6px;">
-            <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', session('grupo_devolucion')) }}"
-               target="_blank"
-               rel="noopener noreferrer"
-               style="font-weight:700; text-decoration:underline;">
-              Ver hoja de devolución
-            </a>
-          </div>
-        @endif
-      </div>
-    @endif
-
-    @if(session('error'))
-      <div class="asg-alert asg-alert-error">
-        {{ session('error') }}
-      </div>
+    @if(session('grupo_devolucion'))
+        @rutaDisponible($routePrefix.'.asignaciones.hoja_devolucion')
+            <a class="ui-btn-download mb-4" href="{{ route($routePrefix.'.asignaciones.hoja_devolucion', session('grupo_devolucion')) }}"
+               target="_blank" rel="noopener noreferrer">Ver hoja de devolución</a>
+        @endrutaDisponible
     @endif
 
     <div class="asg-panel">
@@ -634,7 +616,7 @@
               @endif
 
               <div class="asg-table-wrap">
-                <div class="asg-table-scroll">
+                <div class="asg-table-scroll" tabindex="0" role="region" aria-label="Asignaciones de {{ $grupo['colaborador_nombre'] }}">
                   <table class="asg-table">
                     <thead>
                       <tr>
@@ -671,6 +653,7 @@
                             @if($activa && $puedeGestionarDevoluciones)
                               <input type="checkbox"
                                      name="seleccionadas[]"
+                                     aria-label="Seleccionar {{ $productoNombre }} para devolución"
                                      value="{{ $a->id }}"
                                      form="{{ $bulkFormId }}"
                                      class="selector"
@@ -730,6 +713,7 @@
                               <input type="number"
                                      id="devolucion_{{ $a->id }}"
                                      name="devoluciones[{{ $a->id }}]"
+                                     aria-label="Cantidad a devolver de {{ $productoNombre }}"
                                      form="{{ $bulkFormId }}"
                                      min="1"
                                      max="{{ $a->cantidad_asignada }}"

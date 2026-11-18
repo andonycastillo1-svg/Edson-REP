@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('no_nav')
-@endsection
 
 @section('content')
 @php
@@ -40,35 +38,14 @@
           </p>
         </div>
 
+        @rutaDisponible($routePrefix . '.asignaciones.index')
         <a href="{{ route($routePrefix . '.asignaciones.index') }}"
           class="inline-flex items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-extrabold text-blue-700 shadow-sm transition hover:bg-blue-100 hover:shadow-md">
           Ver mis asignaciones
         </a>
+        @endrutaDisponible
       </div>
     </div>
-
-    @if ($errors->any())
-      <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-700 shadow-sm">
-        <p class="text-sm font-bold">Corrige los siguientes errores:</p>
-        <ul class="mt-2 list-disc space-y-1 pl-5 text-sm">
-          @foreach ($errors->all() as $error)
-            <li>{{ $error }}</li>
-          @endforeach
-        </ul>
-      </div>
-    @endif
-
-    @if(session('success'))
-      <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-800 shadow-sm">
-        {{ session('success') }}
-      </div>
-    @endif
-
-    @if(session('error'))
-      <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700 shadow-sm">
-        {{ session('error') }}
-      </div>
-    @endif
 
     <form method="POST"
       action="{{ route($routePrefix . '.asignaciones.store') }}"
@@ -96,10 +73,10 @@
 
         <div class="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
           <div class="md:col-span-2">
-            <label class="mb-1 block text-sm font-bold text-slate-700">
+            <label for="campo-colaborador-codigo" class="mb-1 block text-sm font-bold text-slate-700">
               Colaborador
             </label>
-            <select name="colaborador_codigo"
+            <select id="campo-colaborador-codigo" name="colaborador_codigo"
               data-searchable="true"
               data-search-placeholder="Buscar colaborador..."
               class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
@@ -113,10 +90,10 @@
           </div>
 
           <div>
-            <label class="mb-1 block text-sm font-bold text-slate-700">
+            <label for="campo-fecha" class="mb-1 block text-sm font-bold text-slate-700">
               Fecha
             </label>
-            <input type="date"
+            <input id="campo-fecha" type="date"
               name="fecha"
               value="{{ old('fecha', date('Y-m-d')) }}"
               class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
@@ -124,10 +101,10 @@
           </div>
 
           <div>
-            <label class="mb-1 block text-sm font-bold text-slate-700">
+            <label for="campo-aprobado-por" class="mb-1 block text-sm font-bold text-slate-700">
               Aprobado por
             </label>
-            <select name="aprobado_por"
+            <select id="campo-aprobado-por" name="aprobado_por"
               class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               required>
               @foreach($aprobadores as $a)
@@ -139,10 +116,10 @@
           </div>
 
           <div>
-            <label class="mb-1 block text-sm font-bold text-slate-700">
+            <label for="campo-medio-solicitud" class="mb-1 block text-sm font-bold text-slate-700">
               Medio de solicitud
             </label>
-            <select name="medio_solicitud"
+            <select id="campo-medio-solicitud" name="medio_solicitud"
               class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               required>
               <option value="WhatsApp" {{ old('medio_solicitud') === 'WhatsApp' ? 'selected' : '' }}>WhatsApp</option>
@@ -151,10 +128,10 @@
           </div>
 
           <div>
-            <label class="mb-1 block text-sm font-bold text-slate-700">
+            <label for="campo-imagen" class="mb-1 block text-sm font-bold text-slate-700">
               Adjuntar evidencia
             </label>
-            <input type="file"
+            <input id="campo-imagen" type="file"
               name="imagen"
               class="w-full cursor-pointer rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-sm file:mr-4 file:rounded-xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white hover:bg-slate-100">
             <p class="mt-2 text-xs text-slate-500">
@@ -214,10 +191,10 @@
 
               <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-12">
                 <div class="md:col-span-7">
-                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                  <label for="campo-producto-codigo" class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
                     Producto
                   </label>
-                  <select data-name="producto_codigo"
+                  <select id="campo-producto-codigo" data-name="producto_codigo"
                     data-searchable="true"
                     data-search-placeholder="Buscar producto..."
                     class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
@@ -225,10 +202,10 @@
                 </div>
 
                 <div class="md:col-span-3">
-                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                  <label for="campo-bodega-id" class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
                     Bodega
                   </label>
-                  <select data-name="bodega_id"
+                  <select id="campo-bodega-id" data-name="bodega_id"
                     class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                     required>
                     @foreach($bodegas as $b)
@@ -238,10 +215,10 @@
                 </div>
 
                 <div class="md:col-span-2">
-                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                  <label for="campo-cantidad-asignada" class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
                     Cantidad
                   </label>
-                  <input type="number"
+                  <input id="campo-cantidad-asignada" type="number"
                     min="1"
                     data-name="cantidad_asignada"
                     class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
@@ -276,10 +253,10 @@
                 </div>
 
                 <div class="md:col-span-7">
-                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                  <label for="campo-fecha-dano" class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
                     Fecha daño/reemplazo
                   </label>
-                  <input type="date"
+                  <input id="campo-fecha-dano" type="date"
                     data-name="fecha_dano"
                     class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
                   <p class="mt-2 text-xs text-slate-500">
@@ -323,6 +300,7 @@
   const itemsWrapper = document.getElementById('items-wrapper');
   const addItemBtn = document.getElementById('add-item');
   const template = document.getElementById('item-template');
+  let siguienteFila = 0;
 
   const colaboradorSelect = document.querySelector('select[name="colaborador_codigo"]');
   const urlActivas = @json(route($routePrefix . '.asignaciones.activas_producto'));
@@ -350,6 +328,12 @@
 
   function addItem(defaults = {}) {
     const clone = template.content.firstElementChild.cloneNode(true);
+    siguienteFila += 1;
+    clone.querySelectorAll('label[for]').forEach(label => {
+      const campo = clone.querySelector('#' + label.htmlFor);
+      campo.id += '-' + siguienteFila;
+      label.htmlFor = campo.id;
+    });
     const productoSelect = clone.querySelector('[data-name="producto_codigo"]');
     const bodegaSelect = clone.querySelector('[data-name="bodega_id"]');
     const cantidadInput = clone.querySelector('[data-name="cantidad_asignada"]');
@@ -405,7 +389,6 @@
     }
 
     buildProductoOptions(productoSelect, bodegaSelect.value, tipoSelect.value, defaults.producto_codigo);
-    if (window.enhanceSearchableSelect) window.enhanceSearchableSelect(productoSelect);
     cargarAnteriores(defaults.asignacion_anterior_id);
     productoSelect.addEventListener('change', () => cargarAnteriores());
     reemplazoInput.addEventListener('change', () => cargarAnteriores());
@@ -428,6 +411,7 @@
 
     itemsWrapper.appendChild(clone);
     renumberRows();
+    if (window.enhanceSearchableSelect) window.enhanceSearchableSelect(productoSelect);
   }
 
   addItemBtn.addEventListener('click', () => addItem());
