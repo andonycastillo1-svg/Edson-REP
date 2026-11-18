@@ -619,18 +619,6 @@
                            class="asg-input"
                            style="width:260px;">
 
-                    <select name="estado_devolucion" class="asg-input" style="width:230px;">
-                      <option value="buen_estado">Buen estado / reutilizable</option>
-                      <option value="danado">Dañado / no reutilizable</option>
-                      <option value="perdido">Perdido / no devuelto</option>
-                      <option value="baja">Dar de baja</option>
-                    </select>
-                    <input name="motivo_devolucion" class="asg-input" maxlength="150" required placeholder="Motivo de devolución">
-                    <select name="bodega_retorno_id" class="asg-input" required>
-                      <option value="">Bodega de devolución</option>
-                      @foreach($bodegasRetorno as $bodegaRetorno)<option value="{{ $bodegaRetorno->id }}">{{ $bodegaRetorno->nombre }}</option>@endforeach
-                    </select>
-
                     <button type="submit"
                             class="asg-btn-warning"
                             onclick="return confirm('¿Devolver todo lo activo de este colaborador?')">
@@ -651,7 +639,6 @@
                         <th>Fecha</th>
                         <th>Bodega</th>
                         <th>Estado inventario</th>
-                        <th>Tipo stock</th>
                         <th>Entrega</th>
                         <th>Vida útil</th>
                         <th style="text-align:center;">Activa</th>
@@ -709,17 +696,6 @@
                               <span class="asg-status asg-status-red">Dañada</span>
                             @else
                               <span class="asg-status asg-status-gray">{{ $estado }}</span>
-                            @endif
-                          </td>
-
-                          <td>
-                            <span class="asg-status asg-status-gray">{{ ($a->stock_tipo ?? 'nuevo') === 'usado' ? 'Usado reutilizable' : 'Nuevo' }}</span>
-                            <div style="font-size:11px; color:#475569; margin-top:4px;">
-                              Entrega: {{ str_replace('_', ' ', ucfirst($a->tipo_entrega ?? 'inicial')) }}
-                              @if($a->asignacion_anterior_id) · Ref. #{{ $a->asignacion_anterior_id }} @endif
-                            </div>
-                            @if(!is_null($a->vida_util_restante_meses))
-                              <div style="font-size:11px; color:#64748b; margin-top:4px;">Restante: {{ $a->vida_util_restante_meses }} meses</div>
                             @endif
                           </td>
 
@@ -831,18 +807,6 @@
                              class="asg-input"
                              style="width:260px;">
 
-                      <select name="estado_devolucion" class="asg-input" style="width:230px;">
-                        <option value="buen_estado">Buen estado / reutilizable</option>
-                        <option value="danado">Dañado / no reutilizable</option>
-                        <option value="perdido">Perdido / no devuelto</option>
-                        <option value="baja">Dar de baja</option>
-                      </select>
-                      <input name="motivo_devolucion" class="asg-input" maxlength="150" required placeholder="Motivo de devolución">
-                      <select name="bodega_retorno_id" class="asg-input" required>
-                        <option value="">Bodega de devolución</option>
-                        @foreach($bodegasRetorno as $bodegaRetorno)<option value="{{ $bodegaRetorno->id }}">{{ $bodegaRetorno->nombre }}</option>@endforeach
-                      </select>
-
                       <button type="submit"
                               form="{{ $bulkFormId }}"
                               class="asg-btn-warning">
@@ -874,7 +838,6 @@
               <th>Colaborador</th>
               <th style="text-align:center;">Cantidad</th>
               <th>Detalle</th>
-              <th>Resultado devolución</th>
               <th>Usuario</th>
               <th style="text-align:center;">Documento</th>
             </tr>
@@ -916,16 +879,6 @@
 
                   <td>
                     {{ $m->detalle ?? '—' }}
-                  </td>
-
-                  <td>
-                    @if($m->tipo === 'Devolucion')
-                      <strong>{{ ['usado' => 'Usado reutilizable', 'danado' => 'Dañado/no reutilizable', 'descuento' => 'Pendiente descuento'][$m->stock_tipo_resultante] ?? '—' }}</strong>
-                      <div style="font-size:11px; color:#64748b;">Original: {{ $m->vida_util_original_meses ?? 0 }}m · Consumida: {{ $m->vida_util_consumida_meses ?? 0 }}m · Restante: {{ $m->vida_util_restante_meses ?? 0 }}m</div>
-                      <div style="font-size:11px; color:#64748b;">Bodega retorno: {{ optional($m->bodegaRetorno)->nombre ?? '—' }}</div>
-                    @else
-                      —
-                    @endif
                   </td>
 
                   <td>

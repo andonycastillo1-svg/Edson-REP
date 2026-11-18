@@ -112,14 +112,27 @@ class BodegaController extends Controller
 
         $inventarioBase = $this->inventarioQuery($request, $bodega);
 
-        $productosTotal = (clone $inventarioBase)->get()->count();
+        $productosTotal = (clone $inventarioBase)->count();
 
-        $stockTotal = (int) ((clone $inventarioBase)->get()->sum('cantidad') ?? 0);
+        $stockTotal = (int) ((clone $inventarioBase)->sum('i.cantidad') ?? 0);
 
-        $costoTotalInventario = (float) (clone $inventarioBase)->get()->sum('costo_total');
+        $costoTotalInventario = (float) ((clone $inventarioBase)
+            ->select(DB::raw('SUM(i.cantidad * COALESCE(uc.costo_unitario, 0)) as total'))
+            ->value('total') ?? 0);
 
         $inventarios = $inventarioBase
-            ->orderByDesc('cantidad')
+            ->select(
+                'i.id',
+                'i.producto_codigo',
+                'i.cantidad',
+                'p.nombre',
+                'p.descripcion',
+                'p.categoria',
+                'p.vida_util_meses',
+                DB::raw('COALESCE(uc.costo_unitario, 0) as costo_unitario'),
+                DB::raw('(i.cantidad * COALESCE(uc.costo_unitario, 0)) as costo_total')
+            )
+            ->orderByDesc('i.cantidad')
             ->paginate(15)
             ->appends($request->query());
 
@@ -140,6 +153,17 @@ class BodegaController extends Controller
 
         $bodega = Bodega::findOrFail($id);
         $inventarios = $this->inventarioQuery($request, $bodega)
+            ->select(
+                'i.producto_codigo',
+                'i.cantidad',
+                'i.updated_at',
+                'p.nombre',
+                'p.descripcion',
+                'p.categoria',
+                'p.vida_util_meses',
+                DB::raw('COALESCE(uc.costo_unitario, 0) as costo_unitario'),
+                DB::raw('(i.cantidad * COALESCE(uc.costo_unitario, 0)) as costo_total')
+            )
             ->orderBy('p.nombre')
             ->get();
 
@@ -177,21 +201,6 @@ class BodegaController extends Controller
                 $join->on('uc.producto_codigo', '=', 'i.producto_codigo');
             })
             ->where('i.bodega_id', $bodega->id)
-            ->select(
-                'i.producto_codigo', 'p.nombre', 'p.descripcion', 'p.categoria', 'p.vida_util_meses',
-                DB::raw("SUM(CASE WHEN i.stock_tipo = 'nuevo' THEN i.cantidad ELSE 0 END) as nuevos_disponibles"),
-                DB::raw("SUM(CASE WHEN i.stock_tipo = 'usado' THEN i.cantidad ELSE 0 END) as usados_disponibles"),
-                DB::raw("SUM(CASE WHEN i.stock_tipo = 'danado' THEN i.cantidad ELSE 0 END) as danados"),
-                DB::raw("SUM(CASE WHEN i.stock_tipo = 'perdido' THEN i.cantidad ELSE 0 END) as perdidos"),
-                DB::raw("SUM(CASE WHEN i.stock_tipo = 'baja' THEN i.cantidad ELSE 0 END) as bajas"),
-                DB::raw('SUM(i.cantidad) as cantidad'),
-                DB::raw("MIN(CASE WHEN i.stock_tipo = 'usado' THEN i.vida_util_restante_meses END) as vida_util_restante_meses"),
-                DB::raw('MAX(i.updated_at) as updated_at'),
-                DB::raw('COALESCE(uc.costo_unitario, 0) as costo_unitario'),
-                DB::raw('(SUM(i.cantidad) * COALESCE(uc.costo_unitario, 0)) as costo_total')
-            )
-            ->groupBy('i.producto_codigo', 'p.nombre', 'p.descripcion', 'p.categoria', 'p.vida_util_meses', 'uc.costo_unitario')
-            ->when($request->filled('stock_tipo'), fn ($query) => $query->where('i.stock_tipo', $request->query('stock_tipo')))
             ->when($request->query('q'), function ($query, $q) {
                 $query->where(function ($where) use ($q) {
                     $where->where('i.producto_codigo', 'like', "%{$q}%")

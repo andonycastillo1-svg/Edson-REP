@@ -17,7 +17,6 @@ class InventarioStockService
         $inventario = DB::table('inventarios')
             ->where('bodega_id', $bodegaId)
             ->where('producto_codigo', $productoCodigo)
-            ->where('stock_tipo', 'nuevo')
             ->lockForUpdate()
             ->first();
 
@@ -37,7 +36,6 @@ class InventarioStockService
                 'bodega_id' => $bodegaId,
                 'producto_codigo' => $productoCodigo,
                 'cantidad' => $cantidad,
-                'stock_tipo' => 'nuevo',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -46,7 +44,6 @@ class InventarioStockService
             $inventario = DB::table('inventarios')
                 ->where('bodega_id', $bodegaId)
                 ->where('producto_codigo', $productoCodigo)
-                ->where('stock_tipo', 'nuevo')
                 ->lockForUpdate()
                 ->first();
 
@@ -72,7 +69,6 @@ class InventarioStockService
         $inventario = DB::table('inventarios')
             ->where('bodega_id', $bodegaId)
             ->where('producto_codigo', $productoCodigo)
-            ->where('stock_tipo', 'nuevo')
             ->lockForUpdate()
             ->first();
 

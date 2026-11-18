@@ -222,9 +222,6 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
-        Route::get('asignaciones/activas-producto', [AsignacionInventarioController::class, 'asignacionesActivas'])
-            ->name('asignaciones.activas_producto');
-
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
 
@@ -279,9 +276,6 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
-        Route::get('asignaciones/activas-producto', [AsignacionInventarioController::class, 'asignacionesActivas'])
-            ->name('asignaciones.activas_producto');
-
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
 
@@ -335,12 +329,6 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::get('operaciones/traslados/{operacion}/archivo-excel', [OperacionTrasladoController::class, 'archivo'])
             ->name('operaciones.traslados.archivo');
-
-        Route::get('alertas-descuento', [RrhhDashboardController::class, 'alertas'])
-            ->name('alertas.index');
-
-        Route::get('alertas-descuento/export', [RrhhDashboardController::class, 'export'])
-            ->name('alertas.export');
     });
 
 /*
