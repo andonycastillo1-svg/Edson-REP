@@ -11,6 +11,7 @@ use App\Services\DocumentoPrivado;
 use App\Sistema\Ajustes;
 use App\Sistema\Modulos;
 use App\Sistema\Permisos;
+use App\Sistema\Presentacion;
 use App\Sistema\Seguridad;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -106,16 +107,26 @@ class ConfiguracionController extends Controller
 
     public function notificaciones(Request $request)
     {
-        $roles = Role::where('activo', true)->orderBy('nombre')->get();
+        $opciones = array_keys(Ajustes::EVENTOS);
+        $filtros = $request->validate(['evento' => ['nullable', 'string', Rule::in($opciones)]]);
+        $evento = $filtros['evento'] ?? $opciones[0];
         $q = $request->string('q')->trim()->limit(100)->toString();
-        $reglas = $this->ajustes->leer('notificaciones', []);
-        $seleccionados = collect($reglas)->flatMap(fn ($regla) => $regla['usuarios'] ?? [])->unique()->values();
+        $regla = $this->ajustes->leer('notificaciones', [])[$evento] ?? [];
+        if ($request->old('evento_formulario') === $evento) {
+            $regla = [
+                'activo' => $request->old('activo', true),
+                'usuarios' => (array) $request->old('usuarios', []),
+                'roles' => (array) $request->old('roles', []),
+            ];
+        }
+        $idsValidos = fn (array $ids) => array_filter($ids, fn ($id) => is_int($id) || (is_string($id) && ctype_digit($id)));
+        $roles = Role::where('activo', true)->orWhereIn('id', $idsValidos($regla['roles'] ?? []))->orderBy('nombre')->get();
         $coincidencias = User::where('acceso_activo', true)
             ->when($q !== '', fn ($usuarios) => $usuarios->where('name', 'like', '%'.$q.'%'))
-            ->orderBy('name')->limit(50)->get(['id', 'name']);
-        $usuarios = $coincidencias->merge(User::whereKey($seleccionados)->get(['id', 'name']))->sortBy('name');
+            ->orderBy('name')->limit(50)->get(['id', 'name', 'acceso_activo']);
+        $usuarios = $coincidencias->merge(User::whereKey($idsValidos($regla['usuarios'] ?? []))->get(['id', 'name', 'acceso_activo']))->sortBy('name');
 
-        return view('sistema.notificaciones', compact('roles', 'usuarios', 'reglas', 'q'));
+        return view('sistema.notificaciones', compact('roles', 'usuarios', 'regla', 'evento', 'q'));
     }
 
     public function guardarNotificaciones(Request $request, string $evento, Seguridad $seguridad)
@@ -145,31 +156,44 @@ class ConfiguracionController extends Controller
     public function auditoria(Request $request)
     {
         $datos = $request->validate([
-            'actor' => ['nullable', 'integer'], 'modulo' => ['nullable', 'string', 'max:40'],
+            'actor' => ['nullable', 'integer', 'min:0'], 'modulo' => ['nullable', 'string', 'max:40'],
             'accion' => ['nullable', 'string', 'max:80'], 'desde' => ['nullable', 'date_format:Y-m-d'],
             'hasta' => ['nullable', 'date_format:Y-m-d'],
         ]);
-        $eventos = DB::table('sistema_auditoria')
+        if (isset($datos['desde'], $datos['hasta']) && $datos['desde'] > $datos['hasta']) {
+            throw ValidationException::withMessages(['hasta' => 'La fecha final debe ser igual o posterior a la fecha inicial.']);
+        }
+        $alcance = DB::table('sistema_auditoria')
             ->when(!$this->permisos->esSuperadministrador($request->user()), fn ($q) => $q->where('modulo', '!=', 'seguridad'))
-            ->when($request->user()->rolOperativo() !== 1, fn ($q) => $q->where('actor_id', $request->user()->id))
-            ->when($datos['actor'] ?? null, fn ($q, $id) => $q->where('actor_id', $id))
+            ->when($request->user()->rolOperativo() !== 1, fn ($q) => $q->where('actor_id', $request->user()->id));
+        $usuarios = (clone $alcance)->leftJoin('users', 'users.id', '=', 'sistema_auditoria.actor_id')
+            ->select('sistema_auditoria.actor_id', 'users.name')->distinct()->orderBy('users.name')->get();
+        $modulos = (clone $alcance)->distinct()->orderBy('modulo')->pluck('modulo');
+        $acciones = (clone $alcance)->distinct()->orderBy('accion')->pluck('accion');
+        $eventos = (clone $alcance)
             ->when($datos['modulo'] ?? null, fn ($q, $mod) => $q->where('modulo', $mod))
             ->when($datos['accion'] ?? null, fn ($q, $ac) => $q->where('accion', $ac))
             ->when($datos['desde'] ?? null, fn ($q, $d) => $q->where('created_at', '>=', $d.' 00:00:00'))
-            ->when($datos['hasta'] ?? null, fn ($q, $d) => $q->where('created_at', '<=', $d.' 23:59:59'))
-            ->orderByDesc('id')->paginate(30)->withQueryString();
+            ->when($datos['hasta'] ?? null, fn ($q, $d) => $q->where('created_at', '<', \Illuminate\Support\Carbon::parse($d)->addDay()->toDateString().' 00:00:00'));
+        if (isset($datos['actor'])) {
+            (int) $datos['actor'] === 0 ? $eventos->whereNull('actor_id') : $eventos->where('actor_id', $datos['actor']);
+        }
+        $eventos = $eventos->orderByDesc('id')->paginate(30)->withQueryString();
 
-        return view('sistema.auditoria', compact('eventos'));
+        return view('sistema.auditoria', compact('eventos', 'usuarios', 'modulos', 'acciones', 'datos'));
     }
 
-    public function presentacion(Request $request)
+    public function presentacion(Request $request, Presentacion $catalogo)
     {
         $modulo = $request->string('modulo')->toString() ?: 'bodegas';
         $definicion = Modulos::definicion($modulo);
         $presentacion = $this->ajustes->leer('presentacion.'.$modulo, []);
+        $columnas = $catalogo->tabla($modulo, $presentacion);
+        $formularios = $catalogo->nativos($modulo);
         $nativos = Modulos::FORMULARIOS_NATIVOS[$modulo] ?? [];
+        $desdeDatos = $request->query('origen') === 'datos';
 
-        return view('sistema.presentacion', compact('modulo', 'definicion', 'presentacion', 'nativos'));
+        return view('sistema.presentacion', compact('modulo', 'definicion', 'presentacion', 'columnas', 'formularios', 'nativos', 'desdeDatos'));
     }
 
     public function guardarPresentacion(Request $request, string $modulo, Seguridad $seguridad)
@@ -209,9 +233,10 @@ class ConfiguracionController extends Controller
                 $cols[$columna]['visible'] = true;
             }
         }
+        $ordenar = $datos['ordenar'] ?? $id;
         $config = [
             'columnas' => $cols, 'formulario' => $form, 'pagina' => (int) ($datos['pagina'] ?? 20),
-            'ordenar' => $datos['ordenar'] ?? $id, 'direccion' => $datos['direccion'] ?? 'desc',
+            'ordenar' => ($cols[$ordenar]['visible'] ?? true) ? $ordenar : $id, 'direccion' => $datos['direccion'] ?? 'desc',
         ];
         DB::transaction(function () use ($request, $modulo, $config, $seguridad) {
             $seguridad->bloquear();
@@ -220,6 +245,6 @@ class ConfiguracionController extends Controller
             $this->ajustes->guardar($clave, $request->boolean('restaurar') ? null : $config, 'presentacion');
         });
 
-        return back()->with('ok', 'Presentación guardada.');
+        return back()->with('ok', $request->boolean('restaurar') ? 'Configuración predeterminada restaurada.' : 'Presentación guardada para todas las cuentas.');
     }
 }

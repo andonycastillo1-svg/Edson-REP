@@ -14,8 +14,12 @@ Route::name('sistema.')->middleware(['auth', 'auto.logout'])->group(function () 
         Route::get('{modulo}/exportar', 'exportar')->name('datos.exportar');
         Route::get('{modulo}', 'lista')->name('datos.lista');
         Route::get('{modulo}/registro/{registro}', 'ficha')->name('datos.ficha');
-        Route::put('{modulo}/registro/{registro}', 'actualizar')->name('datos.actualizar');
         Route::get('{modulo}/registro/{registro}/archivo/{campo}', 'archivo')->name('datos.archivo');
+    });
+    Route::prefix('operacion/{modulo}/campos')->controller(DatosController::class)->group(function () {
+        Route::get('/', 'operacion')->name('operacion.campos');
+        Route::get('{registro}', 'editar')->name('operacion.campos.editar');
+        Route::put('{registro}', 'actualizar')->name('operacion.campos.actualizar');
     });
 
     Route::prefix('admin/configuracion')->group(function () {

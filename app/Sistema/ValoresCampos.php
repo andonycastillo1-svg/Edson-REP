@@ -185,11 +185,12 @@ class ValoresCampos
         }
     }
 
-    public function mostrar(Campo $campo, mixed $valor): string
+    public function mostrar(Campo $campo, mixed $valor, bool $marcarInactivas = false): string
     {
         return match ($campo->tipo) {
             'casilla', 'booleano' => $valor === null ? '' : ($valor ? 'Sí' : 'No'),
-            'lista', 'multiple' => $campo->opciones->whereIn('id', (array) $valor)->pluck('etiqueta')->implode(', '),
+            'lista', 'multiple' => $campo->opciones->whereIn('id', (array) $valor)
+                ->map(fn ($opcion) => $opcion->etiqueta.($marcarInactivas && !$opcion->activo ? ' (inactiva)' : ''))->implode(', '),
             'archivo' => $valor['nombre'] ?? '',
             default => (string) $valor,
         };

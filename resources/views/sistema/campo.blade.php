@@ -1,4 +1,4 @@
-<x-sistema.pagina :titulo="$campo ? $campo->etiqueta : 'Nuevo campo personalizado'" :volver="route('sistema.campos')">
+<x-sistema.pagina :titulo="$campo ? $campo->etiqueta : 'Nuevo campo personalizado'" :volver="route('sistema.campos')" configuracion>
     <x-sistema.panel>
         @if($campo?->archivado_en)
             <p class="text-sm text-slate-600">Archivado el {{ $campo->archivado_en->format('d/m/Y H:i') }}. Se conserva el historial de valores.</p>
@@ -17,17 +17,13 @@
             @endphp
             <form method="POST" action="{{ $campo ? route('sistema.campos.actualizar', $campo) : route('sistema.campos.guardar') }}" class="space-y-5" data-formulario-campo>
                 @csrf @if($campo) @method('PUT') @endif
-                <p class="text-sm">Completa el módulo, el identificador, el tipo, la etiqueta y el orden. El módulo, el identificador y el tipo se conservan después del primer guardado.</p>
+                <p class="text-sm">{{ $campo ? 'Edita la etiqueta, las opciones y la visibilidad. El módulo y el tipo se conservan con el historial.' : 'Elige dónde se usará el campo, qué dato acepta y cómo se llamará en los formularios.' }}</p>
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <label class="text-sm font-semibold">Módulo
                         @if($campo)<input type="hidden" name="modulo" value="{{ $campo->modulo }}">@endif
                         <select aria-label="Módulo" name="{{ $campo ? '' : 'modulo' }}" @disabled($campo) required class="mt-1 w-full rounded-xl border-slate-300">
-                            @foreach(\App\Sistema\Modulos::DEFINICIONES as $key => $spec)<option value="{{ $key }}" @selected(old('modulo', $campo?->modulo) === $key)>{{ $spec[0] }}</option>@endforeach
+                            @foreach(\App\Sistema\Modulos::DEFINICIONES as $key => $spec)<option value="{{ $key }}" @selected(old('modulo', $campo?->modulo ?? request('modulo')) === $key)>{{ $spec[0] }}</option>@endforeach
                         </select>
-                    </label>
-                    <label class="text-sm font-semibold">Identificador
-                        <input name="clave" value="{{ old('clave', $campo?->clave) }}" pattern="[a-z][a-z0-9_]{1,59}" @readonly($campo) required class="mt-1 w-full rounded-xl border-slate-300">
-                        <span class="mt-1 block text-xs font-normal">Usa de 2 a 60 caracteres. Empieza con una letra minúscula y usa minúsculas, números o guion bajo.</span>
                     </label>
                     <label class="text-sm font-semibold">Tipo de dato
                         @if($campo)<input type="hidden" name="tipo" value="{{ $campo->tipo }}">@endif
@@ -36,7 +32,6 @@
                         </select>
                     </label>
                     <label class="text-sm font-semibold">Etiqueta<input name="etiqueta" value="{{ old('etiqueta', $campo?->etiqueta) }}" maxlength="100" required class="mt-1 w-full rounded-xl border-slate-300"></label>
-                    <label class="text-sm font-semibold">Orden<input name="orden" type="number" min="0" max="65000" value="{{ old('orden', $campo?->orden ?? 0) }}" required class="mt-1 w-full rounded-xl border-slate-300"></label>
                     <label data-default-texto @if($esLista || $esBooleano || $tipo === 'archivo') hidden @endif class="text-sm font-semibold">Valor predeterminado
                         <input name="predeterminado" @disabled($esLista || $esBooleano || $tipo === 'archivo') value="{{ $defaultSimple }}" class="mt-1 w-full">
                     </label>
@@ -48,19 +43,6 @@
                         </select>
                     </label>
                     <label class="text-sm font-semibold sm:col-span-2 lg:col-span-3">Ayuda<textarea name="ayuda" maxlength="500" rows="2" class="mt-1 w-full rounded-xl border-slate-300">{{ old('ayuda', $campo?->ayuda) }}</textarea></label>
-                    @if(app(\App\Sistema\Permisos::class)->esSuperadministrador(auth()->user()))
-                    @foreach(['permiso_lectura' => 'Permiso adicional de lectura', 'permiso_edicion' => 'Permiso adicional de edición'] as $key => $titulo)
-                        <label class="text-sm font-semibold">{{ $titulo }}
-                            <select name="{{ $key }}" class="mt-1 w-full rounded-xl border-slate-300">
-                                <option value="">Usar acceso del módulo</option>
-                                @foreach($permisos as $valor)<option value="{{ $valor }}" @selected(old($key, $campo?->{$key}) === $valor)>{{ \App\Sistema\CatalogoPermisos::presentacion($valor)['titulo'] }}</option>@endforeach
-                            </select>
-                        </label>
-                    @endforeach
-                        <label class="text-sm font-semibold">Contraseña actual si cambia el acceso
-                            <input name="current_password" type="password" autocomplete="current-password" class="mt-1 w-full rounded-xl border-slate-300">
-                        </label>
-                    @endif
                 </div>
                 <fieldset class="rounded-lg border border-slate-200 p-3">
                     <legend class="px-1 text-sm font-bold">Disponibilidad y visibilidad</legend>
@@ -81,7 +63,7 @@
                     </div>
                     <template id="sistema-opcion-plantilla">@include('sistema.opcion', ['i' => 'NUEVA_OPCION', 'opcion' => ['activo' => true]])</template>
                     <button type="button" id="sistema-agregar-opcion" class="ui-btn-secondary mt-3">Agregar opción</button>
-                    <label class="mt-4 block max-w-md text-sm font-semibold" for="sistema-default-lista">Valor predeterminado</label>
+                    <label data-default-lista-etiqueta class="mt-4 block max-w-md text-sm font-semibold" for="sistema-default-lista">Valor predeterminado</label>
                     <select id="sistema-default-lista" name="seleccion_predeterminada[]" aria-describedby="sistema-default-ayuda"
                             class="mt-1 block w-full max-w-md" @disabled(!$esLista) @if($tipo === 'multiple') multiple size="4" @endif>
                         @unless($tipo === 'multiple')<option value="">Sin valor predeterminado</option>@endunless
@@ -91,9 +73,39 @@
                             @endif
                         @endforeach
                     </select>
+                    <fieldset data-default-multiple class="mt-4" hidden>
+                        <legend class="mb-1 text-sm font-semibold">Valores predeterminados</legend>
+                        <div data-default-opciones class="sistema-opciones"></div>
+                    </fieldset>
                     <p id="sistema-default-ayuda" class="mt-1 text-xs">Selecciona entre las opciones activas.</p>
                     <button type="button" data-limpiar-default class="ui-btn-secondary mt-2" hidden>Quitar selección</button>
                 </section>
+                <details class="rounded-lg border border-slate-200" @if($errors->has('clave') || $errors->has('current_password') || $errors->has('permiso_lectura') || $errors->has('permiso_edicion')) open @endif>
+                    <summary class="sistema-desplegable">Opciones avanzadas</summary>
+                    <div class="sistema-formulario p-3">
+                        <label for="campo-identificador" class="text-sm font-semibold">Identificador del campo
+                            <input id="campo-identificador" name="clave" value="{{ old('clave', $campo?->clave) }}" pattern="[a-z][a-z0-9_]{1,59}" @readonly($campo) class="mt-1 w-full">
+                            <span class="mt-1 block text-xs font-normal">{{ $campo ? 'Se conserva para identificar los valores históricos.' : 'Si lo dejas vacío, se genera a partir de la etiqueta. Puedes usar letras minúsculas, números o guion bajo.' }}</span>
+                        </label>
+                        <label class="text-sm font-semibold">Posición en el módulo
+                            <input name="orden" type="number" min="0" max="65000" value="{{ old('orden', $campo?->orden ?? 0) }}" required class="mt-1 w-full">
+                            <span class="mt-1 block text-xs font-normal">Las posiciones menores aparecen primero.</span>
+                        </label>
+                    @if(app(\App\Sistema\Permisos::class)->esSuperadministrador(auth()->user()))
+                    @foreach(['permiso_lectura' => 'Permiso adicional de lectura', 'permiso_edicion' => 'Permiso adicional de edición'] as $key => $titulo)
+                        <label class="text-sm font-semibold">{{ $titulo }}
+                            <select name="{{ $key }}" class="mt-1 w-full rounded-xl border-slate-300">
+                                <option value="">Usar acceso del módulo</option>
+                                @foreach($permisos as $valor)<option value="{{ $valor }}" @selected(old($key, $campo?->{$key}) === $valor)>{{ \App\Sistema\CatalogoPermisos::presentacion($valor)['titulo'] }}</option>@endforeach
+                            </select>
+                        </label>
+                    @endforeach
+                        <label class="text-sm font-semibold">Contraseña actual si cambia el acceso
+                            <input name="current_password" type="password" autocomplete="current-password" class="mt-1 w-full rounded-xl border-slate-300">
+                        </label>
+                    @endif
+                    </div>
+                </details>
                 <button class="ui-btn-primary" type="submit">Guardar campo</button>
             </form>
         @endif

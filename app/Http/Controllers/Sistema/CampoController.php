@@ -12,6 +12,7 @@ use App\Sistema\ValoresCampos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -20,10 +21,12 @@ class CampoController extends Controller
     public function index(Request $request)
     {
         $modulo = $request->string('modulo')->toString();
-        $campos = Campo::with('opciones')->when(array_key_exists($modulo, Modulos::DEFINICIONES), fn ($q) => $q->where('modulo', $modulo))
-            ->orderBy('modulo')->orderBy('orden')->paginate(20)->withQueryString();
+        $q = $request->string('q')->trim()->limit(100)->toString();
+        $campos = Campo::query()->when(array_key_exists($modulo, Modulos::DEFINICIONES), fn ($consulta) => $consulta->where('modulo', $modulo))
+            ->when($q !== '', fn ($consulta) => $consulta->where('etiqueta', 'like', '%'.$q.'%'))
+            ->orderBy('modulo')->orderBy('orden')->orderBy('id')->paginate(20)->withQueryString();
 
-        return view('sistema.campos', compact('campos', 'modulo'));
+        return view('sistema.campos', compact('campos', 'modulo', 'q'));
     }
 
     public function formulario(?Campo $campo = null)
@@ -38,10 +41,15 @@ class CampoController extends Controller
         if ($request->input('seleccion_predeterminada') === [null]) {
             $request->merge(['seleccion_predeterminada' => []]);
         }
+        if (!$campo && $request->input('clave') === null && is_string($request->input('etiqueta'))) {
+            $clave = Str::slug($request->input('etiqueta'), '_');
+            $prefijo = strlen($clave) < 2 || !preg_match('/^[a-z]/', $clave) ? 'campo_' : '';
+            $request->merge(['clave' => substr($prefijo.$clave, 0, 60)]);
+        }
         $catalogo = collect(array_keys(CatalogoPermisos::AMBITOS))->flatMap(fn ($ambito) => CatalogoPermisos::disponibles($ambito))->unique()->all();
         $data = $request->validate([
-            'modulo' => ['required', Rule::in(array_keys(Modulos::DEFINICIONES))],
-            'clave' => ['required', 'regex:/^[a-z][a-z0-9_]{1,59}$/', Rule::unique('sistema_campos', 'clave')->where('modulo', $request->input('modulo'))->ignore($campo?->id)],
+            'modulo' => ['required', 'string', Rule::in(array_keys(Modulos::DEFINICIONES))],
+            'clave' => ['bail', 'required', 'string', 'regex:/^[a-z][a-z0-9_]{1,59}$/', Rule::unique('sistema_campos', 'clave')->where('modulo', $request->string('modulo')->toString())->ignore($campo?->id)],
             'etiqueta' => ['required', 'string', 'max:100'],
             'ayuda' => ['nullable', 'string', 'max:500'],
             'tipo' => ['required', Rule::in(array_keys(ValoresCampos::TIPOS))],
@@ -59,7 +67,7 @@ class CampoController extends Controller
             'opciones.*.etiqueta' => ['nullable', 'string', 'max:100'],
             'opciones.*.orden' => ['nullable', 'integer', 'between:0,65000'],
             'opciones.*.activo' => ['required', 'boolean'],
-        ]);
+        ], ['clave.unique' => 'Ya existe un campo con este identificador en el módulo. Cambia el identificador en Opciones avanzadas.']);
         if ($data['obligatorio'] && !$data['formulario']) {
             throw ValidationException::withMessages(['obligatorio' => 'Un campo obligatorio debe aparecer en el formulario.']);
         }

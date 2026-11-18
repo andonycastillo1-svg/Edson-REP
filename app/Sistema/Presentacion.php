@@ -9,6 +9,27 @@ class Presentacion
 {
     public function __construct(private Ajustes $ajustes) {}
 
+    public function tabla(string $modulo, array $config): array
+    {
+        [, , , $nativas] = Modulos::definicion($modulo);
+        $esenciales = Modulos::esenciales($modulo);
+        $columnas = [];
+        foreach ($nativas as $clave => $etiqueta) {
+            $ajustes = $config['columnas'][$clave] ?? [];
+            $esencial = in_array($clave, $esenciales, true);
+            $columnas[$clave] = [
+                'etiqueta' => $ajustes['etiqueta'] ?? $etiqueta,
+                'orden' => (int) ($ajustes['orden'] ?? count($columnas)),
+                'esencial' => $esencial,
+                'visible' => $esencial || (bool) ($ajustes['visible'] ?? true),
+                'filtro' => (bool) ($ajustes['filtro'] ?? false),
+                'buscar' => (bool) ($ajustes['buscar'] ?? ($config === [] && $esencial)),
+            ];
+        }
+
+        return Arr::sort($columnas, fn ($dato) => $dato['orden']);
+    }
+
     public function nativos(string $modulo): array
     {
         $config = $this->ajustes->leer('presentacion.'.$modulo, [])['formulario'] ?? [];

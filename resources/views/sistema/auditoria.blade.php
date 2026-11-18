@@ -1,31 +1,89 @@
-<x-sistema.pagina titulo="Bitácora de auditoría" :volver="route('sistema.configuracion')">
-    <x-sistema.panel>
-        <form method="GET" class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
-            @foreach(['actor' => 'ID del usuario', 'modulo' => 'Módulo', 'accion' => 'Acción', 'desde' => 'Desde', 'hasta' => 'Hasta'] as $key => $label)
-                <label class="text-sm font-semibold">{{ $label }}<input name="{{ $key }}" type="{{ match($key) { 'actor' => 'number', 'desde', 'hasta' => 'date', default => 'text' } }}" value="{{ request($key) }}" class="mt-1 w-full rounded-xl border-slate-300"></label>
-            @endforeach
-            <button class="rounded-xl bg-slate-100 px-4 py-2 font-semibold">Filtrar</button>
+<x-sistema.pagina titulo="Bitácora" :volver="route('sistema.configuracion')" configuracion
+                 descripcion="Revisa los cambios registrados, la fecha y la cuenta responsable.">
+    <x-sistema.panel titulo="Filtros de actividad">
+        <form method="GET" action="{{ route('sistema.auditoria') }}" class="space-y-3">
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <label for="bitacora-usuario" class="min-w-0 text-sm font-semibold">Usuario
+                    <select id="bitacora-usuario" name="actor" class="mt-1 w-full" aria-label="Usuario">
+                        <option value="">Todas las cuentas</option>
+                        @foreach($usuarios as $usuario)
+                            <option value="{{ $usuario->actor_id ?? 0 }}" @selected((string) ($datos['actor'] ?? '') === (string) ($usuario->actor_id ?? 0))>
+                                {{ $usuario->name ?? ($usuario->actor_id === null ? 'Sistema' : 'Cuenta histórica') }}
+                            </option>
+                        @endforeach
+                    </select>
+                </label>
+                <label for="bitacora-modulo" class="min-w-0 text-sm font-semibold">Módulo
+                    <select id="bitacora-modulo" name="modulo" class="mt-1 w-full" aria-label="Módulo">
+                        <option value="">Todos los módulos</option>
+                        @foreach($modulos as $modulo)
+                            <option value="{{ $modulo }}" @selected(($datos['modulo'] ?? null) === $modulo)>{{ \App\Sistema\Bitacora::modulo($modulo) }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label for="bitacora-accion" class="min-w-0 text-sm font-semibold">Acción
+                    <select id="bitacora-accion" name="accion" class="mt-1 w-full" aria-label="Acción">
+                        <option value="">Todas las acciones</option>
+                        @foreach($acciones as $accion)
+                            <option value="{{ $accion }}" @selected(($datos['accion'] ?? null) === $accion)>{{ \App\Sistema\Bitacora::accion($accion) }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="min-w-0 text-sm font-semibold">Desde
+                    <input name="desde" type="date" value="{{ $datos['desde'] ?? '' }}" class="mt-1 w-full">
+                </label>
+                <label class="min-w-0 text-sm font-semibold">Hasta
+                    <input name="hasta" type="date" value="{{ $datos['hasta'] ?? '' }}" class="mt-1 w-full">
+                </label>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button type="submit" class="ui-btn-primary">Aplicar filtros</button>
+                @if($datos)<a href="{{ route('sistema.auditoria') }}" class="ui-btn-secondary">Limpiar filtros</a>@endif
+            </div>
         </form>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-slate-100"><tr><th class="p-3">Fecha</th><th class="p-3">Usuario</th><th class="p-3">Evento</th><th class="p-3">Registro</th><th class="p-3">Resultado y cambios</th></tr></thead>
-                <tbody class="divide-y divide-slate-200">
+    </x-sistema.panel>
+
+    <x-sistema.panel titulo="Actividad registrada">
+        <p class="mb-3 text-sm">{{ $eventos->total() }} {{ $eventos->total() === 1 ? 'evento' : 'eventos' }}</p>
+        <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Actividad registrada">
+            <table class="ui-table">
+                <thead><tr><th scope="col">Fecha</th><th scope="col">Usuario</th><th scope="col">Actividad</th><th scope="col">Registro</th><th scope="col">Resultado</th></tr></thead>
+                <tbody>
                     @forelse($eventos as $evento)
+                        @php($cambios = \App\Sistema\Bitacora::detalles($evento->antes, $evento->despues, $evento->accion))
                         <tr>
-                            <td class="whitespace-nowrap p-3">{{ $evento->created_at }}</td>
-                            <td class="p-3">{{ $evento->actor_id ? '#'.$evento->actor_id : 'Consola / sistema' }}</td>
-                            <td class="p-3">{{ $evento->modulo }} / {{ $evento->accion }}</td>
-                            <td class="p-3">{{ $evento->registro }}</td>
-                            <td class="p-3"><details><summary class="cursor-pointer font-semibold text-blue-700">{{ $evento->resultado }}</summary>
-                                @if($evento->antes)<p class="mt-2 font-semibold">Antes</p><pre class="max-w-lg whitespace-pre-wrap break-all">{{ $evento->antes }}</pre>@endif
-                                @if($evento->despues)<p class="mt-2 font-semibold">Después</p><pre class="max-w-lg whitespace-pre-wrap break-all">{{ $evento->despues }}</pre>@endif
-                                <p class="text-xs text-slate-500">Solicitud {{ $evento->solicitud ?? 'de consola' }}</p>
-                            </details></td>
+                            <td class="whitespace-nowrap"><time datetime="{{ \Illuminate\Support\Carbon::parse($evento->created_at)->toDateTimeLocalString() }}">{{ \Illuminate\Support\Carbon::parse($evento->created_at)->format('d/m/Y H:i') }}</time></td>
+                            <td>{{ $usuarios->firstWhere('actor_id', $evento->actor_id)?->name ?? ($evento->actor_id === null ? 'Sistema' : 'Cuenta histórica') }}</td>
+                            <td>
+                                <p class="font-semibold">{{ \App\Sistema\Bitacora::accion($evento->accion) }}</p>
+                                <p class="text-xs">{{ \App\Sistema\Bitacora::modulo($evento->modulo) }}</p>
+                            </td>
+                            <td>{{ \App\Sistema\Bitacora::referencia($evento->registro) }}</td>
+                            <td>
+                                <span @class(['ui-badge', 'ui-badge-success' => $evento->resultado === 'aplicado', 'ui-badge-danger' => $evento->resultado === 'denegado'])>
+                                    {{ match ($evento->resultado) { 'aplicado' => 'Aplicado', 'denegado' => 'Denegado', default => 'Registrado' } }}
+                                </span>
+                                @if($cambios)
+                                    <details class="mt-2">
+                                        <summary class="cursor-pointer font-semibold text-blue-800">Ver cambios</summary>
+                                        <dl class="mt-1 space-y-1">
+                                            @foreach($cambios as [$etiqueta, $antes, $despues])
+                                                <div class="rounded bg-slate-50 p-2 text-xs">
+                                                    <dt class="font-bold">{{ $etiqueta }}</dt>
+                                                    <dd>Antes: {{ $antes }} <br> Después: {{ $despues }}</dd>
+                                                </div>
+                                            @endforeach
+                                        </dl>
+                                    </details>
+                                @endif
+                            </td>
                         </tr>
-                    @empty<tr><td colspan="5" class="p-3 text-slate-600">No hay eventos para estos filtros.</td></tr>@endforelse
+                    @empty
+                        <tr><td colspan="5"><p class="ui-empty-state">No hay eventos para estos filtros.</p></td></tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $eventos->links() }}</div>
+        <div class="mt-3">{{ $eventos->links() }}</div>
     </x-sistema.panel>
 </x-sistema.pagina>

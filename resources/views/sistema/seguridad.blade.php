@@ -1,6 +1,13 @@
-<x-sistema.pagina titulo="Roles y permisos" :volver="route('sistema.configuracion')">
-    <div class="grid gap-6 lg:grid-cols-2">
+<x-sistema.pagina titulo="Roles y permisos" :volver="route('sistema.configuracion')" configuracion>
+    @php($verCuentas = request('vista') === 'cuentas' || request()->filled('q') || old('formulario_seguridad') === 'cuenta')
+    <nav aria-label="Administración de acceso" class="sistema-pestanas">
+        <a href="{{ route('sistema.seguridad') }}" @unless($verCuentas) aria-current="page" @endunless>Roles</a>
+        <a href="{{ route('sistema.seguridad', ['vista' => 'cuentas']) }}" @if($verCuentas) aria-current="page" @endif>Cuentas y excepciones</a>
+    </nav>
+    @unless($verCuentas)
+    <div class="grid gap-4 lg:grid-cols-2">
         <x-sistema.panel titulo="Roles">
+            <p class="mb-2 text-sm">Selecciona un rol para administrar los permisos de sus cuentas.</p>
             <ul class="divide-y divide-slate-200">
                 @foreach($roles as $rol)
                     <li class="flex items-center justify-between gap-3 py-3">
@@ -10,8 +17,10 @@
                 @endforeach
             </ul>
         </x-sistema.panel>
-        <x-sistema.panel titulo="Crear o duplicar un rol">
-            <form method="POST" action="{{ route('sistema.rol.crear') }}" class="space-y-4">
+        <x-sistema.panel>
+            <details @if(old('ambito_operativo')) open @endif>
+                <summary class="sistema-desplegable">Crear o duplicar un rol</summary>
+            <form method="POST" action="{{ route('sistema.rol.crear') }}" class="mt-3 space-y-4">
                 @csrf
                 <label class="block text-sm font-semibold">Nombre<input name="nombre" value="{{ old('nombre') }}" required maxlength="50" class="mt-1 w-full rounded-xl border-slate-300"></label>
                 <label class="block text-sm font-semibold">Descripción<textarea name="descripcion" maxlength="500" rows="2" class="mt-1 w-full rounded-xl border-slate-300">{{ old('descripcion') }}</textarea></label>
@@ -29,19 +38,22 @@
                     </select>
                 </label>
                 <x-sistema.confirmacion />
-                <button class="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Crear rol</button>
+                <button type="submit" class="ui-btn-primary">Crear rol</button>
             </form>
+            </details>
         </x-sistema.panel>
     </div>
+    @else
     <x-sistema.panel titulo="Cuentas y permisos individuales">
         <form method="GET" class="mb-4 flex flex-wrap gap-2">
+            <input type="hidden" name="vista" value="cuentas">
             <input name="q" value="{{ $q }}" aria-label="Buscar por nombre o correo" placeholder="Nombre o correo" class="rounded-xl border-slate-300">
-            <button class="rounded-xl bg-slate-100 px-4 py-2 font-semibold">Buscar</button>
+            <button type="submit" class="ui-btn-secondary">Buscar cuenta</button>
         </form>
         <ul class="divide-y divide-slate-200">
             @forelse($usuarios as $usuario)
                 <li class="flex flex-wrap items-center justify-between gap-3 py-3">
-                    <a class="font-semibold text-blue-700" href="{{ route('sistema.usuario', $usuario) }}">{{ $usuario->name }} <span class="font-normal text-slate-500">#{{ $usuario->id }}</span></a>
+                    <a class="font-semibold text-blue-700" href="{{ route('sistema.usuario', $usuario) }}">{{ $usuario->name }} <span class="ml-1 break-all font-normal text-slate-600">{{ $usuario->email }}</span></a>
                     <span class="text-sm text-slate-600">{{ $usuario->role?->nombre ?? 'Sin rol' }} · {{ $usuario->acceso_activo ? 'Activa' : 'Inactiva' }}</span>
                 </li>
             @empty<li class="py-3 text-sm text-slate-500">Sin coincidencias.</li>@endforelse
@@ -50,9 +62,10 @@
     </x-sistema.panel>
     <x-sistema.panel>
         <details @if(old('name') || old('email') || old('role_id')) open @endif>
-            <summary class="cursor-pointer font-bold text-slate-900">Crear cuenta administrativa</summary>
-            <form method="POST" enctype="multipart/form-data" action="{{ route('sistema.usuario.crear') }}" class="mt-3 grid gap-4 sm:grid-cols-2">
+            <summary class="sistema-desplegable">Crear cuenta administrativa</summary>
+            <form method="POST" enctype="multipart/form-data" action="{{ route('sistema.usuario.crear') }}" class="mt-3 sistema-formulario">
                 @csrf
+                <input type="hidden" name="formulario_seguridad" value="cuenta">
                 <label class="text-sm font-semibold">Nombre<input name="name" value="{{ old('name') }}" maxlength="255" required class="mt-1 w-full rounded-xl border-slate-300"></label>
                 <label class="text-sm font-semibold">Correo electrónico<input name="email" type="email" value="{{ old('email') }}" maxlength="255" required class="mt-1 w-full rounded-xl border-slate-300"></label>
                 <label class="text-sm font-semibold">Rol
@@ -68,4 +81,5 @@
             </form>
         </details>
     </x-sistema.panel>
+    @endunless
 </x-sistema.pagina>
