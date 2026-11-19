@@ -49,7 +49,7 @@ class CatalogoPermisos
                 'exportar' => ["Exportar documentos de $recurso", 'Descargar los reportes o comprobantes propios del módulo.'],
                 'archivos' => ["Ver documentos de $recurso", 'Abrir archivos y comprobantes adjuntos.'],
                 'evidencias' => ["Adjuntar evidencias de $recurso", 'Cargar el documento firmado de la operación.'],
-                'campos_editar' => ["Editar campos de $recurso", 'Actualizar campos autorizados en la ficha de datos del módulo.'],
+                'campos_editar' => ["Editar campos de $recurso", 'Actualizar campos personalizados autorizados desde el módulo operativo.'],
                 'datos_exportar' => ["Exportar datos de $recurso", 'Descargar el listado de datos y los campos habilitados para exportación.'],
                 'datos_archivos' => ["Ver archivos personalizados de $recurso", 'Descargar archivos de campos personalizados en la ficha de datos.'],
                 default => ["Administrar $recurso", 'Usar la operación autorizada de este módulo.'],

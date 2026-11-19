@@ -1,77 +1,114 @@
-<x-sistema.pagina titulo="Personalización de formularios y tablas" :volver="route('sistema.configuracion')">
-    <x-sistema.panel :titulo="$definicion[0]">
-        <form method="GET" class="mb-5 flex flex-wrap gap-2">
-            <select name="modulo" aria-label="Módulo" class="rounded-xl border-slate-300">
-                @foreach(\App\Sistema\Modulos::DEFINICIONES as $key => $spec)<option value="{{ $key }}" @selected($modulo === $key)>{{ $spec[0] }}</option>@endforeach
-            </select>
-            <button class="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold">Cambiar módulo</button>
-        </form>
-        <form method="POST" action="{{ route('sistema.presentacion.guardar', $modulo) }}" class="space-y-5">
-            @csrf @method('PUT')
-            <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Configuración de columnas">
-                <table class="min-w-full text-left text-sm">
-                    <thead class="bg-slate-100"><tr><th class="p-3">Columna</th><th class="p-3">Etiqueta</th><th class="p-3">Orden</th><th class="p-3">Visible</th><th class="p-3">Filtro</th><th class="p-3">Búsqueda</th></tr></thead>
-                    <tbody class="divide-y divide-slate-200">
-                        @foreach($definicion[3] as $key => $etiqueta)
-                            @php($col = (array) old('columnas.'.$key, $presentacion['columnas'][$key] ?? []))
-                            <tr>
-                                <td class="p-3">{{ $etiqueta }}</td>
-                                <td class="p-3"><input name="columnas[{{ $key }}][etiqueta]" aria-label="Etiqueta de {{ $etiqueta }}" value="{{ $col['etiqueta'] ?? $etiqueta }}" maxlength="100" class="rounded-xl border-slate-300"></td>
-                                <td class="p-3"><input type="number" name="columnas[{{ $key }}][orden]" aria-label="Orden de {{ $etiqueta }}" value="{{ $col['orden'] ?? $loop->index }}" min="0" max="65000" class="w-20 rounded-xl border-slate-300"></td>
-                                @foreach(['visible' => true, 'filtro' => false, 'buscar' => false] as $flag => $default)
-                                    <td class="p-3">
-                                        @if($flag === 'visible' && in_array($key, \App\Sistema\Modulos::esenciales($modulo), true))
-                                            <input type="hidden" name="columnas[{{ $key }}][{{ $flag }}]" value="1">Siempre
-                                        @else
-                                            <input type="hidden" name="columnas[{{ $key }}][{{ $flag }}]" value="0">
-                                            <input type="checkbox" name="columnas[{{ $key }}][{{ $flag }}]" aria-label="{{ $flag }} · {{ $etiqueta }}" value="1" @checked($col[$flag] ?? $default)>
-                                        @endif
-                                    </td>
-                                @endforeach
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="grid gap-3 sm:grid-cols-3">
-                <label class="text-sm font-semibold">Registros por página
-                    <select name="pagina" class="mt-1 w-full rounded-xl border-slate-300">
-                        @foreach([10,15,20,30,50,100] as $numero)<option value="{{ $numero }}" @selected($numero === (int) old('pagina', $presentacion['pagina'] ?? 20))>{{ $numero }}</option>@endforeach
-                    </select>
-                </label>
-                <label class="text-sm font-semibold">Ordenar por
-                    <select name="ordenar" class="mt-1 w-full rounded-xl border-slate-300">
-                        @foreach($definicion[3] as $key => $etiqueta)<option value="{{ $key }}" @selected($key === old('ordenar', $presentacion['ordenar'] ?? $definicion[2]))>{{ $etiqueta }}</option>@endforeach
-                    </select>
-                </label>
-                <label class="text-sm font-semibold">Dirección
-                    <select name="direccion" class="mt-1 w-full rounded-xl border-slate-300">
-                        <option value="desc">Descendente</option><option value="asc" @selected(old('direccion', $presentacion['direccion'] ?? '') === 'asc')>Ascendente</option>
-                    </select>
-                </label>
-            </div>
-            @if($nativos)
-                <h3 class="font-bold">Campos nativos configurables</h3>
-                @foreach($nativos as $key => [$etiqueta])
-                    @php($campo = (array) old('formulario.'.$key, $presentacion['formulario'][$key] ?? []))
-                    <fieldset class="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-2">
-                        <legend class="font-semibold">{{ $etiqueta }}</legend>
-                        <label class="text-sm">Etiqueta<input name="formulario[{{ $key }}][etiqueta]" value="{{ $campo['etiqueta'] ?? $etiqueta }}" maxlength="100" class="mt-1 w-full rounded-xl border-slate-300"></label>
-                        <label class="text-sm">Ayuda<input name="formulario[{{ $key }}][ayuda]" value="{{ $campo['ayuda'] ?? '' }}" maxlength="500" class="mt-1 w-full rounded-xl border-slate-300"></label>
-                        <label class="text-sm">Orden<input type="number" name="formulario[{{ $key }}][orden]" value="{{ $campo['orden'] ?? $loop->index }}" min="0" class="mt-1 w-full rounded-xl border-slate-300"></label>
-                        <div class="flex flex-wrap items-center gap-2 text-sm">
-                            @foreach(['visible' => 'Visible', 'obligatorio' => 'Obligatorio para registros nuevos'] as $flag => $label)
-                                <x-sistema.casilla :name="'formulario['.$key.']['.$flag.']'" :id="'presentacion-'.$key.'-'.$flag" :marcada="$campo[$flag] ?? $flag === 'visible'">{{ $label }}</x-sistema.casilla>
-                            @endforeach
+@php
+    $retornoDatos = app(\App\Sistema\Modulos::class)->consultar(auth()->user(), $modulo)
+        ? route('sistema.datos.lista', $modulo) : route('sistema.datos');
+@endphp
+<x-sistema.pagina titulo="Presentación de formularios y tablas" descripcion="Estos cambios se aplican a todas las cuentas del módulo seleccionado."
+                 :volver="$desdeDatos ? $retornoDatos : route('sistema.configuracion')"
+                 :configuracion="!$desdeDatos">
+    @if($desdeDatos)<x-sistema.nav-datos :modulo="$modulo" configurar />@endif
+    <x-sistema.panel>
+        <x-sistema.elegir-modulo :modulos="\App\Sistema\Modulos::DEFINICIONES" :seleccionado="$modulo"
+                                 :accion="route('sistema.presentacion')" texto="Cambiar módulo" :origen="$desdeDatos ? 'datos' : null" />
+    </x-sistema.panel>
+
+    <form method="POST" action="{{ route('sistema.presentacion.guardar', $modulo) }}" class="space-y-4" data-presentacion>
+        @csrf @method('PUT')
+        <x-sistema.panel :titulo="'Tabla de '.$definicion[0]">
+            <p class="mb-3 text-sm">Ordena las columnas con las flechas o su posición. Las esenciales siempre se muestran. La búsqueda y los filtros se aplican a columnas visibles.</p>
+            <div class="space-y-2" data-lista-orden>
+                @foreach($columnas as $clave => $columna)
+                    @php
+                        $col = (array) old('columnas.'.$clave, $columna);
+                        $etiqueta = $definicion[3][$clave];
+                    @endphp
+                    <fieldset class="sistema-orden" data-fila-orden>
+                        <legend class="px-1 text-sm font-bold">{{ $etiqueta }}</legend>
+                        <div class="space-y-2">
+                            <label class="block max-w-md text-sm font-semibold">Etiqueta pública
+                                <input name="columnas[{{ $clave }}][etiqueta]" aria-label="Etiqueta de {{ $etiqueta }}" value="{{ $col['etiqueta'] ?? $etiqueta }}" maxlength="100" class="mt-1 w-full">
+                            </label>
+                            <div class="flex flex-wrap gap-1">
+                                @if($columna['esencial'])
+                                    <input type="hidden" name="columnas[{{ $clave }}][visible]" value="1">
+                                    <span class="ui-badge ui-badge-info">Siempre visible</span>
+                                @else
+                                    <x-sistema.casilla :name="'columnas['.$clave.'][visible]'" :id="'columna-visible-'.$clave" :marcada="$col['visible'] ?? true">Mostrar</x-sistema.casilla>
+                                @endif
+                                <x-sistema.casilla :name="'columnas['.$clave.'][filtro]'" :id="'columna-filtro-'.$clave" :marcada="$col['filtro'] ?? false">Permitir filtro</x-sistema.casilla>
+                                <x-sistema.casilla :name="'columnas['.$clave.'][buscar]'" :id="'columna-buscar-'.$clave" :marcada="$col['buscar'] ?? false">Incluir en búsqueda</x-sistema.casilla>
+                            </div>
                         </div>
+                        <x-sistema.control-orden :name="'columnas['.$clave.'][orden]'" :valor="$col['orden'] ?? $columna['orden']" :etiqueta="$etiqueta" />
                     </fieldset>
                 @endforeach
-            @endif
-            <div class="flex flex-wrap gap-3">
-                <button type="submit" class="ui-btn-primary">Guardar presentación</button>
-                <button type="submit" name="restaurar" value="1" class="ui-btn-secondary" data-confirmar="¿Restaurar la configuración de formularios y tablas de este módulo para todas las cuentas?">Restaurar valores predeterminados</button>
+                <p class="sr-only" role="status" data-orden-aviso></p>
             </div>
-            <p class="text-sm text-slate-600">Los campos personalizados se incorporan a la tabla si tienen habilitada esa opción y el usuario puede consultarlos.</p>
+
+            <fieldset class="mt-5 grid gap-3 sm:grid-cols-3">
+                <legend class="mb-2 font-semibold">Vista inicial de la consulta</legend>
+                <label for="pagina-datos" class="text-sm font-semibold">Registros por página
+                    <select id="pagina-datos" name="pagina" class="mt-1 w-full">
+                        @foreach([10, 15, 20, 30, 50, 100] as $numero)<option value="{{ $numero }}" @selected($numero === (int) old('pagina', $presentacion['pagina'] ?? 20))>{{ $numero }}</option>@endforeach
+                    </select>
+                </label>
+                <label for="orden-datos" class="text-sm font-semibold">Ordenar por
+                    <select id="orden-datos" name="ordenar" class="mt-1 w-full">
+                        @foreach($columnas as $clave => $columna)<option value="{{ $clave }}" @selected($clave === old('ordenar', $presentacion['ordenar'] ?? $definicion[2]))>{{ $columna['etiqueta'] }}</option>@endforeach
+                    </select>
+                </label>
+                <label for="direccion-datos" class="text-sm font-semibold">Sentido inicial
+                    <select id="direccion-datos" name="direccion" class="mt-1 w-full">
+                        <option value="asc" @selected(old('direccion', $presentacion['direccion'] ?? 'desc') === 'asc')>Ascendente</option>
+                        <option value="desc" @selected(old('direccion', $presentacion['direccion'] ?? 'desc') === 'desc')>Descendente</option>
+                    </select>
+                </label>
+            </fieldset>
+        </x-sistema.panel>
+
+        @if($formularios)
+            <x-sistema.panel>
+                <details @if($errors->has('formulario') || $errors->get('formulario.*')) open @endif>
+                    <summary class="sistema-desplegable">Campos del formulario de {{ $definicion[0] }}</summary>
+                    <p class="my-3 text-sm">Edita etiquetas y ayudas de los campos disponibles. Para exigir un campo en registros nuevos, déjalo visible.</p>
+                    <div class="space-y-2" data-lista-orden>
+                        @foreach($formularios as $clave => $original)
+                            @php
+                                $campo = (array) old('formulario.'.$clave, $original);
+                                $etiqueta = $nativos[$clave][0];
+                            @endphp
+                            <fieldset class="sistema-orden" data-fila-orden>
+                                <legend class="px-1 text-sm font-bold">{{ $etiqueta }}</legend>
+                                <div class="space-y-2">
+                                    <div class="sistema-formulario">
+                                        <label class="text-sm font-semibold">Etiqueta
+                                            <input name="formulario[{{ $clave }}][etiqueta]" value="{{ $campo['etiqueta'] ?? $etiqueta }}" maxlength="100" class="mt-1 w-full">
+                                        </label>
+                                        <label class="text-sm font-semibold">Ayuda
+                                            <input name="formulario[{{ $clave }}][ayuda]" value="{{ $campo['ayuda'] ?? '' }}" maxlength="500" class="mt-1 w-full">
+                                        </label>
+                                    </div>
+                                    <div class="flex flex-wrap gap-1">
+                                        <x-sistema.casilla :name="'formulario['.$clave.'][visible]'" :id="'form-visible-'.$clave" :marcada="$campo['visible'] ?? true">Mostrar</x-sistema.casilla>
+                                        <x-sistema.casilla :name="'formulario['.$clave.'][obligatorio]'" :id="'form-obligatorio-'.$clave" :marcada="$campo['obligatorio'] ?? false">Obligatorio en registros nuevos</x-sistema.casilla>
+                                    </div>
+                                </div>
+                                <x-sistema.control-orden :name="'formulario['.$clave.'][orden]'" :valor="$campo['orden'] ?? $original['orden']" :etiqueta="$etiqueta" />
+                            </fieldset>
+                        @endforeach
+                        <p class="sr-only" role="status" data-orden-aviso></p>
+                    </div>
+                </details>
+            </x-sistema.panel>
+        @endif
+        <button type="submit" class="ui-btn-primary">Guardar presentación</button>
+    </form>
+
+    <x-sistema.panel titulo="Restaurar presentación">
+        <p class="mb-3 text-sm">Vuelve a la configuración original de los formularios y listados de este módulo para todas las cuentas.</p>
+        <form method="POST" action="{{ route('sistema.presentacion.guardar', $modulo) }}"
+              data-confirmar="¿Restaurar la presentación de este módulo para todas las cuentas?">
+            @csrf @method('PUT')
+            <button type="submit" name="restaurar" value="1" class="ui-btn-secondary">Restaurar valores predeterminados</button>
         </form>
     </x-sistema.panel>
 </x-sistema.pagina>

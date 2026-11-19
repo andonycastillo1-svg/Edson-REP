@@ -127,9 +127,15 @@ class Modulos
         return route($nombre, $parametros);
     }
 
+    public function puedeEditarCampos(User $user, string $modulo): bool
+    {
+        return $this->consultar($user, $modulo)
+            && ($this->permisos->permite($user, $modulo.'.campos_editar') || $this->permisos->permite($user, $modulo.'.modificar'));
+    }
+
     public function editar(User $user, string $modulo, object $registro): bool
     {
-        if (!$this->permisos->permite($user, $modulo.'.campos_editar') && !$this->permisos->permite($user, $modulo.'.modificar')) {
+        if (!$this->puedeEditarCampos($user, $modulo)) {
             return false;
         }
 

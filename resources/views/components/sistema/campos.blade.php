@@ -1,4 +1,4 @@
-@props(['modulo', 'registro' => null, 'prefijo' => 'campos_personalizados', 'plantilla' => false, 'obligar' => true])
+@props(['modulo', 'registro' => null, 'prefijo' => 'campos_personalizados', 'plantilla' => false, 'obligar' => true, 'mostrarVacio' => false])
 @php
     $servicio = app(\App\Sistema\ValoresCampos::class);
     $usuario = auth()->user();
@@ -64,4 +64,7 @@
             </label>
         @endforeach
     </fieldset>
+    {{ $slot }}
+@elseif($mostrarVacio)
+    <p class="ui-empty-state">No hay campos editables disponibles para esta cuenta y este registro.</p>
 @endif

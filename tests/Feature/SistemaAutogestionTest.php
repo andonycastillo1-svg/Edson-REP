@@ -171,7 +171,7 @@ class SistemaAutogestionTest extends TestCase
         $this->post(route('admin.bodegas.store'), $data + ['campos_personalizados' => ['referencia' => 17]])->assertSessionHasNoErrors();
         $id = Bodega::where('nombre', 'Pruebas')->value('id');
         $this->get(route('sistema.datos.ficha', ['bodegas', $id]))->assertOk()->assertSee('17');
-        $this->put(route('sistema.datos.actualizar', ['bodegas', $id]), ['campos_personalizados' => ['referencia' => 24]])->assertSessionHasNoErrors();
+        $this->put(route('sistema.operacion.campos.actualizar', ['bodegas', $id]), ['campos_personalizados' => ['referencia' => 24]])->assertSessionHasNoErrors();
         $this->assertDatabaseHas('sistema_campo_historial', ['campo_id' => $campo->id, 'registro' => (string) $id, 'valor' => '17']);
         $this->putJson(route('sistema.campos.actualizar', $campo), array_replace($definicion, ['tipo' => 'texto']))->assertUnprocessable();
         $this->patch(route('sistema.campos.archivar', $campo))->assertRedirect();
@@ -184,8 +184,8 @@ class SistemaAutogestionTest extends TestCase
         $this->superadministrador();
         $this->post(route('sistema.campos.guardar'), $this->definicion())->assertSessionHasNoErrors();
         $campo = Campo::sole();
-        $this->put(route('sistema.datos.actualizar', ['bodegas', $this->principal]), ['campos_personalizados' => ['referencia' => 'Central-Privado']])->assertSessionHasNoErrors();
-        $this->put(route('sistema.datos.actualizar', ['bodegas', $this->regional]), ['campos_personalizados' => ['referencia' => 'Sucursal-Visible']])->assertSessionHasNoErrors();
+        $this->put(route('sistema.operacion.campos.actualizar', ['bodegas', $this->principal]), ['campos_personalizados' => ['referencia' => 'Central-Privado']])->assertSessionHasNoErrors();
+        $this->put(route('sistema.operacion.campos.actualizar', ['bodegas', $this->regional]), ['campos_personalizados' => ['referencia' => 'Sucursal-Visible']])->assertSessionHasNoErrors();
 
         $this->actingAs($this->operador)->get(route('sistema.datos.lista', ['modulo' => 'bodegas', 'campo' => [$campo->id => 'Sucursal-Visible']]))
             ->assertOk()->assertSee('Sucursal-Visible')->assertDontSee('Central-Privado');
@@ -265,7 +265,7 @@ class SistemaAutogestionTest extends TestCase
         $campo = Campo::sole();
         $formulario = ['campos_personalizados' => ['referencia' => UploadedFile::fake()->create('respaldo.pdf', 5, 'application/pdf')]];
         foreach ([$this->regional, $this->principal] as $bodega) {
-            $this->put(route('sistema.datos.actualizar', ['bodegas', $bodega]), $formulario)->assertSessionHasNoErrors();
+            $this->put(route('sistema.operacion.campos.actualizar', ['bodegas', $bodega]), $formulario)->assertSessionHasNoErrors();
         }
         $ruta = fn ($bodega) => route('sistema.datos.archivo', ['bodegas', $bodega, $campo]);
         $this->actingAs($this->operador)->get($ruta($this->regional))->assertForbidden();
@@ -287,7 +287,7 @@ class SistemaAutogestionTest extends TestCase
         $this->post(route('sistema.campos.guardar'), $this->definicion(['tipo' => 'lista', 'opciones' => $opciones]))->assertSessionHasNoErrors();
         $campo = Campo::sole()->load('opciones');
         $primera = $campo->opciones->first();
-        $this->put(route('sistema.datos.actualizar', ['bodegas', $this->regional]), ['campos_personalizados' => ['referencia' => $primera->id]])->assertSessionHasNoErrors();
+        $this->put(route('sistema.operacion.campos.actualizar', ['bodegas', $this->regional]), ['campos_personalizados' => ['referencia' => $primera->id]])->assertSessionHasNoErrors();
         $this->put(route('sistema.campos.actualizar', $campo), $this->definicion([
             'tipo' => 'lista', 'opciones' => [['id' => $primera->id, 'etiqueta' => 'Primera histórica', 'activo' => false]],
         ]))->assertSessionHasNoErrors();
@@ -314,6 +314,91 @@ class SistemaAutogestionTest extends TestCase
             ->assertOk()->assertSee('Nombre visible')->assertDontSee('Central');
         $this->actingAs($this->super)->put(route('sistema.presentacion.guardar', 'bodegas'), ['restaurar' => true])->assertSessionHasNoErrors();
         $this->get(route('admin.bodegas.create'))->assertOk()->assertSee('Ubicación')->assertDontSee('Dirección verificable');
+    }
+
+    public function test_consulta_de_solo_lectura_conserva_edicion_autorizada_en_operaciones(): void
+    {
+        $this->superadministrador();
+        $this->post(route('sistema.campos.guardar'), $this->definicion([
+            'clave' => '', 'etiqueta' => 'Ubicación de revisión',
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame('ubicacion_de_revision', Campo::sole()->clave);
+        $registro = ['bodegas', $this->regional];
+        $ficha = route('sistema.datos.ficha', $registro);
+        $editor = route('sistema.operacion.campos.editar', $registro);
+        $cambio = ['campos_personalizados' => ['ubicacion_de_revision' => 'Estante norte']];
+
+        $this->get($ficha)->assertOk()->assertSee('Información del registro')
+            ->assertDontSee('Guardar campos')->assertDontSee($editor);
+        $this->putJson($ficha, $cambio)->assertMethodNotAllowed();
+        $this->assertDatabaseCount('sistema_campo_valores', 0);
+        $this->get($editor)->assertOk()->assertSee('Guardar campos');
+        $this->put(route('sistema.operacion.campos.actualizar', $registro), $cambio)->assertSessionHasNoErrors();
+        $this->get($ficha)->assertOk()->assertSee('Estante norte')->assertDontSee('Guardar campos');
+
+        $this->actingAs($this->operador)->get($ficha)->assertOk()->assertSee('Estante norte');
+        $this->get($editor)->assertForbidden();
+        $this->get(route('sistema.presentacion'))->assertForbidden();
+    }
+
+    public function test_consulta_y_csv_respetan_filtros_columnas_y_orden_sin_guardar_preferencias_individuales(): void
+    {
+        $this->superadministrador();
+        Bodega::create(['nombre' => 'Zona Alfa', 'tipo' => 'Regional', 'ubicacion' => 'Dato reservado para tabla']);
+        Bodega::create(['nombre' => 'Zona Zeta', 'tipo' => 'Regional']);
+        $this->get(route('sistema.datos.lista', ['modulo' => 'bodegas', 'q' => 'Zona']))->assertOk()
+            ->assertSee('Zona Alfa')->assertDontSee('Central');
+
+        $this->put(route('sistema.presentacion.guardar', 'bodegas'), [
+            'pagina' => 10, 'ordenar' => 'nombre', 'direccion' => 'asc',
+            'columnas' => [
+                'nombre' => ['etiqueta' => 'Nombre público', 'orden' => 0, 'visible' => false, 'buscar' => true, 'filtro' => false],
+                'tipo' => ['orden' => 1, 'visible' => true, 'buscar' => false, 'filtro' => true],
+                'ubicacion' => ['orden' => 2, 'visible' => false, 'buscar' => true, 'filtro' => true],
+            ],
+        ])->assertSessionHasNoErrors();
+        $this->put(route('sistema.usuario.permisos', $this->super), [
+            'reglas' => ['bodegas.datos_exportar' => 'permitir'], 'current_password' => 'password',
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($this->super->fresh());
+
+        $criterios = ['modulo' => 'bodegas', 'q' => 'Zona', 'nativo' => ['tipo' => 'Regional']];
+        $this->get(route('sistema.datos.lista', $criterios))->assertOk()
+            ->assertSeeInOrder(['Zona Alfa', 'Zona Zeta'])->assertSee('Nombre público')
+            ->assertDontSee('Dato reservado para tabla');
+        $this->get(route('sistema.datos.lista', $criterios + ['orden' => 'nombre', 'direccion' => 'desc']))->assertOk()
+            ->assertSeeInOrder(['Zona Zeta', 'Zona Alfa']);
+        $csv = $this->get(route('sistema.datos.exportar', $criterios + ['orden' => 'nombre', 'direccion' => 'desc']))
+            ->assertDownload('bodegas.csv')->streamedContent();
+        $this->assertStringContainsString('Nombre público', $csv);
+        $this->assertStringNotContainsString('Dato reservado para tabla', $csv);
+        $this->assertStringNotContainsString('Central', $csv);
+        $this->assertLessThan(strpos($csv, 'Zona Alfa'), strpos($csv, 'Zona Zeta'));
+        $this->getJson(route('sistema.datos.lista', ['modulo' => 'bodegas', 'orden' => 'ubicacion']))->assertUnprocessable();
+        $this->getJson(route('sistema.datos.lista', ['modulo' => 'bodegas', 'nativo' => ['ubicacion' => 'Dato']]))->assertUnprocessable();
+        $this->get(route('sistema.datos.lista', $criterios))->assertOk()->assertSeeInOrder(['Zona Alfa', 'Zona Zeta']);
+    }
+
+    public function test_bitacora_ofrece_solo_filtros_del_alcance_y_resume_los_cambios(): void
+    {
+        $this->superadministrador();
+        $this->put(route('sistema.usuario.permisos', $this->operador), [
+            'reglas' => ['sistema.auditoria' => 'permitir'], 'current_password' => 'password',
+        ])->assertSessionHasNoErrors();
+        $bitacora = app(\App\Sistema\Auditoria::class);
+        $bitacora->registrar('configuracion', 'parametros', 'general', ['empresa' => 'Anterior'], [
+            'empresa' => 'Empresa de auditoría', 'ruta_interna' => 'ruta-privada-sintetica',
+        ]);
+        $fecha = now()->toDateString();
+        $this->get(route('sistema.auditoria', ['actor' => $this->super->id, 'accion' => 'parametros', 'desde' => $fecha, 'hasta' => $fecha]))
+            ->assertOk()->assertSee('Cambiar parámetros generales')->assertSee('Empresa de auditoría')
+            ->assertSee('Anterior')->assertDontSee('ruta-privada-sintetica');
+        $this->getJson(route('sistema.auditoria', ['desde' => $fecha, 'hasta' => now()->subDay()->toDateString()]))->assertUnprocessable();
+
+        $this->actingAs($this->operador->fresh());
+        $bitacora->registrar('bodegas', 'guardar_campo', $this->regional->id);
+        $this->get(route('sistema.auditoria'))->assertOk()->assertSee('Guardar valor de un campo')
+            ->assertDontSee('Empresa de auditoría')->assertDontSee('Cambiar acceso de una cuenta');
     }
 
     public function test_notificaciones_configurables_filtran_sin_ampliar_y_seguridad_sigue_activa(): void

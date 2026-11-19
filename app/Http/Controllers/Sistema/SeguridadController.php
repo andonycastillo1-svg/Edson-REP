@@ -133,7 +133,7 @@ class SeguridadController extends Controller
             $this->cambiarReglas('usuario', $usuario->id, $usuario->role?->ambito() ?? 0, $data['reglas'] ?? [], $this->permisos->reglasUsuario($usuario));
         });
 
-        return back()->with('ok', 'Permisos individuales actualizados.');
+        return redirect()->to(route('sistema.usuario', $usuario).'#permisos')->with('ok', 'Permisos individuales actualizados.');
     }
 
     public function estadoCuenta(Request $request, User $usuario)
@@ -143,7 +143,7 @@ class SeguridadController extends Controller
         ]);
         $this->seguridad->cambiar($request->user(), $data['current_password'], fn () => $this->seguridad->activarCuenta(User::findOrFail($usuario->id), (bool) $data['activo']));
 
-        return back()->with('ok', 'Estado de la cuenta actualizado.');
+        return redirect()->to(route('sistema.usuario', $usuario).'#seguridad')->with('ok', 'Estado de la cuenta actualizado.');
     }
 
     public function superadministrador(Request $request, User $usuario)

@@ -5,4 +5,7 @@
     </label>
     <label class="text-sm font-semibold">Orden<input type="number" name="opciones[{{ $i }}][orden]" value="{{ $opcion['orden'] ?? 0 }}" min="0" max="65000" class="mt-1 w-full rounded-xl border-slate-300"></label>
     <x-sistema.casilla :name="'opciones['.$i.'][activo]'" :id="'opcion-activa-'.$i" :marcada="$opcion['activo'] ?? true">Opción activa</x-sistema.casilla>
+    @if(empty($opcion['id']))
+        <button type="button" data-quitar-opcion class="text-left text-xs font-semibold text-rose-800 underline sm:col-span-4">Quitar opción nueva</button>
+    @endif
 </div>

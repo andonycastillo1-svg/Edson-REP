@@ -1,17 +1,18 @@
-<x-sistema.pagina :titulo="'Cuenta · '.$usuario->name" :volver="route('sistema.seguridad')">
+<x-sistema.pagina :titulo="'Cuenta · '.$usuario->name" :volver="route('sistema.seguridad')" configuracion>
     <div class="flex flex-wrap items-center gap-2 text-sm">
         <span @class(['ui-badge', 'ui-badge-success' => $usuario->acceso_activo, 'ui-badge-danger' => !$usuario->acceso_activo])>{{ $usuario->acceso_activo ? 'Cuenta activa' : 'Cuenta inactiva' }}</span>
         <span class="ui-badge ui-badge-info">{{ $rol?->nombre ?? 'Sin rol' }}</span>
         @if($super)<span class="ui-badge ui-badge-warning">Superadministrador</span>@endif
     </div>
 
-    <nav aria-label="Apartados de la cuenta" class="flex flex-wrap gap-2">
-        <a href="#informacion-general" class="ui-btn-secondary">Información general</a>
-        <a href="#permisos" class="ui-btn-secondary">Permisos</a>
-        <a href="#seguridad" class="ui-btn-secondary">Seguridad</a>
+    <div data-pestanas data-pestana-inicial="{{ old('panel_cuenta', '#informacion-general') }}" class="space-y-4">
+    <nav aria-label="Apartados de la cuenta" class="sistema-pestanas">
+        <a href="#informacion-general" data-pestana>Información general</a>
+        <a href="#permisos" data-pestana>Permisos</a>
+        <a href="#seguridad" data-pestana>Seguridad</a>
     </nav>
 
-    <x-sistema.panel titulo="Información general" id="informacion-general" class="scroll-mt-20">
+    <x-sistema.panel titulo="Información general" id="informacion-general" class="scroll-mt-20" data-panel-pestana>
         <form id="cuenta-acceso" method="POST" action="{{ route('sistema.usuario.acceso', $usuario) }}" class="grid gap-4 sm:grid-cols-2">
             @csrf @method('PUT')
             <label class="text-sm font-semibold">Nombre<input name="name" value="{{ old('name', $usuario->name) }}" maxlength="255" required class="mt-1 w-full"></label>
@@ -42,16 +43,17 @@
         </form>
     </x-sistema.panel>
 
-    <x-sistema.panel titulo="Permisos" id="permisos" class="scroll-mt-20">
+    <x-sistema.panel titulo="Permisos" id="permisos" class="scroll-mt-20" data-panel-pestana>
         <form method="POST" action="{{ route('sistema.usuario.permisos', $usuario) }}" class="space-y-4">
             @csrf @method('PUT')
+            <input type="hidden" name="panel_cuenta" value="#permisos">
             <x-sistema.reglas :catalogo="$catalogo" :reglas="$reglas" :efectivos="$efectivos" individual />
             <x-sistema.confirmacion />
             <button type="submit" class="ui-btn-primary">Guardar permisos</button>
         </form>
     </x-sistema.panel>
 
-    <x-sistema.panel titulo="Seguridad" id="seguridad" class="scroll-mt-20">
+    <x-sistema.panel titulo="Seguridad" id="seguridad" class="scroll-mt-20" data-panel-pestana>
         <div class="grid gap-5 lg:grid-cols-2">
             <section class="space-y-3">
                 <h3 class="font-semibold">Contraseña de la cuenta</h3>
@@ -70,6 +72,7 @@
                 <form method="POST" action="{{ route('sistema.usuario.estado', $usuario) }}" class="space-y-3"
                       data-confirmar="{{ $usuario->acceso_activo ? '¿Desactivar esta cuenta?' : '¿Reactivar esta cuenta?' }}">
                     @csrf @method('PUT')
+                    <input type="hidden" name="panel_cuenta" value="#seguridad">
                     <input type="hidden" name="activo" value="{{ $usuario->acceso_activo ? 0 : 1 }}">
                     <x-sistema.confirmacion />
                     <button type="submit" class="{{ $usuario->acceso_activo ? 'ui-btn-danger' : 'ui-btn-primary' }}">{{ $usuario->acceso_activo ? 'Desactivar cuenta' : 'Reactivar cuenta' }}</button>
@@ -90,4 +93,5 @@
             @endif
         </div>
     </x-sistema.panel>
+    </div>
 </x-sistema.pagina>
