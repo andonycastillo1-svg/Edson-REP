@@ -45,6 +45,8 @@
                    class="w-full px-4 py-3">
         </div>
 
+        <x-sistema.campos modulo="inventario" :obligar="false" />
+
         <div class="flex flex-col justify-end gap-3 pt-4 sm:flex-row">
             <a href="{{ route($showRoute, $bodega->id) }}"
                class="ui-btn-secondary">
@@ -54,7 +56,6 @@
                 Registrar entrada
             </button>
         </div>
-        <x-sistema.campos modulo="inventario" :obligar="false" />
     </form>
 </div>
 @endsection

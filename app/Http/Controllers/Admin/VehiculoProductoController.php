@@ -6,6 +6,8 @@ use App\Sistema\ValoresCampos;
 use App\Sistema\Presentacion;
 use App\Sistema\Auditoria;
 use App\Http\Controllers\Controller;
+use App\Sistema\ConsultaCampos;
+use App\Sistema\Permisos;
 use App\Services\NotificacionService;
 use App\Models\AlertaReemplazo;
 use App\Models\AsignacionVehiculo;
@@ -40,7 +42,7 @@ class VehiculoProductoController extends Controller
             ->orderBy('placa')
             ->get();
 
-        $asignaciones = VehiculoProductoAsignacion::with([
+        $consulta = VehiculoProductoAsignacion::with([
                 'vehiculo',
                 'producto',
                 'bodega',
@@ -53,9 +55,16 @@ class VehiculoProductoController extends Controller
             ])
             ->when($vehiculoVin, fn ($query) => $query->where('vehiculo_vin', $vehiculoVin))
             ->latest('fecha')
-            ->latest('id')
-            ->paginate(20)
-            ->withQueryString();
+            ->latest('id');
+        if ($request->filled('campo') && $visibleBodegas !== null) {
+            $consulta->whereIn('bodega_id', $visibleBodegas);
+        }
+        app(ConsultaCampos::class)->filtrar($consulta, $request, 'refacciones');
+        $asignaciones = $consulta->paginate(20)->withQueryString();
+        $registrosVisibles = $asignaciones->getCollection()->filter(
+            fn ($registro) => $visibleBodegas === null || in_array((int) $registro->bodega_id, $visibleBodegas, true)
+        );
+        $tablaCampos = app(Presentacion::class)->operativa('refacciones', $usuario, $registrosVisibles->pluck('id'));
 
         $inventariosQuery = Inventario::with(['producto', 'bodega'])
             ->disponiblesAgrupados()
@@ -74,8 +83,17 @@ class VehiculoProductoController extends Controller
         $inventarios = $inventariosQuery->get();
         $bodegas = $bodegasQuery->get();
 
+        $permisos = app(Permisos::class);
+        $puedeSubirFirmados = $permisos->ruta($usuario, 'admin.vehiculos.productos.subir_pdf_firmado');
+        $puedeVerFirmados = $permisos->ruta($usuario, 'admin.vehiculos.productos.ver_pdf_firmado');
+        $puedeCerrar = $permisos->ruta($usuario, 'admin.vehiculos.productos.cerrar');
+
         return view('admin.vehiculos.productos.index', compact(
             'asignaciones',
+            'tablaCampos',
+            'puedeSubirFirmados',
+            'puedeVerFirmados',
+            'puedeCerrar',
             'vehiculos',
             'vehiculo',
             'vehiculoVin',

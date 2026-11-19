@@ -47,10 +47,14 @@ class ValoresCampos
             return collect();
         }
 
-        return DB::table('sistema_campo_valores')->whereIn('campo_id', $campos->pluck('id'))->whereIn('registro', collect($registros)->map(fn ($id) => (string) $id))
-            ->get()->groupBy('registro')->map(fn (Collection $items) => $items->mapWithKeys(
-                fn ($item) => [$item->campo_id => json_decode($item->valor, true, flags: JSON_THROW_ON_ERROR)]
-            ));
+        $ids = collect($registros)->map(fn ($id) => (string) $id)->uniqueStrict();
+        $camposIds = $campos->pluck('id');
+
+        return $ids->chunk(500)->flatMap(fn ($grupo) => DB::table('sistema_campo_valores')
+            ->whereIn('campo_id', $camposIds)->whereIn('registro', $grupo)->get()
+        )->groupBy('registro')->map(fn (Collection $items) => $items->mapWithKeys(
+            fn ($item) => [$item->campo_id => json_decode($item->valor, true, flags: JSON_THROW_ON_ERROR)]
+        ));
     }
 
     public function preparar(Request $request, string $modulo, bool $nuevo, ?string $registro = null, ?array $entrada = null): array

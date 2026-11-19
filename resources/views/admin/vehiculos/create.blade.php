@@ -43,6 +43,8 @@
             </select>
         </div>
 
+        <x-sistema.campos modulo="vehiculos" />
+
         <div class="pt-4 flex justify-end gap-3">
             <a href="{{ route('admin.vehiculos.index') }}" class="ui-btn-secondary">
                 Cancelar
@@ -52,7 +54,6 @@
                 Guardar
             </button>
         </div>
-        <x-sistema.campos modulo="vehiculos" />
     </form>
 </div>
 @endsection

@@ -246,6 +246,7 @@
 <div class="ui-panel w-full p-6 md:p-8">
     <x-internal-navigation :back-url="route('dashboard')" />
     <x-sistema.enlace-datos modulo="vehiculos" />
+    <x-sistema.consulta-campos :tabla="$tablaCampos" />
 
     <div class="veh-wrap">
 
@@ -258,9 +259,12 @@
                 </p>
             </div>
 
-            <div class="veh-actions-top">                <a href="{{ route('admin.vehiculos.asignaciones.index') }}" class="veh-btn veh-btn-primary">
+            <div class="veh-actions-top">
+                @rutaDisponible('admin.vehiculos.asignaciones.index')
+                <a href="{{ route('admin.vehiculos.asignaciones.index') }}" class="veh-btn veh-btn-primary">
                     Asignaciones
                 </a>
+                @endrutaDisponible
 
                 @rutaDisponible('admin.vehiculos.create')
                 <a href="{{ route('admin.vehiculos.create') }}" class="veh-btn veh-btn-success">
@@ -280,6 +284,7 @@
                             <th>VIN</th>
                             <th>Modelo</th>
                             <th>Estado</th>
+                            <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
                             <th class="text-center">Acciones</th>
                         </tr>
                     </thead>
@@ -332,6 +337,7 @@
                                     </span>
                                 </td>
 
+                                <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$vehiculo->vin" />
                                 <td>
                                     <div class="veh-row-actions">
                                         @rutaDisponible('admin.vehiculos.edit')
@@ -358,7 +364,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6">
+                                <td colspan="{{ 6 + $tablaCampos['campos']->count() }}">
                                     <div class="veh-empty">
                                         No hay vehículos registrados.
                                     </div>

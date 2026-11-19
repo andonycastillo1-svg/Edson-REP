@@ -319,6 +319,7 @@
   <div class="tras-container">
     <x-internal-navigation :back-url="route('dashboard')" />
     <x-sistema.enlace-datos modulo="traslados" />
+    <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['estado', 'origen', 'destino']" />
 
 
     <div class="tras-header">
@@ -346,6 +347,7 @@
 
     <div class="filter-card">
       <form method="GET" class="filter-grid">
+        <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
         <div>
           <label class="field-label">Estado</label>
           <select name="estado" class="field-control">
@@ -410,6 +412,7 @@
               <th style="width: 130px;">Estado</th>
               <th>Origen → Destino</th>
               <th style="width: 210px;">Creado</th>
+              <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
               <th style="width: 110px; text-align: right;">Acción</th>
             </tr>
           </thead>
@@ -452,6 +455,7 @@
                   <div class="date-sub">Por: {{ optional($op->creador)->name ?? '—' }}</div>
                 </td>
 
+                <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$op->id" />
                 <td style="text-align: right;">
                   <a href="{{ route($routePrefix . '.operaciones.traslados.show', $op) }}" class="btn-view">
                     Ver
@@ -460,7 +464,7 @@
               </tr>
             @empty
               <tr>
-                <td colspan="5" class="empty-row">
+                <td colspan="{{ 5 + $tablaCampos['campos']->count() }}" class="empty-row">
                   No hay solicitudes registradas.
                 </td>
               </tr>

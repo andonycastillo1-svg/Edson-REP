@@ -30,6 +30,12 @@
                 <label for="orden-registros" class="min-w-0 text-sm font-semibold">Ordenar por
                     <select id="orden-registros" name="orden" class="mt-1 w-full">
                         @foreach($columnas as $clave => $columna)<option value="{{ $clave }}" @selected($orden === $clave)>{{ $columna['etiqueta'] }}</option>@endforeach
+                        @foreach($distribucion as $columna)
+                            @if($columna['campo']?->ordenable())
+                                @php $claveOrden = 'campo_'.$columna['clave']; @endphp
+                                <option value="{{ $claveOrden }}" @selected($orden === $claveOrden)>{{ $columna['etiqueta'] }}</option>
+                            @endif
+                        @endforeach
                     </select>
                 </label>
                 <label for="sentido-registros" class="min-w-0 text-sm font-semibold">Sentido
@@ -55,24 +61,7 @@
                                 @endif
                             </label>
                         @endforeach
-                        @foreach($filtros as $campo)
-                            <label class="min-w-0 text-sm font-semibold">{{ $campo->etiqueta }}
-                                @if(in_array($campo->tipo, ['lista', 'multiple'], true))
-                                    <select name="campo[{{ $campo->id }}]" aria-label="{{ $campo->etiqueta }}" class="mt-1 w-full">
-                                        <option value="">Todas las opciones</option>
-                                        @foreach($campo->opciones as $opcion)<option value="{{ $opcion->id }}" @selected(request('campo.'.$campo->id) == $opcion->id)>{{ $opcion->etiqueta }}</option>@endforeach
-                                    </select>
-                                @elseif(in_array($campo->tipo, ['casilla', 'booleano'], true))
-                                    <select name="campo[{{ $campo->id }}]" aria-label="{{ $campo->etiqueta }}" class="mt-1 w-full">
-                                        <option value="">Cualquiera</option>
-                                        <option value="1" @selected(request('campo.'.$campo->id) === '1')>Sí</option>
-                                        <option value="0" @selected(request('campo.'.$campo->id) === '0')>No</option>
-                                    </select>
-                                @else
-                                    <input name="campo[{{ $campo->id }}]" value="{{ request('campo.'.$campo->id) }}" maxlength="190" class="mt-1 w-full">
-                                @endif
-                            </label>
-                        @endforeach
+                        <x-sistema.filtros-campos :filtros="$filtros" />
                     </div>
                 </details>
             @endif
@@ -90,17 +79,18 @@
                 <thead><tr>
                     @foreach($distribucion as $columna)
                         @php
-                            $ordenada = !$columna['campo'] && $columna['clave'] === $orden;
+                            $claveOrden = $columna['campo'] ? 'campo_'.$columna['clave'] : $columna['clave'];
+                            $ordenada = $claveOrden === $orden;
                             $sentido = $ordenada && $direccion === 'asc' ? 'desc' : 'asc';
                         @endphp
                         <th scope="col" @if($ordenada) aria-sort="{{ $direccion === 'asc' ? 'ascending' : 'descending' }}" @endif>
-                            @if($operativa || $columna['campo'])
+                            @if($operativa || ($columna['campo'] && !$columna['campo']->ordenable()))
                                 {{ $columna['etiqueta'] }}
                             @else
                                 <a class="inline-flex min-h-8 items-center gap-1 rounded text-blue-900 hover:underline"
                                    data-orden-columna="{{ $ordenada ? $direccion : '' }}"
                                    aria-label="Ordenar por {{ $columna['etiqueta'] }}, {{ $sentido === 'asc' ? 'ascendente' : 'descendente' }}"
-                                   href="{{ route('sistema.datos.lista', ['modulo' => $modulo, ...$criterios, 'orden' => $columna['clave'], 'direccion' => $sentido]) }}">
+                                   href="{{ route('sistema.datos.lista', ['modulo' => $modulo, ...$criterios, 'orden' => $claveOrden, 'direccion' => $sentido]) }}">
                                     {{ $columna['etiqueta'] }}
                                 </a>
                             @endif

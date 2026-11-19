@@ -507,13 +507,17 @@
             </div>
 
             <div class="vp-top-actions">
+                @rutaDisponible('admin.vehiculos.asignaciones.index')
                 <a class="vp-btn vp-btn-light" href="{{ route('admin.vehiculos.asignaciones.index') }}">
                     ← Asignaciones de vehículos
                 </a>
+                @endrutaDisponible
 
+                @rutaDisponible('admin.vehiculos.index')
                 <a class="vp-btn vp-btn-light" href="{{ route('admin.vehiculos.index') }}">
                     Vehículos
                 </a>
+                @endrutaDisponible
             </div>
         </div>
 
@@ -603,12 +607,13 @@
                     <x-sistema.campos-nativos modulo="refacciones" />
                 </div>
 
+                <x-sistema.campos modulo="refacciones" />
+
                 <div class="vp-form-actions">
                     <button class="vp-btn vp-btn-primary" type="submit">
                         Asignar producto/refacción
                     </button>
                 </div>
-                <x-sistema.campos modulo="refacciones" />
     </form>
             @endrutaDisponible
         </div>
@@ -623,6 +628,7 @@
                 </div>
 
                 <form method="GET" action="{{ route('admin.vehiculos.productos.index') }}" class="vp-filter-form">
+                    <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
                     <select name="vehiculo_vin">
                         <option value="">Todos los vehículos</option>
 
@@ -637,6 +643,7 @@
                         Filtrar
                     </button>
                 </form>
+                <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['vehiculo_vin']" />
             </div>
 
             <div class="vp-list">
@@ -652,6 +659,7 @@
                     @endphp
 
                     <div class="vp-item">
+                        <x-sistema.detalle-campos :tabla="$tablaCampos" :registro="$a->id" />
                         <div class="vp-item-summary">
                             <div>
                                 <div class="vp-main-text">
@@ -699,9 +707,11 @@
                                     Ver detalle
                                 </button>
 
+                                @if($puedeGestionarPdfsFirmadosVehiculo && ($puedeSubirFirmados || $puedeVerFirmados))
                                 <button type="button" class="vp-small-btn" onclick="toggleDetalleProducto('pdfs-producto-{{ $a->id }}')">
                                     PDFs firmados
                                 </button>
+                                @endif
 
                                 @rutaDisponible('admin.vehiculos.productos.pdf_asignacion')
                                 <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.pdf_asignacion', $a) }}" target="_blank" rel="noopener noreferrer">
@@ -717,7 +727,7 @@
                                     @endrutaDisponible
                                 @endunless
 
-                                @if($a->activa)
+                                @if($a->activa && $puedeCerrar)
                                     <button type="button" class="vp-small-btn vp-small-btn-danger" onclick="toggleDetalleProducto('cerrar-producto-{{ $a->id }}')">
                                         Retirar / cerrar
                                     </button>
@@ -779,69 +789,39 @@
                             </div>
                         </div>
 
+                        @if($puedeGestionarPdfsFirmadosVehiculo && ($puedeSubirFirmados || $puedeVerFirmados))
                         <div id="pdfs-producto-{{ $a->id }}" class="vp-close-panel">
                             <div class="vp-close-title">PDFs firmados del producto/refacción</div>
-                            <div class="vp-close-subtitle">
-                                Genera la hoja, fírmala y carga aquí el PDF final para conservar la constancia.
-                            </div>
-
-                            @if($puedeGestionarPdfsFirmadosVehiculo)
-                                <div class="vp-close-form">
-                                    @rutaDisponible('admin.vehiculos.productos.subir_pdf_firmado')
-                                    <form method="POST" action="{{ route('admin.vehiculos.productos.subir_pdf_firmado', $a) }}" enctype="multipart/form-data">
-                                        @csrf
-
-                                        <input type="hidden" name="tipo_documento" value="asignacion_firmada">
-                                        <input type="file" name="archivo" accept="application/pdf,.pdf" required>
-
-                                        <button class="vp-btn vp-btn-primary" type="submit">
-                                            {{ $pdfAsignacionFirmado ? 'Reemplazar asignación firmada' : 'Subir asignación firmada' }}
-                                        </button>
-
-                                        @if($pdfAsignacionFirmado)
-                                            <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfAsignacionFirmado) }}" target="_blank" rel="noopener noreferrer">
-                                                Ver firmado: {{ $pdfAsignacionFirmado->nombre_original ?? 'PDF firmado' }}
-                                            </a>
-                                        @endif
-                                    </form>
-                                    @endrutaDisponible
-
-                                    @unless($a->activa)
-                                        @rutaDisponible('admin.vehiculos.productos.subir_pdf_firmado')
+                            <div class="vp-close-form">
+                                @foreach(['asignacion_firmada' => [$pdfAsignacionFirmado, 'asignación'], 'devolucion_firmada' => [$pdfDevolucionFirmado, 'devolución']] as $tipo => [$pdf, $titulo])
+                                    @continue($a->activa && $tipo === 'devolucion_firmada')
+                                    @if($puedeSubirFirmados)
                                         <form method="POST" action="{{ route('admin.vehiculos.productos.subir_pdf_firmado', $a) }}" enctype="multipart/form-data">
                                             @csrf
-
-                                            <input type="hidden" name="tipo_documento" value="devolucion_firmada">
-                                            <input type="file" name="archivo" accept="application/pdf,.pdf" required>
-
+                                            <input type="hidden" name="tipo_documento" value="{{ $tipo }}">
+                                            <input type="file" name="archivo" aria-label="PDF de {{ $titulo }}" accept="application/pdf,.pdf" required>
                                             <button class="vp-btn vp-btn-primary" type="submit">
-                                                {{ $pdfDevolucionFirmado ? 'Reemplazar devolución firmada' : 'Subir devolución firmada' }}
+                                                {{ $pdf ? 'Reemplazar' : 'Subir' }} {{ $titulo }} firmada
                                             </button>
-
-                                            @if($pdfDevolucionFirmado)
-                                                <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdfDevolucionFirmado) }}" target="_blank" rel="noopener noreferrer">
-                                                    Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
-                                                </a>
-                                            @endif
                                         </form>
-                                        @endrutaDisponible
-                                    @endunless
-                                </div>
-                            @else
-                                <div class="vp-note">
-                                    La tabla de archivos firmados todavía no existe. Ejecuta las migraciones pendientes para habilitar esta función.
-                                </div>
-                            @endif
+                                    @endif
+                                    @if($pdf && $puedeVerFirmados)
+                                        <a class="vp-small-btn" href="{{ route('admin.vehiculos.productos.ver_pdf_firmado', $pdf) }}" target="_blank" rel="noopener noreferrer">
+                                            Ver firmado: {{ $pdf->nombre_original ?? 'PDF firmado' }}
+                                        </a>
+                                    @endif
+                                @endforeach
+                            </div>
                         </div>
+                        @endif
 
-                        @if($a->activa)
+                        @if($a->activa && $puedeCerrar)
                             <div id="cerrar-producto-{{ $a->id }}" class="vp-close-panel">
                                 <div class="vp-close-title">Retirar producto/refacción del vehículo</div>
                                 <div class="vp-close-subtitle">
                                     Puedes retirar una cantidad parcial. Si el vehículo tiene 4 llantas y retiras 1, quedarán 3 activas.
                                 </div>
 
-                                @rutaDisponible('admin.vehiculos.productos.cerrar')
                                 <form
                                     method="POST"
                                     action="{{ route('admin.vehiculos.productos.cerrar', $a) }}"
@@ -893,7 +873,6 @@
                                         Si marcas <strong>mal uso del colaborador</strong>, el sistema generará el cobro al colaborador que tenga asignado este vehículo actualmente. El cobro se calculará proporcionalmente según la vida útil restante del producto/refacción.
                                     </div>
                                 </form>
-                                @endrutaDisponible
                             </div>
                         @endif
                     </div>

@@ -505,6 +505,7 @@
             </div>
 
             <form method="GET" class="inv-toolbar">
+                <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
                 <input type="text"
                        id="inventarioSearch"
                        name="q" value="{{ request()->query('q') }}"
@@ -530,6 +531,7 @@
                     Limpiar
                 </a>
             </form>
+            <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['q', 'stock_tipo']" />
 
             <div class="inv-table-card">
                 <div class="inv-table-scroll">
@@ -543,6 +545,7 @@
                                 <th class="text-right">Vida útil</th>
                                 <th class="text-right">Costo unitario</th>
                                 <th class="text-right">Costo total</th>
+                                <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
                             </tr>
                         </thead>
 
@@ -600,10 +603,11 @@
                                             Q {{ number_format((float)($inv->costo_total ?? 0), 2) }}
                                         </span>
                                     </td>
+                                    <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$inv->producto_codigo" />
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7">
+                                    <td colspan="{{ 7 + $tablaCampos['campos']->count() }}">
                                         <div class="inv-empty">
                                             <div class="inv-empty-title">
                                                 Esta bodega aún no tiene inventario.
@@ -617,7 +621,7 @@
                             @endforelse
 
                             <tr id="noSearchResults" style="display:none;">
-                                <td colspan="7">
+                                <td colspan="{{ 7 + $tablaCampos['campos']->count() }}">
                                     <div class="inv-empty">
                                         <div class="inv-empty-title">
                                             No se encontraron resultados.

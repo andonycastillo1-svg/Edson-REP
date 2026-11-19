@@ -9,8 +9,6 @@
   $movimientos = $movimientos ?? collect();
   $pdfsDevolucionFirmados = $pdfsDevolucionFirmados ?? collect();
   $puedeCrearAsignaciones = $puedeCrearAsignaciones ?? false;
-  $puedeGestionarDevoluciones = $puedeGestionarDevoluciones ?? false;
-  $puedeSubirEvidencias = $puedeSubirEvidencias ?? false;
 @endphp
 
 <style>
@@ -506,6 +504,7 @@
   <div class="asg-container">
     <x-internal-navigation :back-url="route('dashboard')" />
     <x-sistema.enlace-datos modulo="asignaciones" />
+    <x-sistema.consulta-campos :tabla="$tablaCampos" />
 
 
     <div class="asg-header">
@@ -543,9 +542,10 @@
         <?php foreach ($asignacionesPorColaborador as $grupo): ?>
           @php
             $bulkFormId = 'bulk-return-' . $grupo['colaborador_codigo'];
+            $puedeSeleccionar = $grupo['devolvibles_lote']->isNotEmpty();
           @endphp
 
-          @if($puedeGestionarDevoluciones)
+          @if($puedeSeleccionar)
             <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}">
               @csrf
               <input type="hidden" name="solicitud_id" value="{{ \Illuminate\Support\Str::uuid() }}">
@@ -586,7 +586,7 @@
 
             <div class="asg-detail">
 
-              @if($puedeGestionarDevoluciones)
+              @if($grupo['puede_devolver_todo'])
               <div class="asg-mini-card">
                 <form method="POST"
                       action="{{ route($routePrefix . '.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}">
@@ -620,7 +620,7 @@
                   <table class="asg-table">
                     <thead>
                       <tr>
-                        <th>Sel.</th>
+                        @if($puedeSeleccionar)<th>Sel.</th>@endif
                         <th>Producto</th>
                         <th>Fecha</th>
                         <th>Bodega</th>
@@ -628,7 +628,8 @@
                         <th>Entrega</th>
                         <th>Vida útil</th>
                         <th style="text-align:center;">Activa</th>
-                        <th style="text-align:center;">Dev.</th>
+                        @if($puedeSeleccionar)<th style="text-align:center;">Dev.</th>@endif
+                        <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
                         <th style="text-align:center;">PDF</th>
                         <th>Evidencias</th>
                       </tr>
@@ -638,19 +639,18 @@
                       <?php foreach ($grupo['asignaciones'] as $a): ?>
                         @php
                           $estado = $a->estado ?? 'Activa';
-                          $activa = $estado === 'Activa' && (int) $a->cantidad_asignada > 0;
                           $productoNombre = optional($a->producto)->descripcion ?? optional($a->producto)->nombre ?? $a->producto_codigo;
 
                           $fechaVenc = !empty($a->fecha_vencimiento)
                             ? \Carbon\Carbon::parse($a->fecha_vencimiento)
                             : null;
 
-                          $pdfAsignacionFirmado = $puedeGestionarPdfsFirmados ? ($a->pdfAsignacionFirmado ?? null) : null;
                         @endphp
 
                         <tr>
+                          @if($puedeSeleccionar)
                           <td>
-                            @if($activa && $puedeGestionarDevoluciones)
+                            @if($grupo['devolvibles_lote']->contains($a->id))
                               <input type="checkbox"
                                      name="seleccionadas[]"
                                      aria-label="Seleccionar {{ $productoNombre }} para devolución"
@@ -662,6 +662,7 @@
                               —
                             @endif
                           </td>
+                          @endif
 
                           <td>
                             <div class="asg-product">{{ $productoNombre }}</div>
@@ -708,8 +709,9 @@
                             {{ $a->cantidad_asignada }}
                           </td>
 
+                          @if($puedeSeleccionar)
                           <td style="text-align:center;">
-                            @if($activa && $puedeGestionarDevoluciones)
+                            @if($grupo['devolvibles_lote']->contains($a->id))
                               <input type="number"
                                      id="devolucion_{{ $a->id }}"
                                      name="devoluciones[{{ $a->id }}]"
@@ -724,22 +726,26 @@
                               <span style="color:#94a3b8;">No aplica</span>
                             @endif
                           </td>
+                          @endif
 
+                          <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$a->id" />
                           <td style="text-align:center;">
                             @if(!empty($a->grupo_asignacion))
+                              @rutaDisponible($routePrefix.'.asignaciones.pdf')
                               <a href="{{ route($routePrefix . '.asignaciones.pdf', $a->grupo_asignacion) }}"
                                  target="_blank"
                                  rel="noopener noreferrer"
                                  class="asg-pdf-btn">
                                 PDF
                               </a>
+                              @endrutaDisponible
                             @else
                               <span style="color:#94a3b8;">Sin grupo</span>
                             @endif
                           </td>
 
                           <td>
-                            @if($puedeSubirEvidencias)
+                            @rutaDisponible($routePrefix.'.asignaciones.upload_pdf_firmado')
                               <form method="POST"
                                     action="{{ route($routePrefix . '.asignaciones.upload_pdf_firmado', $a) }}"
                                     enctype="multipart/form-data"
@@ -756,9 +762,10 @@
                                 </div>
                                 <span style="font-size:11px; color:#64748b;">Requiere 1 PDF firmado y 1 imagen.</span>
                               </form>
-                            @endif
+                            @endrutaDisponible
 
                             @if($puedeGestionarPdfsFirmados)
+                              @rutaDisponible($routePrefix.'.asignaciones.ver_pdf_firmado')
                               <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
                                 @forelse($a->evidencias as $evidencia)
                                   <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $evidencia) }}"
@@ -772,6 +779,7 @@
                                   <span style="font-size:11px; color:#94a3b8;">Sin evidencias</span>
                                 @endforelse
                               </div>
+                              @endrutaDisponible
                             @endif
                           </td>
                         </tr>
@@ -780,7 +788,7 @@
                   </table>
                 </div>
 
-                @if($puedeGestionarDevoluciones)
+                @if($puedeSeleccionar)
                   <div class="asg-footer-actions">
                     <div>
                       <p class="asg-footer-title">Devolución de seleccionados</p>
@@ -811,7 +819,7 @@
       @endif
     </div>
 
-    @if($puedeGestionarDevoluciones)
+    @if($puedeVerMovimientos)
     <div class="asg-panel asg-history">
       <div class="asg-panel-title">
         Historial de movimientos
@@ -876,13 +884,16 @@
                   <td style="text-align:center;">
                     @if($m->tipo === 'Devolucion' && !empty($m->grupo_devolucion))
                       <div class="asg-upload-form">
+                        @rutaDisponible($routePrefix.'.asignaciones.hoja_devolucion')
                         <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', $m->grupo_devolucion) }}"
                            target="_blank"
                            rel="noopener noreferrer"
                            class="asg-pdf-btn">
                           Ver hoja
                         </a>
+                        @endrutaDisponible
 
+                        @rutaDisponible($routePrefix.'.asignaciones.upload_pdf_devolucion_firmado')
                         <form method="POST"
                               action="{{ route($routePrefix . '.asignaciones.upload_pdf_devolucion_firmado', $m->grupo_devolucion) }}"
                               enctype="multipart/form-data"
@@ -901,14 +912,17 @@
                             </button>
                           </div>
                         </form>
+                        @endrutaDisponible
 
                         @if($pdfDevolucionFirmado)
+                          @rutaDisponible($routePrefix.'.asignaciones.ver_pdf_firmado')
                           <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $pdfDevolucionFirmado) }}"
                              target="_blank"
                              rel="noopener noreferrer"
                              style="font-size:11px; font-weight:700; color:#047857;">
                             Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
                           </a>
+                          @endrutaDisponible
                         @endif
                       </div>
                     @else

@@ -16,7 +16,6 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class SeguridadController extends Controller
@@ -152,7 +151,7 @@ class SeguridadController extends Controller
     public function actualizarContrasena(Request $request, User $usuario)
     {
         $data = $request->validate([
-            'password' => ['required', 'confirmed', $this->politicaContrasena()],
+            'password' => ['required', 'confirmed', $this->seguridad->politicaContrasena()],
             'current_password' => ['required', 'string', 'max:255'],
         ]);
 
@@ -177,83 +176,16 @@ class SeguridadController extends Controller
 
     public function crearCuentaAdministrativa(Request $request, ValoresCampos $campos)
     {
-        $data = $request->validate([
-            'role_id' => ['required', 'integer', 'exists:roles,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', $this->politicaContrasena()],
-            'current_password' => ['required', 'string', 'max:255'],
-        ]);
-        $valores = $campos->preparar($request, 'usuarios', true);
-        $usuario = $this->seguridad->cambiar($request->user(), $data['current_password'], function (User $actor) use ($data, $campos, $valores) {
-            $rol = Role::findOrFail($data['role_id']);
-            abort_unless($rol->activo && $rol->ambito() === 1, 422);
-            $usuario = User::create(Arr::only($data, ['role_id', 'name', 'email']) + [
-                'password' => Hash::make($data['password']), 'created_by' => $actor->id,
-            ]);
-            $campos->guardar('usuarios', $usuario->id, $valores);
-            $this->auditoria->registrar('seguridad', 'crear_cuenta_administrativa', $usuario->id, null, ['role_id' => $rol->id]);
-
-            return $usuario;
-        });
+        $usuario = $this->seguridad->crearCuentaAdministrativa($request, $campos);
 
         return redirect()->route('sistema.usuario', $usuario)->with('ok', 'Cuenta administrativa creada.');
     }
 
-    public function actualizarCuenta(Request $request, User $usuario)
+    public function actualizarCuenta(Request $request, User $usuario, ValoresCampos $campos)
     {
-        $ambito = Role::find($request->integer('role_id'))?->ambito();
-        $data = $request->validate([
-            'role_id' => ['required', 'integer', 'exists:roles,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($usuario->id)],
-            'bodega_id' => [Rule::requiredIf($ambito === 2), 'nullable', 'integer', 'exists:bodegas,id'],
-            'almacenista_id' => [
-                Rule::requiredIf($ambito === 3), 'nullable', 'integer',
-                Rule::exists('users', 'id')->where(fn ($q) => $q->whereIn('id', User::deAmbito(2)->select('users.id'))),
-            ],
-            'password' => ['nullable', 'confirmed', $this->politicaContrasena()],
-            'current_password' => ['required', 'string', 'max:255'],
-        ]);
-        $this->seguridad->cambiar($request->user(), $data['current_password'], function () use ($usuario, $data) {
-            $usuario = User::findOrFail($usuario->id);
-            $rol = Role::findOrFail($data['role_id']);
-            abort_unless($rol->activo && isset(CatalogoPermisos::AMBITOS[$rol->ambito()]), 422);
-            if ($this->permisos->esSuperadministrador($usuario) && $rol->ambito() !== 1) {
-                throw ValidationException::withMessages(['role_id' => 'Revoca primero la autorización de Superadministrador.']);
-            }
-            $antes = $usuario->only(['role_id', 'bodega_id']);
-            $antes['almacenista_id'] = $usuario->almacenistasAsignados()->value('users.id');
-            $cambio = Arr::only($data, ['role_id', 'name', 'email']) + [
-                'bodega_id' => $rol->ambito() === 2 ? $data['bodega_id'] : null,
-            ];
-            if (!empty($data['password'])) {
-                $cambio['password'] = Hash::make($data['password']);
-                $cambio['remember_token'] = null;
-            }
-            if ((int) $usuario->role_id !== (int) $rol->id) {
-                $reglas = $this->permisos->reglasUsuario($usuario);
-                DB::table('sistema_permisos_usuario')->where('user_id', $usuario->id)->delete();
-                if ($reglas !== []) {
-                    $this->auditoria->registrar('seguridad', 'retirar_permisos_por_cambio_rol', $usuario->id, $reglas, []);
-                }
-            }
-            $usuario->forceFill($cambio)->save();
-            if ($rol->ambito() !== 2) {
-                $usuario->supervisoresAsignados()->detach();
-            }
-            $almacenista = $rol->ambito() === 3 ? (int) $data['almacenista_id'] : null;
-            $usuario->almacenistasAsignados()->sync($almacenista === null ? [] : [$almacenista]);
-            $this->auditoria->registrar('seguridad', 'actualizar_acceso_cuenta', $usuario->id, $antes,
-                $usuario->only(['role_id', 'bodega_id']) + ['almacenista_id' => $almacenista, 'credencial_actualizada' => isset($cambio['password'])]);
-        });
+        $this->seguridad->actualizarCuenta($request, $usuario, $campos);
 
         return back()->with('ok', 'Cuenta actualizada.');
-    }
-
-    private function politicaContrasena(): Password
-    {
-        return Password::min(16)->letters()->numbers()->mixedCase()->symbols();
     }
 
     private function cambiarReglas(string $tipo, int $id, int $ambito, array $reglas, array $anteriores): void

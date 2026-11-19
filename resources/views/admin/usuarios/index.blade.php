@@ -10,6 +10,7 @@
 <div class="w-full max-w-7xl mx-auto">
     <x-internal-navigation :back-url="route('dashboard')" />
     <x-sistema.enlace-datos modulo="usuarios" />
+    <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['q', 'role_id']" />
 
 
     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -49,6 +50,8 @@
             <form method="GET"
                   action="{{ route($routePrefix . '.usuarios.index') }}"
                   class="flex flex-col gap-3 lg:flex-row lg:items-center">
+
+                <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
 
                 <div class="w-full lg:w-[420px]">
                     <input
@@ -127,6 +130,7 @@
                         <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                             Rol
                         </th>
+                        <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
                         <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500">
                             Acciones
                         </th>
@@ -148,7 +152,8 @@
                                 default => 'bg-slate-50 text-slate-700 border-slate-200',
                             };
 
-                            $puedeEditar = app(\App\Sistema\Seguridad::class)->puedeGestionar(auth()->user(), $u);
+                            $puedeEditar = app(\App\Sistema\Seguridad::class)->puedeEditarDesdeUsuarios(auth()->user(), $u);
+                            $puedeDesactivar = !auth()->user()->is($u) && app(\App\Sistema\Seguridad::class)->puedeGestionar(auth()->user(), $u);
                         @endphp
 
                         <tr class="transition hover:bg-slate-50">
@@ -175,6 +180,7 @@
                                 </span>
                             </td>
 
+                            <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$u->id" />
                             <td class="px-6 py-4">
                                 <div class="flex justify-end gap-2">
                                     @if($puedeEditar)
@@ -185,6 +191,7 @@
                                         </a>
                                         @endrutaDisponible
 
+                                        @if($puedeDesactivar)
                                         @rutaDisponible($routePrefix . '.usuarios.destroy')
                                         <form action="{{ route($routePrefix . '.usuarios.destroy', $u->id) }}"
                                               method="POST"
@@ -198,6 +205,7 @@
                                             </button>
                                         </form>
                                         @endrutaDisponible
+                                        @endif
                                     @else
                                         <span class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">
                                             Solo lectura
@@ -208,7 +216,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-14 text-center">
+                            <td colspan="{{ 5 + $tablaCampos['campos']->count() }}" class="px-6 py-14 text-center">
                                 <div class="text-sm font-bold text-slate-900">
                                     No hay usuarios registrados
                                 </div>
