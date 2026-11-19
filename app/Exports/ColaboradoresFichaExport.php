@@ -41,9 +41,9 @@ class ColaboradoresFichaExport extends FormattedExcelExport
             'Fecha vencimiento',
             'Estado / vida útil',
             'Motivo',
-            'Aplica cobro',
-            'Monto cobro',
-            'Estado cobro',
+            'Fecha del incidente',
+            'Registrado por',
+            'Estado de revisión',
             'Detalle / observaciones',
         ];
     }
@@ -125,25 +125,19 @@ class ColaboradoresFichaExport extends FormattedExcelExport
                 ]);
             }
 
-            if (count($ficha['cobros']) > 0) {
-                foreach ($ficha['cobros'] as $cobro) {
-                    $rows[] = $this->makeRow('Cobro / descuento RRHH', $base, [
-                        5 => $cobro['producto_codigo'] ?? '',
-                        6 => $cobro['producto'] ?? '',
-                        9 => (float) ($cobro['costo_producto'] ?? 0),
-                        16 => $this->excelDate($cobro['fecha_asignacion_anterior'] ?? ''),
-                        17 => $this->excelDate($cobro['fecha_dano_reemplazo'] ?? ''),
-                        18 => 'Vida útil: '.($cobro['vida_util_meses'] ?? 0).' meses / Restante: '.($cobro['meses_restantes'] ?? 0).' meses',
-                        19 => $cobro['motivo'] ?? '',
-                        20 => ! empty($cobro['descuento_aplicable']) ? 'Sí' : 'No',
-                        21 => (float) ($cobro['monto_cobro'] ?? 0),
-                        22 => $cobro['estado'] ?? '',
-                        23 => $cobro['detalle'] ?? '',
-                    ]);
-                }
-            } else {
-                $rows[] = $this->makeRow('Cobro / descuento RRHH', $base, [
-                    6 => 'Sin cobros o descuentos registrados',
+            foreach ($ficha['incidencias'] as $incidencia) {
+                $rows[] = $this->makeRow('Incidencia', $base, [
+                    5 => $incidencia['producto_codigo'],
+                    6 => $incidencia['producto'],
+                    7 => $incidencia['bodega'],
+                    8 => $incidencia['cantidad'],
+                    16 => $this->excelDate($incidencia['fecha_asignacion']),
+                    18 => $incidencia['vida'],
+                    19 => $incidencia['motivo'],
+                    20 => $this->excelDate($incidencia['fecha_incidente']),
+                    21 => $incidencia['registrador'],
+                    22 => $incidencia['estado'],
+                    23 => $incidencia['detalle'],
                 ]);
             }
 
@@ -155,9 +149,6 @@ class ColaboradoresFichaExport extends FormattedExcelExport
             ]);
             $rows[] = $this->makeRow('TOTAL GENERAL ASIGNADO', $base, [
                 10 => (float) ($ficha['total_general'] ?? 0),
-            ]);
-            $rows[] = $this->makeRow('TOTAL COBROS / DESCUENTOS', $base, [
-                21 => (float) ($ficha['total_cobros'] ?? 0),
             ]);
         }
 
@@ -172,7 +163,7 @@ class ColaboradoresFichaExport extends FormattedExcelExport
             'K' => '#,##0.00',
             'Q' => 'dd/mm/yyyy',
             'R' => 'dd/mm/yyyy',
-            'V' => '#,##0.00',
+            'U' => 'dd/mm/yyyy hh:mm',
         ];
     }
 

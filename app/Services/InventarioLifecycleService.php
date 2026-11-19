@@ -13,7 +13,8 @@ use Illuminate\Validation\ValidationException;
 class InventarioLifecycleService
 {
     public const CONDICIONES_DISPONIBLES = ['nuevo', 'usado'];
-    public const ESTADOS_RETORNO = ['buen_estado', 'danado', 'perdido', 'baja'];
+    public const ESTADOS_RETORNO = ['buen_estado', 'danado', 'perdido', 'robado', 'baja', 'sin_retorno'];
+    public const SIN_RETORNO = ['perdido', 'robado', 'sin_retorno'];
 
     public function crearNuevas(string $productoCodigo, int $bodegaId, int $cantidad, ?float $valor = null): void
     {
@@ -134,17 +135,14 @@ class InventarioLifecycleService
                     'fecha_devolucion' => 'La fecha del servidor no puede ser anterior a la asignación.',
                 ]);
             }
-            $consumido = max(0, $periodo->asignado_en->diffInSeconds($devueltoEn, false));
-            $restante = $periodo->vida_util_al_asignar_segundos === null
+            $inicio = $periodo->inicio_uso_en ?? ($asignacion->entrega === null ? $periodo->asignado_en : null);
+            $consumido = $inicio === null ? null : max(0, (int) $inicio->diffInSeconds($devueltoEn));
+            $restante = $periodo->vida_util_al_asignar_segundos === null || $consumido === null
                 ? null
                 : max(0, (int) $periodo->vida_util_al_asignar_segundos - $consumido);
             $condicion = $estado === 'buen_estado' ? 'usado' : $estado;
             $reutilizable = $estado === 'buen_estado';
-
-            // No se inventa depreciación ni cobro: solo queda candidato si comenzó con vida positiva y fue dañado.
-            $estadoCobro = $estado === 'danado' && (int) $periodo->vida_util_al_asignar_segundos > 0
-                ? 'pendiente_revision'
-                : 'no_aplica';
+            $sinRetorno = in_array($estado, self::SIN_RETORNO, true);
 
             $periodo->update([
                 'devuelto_en' => $devueltoEn,
@@ -154,21 +152,19 @@ class InventarioLifecycleService
                 'motivo_devolucion' => $motivo,
                 'observaciones_devolucion' => $observaciones,
                 'reutilizable' => $reutilizable,
-                'bodega_retorno_id' => $bodegaRetornoId,
+                'bodega_retorno_id' => $sinRetorno ? null : $bodegaRetornoId,
                 'devuelto_por_user_id' => auth()->id(),
-                'estado_cobro' => $estadoCobro,
                 'evidencia_calculo' => [
                     'vida_al_asignar_segundos' => $periodo->vida_util_al_asignar_segundos,
                     'tiempo_consumido_segundos' => $consumido,
                     'vida_restante_segundos' => $restante,
-                    'valor_referencia' => $periodo->valor_referencia,
-                    'regla' => $estadoCobro === 'pendiente_revision' ? 'revision_sin_formula_automatica' : 'no_aplica',
+                    'inicio_uso_en' => $inicio?->toDateTimeString(),
                 ],
             ]);
 
             $unidades->get($periodo->inventario_existencia_id)->update([
                 'condicion' => $condicion,
-                'bodega_id' => $estado === 'perdido' ? null : $bodegaRetornoId,
+                'bodega_id' => $sinRetorno ? null : $bodegaRetornoId,
                 'vida_util_restante_segundos' => $restante,
                 'disponible_desde' => $reutilizable ? $devueltoEn : null,
             ]);

@@ -11,6 +11,7 @@ class AsignacionInventarioArchivo extends Model
     protected $fillable = [
         'asignacion_inventario_id',
         'grupo_devolucion',
+        'grupo_entrega',
         'tipo_documento',
         'ruta',
         'nombre_original',

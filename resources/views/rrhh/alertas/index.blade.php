@@ -1,260 +1,57 @@
 @extends('layouts.admin')
-
-@section('title', 'RRHH - Alertas de descuento')
-
+@section('title', 'Incidencias para revisión de RR. HH.')
 @section('content')
-@php
-    $totalAlertas = method_exists($alertas, 'total') ? $alertas->total() : $alertas->count();
-@endphp
-
-<div class="w-full max-w-6xl mx-auto px-4 py-6">
+<div class="mx-auto max-w-6xl space-y-4 px-4 py-6">
     <x-internal-navigation :back-url="route('dashboard')" />
-
-    {{-- Encabezado --}}
-    <div class="mb-4 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div class="px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div class="flex items-center gap-3">
-                <div class="h-12 w-12 rounded-xl border border-amber-200 bg-amber-50 flex items-center justify-center text-xl">
-                    ⚠️
-                </div>
-
-                <div>
-                    <h1 class="text-xl font-bold text-slate-900 leading-tight">
-                        Alertas de descuento
-                    </h1>
-                    <p class="mt-0.5 text-xs text-slate-500">
-                        Reemplazos antes de cumplir vida útil y descuentos potenciales.
-                    </p>
-                </div>
-            </div>
-
-        </div>
-
-        <div class="border-t border-slate-200 bg-slate-50 px-5 py-2">
-            <p class="text-xs text-slate-600">
-                Total encontrado: <span class="font-semibold">{{ $totalAlertas }}</span>
-            </p>
-        </div>
-    </div>
-
-    {{-- Filtros --}}
-    <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
-            <h2 class="text-sm font-bold text-slate-900">Filtros de alertas</h2>
-            <p class="text-xs text-slate-500">
-                Busca por colaborador, producto, rango de fechas o estado.
-            </p>
-        </div>
-
-        <form method="GET" action="{{ route('rrhh.alertas.index') }}" class="p-4">
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                <div class="md:col-span-2">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">
-                        Colaborador o producto
-                    </label>
-                    <input
-                        type="text"
-                        name="q"
-                        value="{{ request('q') }}"
-                        placeholder="Ejemplo: Edwin, guantes, 1014..."
-                        class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                    >
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">
-                        Desde
-                    </label>
-                    <input
-                        type="date"
-                        name="desde"
-                        value="{{ request('desde') }}"
-                        class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                    >
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">
-                        Hasta
-                    </label>
-                    <input
-                        type="date"
-                        name="hasta"
-                        value="{{ request('hasta') }}"
-                        class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                    >
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">
-                        Estado
-                    </label>
-                    <select
-                        name="estado"
-                        class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                    >
-                        <option value="" @selected(request('estado') === null || request('estado') === '')>Todos</option>
-                        <option value="pendiente" @selected(request('estado') === 'pendiente')>Pendiente</option>
-                        <option value="finalizado" @selected(request('estado') === 'finalizado')>Finalizado</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div class="flex flex-wrap gap-2">
-                    <button type="submit"
-                            class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition">
-                        Filtrar
-                    </button>
-
-                    <a href="{{ route('rrhh.alertas.index') }}"
-                       class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
-                        Limpiar
-                    </a>
-                </div>
-
-                <a href="{{ route('rrhh.alertas.export', request()->query()) }}"
-                   class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition">
-                    Descargar Excel
-                </a>
-            </div>
+    <section class="rounded-xl border border-slate-200 bg-white p-5">
+        <h1 class="text-2xl font-bold text-slate-900">Incidencias para revisión de RR. HH.</h1>
+        <form method="GET" class="mt-4 flex flex-wrap items-end gap-3">
+            <label class="text-sm font-semibold">Colaborador o producto
+                <input type="search" name="q" value="{{ request('q') }}" class="mt-1 block rounded-xl border-slate-300">
+            </label>
+            <label class="text-sm font-semibold">Estado
+                <select name="estado" class="mt-1 block rounded-xl border-slate-300">
+                    <option value="">Todos</option>
+                    @foreach(\App\Models\AlertaReemplazo::ESTADOS as $valor => $etiqueta)
+                        <option value="{{ $valor }}" @selected(request('estado') === $valor)>{{ $etiqueta }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="text-sm font-semibold">Desde
+                <input type="date" name="desde" value="{{ request('desde') }}" class="mt-1 block rounded-xl border-slate-300">
+            </label>
+            <label class="text-sm font-semibold">Hasta
+                <input type="date" name="hasta" value="{{ request('hasta') }}" class="mt-1 block rounded-xl border-slate-300">
+            </label>
+            <button class="ui-btn-primary">Filtrar</button>
+            @rutaDisponible('rrhh.alertas.export')
+                <a class="ui-btn-download" href="{{ route('rrhh.alertas.export', request()->query()) }}">Exportar Excel</a>
+            @endrutaDisponible
         </form>
+    </section>
+    <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50"><tr>
+                <th class="p-3">Colaborador y producto</th><th class="p-3">Motivo</th>
+                <th class="p-3">Fecha del incidente</th><th class="p-3">Vida útil al ocurrir</th><th class="p-3">Estado</th><th class="p-3">Acción</th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-200">
+                @forelse($alertas as $alerta)
+                    <tr>
+                        <td class="p-3"><strong>{{ $alerta->colaborador?->nombre ?? $alerta->colaborador_codigo }}</strong>
+                            <p>{{ $alerta->producto?->nombre ?? $alerta->producto_codigo }}</p></td>
+                        <td class="p-3">{{ $alerta->motivo_etiqueta }}</td>
+                        <td class="p-3">{{ $alerta->fecha_incidente?->format('d/m/Y H:i') ?? 'Desconocida' }}</td>
+                        <td class="p-3">{{ $alerta->vida_etiqueta }}</td>
+                        <td class="p-3">{{ $alerta->estado_etiqueta }}</td>
+                        <td class="p-3"><a class="underline" href="{{ route('rrhh.alertas.show', $alerta) }}">Ver incidencia</a></td>
+                    </tr>
+                @empty
+                    <tr><td class="p-5 text-center" colspan="6">No hay incidencias con estos filtros.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
-
-    {{-- Tabla --}}
-    <div class="mt-4 rounded-xl border border-amber-200 bg-white shadow-sm overflow-hidden">
-        <div class="px-4 py-3 bg-amber-50 border-b border-amber-200">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div class="flex items-center gap-3">
-                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-700 text-sm">
-                        ⚠️
-                    </span>
-
-                    <div>
-                        <h2 class="text-sm font-bold text-amber-900 leading-tight">
-                            Alertas de reemplazo con descuento potencial
-                        </h2>
-                        <p class="mt-0.5 text-xs text-amber-700">
-                            Casos donde el artículo fue reemplazado antes de cumplir su vida útil.
-                        </p>
-                    </div>
-                </div>
-
-                <span class="inline-flex items-center justify-center rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-amber-900">
-                    {{ $totalAlertas }}
-                </span>
-            </div>
-        </div>
-
-        <div class="p-4">
-            @if($alertas->isEmpty())
-                <div class="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3">
-                    <p class="text-sm text-amber-800">
-                        No hay alertas de descuento para los filtros seleccionados.
-                    </p>
-                </div>
-            @else
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-xs">
-                        <thead>
-                            <tr class="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
-                                <th class="px-3 py-2 font-bold">Colaborador</th>
-                                <th class="px-3 py-2 font-bold">Producto</th>
-                                <th class="px-3 py-2 font-bold">Asignación</th>
-                                <th class="px-3 py-2 font-bold">Daño/Reemplazo</th>
-                                <th class="px-3 py-2 font-bold">Vida útil</th>
-                                <th class="px-3 py-2 font-bold">Restante</th>
-                                <th class="px-3 py-2 font-bold">Descuento</th>
-                                <th class="px-3 py-2 font-bold">Estado</th>
-                                <th class="px-3 py-2 font-bold text-right">Acción</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            @foreach($alertas as $a)
-                                <tr class="border-b border-slate-100 text-slate-700 hover:bg-amber-50/50 transition">
-                                    <td class="px-3 py-2 whitespace-nowrap">
-                                        <span class="font-semibold">{{ $a->colaborador_codigo }}</span>
-                                        <span class="text-slate-400">-</span>
-                                        {{ $a->colaborador_nombre ?? 'Sin nombre' }}
-                                    </td>
-
-                                    <td class="px-3 py-2">
-                                        {{ $a->producto_descripcion ?: ($a->producto_nombre ?: $a->producto_codigo) }}
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap">
-                                        {{ optional($a->fecha_asignacion_anterior)->format('d/m/Y') }}
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap">
-                                        {{ optional($a->fecha_dano_reemplazo)->format('d/m/Y') }}
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap">
-                                        {{ $a->vida_util_meses }} meses
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap font-semibold text-amber-800">
-                                        {{ $a->meses_restantes_reales }} meses
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap font-semibold">
-                                        @if(!$a->descuento_aplicable)
-                                            <span class="inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                                                No aplica
-                                            </span>
-                                        @else
-                                            <span class="inline-flex rounded-full bg-rose-50 px-2 py-1 text-xs text-rose-700">
-                                                Q {{ number_format($a->descuento_calculado, 2) }}
-                                            </span>
-                                        @endif
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap">
-                                        @if(($a->estado ?? 'pendiente') === 'finalizado')
-                                            <span class="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
-                                                Finalizado
-                                            </span>
-                                        @else
-                                            <span class="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800 ring-1 ring-amber-200">
-                                                Pendiente
-                                            </span>
-                                        @endif
-                                    </td>
-
-                                    <td class="px-3 py-2 whitespace-nowrap text-right">
-                                        @if(($a->estado ?? 'pendiente') === 'pendiente')
-                                            @rutaDisponible('rrhh.alertas.finalizar')
-                                            <form method="POST"
-                                                  action="{{ route('rrhh.alertas.finalizar', $a) }}"
-                                                  onsubmit="return confirm('¿Confirmas marcar esta alerta de descuento como finalizada?');">
-                                                @csrf
-                                                <input type="hidden" name="confirmar" value="1">
-                                                <button type="submit"
-                                                        class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition">
-                                                    Finalizar
-                                                </button>
-                                            </form>
-                                            @endrutaDisponible
-                                        @else
-                                            <span class="text-xs font-semibold text-slate-400">Gestionada</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-
-                @if(method_exists($alertas, 'links'))
-                    <div class="mt-4">
-                        {{ $alertas->links() }}
-                    </div>
-                @endif
-            @endif
-        </div>
-    </div>
-
+    {{ $alertas->links() }}
 </div>
 @endsection

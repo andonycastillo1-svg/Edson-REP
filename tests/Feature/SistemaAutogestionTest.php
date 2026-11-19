@@ -510,6 +510,7 @@ class SistemaAutogestionTest extends TestCase
             'campos_producto' => [['referencia' => 'Ficha técnica']],
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->post(route('admin.asignaciones.store'), $campo('Constancia') + [
+            'solicitud_id' => (string) \Illuminate\Support\Str::uuid(),
             'colaborador_codigo' => 'COL-T', 'fecha' => today()->toDateString(),
             'aprobado_por' => 'Gerencia', 'medio_solicitud' => 'Correo',
             'items' => [['producto_codigo' => 'ART-T', 'bodega_id' => $this->principal->id, 'cantidad_asignada' => 1]],
@@ -618,18 +619,20 @@ class SistemaAutogestionTest extends TestCase
             $this->actingAs($this->operador->fresh());
             $vista = $this->get($listado)->assertOk()->assertSee('Nueva asignación')->assertSee('Historial de movimientos');
             if ($regla === 'denegar') {
-                $vista->assertDontSee('Devolver todo')->assertDontSee('Devolver seleccionados')->assertDontSee('name="seleccionadas[]"', false);
+                $vista->assertDontSee('Resolver todo lo activo')->assertDontSee('Registrar seleccionados')->assertDontSee('name="seleccionadas[]"', false);
                 $this->postJson($devolucion, ['seleccionadas' => [$asignacion->id], 'devoluciones' => [$asignacion->id => 1]])
                     ->assertForbidden();
             } else {
-                $vista->assertSee('Devolver todo')->assertSee('Devolver seleccionados')->assertSee('name="seleccionadas[]"', false);
+                $vista->assertSee('Resolver todo lo activo')->assertSee('Registrar seleccionados')->assertSee('name="seleccionadas[]"', false);
             }
             $this->get(route('operador.asignaciones.create'))->assertOk();
         }
 
         $asignacion->replicate()->fill(['bodega_id' => $this->principal->id])->save();
-        $this->get($listado)->assertOk()->assertDontSee('Devolver todo')->assertSee('Devolver seleccionados');
-        $this->postJson(route('operador.asignaciones.devolver_todo_colaborador', $colaborador->codigo))->assertForbidden();
+        $this->get($listado)->assertOk()->assertDontSee('Resolver todo lo activo')->assertSee('Registrar seleccionados');
+        $this->postJson(route('operador.asignaciones.devolver_todo_colaborador', $colaborador->codigo), [
+            'solicitud_id' => (string) \Illuminate\Support\Str::uuid(), 'estado_devolucion' => 'buen_estado',
+        ])->assertForbidden();
         $this->assertSame(2, $asignacion->fresh()->cantidad_asignada);
     }
 
@@ -665,7 +668,7 @@ class SistemaAutogestionTest extends TestCase
         $this->get($datos)->assertOk()->assertSee($presentacion);
         $this->get($presentacion)->assertOk()->assertSee('Departamento QA');
         $this->get(route('sistema.campos.editar', $campo))->assertOk()
-            ->assertSeeInOrder(['Usar acceso del módulo', 'label="Colaboradores"', 'label="Alertas"'], false);
+            ->assertSeeInOrder(['Usar acceso del módulo', 'label="Colaboradores"', 'label="Incidencias para revisión de RR. HH."'], false);
 
         $this->put(route('sistema.presentacion.guardar', 'colaboradores'), [
             'columnas' => ['codigo' => ['orden' => 8, 'visible' => false, 'filtro' => false, 'buscar' => true]],

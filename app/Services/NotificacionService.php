@@ -15,7 +15,6 @@ use App\Notifications\AlertaRrhhNotification;
 use App\Notifications\CambioEstadoAsignacionNotification;
 use App\Notifications\MovimientoInventarioNotification;
 use App\Notifications\RelacionUsuarioNotification;
-use App\Notifications\AsignacionPendienteNotification;
 use App\Notifications\NuevaAsignacionNotification;
 use App\Notifications\StockBajoNotification;
 use Illuminate\Database\Eloquent\Model;
@@ -61,6 +60,10 @@ class NotificacionService
             'fecha' => now()->toDateTimeString(),
         ];
 
+        $grupoInventario = $asignacion instanceof AsignacionInventario && $asignacion->entrega !== null;
+        if ($grupoInventario) {
+            $base['url'] = route('admin.asignaciones.entrega', $entidadId);
+        }
         $mensajeAdmin = 'Se creó ' . $descripcion . ' por ' . $creador->name . '.';
 
         $this->notificarAdministradores(
@@ -69,6 +72,9 @@ class NotificacionService
         );
 
         if ($creador->rolOperativo() === 2) {
+            if ($grupoInventario) {
+                $base['url'] = route('supervisor.asignaciones.entrega', $entidadId);
+            }
             $mensajeSupervisor = 'Nueva asignación creada por ' . $creador->name;
 
             if ($colaboradorNombre) {
@@ -80,37 +86,6 @@ class NotificacionService
             $this->notificarSupervisoresDeAlmacenista(
                 $creador,
                 new NuevaAsignacionNotification($base + ['mensaje' => $mensajeSupervisor])
-            );
-        }
-    }
-
-    public function notificarAsignacionPendiente(AsignacionInventario $asignacion, User $creador, string $url): void
-    {
-        if (!Schema::hasTable('notifications') || $asignacion->estado_evidencia !== 'pendiente') {
-            return;
-        }
-
-        $asignacion->loadMissing('colaborador');
-
-        $data = [
-            'titulo' => 'Asignación pendiente de evidencia',
-            'mensaje' => 'La asignación para ' . ($asignacion->colaborador?->nombre ?? $asignacion->colaborador_codigo)
-                . ' tiene pendiente completar la evidencia de entrega.',
-            'tipo' => 'asignacion_pendiente',
-            'url' => $url,
-            'entidad_id' => (string) ($asignacion->grupo_asignacion ?: $asignacion->id),
-            'entidad_tipo' => class_basename($asignacion),
-            'creado_por_id' => (string) $creador->id,
-            'creado_por_nombre' => $creador->name,
-            'fecha' => now()->toDateTimeString(),
-        ];
-
-        if ($creador->rolOperativo() === 2) {
-            $this->safeNotify([$creador], new AsignacionPendienteNotification($data));
-
-            $this->notificarSupervisoresDeAlmacenista(
-                $creador,
-                new AsignacionPendienteNotification($data)
             );
         }
     }
@@ -219,10 +194,10 @@ class NotificacionService
         $creadorNombre = $creador?->name ?: 'Sistema';
 
         $data = [
-            'titulo' => 'Alerta para revisión de RRHH',
-            'mensaje' => "Revisar alerta de {$producto} asociada a {$colaborador}.",
+            'titulo' => 'Incidencia para revisión de RR. HH.',
+            'mensaje' => "Revisar incidencia de {$producto} asociada a {$colaborador}.",
             'tipo' => 'alerta_rrhh',
-            'url' => route('rrhh.alertas.index'),
+            'url' => route('rrhh.alertas.show', $alerta),
             'entidad_id' => (string) $alerta->id,
             'entidad_tipo' => class_basename($alerta),
             'creado_por_id' => $creador ? (string) $creador->id : '',

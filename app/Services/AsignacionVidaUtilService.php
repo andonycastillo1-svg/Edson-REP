@@ -2,29 +2,77 @@
 
 namespace App\Services;
 
-use App\Models\AlertaReemplazo;
 use App\Models\AsignacionEstadoHistorial;
 use App\Models\AsignacionInventario;
-use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Schema;
 
 class AsignacionVidaUtilService
 {
-    public function mesesRestantes(AsignacionInventario $asignacion, ?Carbon $fechaCorte = null): int
+    public function registrarInicio(AsignacionInventario $asignacion, CarbonInterface $inicio): void
     {
-        $fechaCorte ??= now();
-        $vencimiento = $asignacion->fecha_vencimiento;
-        if ($vencimiento === null) {
-            $meses = $asignacion->vida_util_restante_meses
-                ?? ($asignacion->stock_tipo === 'usado' ? null : $asignacion->vida_util_original_meses);
-            if ($meses === null) {
-                return 0;
-            }
-
-            $vencimiento = Carbon::parse($asignacion->fecha)->addMonthsNoOverflow($meses);
+        if ($asignacion->estado !== 'Activa' || $asignacion->cantidad_asignada < 1) {
+            return;
         }
 
-        return (int) ceil(max(0, $fechaCorte->diffInMonths($vencimiento, false)));
+        $periodos = $asignacion->periodos()->whereNull('devuelto_en');
+        $vidas = (clone $periodos)->pluck('vida_util_al_asignar_segundos');
+
+        if ($vidas->isNotEmpty()) {
+            $periodos->update(['inicio_uso_en' => $inicio]);
+            $segundos = $vidas->containsStrict(null) ? null : (int) $vidas->min();
+            $vencimiento = $segundos === null ? null : $inicio->copy()->addSeconds($segundos);
+        } elseif ($asignacion->vida_util_disponible_segundos !== null) {
+            $vencimiento = $inicio->copy()->addSeconds($asignacion->vida_util_disponible_segundos);
+        } else {
+            $meses = $asignacion->vida_util_restante_meses;
+            $vencimiento = $meses === null ? null : $inicio->copy()->addMonthsNoOverflow($meses);
+        }
+
+        $asignacion->update(['fecha_vencimiento' => $vencimiento]);
+    }
+
+    public function restante(AsignacionInventario $asignacion, ?CarbonInterface $fechaCorte, ?int $cantidad = null): ?int
+    {
+        if ($fechaCorte === null) {
+            return null;
+        }
+
+        if (config('inventario.seguimiento_unidades')) {
+            $cantidad ??= $asignacion->cantidad_asignada;
+            $periodos = $asignacion->relationLoaded('periodosActivos')
+                ? $asignacion->periodosActivos->take($cantidad)
+                : $asignacion->periodosActivos()->limit($cantidad)->get();
+            if ($periodos->isNotEmpty()) {
+                $vidas = $periodos->map(function ($periodo) use ($fechaCorte, $asignacion) {
+                    $inicio = $periodo->inicio_uso_en ?? ($asignacion->entrega === null ? $periodo->asignado_en : null);
+                    $vida = $periodo->vida_util_al_asignar_segundos;
+                    if ($vida === null || $inicio === null || $fechaCorte->lt($inicio)) {
+                        return null;
+                    }
+
+                    return max(0, (int) $vida - max(0, (int) $inicio->diffInSeconds($fechaCorte)));
+                });
+                if ($vidas->filter(fn ($vida) => $vida > 0)->isNotEmpty()) {
+                    return (int) $vidas->filter(fn ($vida) => $vida > 0)->min();
+                }
+
+                return $vidas->containsStrict(null) ? null : 0;
+            }
+        }
+
+        $vencimiento = $asignacion->fecha_vencimiento;
+        $entrega = $asignacion->entrega;
+        if ($entrega?->recibida_en && $fechaCorte->lt($entrega->recibida_en)) {
+            return null;
+        }
+        if ($vencimiento === null && $entrega === null) {
+            $meses = $asignacion->vida_util_restante_meses
+                ?? ($asignacion->stock_tipo === 'usado' ? null : $asignacion->vida_util_original_meses);
+            $vencimiento = $meses === null ? null : $asignacion->fecha->copy()->addMonthsNoOverflow($meses);
+        }
+
+        return $vencimiento === null ? null : max(0, (int) $fechaCorte->diffInSeconds($vencimiento));
     }
 
     public function registrarEstado(AsignacionInventario $asignacion, string $estado, ?string $detalle = null): void
@@ -40,50 +88,5 @@ class AsignacionVidaUtilService
             'detalle' => $detalle,
             'user_id' => auth()->id(),
         ]);
-    }
-
-    public function procesarReemplazoPorDanio(
-        AsignacionInventario $asignacionAnterior,
-        AsignacionInventario $asignacionNueva,
-        Carbon $fechaDanio,
-        bool $cerrarAnterior = true
-    ): ?AlertaReemplazo {
-        $alertaRrhh = null;
-        $vidaMeses = (int) ($asignacionAnterior->vida_util_original_meses ?? $asignacionAnterior->producto->vida_util_meses ?? 0);
-        $mesesRestantes = $this->mesesRestantes($asignacionAnterior, $fechaDanio);
-
-        if ($mesesRestantes > 0) {
-            if ($cerrarAnterior) {
-                $asignacionAnterior->estado = 'Dañada';
-                $this->registrarEstado($asignacionAnterior, 'danado', 'Producto dañado antes de finalizar vida útil.');
-            }
-
-            if (Schema::hasTable('alertas_reemplazos_rrhh')) {
-                $alertaRrhh = AlertaReemplazo::create([
-                    'colaborador_codigo' => $asignacionAnterior->colaborador_codigo,
-                    'producto_codigo' => $asignacionAnterior->producto_codigo,
-                    'registrado_por_user_id' => auth()->id(),
-                    'asignacion_anterior_id' => $asignacionAnterior->id,
-                    'asignacion_nueva_id' => $asignacionNueva->id,
-                    'fecha_asignacion_anterior' => $asignacionAnterior->fecha,
-                    'fecha_dano_reemplazo' => $fechaDanio,
-                    'vida_util_meses' => $vidaMeses,
-                    'meses_restantes' => $mesesRestantes,
-                    'descuento_aplicable' => true,
-                    'estado' => 'pendiente',
-                    'detalle' => 'Reemplazo antes de vida útil; aplica revisión de descuento proporcional RRHH.',
-                ]);
-            }
-        } elseif ($cerrarAnterior) {
-            $asignacionAnterior->estado = 'Devuelta';
-            $this->registrarEstado($asignacionAnterior, 'depreciado', 'Producto fuera de vida útil (depreciado).');
-            $this->registrarEstado($asignacionNueva, 'reutilizado', 'Reasignado fuera de vida útil (sin descuento).');
-        }
-
-        if (!$cerrarAnterior) {
-            $this->registrarEstado($asignacionAnterior, 'activo', 'Se reemplazó parte de la asignación por daño.');
-        }
-
-        return $alertaRrhh;
     }
 }

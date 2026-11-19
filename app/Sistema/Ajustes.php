@@ -8,7 +8,7 @@ class Ajustes
 {
     public const EVENTOS = [
         'asignacion_creada' => 'Nueva asignación (inventario, vehículos o refacciones)',
-        'asignacion_pendiente' => 'Evidencia de asignación pendiente',
+        'asignacion_pendiente' => 'Seguimiento de recepción y hoja firmada',
         'asignacion_estado' => 'Cambios en asignaciones y devoluciones',
         'traslado_creado' => 'Solicitud de traslado',
         'traslado_estado' => 'Decisión de traslado',

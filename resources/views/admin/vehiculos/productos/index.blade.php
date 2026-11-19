@@ -870,7 +870,7 @@
                                     </div>
 
                                     <div class="vp-warning">
-                                        Si marcas <strong>mal uso del colaborador</strong>, el sistema generará el cobro al colaborador que tenga asignado este vehículo actualmente. El cobro se calculará proporcionalmente según la vida útil restante del producto/refacción.
+                                        Si marcas <strong>mal uso del colaborador</strong>, el sistema enviará el reporte a RR. HH. para revisión.
                                     </div>
                                 </form>
                             </div>
@@ -960,7 +960,7 @@ function confirmarCierreProducto(form, cantidadDisponible) {
     }
 
     if (malUso) {
-        mensaje += '\n\nSe generará cobro al colaborador que tiene asignado el vehículo actualmente.';
+        mensaje += '\n\nSe registrará una incidencia para revisión de RR. HH.';
     }
 
     return confirm(mensaje);

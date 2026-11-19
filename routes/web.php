@@ -236,6 +236,20 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::post('asignaciones', [AsignacionInventarioController::class, 'store'])
             ->name('asignaciones.store');
 
+        Route::post('asignaciones/entregas/{grupo}/recepcion', [AsignacionInventarioController::class, 'confirmarRecepcion'])
+            ->whereUuid('grupo')->name('asignaciones.confirmar_recepcion');
+
+        Route::get('asignaciones/entregas/{grupo}', [AsignacionInventarioController::class, 'entrega'])
+            ->whereUuid('grupo')->name('asignaciones.entrega');
+        Route::post('asignaciones/entregas/{grupo}/documentos', [AsignacionInventarioController::class, 'subirDocumentoEntrega'])
+            ->whereUuid('grupo')->name('asignaciones.documento_entrega');
+        Route::get('asignaciones/incidencias/{incidencia}', [AsignacionInventarioController::class, 'verIncidencia'])
+            ->name('asignaciones.incidencia');
+        Route::get('asignaciones/incidencias/{incidencia}/archivo', [AsignacionInventarioController::class, 'archivoIncidencia'])
+            ->name('asignaciones.archivo_incidencia');
+        Route::post('asignaciones/incidencias/{incidencia}/archivo', [AsignacionInventarioController::class, 'subirArchivoIncidencia'])
+            ->name('asignaciones.documento_incidencia');
+
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
 
@@ -295,6 +309,20 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::post('asignaciones', [AsignacionInventarioController::class, 'store'])
             ->name('asignaciones.store');
+
+        Route::post('asignaciones/entregas/{grupo}/recepcion', [AsignacionInventarioController::class, 'confirmarRecepcion'])
+            ->whereUuid('grupo')->name('asignaciones.confirmar_recepcion');
+
+        Route::get('asignaciones/entregas/{grupo}', [AsignacionInventarioController::class, 'entrega'])
+            ->whereUuid('grupo')->name('asignaciones.entrega');
+        Route::post('asignaciones/entregas/{grupo}/documentos', [AsignacionInventarioController::class, 'subirDocumentoEntrega'])
+            ->whereUuid('grupo')->name('asignaciones.documento_entrega');
+        Route::get('asignaciones/incidencias/{incidencia}', [AsignacionInventarioController::class, 'verIncidencia'])
+            ->name('asignaciones.incidencia');
+        Route::get('asignaciones/incidencias/{incidencia}/archivo', [AsignacionInventarioController::class, 'archivoIncidencia'])
+            ->name('asignaciones.archivo_incidencia');
+        Route::post('asignaciones/incidencias/{incidencia}/archivo', [AsignacionInventarioController::class, 'subirArchivoIncidencia'])
+            ->name('asignaciones.documento_incidencia');
 
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
@@ -357,6 +385,17 @@ Route::middleware(['auth', 'auto.logout', 'role:3'])
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
 
+        Route::get('asignaciones/entregas/{grupo}', [AsignacionInventarioController::class, 'entrega'])
+            ->whereUuid('grupo')->name('asignaciones.entrega');
+        Route::post('asignaciones/entregas/{grupo}/documentos', [AsignacionInventarioController::class, 'subirDocumentoEntrega'])
+            ->whereUuid('grupo')->name('asignaciones.documento_entrega');
+        Route::get('asignaciones/incidencias/{incidencia}', [AsignacionInventarioController::class, 'verIncidencia'])
+            ->name('asignaciones.incidencia');
+        Route::get('asignaciones/incidencias/{incidencia}/archivo', [AsignacionInventarioController::class, 'archivoIncidencia'])
+            ->name('asignaciones.archivo_incidencia');
+        Route::post('asignaciones/incidencias/{incidencia}/archivo', [AsignacionInventarioController::class, 'subirArchivoIncidencia'])
+            ->name('asignaciones.documento_incidencia');
+
         Route::get('asignaciones/colaborador/{codigo}/pdf', [AsignacionInventarioController::class, 'pdf'])
             ->name('asignaciones.pdf');
 
@@ -385,6 +424,12 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 
         Route::get('/alertas/export', [RrhhDashboardController::class, 'export'])
             ->name('alertas.export');
+
+        Route::get('/alertas/{alerta}', [RrhhDashboardController::class, 'show'])->name('alertas.show');
+        Route::get('/alertas/{alerta}/evidencia', [RrhhDashboardController::class, 'evidencia'])->name('alertas.evidencia');
+        Route::get('/alertas/{alerta}/documentos/{archivo}', [RrhhDashboardController::class, 'documento'])->name('alertas.documento');
+        Route::get('/alertas/{alerta}/refacciones/{archivo}', [RrhhDashboardController::class, 'documentoRefaccion'])->name('alertas.documento_refaccion');
+        Route::post('/alertas/{alerta}/actuaciones', [RrhhDashboardController::class, 'actuacion'])->name('alertas.actuacion');
 
         Route::post('/alertas/{alerta}/finalizar', [RrhhDashboardController::class, 'finalizar'])
             ->name('alertas.finalizar');

@@ -19,7 +19,7 @@ class CatalogoPermisos
         [$modulo, $accion] = explode('.', $permiso, 2);
         $grupo = Modulos::DEFINICIONES[$modulo][0] ?? match ($modulo) {
             'panel' => 'Panel principal',
-            'alertas' => 'Alertas',
+            'alertas' => 'Incidencias para revisión de RR. HH.',
             'sistema' => 'Configuración del sistema',
             default => 'Otros permisos',
         };
@@ -32,7 +32,7 @@ class CatalogoPermisos
             'asignaciones.crear' => ['Asignar inventario', 'Entregar equipo a colaboradores y registrar la asignación.'],
             'asignaciones.devolver' => ['Registrar devoluciones', 'Registrar el retorno parcial o total de equipo asignado.'],
             'traslados.aprobar' => ['Resolver solicitudes de traslado', 'Aprobar o rechazar traslados de la bodega correspondiente.'],
-            'alertas.modificar' => ['Finalizar alertas', 'Registrar la resolución de una alerta de reemplazo.'],
+            'alertas.modificar' => ['Gestionar incidencias de RR. HH.', 'Registrar notas de seguimiento y finalizar incidencias.'],
             'vehiculos.asignar' => ['Asignar y desasignar vehículos', 'Registrar la entrega y el retorno de unidades.'],
             'refacciones.crear' => ['Asignar refacciones', 'Registrar refacciones entregadas a un vehículo.'],
             'refacciones.cerrar' => ['Cerrar asignaciones de refacciones', 'Registrar el cierre o la devolución de refacciones.'],
@@ -75,6 +75,8 @@ class CatalogoPermisos
             'index' => 'consultar', 'create' => 'crear', 'store' => 'crear', 'activas_producto' => 'crear',
             'pdf' => 'exportar', 'hoja_devolucion' => 'exportar', 'upload_pdf_firmado' => 'evidencias',
             'upload_pdf_devolucion_firmado' => 'evidencias', 'ver_pdf_firmado' => 'archivos',
+            'entrega' => 'consultar', 'documento_entrega' => 'evidencias', 'confirmar_recepcion' => 'crear',
+            'incidencia' => 'consultar', 'documento_incidencia' => 'evidencias', 'archivo_incidencia' => 'archivos',
             'devolver' => 'devolver', 'devolver_lote' => 'devolver', 'devolver_todo_colaborador' => 'devolver',
         ];
         $traslados = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + [
@@ -112,12 +114,17 @@ class CatalogoPermisos
                 'operaciones.traslados' => ['traslados', $traslados],
             ],
             3 => ['asignaciones' => ['asignaciones', array_intersect_key($asignaciones, array_flip([
-                'index', 'ver_pdf_firmado', 'pdf', 'upload_pdf_firmado',
+                'index', 'ver_pdf_firmado', 'pdf', 'upload_pdf_firmado', 'entrega', 'documento_entrega',
+                'incidencia', 'documento_incidencia', 'archivo_incidencia',
             ]))]],
             4 => [
                 'usuarios' => ['usuarios', $usuarios],
                 'colaboradores' => ['colaboradores', $colaboradores],
-                'alertas' => ['alertas', ['index' => 'consultar', 'export' => 'exportar', 'finalizar' => 'modificar']],
+                'alertas' => ['alertas', [
+                    'index' => 'consultar', 'show' => 'consultar', 'evidencia' => 'consultar',
+                    'documento' => 'consultar', 'documento_refaccion' => 'consultar',
+                    'export' => 'exportar', 'actuacion' => 'modificar', 'finalizar' => 'modificar',
+                ]],
             ],
             default => [],
         };
