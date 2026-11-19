@@ -18,20 +18,23 @@
             <form method="POST" action="{{ $campo ? route('sistema.campos.actualizar', $campo) : route('sistema.campos.guardar') }}" class="space-y-5" data-formulario-campo>
                 @csrf @if($campo) @method('PUT') @endif
                 <p class="text-sm">{{ $campo ? 'Edita la etiqueta, las opciones y la visibilidad. El módulo y el tipo se conservan con el historial.' : 'Elige dónde se usará el campo, qué dato acepta y cómo se llamará en los formularios.' }}</p>
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <label class="text-sm font-semibold">Módulo
+                <fieldset class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <legend class="mb-2 font-semibold">Datos del campo</legend>
+                    <label class="text-sm font-semibold">Módulo (obligatorio)
                         @if($campo)<input type="hidden" name="modulo" value="{{ $campo->modulo }}">@endif
                         <select aria-label="Módulo" name="{{ $campo ? '' : 'modulo' }}" @disabled($campo) required class="mt-1 w-full rounded-xl border-slate-300">
                             @foreach(\App\Sistema\Modulos::DEFINICIONES as $key => $spec)<option value="{{ $key }}" @selected(old('modulo', $campo?->modulo ?? request('modulo')) === $key)>{{ $spec[0] }}</option>@endforeach
                         </select>
                     </label>
-                    <label class="text-sm font-semibold">Tipo de dato
+                    <label for="campo-etiqueta" class="text-sm font-semibold">Nombre del campo (obligatorio)
+                        <input id="campo-etiqueta" name="etiqueta" value="{{ old('etiqueta', $campo?->etiqueta) }}" maxlength="100" required class="mt-1 w-full">
+                    </label>
+                    <label class="text-sm font-semibold">Tipo de dato (obligatorio)
                         @if($campo)<input type="hidden" name="tipo" value="{{ $campo->tipo }}">@endif
                         <select id="sistema-tipo-campo" aria-label="Tipo de dato" name="{{ $campo ? '' : 'tipo' }}" @disabled($campo) required class="mt-1 w-full rounded-xl border-slate-300">
                             @foreach(\App\Sistema\ValoresCampos::TIPOS as $key => $etiqueta)<option value="{{ $key }}" @selected($tipo === $key)>{{ $etiqueta }}</option>@endforeach
                         </select>
                     </label>
-                    <label class="text-sm font-semibold">Etiqueta<input name="etiqueta" value="{{ old('etiqueta', $campo?->etiqueta) }}" maxlength="100" required class="mt-1 w-full rounded-xl border-slate-300"></label>
                     <label data-default-texto @if($esLista || $esBooleano || $tipo === 'archivo') hidden @endif class="text-sm font-semibold">Valor predeterminado
                         <input name="predeterminado" @disabled($esLista || $esBooleano || $tipo === 'archivo') value="{{ $defaultSimple }}" class="mt-1 w-full">
                     </label>
@@ -42,16 +45,7 @@
                             <option value="0" @selected($defaultSimple === '0')>No</option>
                         </select>
                     </label>
-                    <label class="text-sm font-semibold sm:col-span-2 lg:col-span-3">Ayuda<textarea name="ayuda" maxlength="500" rows="2" class="mt-1 w-full rounded-xl border-slate-300">{{ old('ayuda', $campo?->ayuda) }}</textarea></label>
-                </div>
-                <fieldset class="rounded-lg border border-slate-200 p-3">
-                    <legend class="px-1 text-sm font-bold">Disponibilidad y visibilidad</legend>
-                    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        @foreach(['activo' => 'Activo', 'obligatorio' => 'Obligatorio en registros nuevos', 'formulario' => 'Mostrar en formularios', 'tabla' => 'Mostrar en tabla', 'filtro' => 'Habilitar filtro', 'exportacion' => 'Incluir al exportar'] as $key => $titulo)
-                            <x-sistema.casilla :name="$key" :id="'campo-'.$key" :marcada="old($key, $campo?->{$key} ?? in_array($key, ['activo','formulario']))">{{ $titulo }}</x-sistema.casilla>
-                        @endforeach
-                    </div>
-                    <p class="mt-2 text-xs">Un campo obligatorio debe mostrarse en el formulario. Los textos largos y archivos carecen de filtro.</p>
+                    <label class="text-sm font-semibold sm:col-span-2 lg:col-span-3">Instrucciones para quien complete este campo<textarea name="ayuda" maxlength="500" rows="2" class="mt-1 w-full rounded-xl border-slate-300">{{ old('ayuda', $campo?->ayuda) }}</textarea></label>
                 </fieldset>
                 <section id="sistema-opciones-panel" @unless($esLista) hidden @endunless>
                     <h2 class="font-bold">Opciones de la lista</h2>
@@ -73,13 +67,22 @@
                             @endif
                         @endforeach
                     </select>
-                    <fieldset data-default-multiple class="mt-4" hidden>
+                    <fieldset data-default-multiple aria-describedby="sistema-default-ayuda" class="mt-4" hidden>
                         <legend class="mb-1 text-sm font-semibold">Valores predeterminados</legend>
                         <div data-default-opciones class="sistema-opciones"></div>
                     </fieldset>
                     <p id="sistema-default-ayuda" class="mt-1 text-xs">Selecciona entre las opciones activas.</p>
                     <button type="button" data-limpiar-default class="ui-btn-secondary mt-2" hidden>Quitar selección</button>
                 </section>
+                <fieldset class="rounded-lg border border-slate-200 p-3">
+                    <legend class="px-1 text-sm font-bold">Dónde aparece el campo</legend>
+                    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach(['activo' => 'Activo', 'obligatorio' => 'Obligatorio en registros nuevos', 'formulario' => 'Mostrar en formularios', 'tabla' => 'Mostrar en tabla', 'filtro' => 'Habilitar filtro', 'exportacion' => 'Incluir al exportar'] as $key => $titulo)
+                            <x-sistema.casilla :name="$key" :id="'campo-'.$key" :marcada="old($key, $campo?->{$key} ?? in_array($key, ['activo','formulario']))">{{ $titulo }}</x-sistema.casilla>
+                        @endforeach
+                    </div>
+                    <p class="mt-2 text-xs">Marca los lugares donde quieres usarlo. Un campo obligatorio debe mostrarse en el formulario. Los textos largos y los archivos no admiten filtros.</p>
+                </fieldset>
                 <details class="rounded-lg border border-slate-200" @if($errors->has('clave') || $errors->has('current_password') || $errors->has('permiso_lectura') || $errors->has('permiso_edicion')) open @endif>
                     <summary class="sistema-desplegable">Opciones avanzadas</summary>
                     <div class="sistema-formulario p-3">

@@ -1,10 +1,12 @@
 # Configuración del sistema
 
+Para los pasos de uso y ejemplos de administración, consulta la [guía de administración y consulta](GUIA_ADMINISTRADOR.md).
+
 ## Qué se puede administrar
 
 - **Roles y permisos** desde el centro de configuración, con roles nuevos, duplicación, desactivación, permisos efectivos, permisos por usuario y administración de cuentas.
 - **Campos personalizados** para usuarios, colaboradores, productos, bodegas, compras, inventario, asignaciones, traslados, vehículos y refacciones.
-- **Presentación global** mediante la vista configurable de cada módulo. Los enlaces llevan a las pantallas operativas, que conservan su estructura y sus acciones. La vista configurable permite ordenar y renombrar columnas, configurar filtros, búsqueda, paginación y exportar CSV. Los formularios operativos aplican los cambios a los campos nativos opcionales definidos en el catálogo.
+- **Presentación global** mediante la vista configurable de cada módulo. Datos de los módulos reúne consultas de solo lectura con orden, filtros, búsqueda, paginación y exportación CSV autorizada. La edición de campos personalizados se abre desde el módulo operativo. Los formularios operativos aplican los cambios a los campos nativos opcionales definidos en el catálogo.
 - **Parámetros generales** de identidad, categorías sugeridas, vida útil predeterminada y alertas de existencias. El cambio de bodega principal se bloquea cuando hay historial operativo. El ajuste de inactividad puede acortar el tiempo configurado por infraestructura.
 - **Notificaciones** operativas por evento, roles y usuarios. La selección restringe los destinatarios elegibles definidos por cada flujo. Las notificaciones de seguridad, supervisión y RR. HH. siguen la regla del módulo.
 - **Bitácora** paginada de solo lectura. Un Superadministrador puede ver eventos de seguridad. Un administrador delegado puede consultar eventos operativos. Para los demás ámbitos delegados, la consulta se limita a sus propias acciones.
@@ -13,7 +15,7 @@
 
 `app/Sistema/CatalogoPermisos.php` traduce los nombres de las rutas protegidas a permisos funcionales. Los ámbitos 1 a 4 conservan los controles del sistema y las rutas que ya utilizaban. A un rol nuevo se le asigna expresamente uno de esos ámbitos. Empieza sin permisos, salvo al duplicar un rol. La matriz de pruebas comprueba el catálogo contra las rutas protegidas.
 
-El ámbito impone el límite de acceso. Laravel comprueba además el registro, su bodega, su creador o la relación de supervisión según el módulo. Dentro de ese límite, la regla individual prevalece sobre el rol. Después se evalúan la regla explícita del rol y los accesos históricos de los roles 1 a 4. Un permiso nuevo o desconocido queda denegado por defecto. Los permisos nuevos para editar fichas, exportar CSV y descargar archivos personalizados se conceden de forma separada.
+El ámbito impone el límite de acceso. Laravel comprueba además el registro, su bodega, su creador o la relación de supervisión según el módulo. Dentro de ese límite, la regla individual prevalece sobre el rol. Después se evalúan la regla explícita del rol y los accesos históricos de los roles 1 a 4. Un permiso nuevo o desconocido queda denegado por defecto. Los permisos para editar campos operativos, exportar CSV y descargar archivos personalizados se conceden de forma separada.
 
 El Superadministrador es una autorización separada. Los administradores existentes conservan la operación ordinaria. La gestión de cuentas administrativas, de cuentas con permisos críticos y de los permisos de lectura y edición de un campo requiere un Superadministrador y confirmación de contraseña cuando se modifica. La baja de usuarios desactiva la cuenta y preserva sus registros. La interfaz no ofrece comandos de servidor ni entrada de SQL o PHP.
 

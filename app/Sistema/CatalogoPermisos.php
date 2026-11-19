@@ -56,7 +56,13 @@ class CatalogoPermisos
             },
         };
 
-        return compact('grupo', 'titulo', 'descripcion');
+        $categoria = $modulo === 'sistema' ? 'Administración del sistema' : match ($accion) {
+            'consultar' => 'Consulta',
+            'archivos', 'evidencias', 'datos_archivos', 'exportar', 'datos_exportar' => 'Documentos y reportes',
+            default => 'Operaciones',
+        };
+
+        return compact('grupo', 'categoria', 'titulo', 'descripcion');
     }
 
     public static function rutas(int $ambito): array

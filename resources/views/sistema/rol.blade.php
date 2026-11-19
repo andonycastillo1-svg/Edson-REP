@@ -11,9 +11,11 @@
             <x-sistema.casilla name="activo" id="rol-activo" :marcada="old('activo', $rol->activo)">Rol activo</x-sistema.casilla>
                 </div>
             </details>
-            <x-sistema.reglas :catalogo="$catalogo" :reglas="$reglas" :efectivos="$efectivos" :rol-inactivo="!$rol->activo" />
-            <x-sistema.confirmacion />
-            <button class="ui-btn-primary" type="submit">Guardar rol</button>
+            <x-sistema.reglas :catalogo="$catalogo" :reglas="$reglas" :efectivos="$efectivos" :bloqueo="$rol->activo ? null : 'Rol inactivo'" />
+            <div id="confirmar-permisos" tabindex="-1" class="scroll-mt-20 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <x-sistema.confirmacion />
+                <button class="ui-btn-primary" type="submit">Guardar rol</button>
+            </div>
         </form>
     </x-sistema.panel>
     <x-sistema.panel>

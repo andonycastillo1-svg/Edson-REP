@@ -34,6 +34,7 @@ Route::name('sistema.')->middleware(['auth', 'auto.logout'])->group(function () 
                 Route::put('roles/{rol}', 'actualizarRol')->name('rol.actualizar');
                 Route::put('cuentas/{usuario}/reglas', 'permisosUsuario')->name('usuario.permisos');
                 Route::put('cuentas/{usuario}/estado', 'estadoCuenta')->name('usuario.estado');
+                Route::put('cuentas/{usuario}/contrasena', 'actualizarContrasena')->name('usuario.contrasena');
                 Route::put('cuentas/{usuario}/superadministrador', 'superadministrador')->name('usuario.superadministrador');
                 Route::put('cuentas/{usuario}/acceso', 'actualizarCuenta')->name('usuario.acceso');
             });

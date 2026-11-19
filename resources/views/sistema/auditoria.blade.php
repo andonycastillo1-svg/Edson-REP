@@ -2,13 +2,16 @@
                  descripcion="Revisa los cambios registrados, la fecha y la cuenta responsable.">
     <x-sistema.panel titulo="Filtros de actividad">
         <form method="GET" action="{{ route('sistema.auditoria') }}" class="space-y-3">
+            <label class="block max-w-md text-sm font-semibold">Buscar actividad
+                <input type="search" name="q" value="{{ $datos['q'] ?? '' }}" maxlength="100" class="mt-1 w-full" placeholder="Por usuario, módulo o acción">
+            </label>
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <label for="bitacora-usuario" class="min-w-0 text-sm font-semibold">Usuario
                     <select id="bitacora-usuario" name="actor" class="mt-1 w-full" aria-label="Usuario">
                         <option value="">Todas las cuentas</option>
                         @foreach($usuarios as $usuario)
                             <option value="{{ $usuario->actor_id ?? 0 }}" @selected((string) ($datos['actor'] ?? '') === (string) ($usuario->actor_id ?? 0))>
-                                {{ $usuario->name ?? ($usuario->actor_id === null ? 'Sistema' : 'Cuenta histórica') }}
+                                {{ \App\Sistema\Bitacora::persona($usuario) }}
                             </option>
                         @endforeach
                     </select>
@@ -53,7 +56,7 @@
                         @php($cambios = \App\Sistema\Bitacora::detalles($evento->antes, $evento->despues, $evento->accion))
                         <tr>
                             <td class="whitespace-nowrap"><time datetime="{{ \Illuminate\Support\Carbon::parse($evento->created_at)->toDateTimeLocalString() }}">{{ \Illuminate\Support\Carbon::parse($evento->created_at)->format('d/m/Y H:i') }}</time></td>
-                            <td>{{ $usuarios->firstWhere('actor_id', $evento->actor_id)?->name ?? ($evento->actor_id === null ? 'Sistema' : 'Cuenta histórica') }}</td>
+                            <td>{{ \App\Sistema\Bitacora::persona($actores->get($evento->actor_id, $evento)) }}</td>
                             <td>
                                 <p class="font-semibold">{{ \App\Sistema\Bitacora::accion($evento->accion) }}</p>
                                 <p class="text-xs">{{ \App\Sistema\Bitacora::modulo($evento->modulo) }}</p>

@@ -161,36 +161,81 @@ function configurarCampo(form) {
 function configurarBuscadorPermisos(panel) {
     const filtro = panel.querySelector('[data-filtro-permisos]');
     if (!filtro) return;
-    const grupos = Array.from(panel.querySelectorAll('[data-grupo-permisos]'));
+    const estado = panel.querySelector('[data-filtro-estado]');
+    const expandir = panel.querySelector('[data-expandir-permisos]');
+    const resumen = panel.querySelector('[data-permisos-resumen]');
+    const grupos = [...panel.querySelectorAll('[data-grupo-permisos]')];
+    const reglas = [...panel.querySelectorAll('[data-regla-permiso]')];
+    const texto = new Map(reglas.map(regla => [regla, normalizeText(regla.dataset.busqueda)]));
     let abiertos = null;
-    filtro.addEventListener('input', () => {
-        const consulta = normalizeText(filtro.value);
-        if (consulta && abiertos === null) abiertos = grupos.map(grupo => grupo.open);
-        let hayResultados = false;
+
+    function actualizarBoton() {
+        const visibles = grupos.filter(grupo => !grupo.hidden);
+        expandir.hidden = visibles.length === 0;
+        expandir.textContent = visibles.every(grupo => grupo.open) ? 'Contraer módulos' : 'Expandir módulos';
+    }
+
+    function actualizarResumen() {
+        let pendientes = 0;
+        for (const regla of reglas) {
+            const cambio = regla.querySelector('input:checked')?.value !== regla.dataset.reglaGuardada;
+            regla.querySelector('[data-regla-modificada]').hidden = !cambio;
+            if (cambio) pendientes += 1;
+        }
+        const visibles = reglas.filter(regla => !regla.hidden).length;
+        resumen.textContent = `${visibles} de ${reglas.length} permisos · ${pendientes === 1 ? '1 cambio sin guardar' : pendientes + ' cambios sin guardar'}`;
+    }
+
+    function aplicarFiltros() {
+        const palabras = normalizeText(filtro.value).split(/\s+/).filter(Boolean);
+        const filtrando = palabras.length > 0 || estado.value !== '';
+        if (filtrando && abiertos === null) abiertos = grupos.map(grupo => grupo.open);
+        for (const regla of reglas) {
+            regla.hidden = !palabras.every(palabra => texto.get(regla).includes(palabra))
+                || Boolean(estado.value && estado.value !== regla.dataset.efectivo);
+        }
         grupos.forEach((grupo, indice) => {
-            const coincidencias = Array.from(grupo.querySelectorAll('[data-regla-permiso]'), regla => {
-                regla.hidden = !normalizeText(regla.dataset.busqueda).includes(consulta);
-                return !regla.hidden;
-            }).some(Boolean);
-            grupo.hidden = !coincidencias;
-            hayResultados ||= coincidencias;
-            if (consulta && coincidencias) grupo.open = true;
-            if (!consulta && abiertos) grupo.open = abiertos[indice];
+            for (const categoria of grupo.querySelectorAll('[data-categoria-permisos]')) {
+                categoria.hidden = !categoria.querySelector('[data-regla-permiso]:not([hidden])');
+            }
+            grupo.hidden = !grupo.querySelector('[data-categoria-permisos]:not([hidden])');
+            if (filtrando && !grupo.hidden) grupo.open = true;
+            if (!filtrando && abiertos) grupo.open = abiertos[indice];
         });
-        panel.querySelector('[data-sin-permisos]').hidden = hayResultados;
-        if (!consulta) abiertos = null;
+        panel.querySelector('[data-sin-permisos]').hidden = grupos.some(grupo => !grupo.hidden);
+        if (!filtrando) abiertos = null;
+        actualizarBoton();
+        actualizarResumen();
+    }
+
+    expandir.addEventListener('click', () => {
+        const visibles = grupos.filter(grupo => !grupo.hidden);
+        const abrir = visibles.some(grupo => !grupo.open);
+        for (const grupo of visibles) grupo.open = abrir;
+        actualizarBoton();
     });
+    filtro.addEventListener('input', aplicarFiltros);
+    estado.addEventListener('change', aplicarFiltros);
+    panel.addEventListener('toggle', actualizarBoton, true);
+    panel.addEventListener('change', event => {
+        if (event.target.type === 'radio') actualizarResumen();
+    });
+    aplicarFiltros();
 }
 
 function conectarValidacion(resumen) {
-    const controles = [...document.querySelectorAll('form :is(input, select, textarea):not([type=hidden])')];
+    const origen = resumen.dataset.validacionOrigen;
+    const formulario = origen ? `form[data-validacion-formulario="${CSS.escape(origen)}"]` : 'form';
+    const controles = [...document.querySelectorAll(`${formulario} :is(input, select, textarea):not([type=hidden]):not(:disabled)`)];
     Array.from(resumen.querySelectorAll('[data-campo-error]')).forEach((error, indice) => {
         const [base, ...partes] = error.dataset.campoError.split('.');
         const name = base + partes.map(parte => `[${parte}]`).join('');
-        let campo = controles.find(control => control.name === name && !control.disabled);
+        const alternativas = controles.filter(control => control.name === name
+            || (base === 'reglas' && control.name === `reglas[${partes.join('.')}]`));
+        let campo = alternativas.find(control => control.type !== 'radio' || control.checked) ?? alternativas[0];
         if (!campo && partes.length > 0 && /^\d+$/.test(partes.at(-1))) {
             const nombreLista = base + partes.slice(0, -1).map(parte => `[${parte}]`).join('') + '[]';
-            campo = controles.filter(control => control.name === nombreLista && !control.disabled)[Number(partes.at(-1))];
+            campo = controles.filter(control => control.name === nombreLista)[Number(partes.at(-1))];
         }
         if (!campo) return;
         error.id = `mensaje-validacion-${indice}`;
@@ -211,6 +256,21 @@ function conectarValidacion(resumen) {
         error.replaceChildren(enlace);
     });
     resumen.focus();
+}
+
+function conectarDatosCuenta(form) {
+    const rol = form.querySelector('#rol-cuenta');
+    function reflejarAmbito() {
+        const ambito = rol.selectedOptions[0]?.dataset.ambito;
+        for (const grupo of form.querySelectorAll('[data-para-ambito]')) {
+            grupo.hidden = grupo.dataset.paraAmbito !== ambito;
+            const control = grupo.querySelector('select');
+            control.disabled = grupo.hidden;
+            control.required = !grupo.hidden;
+        }
+    }
+    rol.addEventListener('change', reflejarAmbito);
+    reflejarAmbito();
 }
 
 function conectarOrden(lista) {
@@ -265,7 +325,8 @@ function conectarPestanas(grupo) {
     const enlaces = [...grupo.querySelectorAll('[data-pestana]')];
     const paneles = [...grupo.querySelectorAll('[data-panel-pestana]')];
     function mostrar(fragmento) {
-        const elegido = paneles.find(panel => `#${panel.id}` === fragmento) ?? paneles[0];
+        const destino = fragmento && document.getElementById(fragmento.slice(1))?.closest('[data-panel-pestana]');
+        const elegido = paneles.includes(destino) ? destino : paneles[0];
         paneles.forEach(panel => panel.hidden = panel !== elegido);
         enlaces.forEach(enlace => {
             if (enlace.hash === `#${elegido.id}`) enlace.setAttribute('aria-current', 'location');
@@ -306,6 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-lista-orden]').forEach(conectarOrden);
     document.querySelectorAll('[data-presentacion]').forEach(conectarVisibilidad);
     document.querySelectorAll('[data-pestanas]').forEach(conectarPestanas);
+    document.querySelectorAll('[data-datos-cuenta]').forEach(conectarDatosCuenta);
     document.querySelectorAll('[data-destinatarios]').forEach(conectarDestinatarios);
     document.querySelectorAll('[data-resumen-validacion]').forEach(conectarValidacion);
 });

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\BodegaAccessService;
 use App\Services\DocumentoPrivado;
 use App\Sistema\Ajustes;
+use App\Sistema\Bitacora;
 use App\Sistema\Modulos;
 use App\Sistema\Permisos;
 use App\Sistema\Presentacion;
@@ -16,6 +17,7 @@ use App\Sistema\Seguridad;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -112,6 +114,7 @@ class ConfiguracionController extends Controller
         $evento = $filtros['evento'] ?? $opciones[0];
         $q = $request->string('q')->trim()->limit(100)->toString();
         $regla = $this->ajustes->leer('notificaciones', [])[$evento] ?? [];
+        $envioActivo = $regla['activo'] ?? true;
         if ($request->old('evento_formulario') === $evento) {
             $regla = [
                 'activo' => $request->old('activo', true),
@@ -126,7 +129,7 @@ class ConfiguracionController extends Controller
             ->orderBy('name')->limit(50)->get(['id', 'name', 'acceso_activo']);
         $usuarios = $coincidencias->merge(User::whereKey($idsValidos($regla['usuarios'] ?? []))->get(['id', 'name', 'acceso_activo']))->sortBy('name');
 
-        return view('sistema.notificaciones', compact('roles', 'usuarios', 'regla', 'evento', 'q'));
+        return view('sistema.notificaciones', compact('roles', 'usuarios', 'regla', 'evento', 'envioActivo', 'q'));
     }
 
     public function guardarNotificaciones(Request $request, string $evento, Seguridad $seguridad)
@@ -156,6 +159,7 @@ class ConfiguracionController extends Controller
     public function auditoria(Request $request)
     {
         $datos = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
             'actor' => ['nullable', 'integer', 'min:0'], 'modulo' => ['nullable', 'string', 'max:40'],
             'accion' => ['nullable', 'string', 'max:80'], 'desde' => ['nullable', 'date_format:Y-m-d'],
             'hasta' => ['nullable', 'date_format:Y-m-d'],
@@ -178,9 +182,23 @@ class ConfiguracionController extends Controller
         if (isset($datos['actor'])) {
             (int) $datos['actor'] === 0 ? $eventos->whereNull('actor_id') : $eventos->where('actor_id', $datos['actor']);
         }
+        $actores = $usuarios->keyBy('actor_id');
+        $texto = Str::lower(Str::ascii($datos['q'] ?? ''));
+        foreach (preg_split('/\s+/', $texto, flags: PREG_SPLIT_NO_EMPTY) as $palabra) {
+            $coincide = fn (string $etiqueta) => str_contains(Str::lower(Str::ascii($etiqueta)), $palabra);
+            $personas = $usuarios->filter(fn ($actor) => $coincide(Bitacora::persona($actor)));
+            $eventos->where(function ($grupo) use ($modulos, $acciones, $coincide, $personas) {
+                $grupo->whereIn('modulo', $modulos->filter(fn ($modulo) => $coincide(Bitacora::modulo($modulo))))
+                    ->orWhereIn('accion', $acciones->filter(fn ($accion) => $coincide(Bitacora::accion($accion))))
+                    ->orWhereIntegerInRaw('actor_id', $personas->pluck('actor_id')->filter());
+                if ($personas->contains(fn ($actor) => $actor->actor_id === null)) {
+                    $grupo->orWhereNull('actor_id');
+                }
+            });
+        }
         $eventos = $eventos->orderByDesc('id')->paginate(30)->withQueryString();
 
-        return view('sistema.auditoria', compact('eventos', 'usuarios', 'modulos', 'acciones', 'datos'));
+        return view('sistema.auditoria', compact('eventos', 'usuarios', 'actores', 'modulos', 'acciones', 'datos'));
     }
 
     public function presentacion(Request $request, Presentacion $catalogo)

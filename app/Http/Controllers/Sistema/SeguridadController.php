@@ -111,13 +111,16 @@ class SeguridadController extends Controller
         $reglas = $this->permisos->reglasUsuario($usuario);
         $rol = $usuario->role;
         $efectivos = collect($catalogo)->mapWithKeys(fn ($key) => [$key => $this->permisos->resultado($usuario, $key)]);
+        $heredados = collect($catalogo)->mapWithKeys(fn ($key) => [$key => $rol?->activo === false
+            ? ['permitido' => false, 'origen' => 'Rol inactivo'] : $this->permisos->resultadoRol($rol, $key)]);
         $super = $this->permisos->esSuperadministrador($usuario);
         $roles = Role::where('activo', true)->orderBy('nombre')->get()->filter(fn (Role $role) => isset(CatalogoPermisos::AMBITOS[$role->ambito()]));
         $bodegas = Bodega::orderBy('nombre')->get();
         $almacenistas = User::deAmbito(2)->orderBy('name')->get(['id', 'name']);
         $almacenistaId = $usuario->almacenistasAsignados()->value('users.id');
 
-        return view('sistema.usuario', compact('usuario', 'catalogo', 'reglas', 'rol', 'efectivos', 'super', 'roles', 'bodegas', 'almacenistas', 'almacenistaId'));
+        return view('sistema.usuario', compact('usuario', 'catalogo', 'reglas', 'rol', 'efectivos', 'heredados', 'super',
+            'roles', 'bodegas', 'almacenistas', 'almacenistaId'));
     }
 
     public function permisosUsuario(Request $request, User $usuario)
@@ -146,6 +149,22 @@ class SeguridadController extends Controller
         return redirect()->to(route('sistema.usuario', $usuario).'#seguridad')->with('ok', 'Estado de la cuenta actualizado.');
     }
 
+    public function actualizarContrasena(Request $request, User $usuario)
+    {
+        $data = $request->validate([
+            'password' => ['required', 'confirmed', $this->politicaContrasena()],
+            'current_password' => ['required', 'string', 'max:255'],
+        ]);
+
+        $this->seguridad->cambiar($request->user(), $data['current_password'], function () use ($usuario, $data) {
+            $cuenta = User::findOrFail($usuario->id);
+            $cuenta->forceFill(['password' => Hash::make($data['password']), 'remember_token' => null])->save();
+            $this->auditoria->registrar('seguridad', 'actualizar_contrasena', $cuenta->id, null, ['credencial_actualizada' => true]);
+        });
+
+        return redirect()->to(route('sistema.usuario', $usuario).'#seguridad')->with('ok', 'Contraseña de la cuenta actualizada.');
+    }
+
     public function superadministrador(Request $request, User $usuario)
     {
         $data = $request->validate([
@@ -162,7 +181,7 @@ class SeguridadController extends Controller
             'role_id' => ['required', 'integer', 'exists:roles,id'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::min(16)->letters()->numbers()->mixedCase()->symbols()],
+            'password' => ['required', 'confirmed', $this->politicaContrasena()],
             'current_password' => ['required', 'string', 'max:255'],
         ]);
         $valores = $campos->preparar($request, 'usuarios', true);
@@ -193,7 +212,7 @@ class SeguridadController extends Controller
                 Rule::requiredIf($ambito === 3), 'nullable', 'integer',
                 Rule::exists('users', 'id')->where(fn ($q) => $q->whereIn('id', User::deAmbito(2)->select('users.id'))),
             ],
-            'password' => ['nullable', 'confirmed', Password::min(16)->letters()->numbers()->mixedCase()->symbols()],
+            'password' => ['nullable', 'confirmed', $this->politicaContrasena()],
             'current_password' => ['required', 'string', 'max:255'],
         ]);
         $this->seguridad->cambiar($request->user(), $data['current_password'], function () use ($usuario, $data) {
@@ -230,6 +249,11 @@ class SeguridadController extends Controller
         });
 
         return back()->with('ok', 'Cuenta actualizada.');
+    }
+
+    private function politicaContrasena(): Password
+    {
+        return Password::min(16)->letters()->numbers()->mixedCase()->symbols();
     }
 
     private function cambiarReglas(string $tipo, int $id, int $ambito, array $reglas, array $anteriores): void
