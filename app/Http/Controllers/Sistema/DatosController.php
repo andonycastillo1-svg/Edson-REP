@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\DocumentoPrivado;
 use App\Sistema\Ajustes;
 use App\Sistema\Campo;
+use App\Sistema\ConsultaCampos;
 use App\Sistema\Modulos;
 use App\Sistema\Permisos;
 use App\Sistema\Presentacion;
@@ -25,6 +26,7 @@ class DatosController extends Controller
         private Ajustes $ajustes,
         private Permisos $permisos,
         private Presentacion $presentacion,
+        private ConsultaCampos $consultaCampos,
     ) {}
 
     public function indice(Request $request)
@@ -55,24 +57,21 @@ class DatosController extends Controller
     private function listado(Request $request, string $modulo, bool $operativa = false)
     {
         abort_unless($this->permisos->instalado(), 503);
-        [$nombre, , $id, $nativas] = Modulos::definicion($modulo);
+        [$nombre, $tabla, $id, $nativas] = Modulos::definicion($modulo);
         abort_if($operativa && !$this->modulos->puedeEditarCampos($request->user(), $modulo), 403);
         $config = $this->ajustes->leer('presentacion.'.$modulo, []);
         $columnas = array_filter($this->presentacion->tabla($modulo, $config), fn ($columna) => $columna['visible']);
-        $campos = $this->valores->campos($modulo, $request->user(), 'tabla');
-        $filtros = $this->valores->campos($modulo, $request->user(), 'filtro');
-        [$orden, $direccion] = $this->orden($request, $columnas, $config, $id);
-        $consulta = $this->consulta($request, $modulo, $columnas, $filtros)
-            ->orderBy($orden, $direccion);
-        if ($orden !== $id) {
-            $consulta->orderBy($id);
-        }
+        $campos = $this->presentacion->personalizadas($modulo, $request->user(), 'tabla');
+        $filtros = $this->presentacion->personalizadas($modulo, $request->user(), 'filtro');
+        [$orden, $direccion, $campoOrden] = $this->orden($request, $columnas, $campos, $config, $id);
+        $consulta = $this->consulta($request, $modulo, $columnas);
+        $this->aplicarOrden($consulta, $orden, $direccion, $campoOrden, $tabla, $id);
         if (!$operativa) {
             $consulta->select(array_keys($nativas));
         }
         $registros = $consulta->paginate($config['pagina'] ?? 20)->withQueryString();
         $valores = $this->valores->cargar($campos, $registros->pluck($id));
-        $distribucion = $this->distribucion($columnas, $campos);
+        $distribucion = $this->distribucion($columnas, $campos, $config);
         $opcionesNativas = [];
         foreach (['tipo', 'estado', 'stock_tipo'] as $clave) {
             if ($columnas[$clave]['filtro'] ?? false) {
@@ -156,18 +155,16 @@ class DatosController extends Controller
     {
         abort_unless($this->permisos->instalado(), 503);
         abort_unless($this->permisos->permite($request->user(), $modulo.'.datos_exportar'), 403);
-        [, , $id, $nativas] = Modulos::definicion($modulo);
+        [, $tabla, $id, $nativas] = Modulos::definicion($modulo);
         $config = $this->ajustes->leer('presentacion.'.$modulo, []);
         $columnas = array_filter($this->presentacion->tabla($modulo, $config), fn ($columna) => $columna['visible']);
-        $campos = $this->valores->campos($modulo, $request->user(), 'exportacion');
-        $filtros = $this->valores->campos($modulo, $request->user(), 'filtro');
-        [$orden, $direccion] = $this->orden($request, $columnas, $config, $id);
-        $q = $this->consulta($request, $modulo, $columnas, $filtros)->select(array_keys($nativas))->orderBy($orden, $direccion);
-        if ($orden !== $id) {
-            $q->orderBy($id);
-        }
+        $campos = $this->presentacion->personalizadas($modulo, $request->user(), 'exportacion');
+        $ordenables = $this->presentacion->personalizadas($modulo, $request->user(), 'tabla');
+        [$orden, $direccion, $campoOrden] = $this->orden($request, $columnas, $ordenables, $config, $id);
+        $q = $this->consulta($request, $modulo, $columnas)->select(array_keys($nativas));
+        $this->aplicarOrden($q, $orden, $direccion, $campoOrden, $tabla, $id);
 
-        $distribucion = $this->distribucion($columnas, $campos);
+        $distribucion = $this->distribucion($columnas, $campos, $config);
 
         return response()->streamDownload(function () use ($id, $distribucion, $campos, $q) {
             $salida = fopen('php://output', 'w');
@@ -189,7 +186,7 @@ class DatosController extends Controller
         }, $modulo.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'private, no-store']);
     }
 
-    private function distribucion(array $columnas, Collection $campos): array
+    private function distribucion(array $columnas, Collection $campos, array $config): array
     {
         $lista = [];
         foreach ($columnas as $clave => $columna) {
@@ -199,7 +196,7 @@ class DatosController extends Controller
             ];
         }
         foreach ($campos as $campo) {
-            $lista[] = ['clave' => $campo->id, 'etiqueta' => $campo->etiqueta, 'campo' => $campo, 'orden' => $campo->orden];
+            $lista[] = ['clave' => $campo->id, 'etiqueta' => $campo->etiqueta, 'campo' => $campo, 'orden' => $this->presentacion->ordenPersonalizado($campo, $config)];
         }
         usort($lista, fn ($a, $b) => $a['orden'] <=> $b['orden']);
 
@@ -211,39 +208,42 @@ class DatosController extends Controller
         return preg_match('/^[\p{Z}\t\r\n]*[=+@-]/u', $texto) ? "'".$texto : $texto;
     }
 
-    private function orden(Request $request, array $columnas, array $config, string $id): array
+    private function orden(Request $request, array $columnas, Collection $campos, array $config, string $id): array
     {
+        $personalizadas = $campos->filter(fn (Campo $campo) => $campo->ordenable())
+            ->keyBy(fn (Campo $campo) => 'campo_'.$campo->id);
         $datos = $request->validate([
-            'orden' => ['nullable', 'string', Rule::in(array_keys($columnas))],
+            'orden' => ['nullable', 'string', Rule::in([...array_keys($columnas), ...$personalizadas->keys()])],
             'direccion' => ['nullable', 'string', Rule::in(['asc', 'desc'])],
         ], ['orden.in' => 'Selecciona una columna visible para ordenar los resultados.']);
-        $orden = $config['ordenar'] ?? $id;
+        $preferencia = $config['ordenar'] ?? $id;
+        $orden = $datos['orden'] ?? (isset($columnas[$preferencia]) ? $preferencia : $id);
 
-        return [
-            $datos['orden'] ?? (isset($columnas[$orden]) ? $orden : $id),
-            $datos['direccion'] ?? ($config['direccion'] ?? 'desc'),
-        ];
+        return [$orden, $datos['direccion'] ?? ($config['direccion'] ?? 'desc'), $personalizadas->get($orden)];
     }
 
-    private function consulta(Request $request, string $modulo, array $columnas, Collection $filtros): Builder
+    private function aplicarOrden(Builder $consulta, string $orden, string $direccion, ?Campo $campo, string $tabla, string $id): void
     {
-        [, $tabla, $id] = Modulos::definicion($modulo);
+        if ($campo) {
+            $this->consultaCampos->ordenar($consulta, $campo, $direccion, $tabla.'.'.$id);
+        } else {
+            $consulta->orderBy($orden, $direccion);
+        }
+        if ($orden !== $id) {
+            $consulta->orderBy($id);
+        }
+    }
+
+    private function consulta(Request $request, string $modulo, array $columnas): Builder
+    {
         $q = $this->modulos->registros($request->user(), $modulo);
         $input = $request->validate([
             'q' => ['nullable', 'string', 'max:120'],
             'nativo' => ['nullable', 'array'],
             'nativo.*' => ['nullable', 'string', 'max:190'],
-            'campo' => ['nullable', 'array'],
-            'campo.*' => ['nullable', 'string', 'max:190'],
         ]);
         $buscables = array_keys(array_filter($columnas, fn ($columna) => $columna['buscar']));
-        if (isset($input['q']) && $buscables !== []) {
-            $q->where(function (Builder $grupo) use ($input, $buscables) {
-                foreach ($buscables as $col) {
-                    $grupo->orWhere($col, 'like', '%'.$input['q'].'%');
-                }
-            });
-        }
+        $this->consultaCampos->buscar($q, $input['q'] ?? null, $buscables);
         foreach ($input['nativo'] ?? [] as $col => $valor) {
             if ($valor !== null) {
                 if (!($columnas[$col]['filtro'] ?? false)) {
@@ -252,30 +252,7 @@ class DatosController extends Controller
                 $q->where($col, $valor);
             }
         }
-        foreach ($input['campo'] ?? [] as $campoId => $valor) {
-            if ($valor === null) {
-                continue;
-            }
-            $campo = $filtros->firstWhere('id', $campoId);
-            if (!$campo) {
-                throw ValidationException::withMessages(['campo' => 'El filtro solicitado no está disponible.']);
-            }
-            if ($campo->tipo === 'multiple' && (!ctype_digit($valor) || !$campo->opciones->contains('id', (int) $valor))) {
-                throw ValidationException::withMessages(['campo' => 'Selecciona una opción válida.']);
-            }
-            $q->whereExists(function (Builder $sub) use ($tabla, $id, $campo, $valor) {
-                $driver = DB::getDriverName();
-                $registro = $driver === 'mysql' || $driver === 'mariadb'
-                    ? "CAST({$tabla}.{$id} AS CHAR)" : "CAST({$tabla}.{$id} AS TEXT)";
-                $sub->selectRaw('1')->from('sistema_campo_valores AS v')
-                    ->where('v.campo_id', $campo->id)->whereRaw("v.registro = {$registro}");
-                if ($campo->tipo === 'multiple') {
-                    $sub->whereJsonContains('v.valor', (int) $valor);
-                } else {
-                    $sub->where('v.busqueda', $valor);
-                }
-            });
-        }
+        $this->consultaCampos->filtrar($q, $request, $modulo);
 
         return $q;
     }

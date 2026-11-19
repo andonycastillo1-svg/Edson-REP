@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Sistema\ValoresCampos;
 use App\Exports\ColaboradoresFichaExport;
 use App\Http\Controllers\Controller;
+use App\Sistema\ConsultaCampos;
+use App\Sistema\Presentacion;
 use App\Models\AlertaReemplazo;
 use App\Models\AsignacionInventario;
 use App\Models\Colaborador;
@@ -18,35 +20,17 @@ class ColaboradorController extends Controller
 {
     public function index(Request $request)
     {
-        $q = trim((string) $request->query('q', ''));
+        $consulta = Colaborador::query();
+        $campos = app(ConsultaCampos::class);
+        $campos->buscar($consulta, $request->validate(['q' => ['nullable', 'string', 'max:190']])['q'] ?? null, ['codigo', 'nombre', 'puesto']);
+        $campos->filtrar($consulta, $request, 'colaboradores');
 
-        $activos = Colaborador::query()
-            ->when($q !== '', function ($query) use ($q) {
-                $query->where(function ($w) use ($q) {
-                    $w->where('codigo', 'like', "%{$q}%")
-                        ->orWhere('nombre', 'like', "%{$q}%")
-                        ->orWhere('puesto', 'like', "%{$q}%");
-                });
-            })
-            ->where('estado', 'Activo')
-            ->orderBy('nombre')
-            ->paginate(10)
-            ->withQueryString();
+        $activos = (clone $consulta)->where('estado', 'Activo')->orderBy('nombre')->paginate(10)->withQueryString();
+        $inactivos = (clone $consulta)->where('estado', 'Inactivo')->orderBy('nombre')->paginate(10)->withQueryString();
+        $codigos = $activos->pluck('codigo')->merge($inactivos->pluck('codigo'));
+        $tablaCampos = app(Presentacion::class)->operativa('colaboradores', $request->user(), $codigos);
 
-        $inactivos = Colaborador::query()
-            ->when($q !== '', function ($query) use ($q) {
-                $query->where(function ($w) use ($q) {
-                    $w->where('codigo', 'like', "%{$q}%")
-                        ->orWhere('nombre', 'like', "%{$q}%")
-                        ->orWhere('puesto', 'like', "%{$q}%");
-                });
-            })
-            ->where('estado', 'Inactivo')
-            ->orderBy('nombre')
-            ->paginate(10)
-            ->withQueryString();
-
-        return view('admin.colaboradores.index', compact('activos', 'inactivos'));
+        return view('admin.colaboradores.index', compact('activos', 'inactivos', 'tablaCampos'));
     }
 
     public function create()

@@ -65,10 +65,11 @@ abstract class FormattedExcelExport extends DefaultValueBinder implements FromAr
             ['Fecha de generación', now()->format('d/m/Y H:i')],
             ['Usuario', $this->generatedBy],
             ['Filtros aplicados', $filters !== '' ? $filters : 'Ninguno'],
-            [],
+            // Excel omite las filas vacías al escribir y desplaza el encabezado.
+            [' '],
             $this->headings(),
             ...$rows,
-            ...($this->totals() === [] ? [] : [[], ...$this->totals()]),
+            ...($this->totals() === [] ? [] : [[' '], ...$this->totals()]),
         ];
     }
 

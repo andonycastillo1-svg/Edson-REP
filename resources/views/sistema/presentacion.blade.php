@@ -1,6 +1,14 @@
 @php
     $retornoDatos = app(\App\Sistema\Modulos::class)->consultar(auth()->user(), $modulo)
         ? route('sistema.datos.lista', $modulo) : route('sistema.datos');
+    $camposTabla = $personalizadas->mapWithKeys(function ($campo) use ($presentacion) {
+        $ajuste = (array) old('campos.'.$campo->id, $presentacion['campos'][$campo->id] ?? []);
+        return ['campo_'.$campo->id => [
+            'id' => $campo->id, 'etiqueta' => $campo->etiqueta, 'orden' => $ajuste['orden'] ?? $campo->orden,
+            'visible' => $ajuste['visible'] ?? $campo->tabla,
+        ]];
+    });
+    $filasColumnas = collect($columnas)->merge($camposTabla)->sortBy('orden');
 @endphp
 <x-sistema.pagina titulo="Presentación de formularios y tablas" descripcion="Estos cambios se aplican a todas las cuentas del módulo seleccionado."
                  :volver="$desdeDatos ? $retornoDatos : route('sistema.configuracion')"
@@ -14,9 +22,21 @@
     <form method="POST" action="{{ route('sistema.presentacion.guardar', $modulo) }}" class="space-y-4" data-presentacion>
         @csrf @method('PUT')
         <x-sistema.panel :titulo="'Tabla de '.$definicion[0]">
-            <p class="mb-3 text-sm">Ordena las columnas con las flechas o su posición. Las esenciales siempre se muestran. La búsqueda y los filtros se aplican a columnas visibles.</p>
+            <p class="mb-3 text-sm">Ordena las columnas con las flechas o su posición. Las esenciales siempre se muestran. Los campos personalizados conservan los filtros y exportaciones de su definición. La búsqueda y los filtros nativos se aplican a columnas visibles.</p>
             <div class="space-y-2" data-lista-orden>
-                @foreach($columnas as $clave => $columna)
+                @foreach($filasColumnas as $clave => $columna)
+                    @if(isset($columna['id']))
+                        <fieldset class="sistema-orden" data-fila-orden>
+                            <legend class="px-1 text-sm font-bold">{{ $columna['etiqueta'] }}</legend>
+                            <div class="space-y-2">
+                                <p class="text-xs text-slate-600">Campo personalizado</p>
+                                <x-sistema.casilla :name="'campos['.$columna['id'].'][visible]'" :id="'columna-visible-'.$clave"
+                                    :marcada="$columna['visible']">Mostrar</x-sistema.casilla>
+                            </div>
+                            <x-sistema.control-orden :name="'campos['.$columna['id'].'][orden]'" :valor="$columna['orden']" :etiqueta="$columna['etiqueta']" />
+                        </fieldset>
+                        @continue
+                    @endif
                     @php
                         $col = (array) old('columnas.'.$clave, $columna);
                         $etiqueta = $definicion[3][$clave];

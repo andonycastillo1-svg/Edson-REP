@@ -22,7 +22,7 @@
                     <legend class="mb-2 font-semibold">Datos del campo</legend>
                     <label class="text-sm font-semibold">Módulo (obligatorio)
                         @if($campo)<input type="hidden" name="modulo" value="{{ $campo->modulo }}">@endif
-                        <select aria-label="Módulo" name="{{ $campo ? '' : 'modulo' }}" @disabled($campo) required class="mt-1 w-full rounded-xl border-slate-300">
+                        <select aria-label="Módulo" data-modulo-campo name="{{ $campo ? '' : 'modulo' }}" @disabled($campo) required class="mt-1 w-full rounded-xl border-slate-300">
                             @foreach(\App\Sistema\Modulos::DEFINICIONES as $key => $spec)<option value="{{ $key }}" @selected(old('modulo', $campo?->modulo ?? request('modulo')) === $key)>{{ $spec[0] }}</option>@endforeach
                         </select>
                     </label>
@@ -97,9 +97,16 @@
                     @if(app(\App\Sistema\Permisos::class)->esSuperadministrador(auth()->user()))
                     @foreach(['permiso_lectura' => 'Permiso adicional de lectura', 'permiso_edicion' => 'Permiso adicional de edición'] as $key => $titulo)
                         <label class="text-sm font-semibold">{{ $titulo }}
-                            <select name="{{ $key }}" class="mt-1 w-full rounded-xl border-slate-300">
+                            <select name="{{ $key }}" data-permisos-campo class="mt-1 w-full rounded-xl border-slate-300">
                                 <option value="">Usar acceso del módulo</option>
-                                @foreach($permisos as $valor)<option value="{{ $valor }}" @selected(old($key, $campo?->{$key}) === $valor)>{{ \App\Sistema\CatalogoPermisos::presentacion($valor)['titulo'] }}</option>@endforeach
+                                @php $moduloActual = old('modulo', $campo?->modulo ?? request('modulo', array_key_first(\App\Sistema\Modulos::DEFINICIONES))); @endphp
+                                @foreach($gruposPermisos->sortBy(fn ($grupo, $modulo) => $modulo === $moduloActual ? 0 : 1) as $modulo => $grupo)
+                                    <optgroup label="{{ $grupo['titulo'] }}" data-modulo="{{ $modulo }}">
+                                        @foreach($grupo['opciones'] as $valor => $etiqueta)
+                                            <option value="{{ $valor }}" @selected(old($key, $campo?->{$key}) === $valor)>{{ $etiqueta }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
                             </select>
                         </label>
                     @endforeach

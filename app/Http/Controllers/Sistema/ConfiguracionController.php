@@ -207,14 +207,15 @@ class ConfiguracionController extends Controller
         $definicion = Modulos::definicion($modulo);
         $presentacion = $this->ajustes->leer('presentacion.'.$modulo, []);
         $columnas = $catalogo->tabla($modulo, $presentacion);
+        $personalizadas = $catalogo->personalizadas($modulo, $request->user());
         $formularios = $catalogo->nativos($modulo);
         $nativos = Modulos::FORMULARIOS_NATIVOS[$modulo] ?? [];
         $desdeDatos = $request->query('origen') === 'datos';
 
-        return view('sistema.presentacion', compact('modulo', 'definicion', 'presentacion', 'columnas', 'formularios', 'nativos', 'desdeDatos'));
+        return view('sistema.presentacion', compact('modulo', 'definicion', 'presentacion', 'columnas', 'personalizadas', 'formularios', 'nativos', 'desdeDatos'));
     }
 
-    public function guardarPresentacion(Request $request, string $modulo, Seguridad $seguridad)
+    public function guardarPresentacion(Request $request, string $modulo, Seguridad $seguridad, Presentacion $presentacion)
     {
         [, , $id, $columnas] = Modulos::definicion($modulo);
         $datos = $request->validate([
@@ -225,6 +226,10 @@ class ConfiguracionController extends Controller
             'columnas.*.orden' => ['required', 'integer', 'between:0,65000'],
             'columnas.*.filtro' => ['required', 'boolean'],
             'columnas.*.buscar' => ['required', 'boolean'],
+            'campos' => ['nullable', 'array'],
+            'campos.*' => ['array:visible,orden'],
+            'campos.*.visible' => ['required', 'boolean'],
+            'campos.*.orden' => ['required', 'integer', 'between:0,65000'],
             'formulario' => ['nullable', 'array'],
             'formulario.*.etiqueta' => ['nullable', 'string', 'max:100'],
             'formulario.*.ayuda' => ['nullable', 'string', 'max:500'],
@@ -256,10 +261,15 @@ class ConfiguracionController extends Controller
             'columnas' => $cols, 'formulario' => $form, 'pagina' => (int) ($datos['pagina'] ?? 20),
             'ordenar' => ($cols[$ordenar]['visible'] ?? true) ? $ordenar : $id, 'direccion' => $datos['direccion'] ?? 'desc',
         ];
-        DB::transaction(function () use ($request, $modulo, $config, $seguridad) {
+        DB::transaction(function () use ($request, $modulo, $config, $seguridad, $presentacion, $datos) {
             $seguridad->bloquear();
             $clave = 'presentacion.'.$modulo;
             $this->ajustes->refrescar($clave);
+            $campos = $datos['campos'] ?? [];
+            if ($campos && array_diff(array_keys($campos), $presentacion->personalizadas($modulo, $request->user())->pluck('id')->all())) {
+                throw ValidationException::withMessages(['campos' => 'Hay campos que ya no están disponibles para este módulo.']);
+            }
+            $config['campos'] = array_replace($this->ajustes->leer($clave, [])['campos'] ?? [], $campos);
             $this->ajustes->guardar($clave, $request->boolean('restaurar') ? null : $config, 'presentacion');
         });
 

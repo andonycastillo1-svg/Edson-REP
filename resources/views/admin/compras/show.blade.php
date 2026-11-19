@@ -43,6 +43,7 @@
                     <th class="px-4 py-3 text-right">Cantidad</th>
                     <th class="px-4 py-3 text-right">Precio U.</th>
                     <th class="px-4 py-3 text-right">Valor</th>
+                    <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -54,12 +55,14 @@
                         <td class="px-4 py-3 text-right font-semibold">{{ number_format($d->cantidad) }}</td>
                         <td class="px-4 py-3 text-right">{{ number_format($d->precio_unitario, 2) }}</td>
                         <td class="px-4 py-3 text-right font-bold">{{ number_format($d->valor_total, 2) }}</td>
+                        <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$d->producto_codigo" />
                     </tr>
                 @endforeach
             </tbody>
         </table>
     </div>
 
+    @rutaDisponible(\App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo()).'.compras.archivo')
     <div class="rounded-2xl border border-slate-200 bg-white p-4">
         <h2 class="font-bold text-slate-800 mb-2">Archivos (PDF)</h2>
 
@@ -78,6 +81,7 @@
             </ul>
         @endif
     </div>
+    @endrutaDisponible
 
 </div>
 @endsection

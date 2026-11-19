@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Sistema\ValoresCampos;
 use App\Sistema\Auditoria;
+use App\Sistema\ConsultaCampos;
+use App\Sistema\Permisos;
 use App\Sistema\Presentacion;
 use App\Http\Controllers\Controller;
 use App\Models\AsignacionInventario;
@@ -36,13 +38,16 @@ class AsignacionInventarioController extends Controller
         private InventarioStockService $stock,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
         $usuario = auth()->user();
         $routePrefix = $this->asignacionesRoutePrefix();
-        $puedeCrearAsignaciones = in_array((int) $usuario->role_id, [1, 2], true);
-        $puedeGestionarDevoluciones = $puedeCrearAsignaciones;
-        $puedeSubirEvidencias = in_array((int) $usuario->role_id, [1, 2, 3], true);
+        $permisos = app(Permisos::class);
+        $puedeCrearAsignaciones = $permisos->ruta($usuario, $routePrefix.'.asignaciones.create')
+            && ($usuario->rolOperativo() === 1 || $usuario->bodega_id);
+        $puedeDevolverLote = $permisos->ruta($usuario, $routePrefix.'.asignaciones.devolver_lote');
+        $puedeDevolverTodo = $permisos->ruta($usuario, $routePrefix.'.asignaciones.devolver_todo_colaborador');
+        $puedeVerMovimientos = in_array($usuario->rolOperativo(), [1, 2], true);
 
         $relaciones = ['colaborador', 'producto', 'bodega', 'user'];
 
@@ -66,16 +71,32 @@ class AsignacionInventarioController extends Controller
             $query->whereRaw('1 = 0');
         }
 
+        $colaboradoresConSaldoFueraDeBodega = collect();
+        if ($puedeDevolverTodo && $usuario->rolOperativo() === 2) {
+            $colaboradoresConSaldoFueraDeBodega = (clone $query)->reorder()->where('estado', 'Activa')
+                ->where(fn ($q) => $q->whereNull('bodega_id')->orWhere('bodega_id', '!=', (int) $usuario->bodega_id))
+                ->distinct()->pluck('colaborador_codigo');
+        }
+
+        app(ConsultaCampos::class)->filtrar($query, $request, 'asignaciones');
+        $puedeDevolverTodo = $puedeDevolverTodo && !collect($request->input('campo'))->contains(fn ($valor) => filled($valor));
         $asignaciones = $query->get();
+        $tablaCampos = app(Presentacion::class)->operativa('asignaciones', $usuario, $asignaciones->pluck('id'));
 
         $asignacionesPorColaborador = $asignaciones
             ->groupBy('colaborador_codigo')
-            ->map(function ($items) {
+            ->map(function ($items) use ($usuario, $puedeDevolverLote, $puedeDevolverTodo, $colaboradoresConSaldoFueraDeBodega) {
                 $ordenadas = $items->sortByDesc('fecha')->values();
                 $colaborador = optional($ordenadas->first())->colaborador;
 
+                $codigo = $ordenadas->first()->colaborador_codigo;
+                $devolvibles = $ordenadas->filter(fn ($a) => $a->estado === 'Activa' && $a->cantidad_asignada > 0
+                    && $this->bodegaAccess->canReceiveStock($usuario, (int) $a->bodega_id))->pluck('id');
                 return [
-                    'colaborador_codigo' => $ordenadas->first()->colaborador_codigo,
+                    'colaborador_codigo' => $codigo,
+                    'puede_devolver_todo' => $puedeDevolverTodo && $devolvibles->isNotEmpty()
+                        && !$colaboradoresConSaldoFueraDeBodega->contains($codigo),
+                    'devolvibles_lote' => $puedeDevolverLote ? $devolvibles : collect(),
                     'colaborador_nombre' => $colaborador->nombre ?? 'Sin nombre',
                     'asignaciones' => $ordenadas,
                     'total_activo' => $ordenadas->where('estado', 'Activa')->sum('cantidad_asignada'),
@@ -127,8 +148,8 @@ class AsignacionInventarioController extends Controller
             'movimientos',
             'pdfsDevolucionFirmados',
             'puedeCrearAsignaciones',
-            'puedeGestionarDevoluciones',
-            'puedeSubirEvidencias'
+            'puedeVerMovimientos',
+            'tablaCampos'
         ));
     }
 

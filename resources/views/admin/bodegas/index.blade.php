@@ -316,6 +316,7 @@
     <div class="bodega-container">
         <x-internal-navigation :back-url="route('dashboard')" />
     <x-sistema.enlace-datos modulo="bodegas" />
+    <x-sistema.consulta-campos :tabla="$tablaCampos" />
 
 
         <div class="bodega-header">
@@ -388,6 +389,8 @@
                             {{ $bodega->tipo ?? '—' }}
                         </span>
                     </div>
+
+                    <x-sistema.detalle-campos :tabla="$tablaCampos" :registro="$bodega->id" />
 
                     <div class="bodega-card-actions">
                         <a href="{{ $rutaInventario }}" class="action-btn btn-inventario">

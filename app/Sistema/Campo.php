@@ -20,6 +20,11 @@ class Campo extends Model
         'exportacion' => 'boolean', 'archivado_en' => 'datetime',
     ];
 
+    public function ordenable(): bool
+    {
+        return !in_array($this->tipo, ['texto_largo', 'multiple', 'archivo'], true);
+    }
+
     public function opciones()
     {
         return $this->hasMany(OpcionCampo::class, 'campo_id')->orderBy('orden')->orderBy('id');

@@ -85,7 +85,9 @@
 
                 <div class="veh-actions">
                     <button class="ui-btn-primary" type="submit">Guardar asignación</button>
+                    @rutaDisponible('admin.vehiculos.productos.index')
                     <a class="veh-btn-secondary" href="{{ route('admin.vehiculos.productos.index') }}">Ir a Productos del vehículo</a>
+                    @endrutaDisponible
                 </div>
             </div>
         </form>

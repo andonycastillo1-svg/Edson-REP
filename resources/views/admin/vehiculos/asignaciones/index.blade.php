@@ -544,10 +544,12 @@
                         </div>
 
                         <div class="row-actions">
+                            @rutaDisponible('admin.vehiculos.productos.index')
                             <a class="small-btn blue-btn"
                                href="{{ route('admin.vehiculos.productos.index', ['vehiculo_vin' => $a->vehiculo_vin]) }}">
                                 Productos
                             </a>
+                            @endrutaDisponible
 
                             <button type="button" class="small-btn" onclick="toggleDetalle('detalle-{{ $a->id }}')">
                                 Gestionar

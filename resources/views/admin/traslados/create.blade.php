@@ -148,6 +148,8 @@
           </div>
         </div>
 
+        <x-sistema.campos modulo="traslados" />
+
         <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
           <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}"
             class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -158,7 +160,6 @@
             Crear solicitud
           </button>
         </div>
-          <x-sistema.campos modulo="traslados" />
     </form>
 
       <template id="lineTemplate">

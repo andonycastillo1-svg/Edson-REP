@@ -5,8 +5,14 @@ namespace App\Sistema;
 use App\Models\Role;
 use App\Models\User;
 use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class Seguridad
@@ -57,7 +63,12 @@ class Seguridad
                 || $this->permisos->resultadoRol($usuario->role, $key)['permitido']);
     }
 
-    public function rolAsignable(User $actor, Role $rol): bool
+    public function rolesAsignables(User $actor, bool $incluirAdministrativos = false): Collection
+    {
+        return Role::orderBy('nombre')->get()->filter(fn (Role $rol) => $this->rolAsignable($actor, $rol, $incluirAdministrativos));
+    }
+
+    public function rolAsignable(User $actor, Role $rol, bool $incluirAdministrativos = false): bool
     {
         if ($rol->activo === false || !isset(CatalogoPermisos::AMBITOS[$rol->ambito()])) {
             return false;
@@ -65,17 +76,132 @@ class Seguridad
         if (!$this->permisos->instalado()) {
             return $actor->rolOperativo() === 1 || in_array($rol->ambito(), [2, 3], true);
         }
-        if ($rol->ambito() === 1 || ($actor->rolOperativo() !== 1 && !in_array($rol->ambito(), [2, 3], true))) {
+        if ($rol->ambito() === 1) {
+            return $incluirAdministrativos && $this->rolAdministrativoPersonalizado($rol) && $this->permisos->esSuperadministrador($actor);
+        }
+        if ($actor->rolOperativo() !== 1 && !in_array($rol->ambito(), [2, 3], true)) {
             return false;
         }
 
         return collect(array_keys(CatalogoPermisos::CONFIGURACION))->doesntContain(fn ($key) => $this->permisos->resultadoRol($rol, $key)['permitido']);
     }
 
+    public function rolAdministrativoPersonalizado(?Role $rol): bool
+    {
+        return $rol?->ambito() === 1 && (int) $rol->id !== 1;
+    }
+
+    public function puedeEditarDesdeUsuarios(User $actor, User $usuario): bool
+    {
+        return $this->puedeGestionar($actor, $usuario)
+            || ($this->rolAdministrativoPersonalizado($usuario->role)
+                && $this->permisos->esSuperadministrador($actor)
+                && !DB::table('sistema_superadministradores')->where('user_id', $usuario->id)->where('activo', true)->exists());
+    }
+
     public function puedeGestionar(User $actor, User $usuario): bool
     {
         return ($actor->rolOperativo() === 1 || (int) $usuario->created_by === (int) $actor->id)
             && (!$this->permisos->instalado() || !$this->tieneAccesoCritico($usuario));
+    }
+
+    public function crearCuentaAdministrativa(Request $request, ValoresCampos $campos, bool $desdeUsuarios = false): User
+    {
+        if ($desdeUsuarios) {
+            $this->limitarCambiosDeCuenta($request->user());
+        }
+        $data = $request->validate([
+            'role_id' => ['required', 'integer', 'exists:roles,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', $this->politicaContrasena()],
+            'current_password' => ['required', 'string', 'max:255'],
+        ]);
+        $valores = $campos->preparar($request, 'usuarios', true);
+        return $this->cambiar($request->user(), $data['current_password'], function (User $actor) use ($data, $campos, $valores, $desdeUsuarios) {
+            $rol = Role::findOrFail($data['role_id']);
+            abort_unless($rol->activo && $rol->ambito() === 1, 422);
+            abort_if($desdeUsuarios && (!$this->permisos->ruta($actor, 'admin.usuarios.store')
+                || !$this->rolAsignable($actor, $rol, incluirAdministrativos: true)), 403);
+            $usuario = User::create(Arr::only($data, ['role_id', 'name', 'email']) + [
+                'password' => Hash::make($data['password']), 'created_by' => $actor->id,
+            ]);
+            $campos->guardar('usuarios', $usuario->id, $valores);
+            $this->auditoria->registrar('seguridad', 'crear_cuenta_administrativa', $usuario->id, null, ['role_id' => $rol->id]);
+
+            return $usuario;
+        });
+    }
+
+    public function actualizarCuenta(Request $request, User $usuario, ValoresCampos $campos, bool $desdeUsuarios = false): void
+    {
+        if ($desdeUsuarios) {
+            $this->limitarCambiosDeCuenta($request->user());
+        }
+        $ambito = Role::find($request->integer('role_id'))?->ambito();
+        $data = $request->validate([
+            'role_id' => ['required', 'integer', 'exists:roles,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($usuario->id)],
+            'bodega_id' => [Rule::requiredIf($ambito === 2), 'nullable', 'integer', 'exists:bodegas,id'],
+            'almacenista_id' => [
+                Rule::requiredIf($ambito === 3), 'nullable', 'integer',
+                Rule::exists('users', 'id')->where(fn ($q) => $q->whereIn('id', User::deAmbito(2)->select('users.id'))),
+            ],
+            'password' => ['nullable', 'confirmed', $this->politicaContrasena()],
+            'current_password' => ['required', 'string', 'max:255'],
+        ]);
+        $this->cambiar($request->user(), $data['current_password'], function (User $actor) use ($usuario, $data, $request, $campos, $desdeUsuarios) {
+            $usuario = User::findOrFail($usuario->id);
+            $rol = Role::findOrFail($data['role_id']);
+            abort_unless($rol->activo && isset(CatalogoPermisos::AMBITOS[$rol->ambito()]), 422);
+            if ($desdeUsuarios) {
+                abort_unless($this->permisos->ruta($actor, 'admin.usuarios.update')
+                    && $this->puedeEditarDesdeUsuarios($actor, $usuario)
+                    && $this->rolAsignable($actor, $rol, incluirAdministrativos: true), 403);
+                abort_if($actor->is($usuario) && (int) $usuario->role_id !== (int) $rol->id, 403);
+            }
+            if ($this->permisos->esSuperadministrador($usuario) && $rol->ambito() !== 1) {
+                throw ValidationException::withMessages(['role_id' => 'Revoca primero la autorización de Superadministrador.']);
+            }
+            $antes = $usuario->only(['role_id', 'bodega_id']);
+            $antes['almacenista_id'] = $usuario->almacenistasAsignados()->value('users.id');
+            $cambio = Arr::only($data, ['role_id', 'name', 'email']) + [
+                'bodega_id' => $rol->ambito() === 2 ? $data['bodega_id'] : null,
+            ];
+            if (!empty($data['password'])) {
+                $cambio['password'] = Hash::make($data['password']);
+                $cambio['remember_token'] = null;
+            }
+            if ((int) $usuario->role_id !== (int) $rol->id) {
+                $reglas = $this->permisos->reglasUsuario($usuario);
+                DB::table('sistema_permisos_usuario')->where('user_id', $usuario->id)->delete();
+                if ($reglas !== []) {
+                    $this->auditoria->registrar('seguridad', 'retirar_permisos_por_cambio_rol', $usuario->id, $reglas, []);
+                }
+            }
+            $usuario->forceFill($cambio)->save();
+            if ($rol->ambito() !== 2) {
+                $usuario->supervisoresAsignados()->detach();
+            }
+            $almacenista = $rol->ambito() === 3 ? (int) $data['almacenista_id'] : null;
+            $usuario->almacenistasAsignados()->sync($almacenista === null ? [] : [$almacenista]);
+            $campos->guardar('usuarios', $usuario->id, $campos->preparar($request, 'usuarios', false, (string) $usuario->id));
+            $this->auditoria->registrar('seguridad', 'actualizar_acceso_cuenta', $usuario->id, $antes,
+                $usuario->only(['role_id', 'bodega_id']) + ['almacenista_id' => $almacenista, 'credencial_actualizada' => isset($cambio['password'])]);
+        });
+    }
+
+    private function limitarCambiosDeCuenta(User $usuario): void
+    {
+        $clave = 'cuentas-administrativas:'.$usuario->id;
+        abort_if(RateLimiter::tooManyAttempts($clave, 20), 429);
+        RateLimiter::hit($clave);
+    }
+
+    public function politicaContrasena(): Password
+    {
+        return Password::min(16)->letters()->numbers()->mixedCase()->symbols();
     }
 
     public function superActivos(): int

@@ -47,6 +47,8 @@
             </select>
         </div>
 
+        <x-sistema.campos modulo="vehiculos" :registro="$vehiculo->vin" />
+
         <div class="pt-4 flex justify-end gap-3 border-t border-slate-100">
             <a href="{{ route('admin.vehiculos.index') }}"
                class="ui-btn-secondary">
@@ -58,7 +60,6 @@
                 Guardar cambios
             </button>
         </div>
-        <x-sistema.campos modulo="vehiculos" :registro="$vehiculo->vin" />
     </form>
 </div>
 @endsection

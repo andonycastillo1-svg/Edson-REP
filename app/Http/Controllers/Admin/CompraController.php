@@ -6,6 +6,7 @@ use App\Sistema\ValoresCampos;
 use App\Sistema\Auditoria;
 use App\Sistema\Presentacion;
 use App\Http\Controllers\Controller;
+use App\Sistema\ConsultaCampos;
 use App\Models\Bodega;
 use App\Services\DocumentoPrivado;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -24,14 +25,15 @@ class CompraController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $this->autorizarConsulta();
-        $compras = DB::table('compras as c')
+        $consulta = DB::table('compras as c')
             ->join('proveedores as p', 'p.id', '=', 'c.proveedor_id')
-            ->select('c.*', 'p.nombre as proveedor_nombre')
-            ->orderByDesc('c.id')
-            ->get();
+            ->select('c.*', 'p.nombre as proveedor_nombre');
+        app(ConsultaCampos::class)->filtrar($consulta, $request, 'compras', 'c.id');
+        $compras = $consulta->orderByDesc('c.id')->get();
+        $tablaCampos = app(Presentacion::class)->operativa('compras', $request->user(), $compras->pluck('id'));
 
         $proveedores = DB::table('proveedores')->orderBy('nombre')->get();
 
@@ -51,6 +53,7 @@ class CompraController extends Controller
 
         return view('admin.compras.index', compact(
             'compras',
+            'tablaCampos',
             'proveedores',
             'productos',
             'categorias'
@@ -368,7 +371,9 @@ class CompraController extends Controller
                 return $a;
             });
 
-        return view('admin.compras.show', compact('compra', 'detalles', 'archivos'));
+        $tablaCampos = app(Presentacion::class)->operativa('productos', auth()->user(), $detalles->pluck('producto_codigo'));
+
+        return view('admin.compras.show', compact('compra', 'detalles', 'archivos', 'tablaCampos'));
     }
     public function archivo(string $compra, string $archivo)
     {

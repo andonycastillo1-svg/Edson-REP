@@ -7,17 +7,21 @@ use App\Sistema\Presentacion;
 use Illuminate\Support\Facades\DB;
 
 use App\Http\Controllers\Controller;
+use App\Sistema\ConsultaCampos;
 use Illuminate\Http\Request;
 use App\Models\Vehiculo;
 
 class VehiculoController extends Controller
 {
 
-    public function index()
+    public function index(Request $request)
     {
-        $vehiculos = Vehiculo::orderBy('marca')->paginate(10);
+        $consulta = Vehiculo::orderBy('marca');
+        app(ConsultaCampos::class)->filtrar($consulta, $request, 'vehiculos');
+        $vehiculos = $consulta->paginate(10)->withQueryString();
+        $tablaCampos = app(Presentacion::class)->operativa('vehiculos', $request->user(), $vehiculos->pluck('vin'));
 
-        return view('admin.vehiculos.index', compact('vehiculos'));
+        return view('admin.vehiculos.index', compact('vehiculos', 'tablaCampos'));
     }
 
 

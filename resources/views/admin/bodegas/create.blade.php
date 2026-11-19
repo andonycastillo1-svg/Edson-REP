@@ -34,6 +34,8 @@
             @error('tipo') <div class="text-rose-600 text-sm mt-1">{{ $message }}</div> @enderror
         </div>
 
+        <x-sistema.campos modulo="bodegas" />
+
         <div class="flex gap-2 justify-end pt-4">
             <a href="{{ route('admin.bodegas.index') }}"
                class="px-4 py-2 rounded-xl bg-slate-700 text-white font-semibold shadow-sm transition hover:bg-slate-800">
@@ -43,7 +45,6 @@
                 Guardar
             </button>
         </div>
-        <x-sistema.campos modulo="bodegas" />
     </form>
 </div>
 @endsection

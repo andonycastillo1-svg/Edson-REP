@@ -154,6 +154,23 @@ function configurarCampo(form) {
         agregar.focus();
     });
     lista.addEventListener('input', reflejarOpciones);
+    const modulo = form.querySelector('[data-modulo-campo]');
+    const selectoresPermisos = [...form.querySelectorAll('[data-permisos-campo]')];
+    function priorizarPermisos() {
+        for (const selector of selectoresPermisos) {
+            const seleccionado = selector.value;
+            const grupos = [...selector.querySelectorAll('optgroup')];
+            grupos.sort((a, b) => {
+                if (a.dataset.modulo === modulo.value) return -1;
+                if (b.dataset.modulo === modulo.value) return 1;
+                return a.label.localeCompare(b.label, 'es');
+            });
+            selector.append(...grupos);
+            selector.value = seleccionado;
+        }
+    }
+    modulo.addEventListener('change', priorizarPermisos);
+    priorizarPermisos();
     tipo.addEventListener('change', reflejarTipo);
     reflejarTipo();
 }

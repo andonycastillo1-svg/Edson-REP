@@ -8,8 +8,9 @@
 
     $rolSeleccionadoId = (int) old('role_id', 0);
 
-    $mostrarBodega = $rolSeleccionadoId === (int) $rolAlmacenistaId;
-    $mostrarAlmacenista = $rolSeleccionadoId === (int) $rolSupervisorId;
+    $ambitoSeleccionado = $roles->firstWhere('id', $rolSeleccionadoId)?->ambito();
+    $mostrarBodega = $ambitoSeleccionado === (int) $rolAlmacenistaId;
+    $mostrarAlmacenista = $ambitoSeleccionado === (int) $rolSupervisorId;
 @endphp
 
 <div class="w-full max-w-3xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
@@ -71,7 +72,7 @@
                         @endphp
 
                         <option value="{{ $rol->id }}"
-                                data-role-type="{{ $tipoRol }}"
+                                data-role-type="{{ $tipoRol }}" data-ambito="{{ $rol->ambito() }}"
                                 {{ $rolSeleccionadoId === (int) $rol->id ? 'selected' : '' }}>
                             {{ $rol->nombre }}
                         </option>
@@ -145,6 +146,16 @@
             </div>
         </div>
 
+        <x-sistema.campos modulo="usuarios" />
+        @if(app(\App\Sistema\Permisos::class)->esSuperadministrador(auth()->user()))
+            <div id="confirmacion-rol"  @if($ambitoSeleccionado !== 1 ) hidden @endif>
+                <p class="mb-2 text-sm">Para administrar un rol del ámbito Administrador, confirma con tu contraseña actual. Si estableces una contraseña nueva para la cuenta, usa 16 caracteres con mayúsculas, minúsculas, números y símbolos.</p>
+                <label for="confirmacion-cuenta" class="block text-sm font-semibold">Tu contraseña actual
+                    <input id="confirmacion-cuenta" type="password" name="current_password" autocomplete="current-password" class="mt-1 w-full">
+                </label>
+            </div>
+        @endif
+
         <div class="pt-4 border-t flex flex-col sm:flex-row gap-3 justify-end">
             <a href="{{ route($routePrefix . '.usuarios.index') }}"
                class="inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-gray-700 font-semibold hover:bg-gray-50 transition">
@@ -156,7 +167,6 @@
                 Guardar
             </button>
         </div>
-        <x-sistema.campos modulo="usuarios" />
     </form>
 </div>
 
@@ -180,6 +190,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const esAlmacenista = tipoRol === 'almacenista';
         const esSupervisor = tipoRol === 'supervisor';
+        const confirmacion = document.getElementById('confirmacion-rol');
+        if (confirmacion) {
+            const protegida = confirmacion.dataset.cuentaProtegida === '1' || selectedOption?.dataset.ambito === '1';
+            confirmacion.hidden = !protegida;
+            const clave = confirmacion.querySelector('input');
+            clave.disabled = !protegida;
+            clave.required = protegida;
+        }
 
         if (bodegaWrap && bodegaSelect) {
             bodegaWrap.classList.toggle('hidden', !esAlmacenista);

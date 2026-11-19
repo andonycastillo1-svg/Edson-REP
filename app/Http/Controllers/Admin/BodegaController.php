@@ -6,6 +6,8 @@ use App\Sistema\ValoresCampos;
 use App\Sistema\Presentacion;
 use App\Exports\InventarioBodegaExport;
 use App\Http\Controllers\Controller;
+use App\Sistema\ConsultaCampos;
+use App\Sistema\Permisos;
 use App\Models\Bodega;
 use App\Services\BodegaAccessService;
 use Illuminate\Http\Request;
@@ -19,16 +21,17 @@ class BodegaController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
 
         $visibleBodegaIds = $this->bodegaAccess->visibleBodegaIds($user);
-        $bodegas = Bodega::query()
+        $consulta = Bodega::query()
             ->when(is_array($visibleBodegaIds), fn ($query) => $visibleBodegaIds === []
                 ? $query->whereRaw('1 = 0')
-                : $query->whereIn('id', $visibleBodegaIds))
-            ->orderByRaw("CASE WHEN tipo = 'Principal' THEN 0 ELSE 1 END")
+                : $query->whereIn('id', $visibleBodegaIds));
+        app(ConsultaCampos::class)->filtrar($consulta, $request, 'bodegas');
+        $bodegas = $consulta->orderByRaw("CASE WHEN tipo = 'Principal' THEN 0 ELSE 1 END")
             ->orderBy('nombre')
             ->get();
 
@@ -65,6 +68,7 @@ class BodegaController extends Controller
 
         return view('admin.bodegas.index', [
             'bodegas' => $bodegas,
+            'tablaCampos' => app(Presentacion::class)->operativa('bodegas', $user, $bodegas->pluck('id')),
         ]);
     }
 
@@ -132,7 +136,6 @@ class BodegaController extends Controller
 
         $inventarios = $inventarioBase
             ->select(
-                'i.id',
                 'i.producto_codigo',
                 'i.cantidad',
                 'p.nombre',
@@ -146,9 +149,12 @@ class BodegaController extends Controller
             ->paginate(15)
             ->appends($request->query());
 
+        $tablaCampos = $this->camposInventario($request, $bodega, $inventarios->pluck('producto_codigo'));
+
         return view('admin.bodegas.show', [
             'bodega' => $bodega,
             'inventarios' => $inventarios,
+            'tablaCampos' => $tablaCampos,
             'productosTotal' => $productosTotal,
             'stockTotal' => $stockTotal,
             'costoTotalInventario' => $costoTotalInventario,
@@ -185,8 +191,11 @@ class BodegaController extends Controller
             $filters['Búsqueda'] = trim((string) $request->query('q'));
         }
 
+        $campos = app(Permisos::class)->permite($request->user(), 'inventario.datos_exportar')
+            ? $this->camposInventario($request, $bodega, $inventarios->pluck('producto_codigo'), 'exportacion')
+            : [];
         return Excel::download(
-            new InventarioBodegaExport($inventarios, $bodega->nombre, $request->user()->name, $filters),
+            new InventarioBodegaExport($inventarios, $bodega->nombre, $request->user()->name, $filters, $campos),
             $filename
         );
     }
@@ -206,11 +215,9 @@ class BodegaController extends Controller
             'q' => ['nullable', 'string', 'max:150'],
             'stock_tipo' => ['nullable', 'in:nuevo,usado,danado,perdido,baja'],
         ]);
-        $tipos = isset($filtros['stock_tipo']) ? [$filtros['stock_tipo']] : ['nuevo', 'usado'];
-        $resumen = DB::table('inventarios')->where('bodega_id', $bodega->id)
-            ->whereIn('stock_tipo', $tipos)
+        $resumen = $this->inventariosDeBodega($request, $bodega)
             ->select('producto_codigo')
-            ->selectRaw('MIN(id) AS id, SUM(cantidad) AS cantidad, MAX(updated_at) AS updated_at')
+            ->selectRaw('SUM(cantidad) AS cantidad, MAX(updated_at) AS updated_at')
             ->groupBy('producto_codigo');
 
         return DB::query()->fromSub($resumen, 'i')
@@ -222,6 +229,39 @@ class BodegaController extends Controller
                         ->orWhere('p.descripcion', 'like', "%{$q}%");
                 });
             });
+    }
+
+    private function inventariosDeBodega(Request $request, Bodega $bodega)
+    {
+        $tipos = $request->filled('stock_tipo') ? [$request->query('stock_tipo')] : ['nuevo', 'usado'];
+
+        $consulta = DB::table('inventarios')->where('bodega_id', $bodega->id)->whereIn('stock_tipo', $tipos);
+        app(ConsultaCampos::class)->filtrar($consulta, $request, 'inventario');
+
+        return $consulta;
+    }
+
+    private function camposInventario(Request $request, Bodega $bodega, iterable $codigos, string $superficie = 'tabla'): array
+    {
+        $presentacion = app(Presentacion::class);
+        $campos = $presentacion->personalizadas('inventario', $request->user(), $superficie);
+        $filas = $campos->isEmpty() ? collect() : $this->inventariosDeBodega($request, $bodega)
+            ->whereIn('producto_codigo', $codigos)->orderBy('stock_tipo')->get(['id', 'producto_codigo', 'stock_tipo']);
+        $lector = app(ValoresCampos::class);
+        $valores = $lector->cargar($campos, $filas->pluck('id'));
+        $valoresAgrupados = $filas->groupBy('producto_codigo')->map(fn ($grupo) => $campos->mapWithKeys(
+            fn ($campo) => [$campo->id => $grupo->map(function ($fila) use ($lector, $campo, $valores, $grupo) {
+                $valor = $lector->mostrar($campo, $valores->get($fila->id)?->get($campo->id));
+
+                return $valor === '' || $grupo->count() === 1 ? $valor : ucfirst($fila->stock_tipo).': '.$valor;
+            })->filter(fn ($valor) => $valor !== '')->implode(' · ')]
+        ));
+
+        return [
+            'campos' => $campos,
+            'valoresPresentados' => $valoresAgrupados,
+            'filtros' => $presentacion->personalizadas('inventario', $request->user(), 'filtro'),
+        ];
     }
 
     public function edit(string $id)

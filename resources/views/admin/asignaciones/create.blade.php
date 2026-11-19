@@ -278,6 +278,8 @@
         </div>
       </section>
 
+      <x-sistema.campos modulo="asignaciones" />
+
       <div class="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-xl shadow-slate-200/60">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p class="text-xs text-slate-500">
@@ -289,7 +291,6 @@
           </button>
         </div>
       </div>
-        <x-sistema.campos modulo="asignaciones" />
     </form>
 
   </div>

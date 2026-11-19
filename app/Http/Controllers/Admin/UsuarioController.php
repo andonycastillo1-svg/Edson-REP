@@ -7,6 +7,8 @@ use App\Sistema\Permisos;
 use App\Sistema\Seguridad;
 use App\Sistema\ValoresCampos;
 use App\Http\Controllers\Controller;
+use App\Sistema\ConsultaCampos;
+use App\Sistema\Presentacion;
 use App\Models\Bodega;
 use App\Models\Role;
 use App\Models\User;
@@ -22,7 +24,7 @@ class UsuarioController extends Controller
         $q = trim((string) $request->query('q', ''));
         $roleId = $request->query('role_id');
 
-        $usuarios = User::with(['role', 'bodega', 'creator.role', 'supervisoresAsignados', 'almacenistasAsignados'])
+        $consulta = User::with(['role', 'bodega', 'creator.role', 'supervisoresAsignados', 'almacenistasAsignados'])
             ->when(!$this->esAdmin(), function ($query) {
                 $query->where('created_by', auth()->id());
             })
@@ -32,8 +34,9 @@ class UsuarioController extends Controller
                         ->orWhere('email', 'like', "%{$q}%");
                 });
             })
-            ->when($roleId, fn ($query) => $query->where('role_id', $roleId))
-            ->orderBy('name')
+            ->when($roleId, fn ($query) => $query->where('role_id', $roleId));
+        app(ConsultaCampos::class)->filtrar($consulta, $request, 'usuarios');
+        $usuarios = $consulta->orderBy('name')
             ->paginate(15)
             ->appends($request->query());
 
@@ -41,7 +44,9 @@ class UsuarioController extends Controller
             ? Role::orderBy('nombre')->get()
             : $this->rolesPermitidosParaGestion();
 
-        return view('admin.usuarios.index', compact('usuarios', 'rolesFiltro'));
+        $tablaCampos = app(Presentacion::class)->operativa('usuarios', $request->user(), $usuarios->pluck('id'));
+
+        return view('admin.usuarios.index', compact('usuarios', 'rolesFiltro', 'tablaCampos'));
     }
 
     public function create()
@@ -97,8 +102,13 @@ class UsuarioController extends Controller
         $data = $request->validate($rules);
 
         $campos = app(ValoresCampos::class);
-        $valores = $campos->preparar($request, 'usuarios', true);
         $seguridad = app(Seguridad::class);
+        if ($ambito === 1 && app(Permisos::class)->instalado()) {
+            $seguridad->crearCuentaAdministrativa($request, $campos, desdeUsuarios: true);
+
+            return redirect()->route($this->usuariosRoutePrefix().'.usuarios.index')->with('ok', 'Usuario creado correctamente.');
+        }
+        $valores = $campos->preparar($request, 'usuarios', true);
         $usuario = DB::transaction(function () use ($request, $data, $rolAlmacenistaId, $rolSupervisorId, $campos, $valores, $seguridad) {
             $seguridad->bloquear();
             $rol = Role::findOrFail($data['role_id']);
@@ -208,10 +218,15 @@ class UsuarioController extends Controller
         ];
 
         $data = $request->validate($rules);
+        $seguridad = app(Seguridad::class);
+        if (app(Permisos::class)->instalado() && ($ambito === 1 || $seguridad->rolAdministrativoPersonalizado($usuario->role))) {
+            $seguridad->actualizarCuenta($request, $usuario, app(ValoresCampos::class), desdeUsuarios: true);
+
+            return redirect()->route($this->usuariosRoutePrefix().'.usuarios.index')->with('ok', 'Usuario actualizado correctamente.');
+        }
         $almacenistaAnteriorId = $usuario->almacenistasAsignados()->value('users.id');
 
         $campos = app(ValoresCampos::class);
-        $seguridad = app(Seguridad::class);
         DB::transaction(function () use ($request, $data, $usuario, $rolAlmacenistaId, $rolSupervisorId, $campos, $seguridad) {
             $seguridad->bloquear();
             $usuario = User::whereKey($usuario->id)->lockForUpdate()->firstOrFail();
@@ -283,7 +298,7 @@ class UsuarioController extends Controller
 
     public function destroy(User $usuario)
     {
-        if (!$this->puedeEditarUsuario($usuario)) {
+        if (!app(Seguridad::class)->puedeGestionar(auth()->user(), $usuario)) {
             return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
                 ->with('error', 'No tienes permiso para eliminar este usuario.');
         }
@@ -308,14 +323,12 @@ class UsuarioController extends Controller
 
     private function rolesPermitidosParaGestion()
     {
-        $seguridad = app(Seguridad::class);
-
-        return Role::orderBy('nombre')->get()->filter(fn (Role $rol) => $seguridad->rolAsignable(auth()->user(), $rol));
+        return app(Seguridad::class)->rolesAsignables(auth()->user(), incluirAdministrativos: true);
     }
 
     private function puedeEditarUsuario(User $usuario): bool
     {
-        return app(Seguridad::class)->puedeGestionar(auth()->user(), $usuario);
+        return app(Seguridad::class)->puedeEditarDesdeUsuarios(auth()->user(), $usuario);
     }
 
     private function rolAlmacenistaId(): int

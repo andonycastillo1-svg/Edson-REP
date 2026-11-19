@@ -33,7 +33,14 @@ class CampoController extends Controller
     {
         $permisos = collect(array_keys(CatalogoPermisos::AMBITOS))->flatMap(fn ($ambito) => CatalogoPermisos::disponibles($ambito))->unique()->sort();
 
-        return view('sistema.campo', ['campo' => $campo?->load('opciones'), 'permisos' => $permisos]);
+        $gruposPermisos = $permisos->groupBy(fn ($permiso) => strstr($permiso, '.', true))->map(
+            fn ($permisos) => [
+                'titulo' => CatalogoPermisos::presentacion($permisos->first())['grupo'],
+                'opciones' => $permisos->mapWithKeys(fn ($permiso) => [$permiso => CatalogoPermisos::presentacion($permiso)['titulo']])->sort(),
+            ],
+        )->sortBy('titulo');
+
+        return view('sistema.campo', ['campo' => $campo?->load('opciones'), 'gruposPermisos' => $gruposPermisos]);
     }
 
     public function guardar(Request $request, ValoresCampos $valores, Auditoria $auditoria, Seguridad $seguridad, ?Campo $campo = null)

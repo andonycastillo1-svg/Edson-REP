@@ -8,6 +8,7 @@
 <div class="w-full">
     <x-internal-navigation :back-url="route('dashboard')" />
     <x-sistema.enlace-datos modulo="compras" />
+    <x-sistema.consulta-campos :tabla="$tablaCampos" />
     <x-sistema.enlace-datos modulo="productos" />
 
 
@@ -95,6 +96,7 @@
                                 <th class="px-4 py-3 whitespace-nowrap">Proveedor</th>
                                 <th class="px-4 py-3 whitespace-nowrap">Proyecto</th>
                                 <th class="px-4 py-3 text-right whitespace-nowrap">Total</th>
+                                <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
                                 <th class="px-4 py-3 text-right whitespace-nowrap">Acciones</th>
                             </tr>
                         </thead>
@@ -144,6 +146,7 @@
                                         </span>
                                     </td>
 
+                                    <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$c->id" />
                                     <td class="px-4 py-3 text-right whitespace-nowrap">
                                         <a href="{{ route($routePrefix . '.compras.show', $c->id) }}"
                                            class="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2 text-xs font-bold text-blue-700 transition hover:border-blue-700 hover:bg-blue-700 hover:text-white">
@@ -153,7 +156,7 @@
                                 </tr>
                             @empty
                                 <tr id="sinRegistrosOriginal">
-                                    <td colspan="7" class="px-4 py-12 text-center">
+                                    <td colspan="{{ 7 + $tablaCampos['campos']->count() }}" class="px-4 py-12 text-center">
                                         <div class="flex flex-col items-center">
                                             <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-2xl">
                                                 🧾
@@ -170,7 +173,7 @@
                             @endforelse
 
                             <tr id="sinResultados" class="hidden">
-                                <td colspan="7" class="px-4 py-12 text-center">
+                                <td colspan="{{ 7 + $tablaCampos['campos']->count() }}" class="px-4 py-12 text-center">
                                     <div class="flex flex-col items-center">
                                         <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-2xl">
                                             🔍

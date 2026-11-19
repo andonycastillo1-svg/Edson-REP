@@ -10,6 +10,7 @@
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
     <x-internal-navigation :back-url="route('dashboard')" />
     <x-sistema.enlace-datos modulo="colaboradores" />
+    <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['q']" />
 
 
     {{-- ENCABEZADO --}}
@@ -33,6 +34,7 @@
       {{-- BUSCADOR --}}
       <div class="bg-slate-50 px-6 py-5">
         <form method="GET">
+          <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
           <label class="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
             Buscar colaborador
           </label>
@@ -109,6 +111,7 @@
         </div>
       </div>
 
+      @rutaDisponible($routePrefix . '.colaboradores.fichas_tecnicas_masivas')
       {{-- ACCIONES MASIVAS --}}
       <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -150,7 +153,6 @@
               Limpiar selección
             </button>
 
-            @rutaDisponible($routePrefix . '.colaboradores.fichas_tecnicas_masivas')
             <form method="POST"
                   action="{{ route($routePrefix . '.colaboradores.fichas_tecnicas_masivas') }}"
                   x-ref="formFichasSeleccionadas"
@@ -167,10 +169,10 @@
                 Descargar fichas en Excel
               </button>
             </form>
-            @endrutaDisponible
           </div>
         </div>
       </div>
+      @endrutaDisponible
 
       {{-- TABLA ACTIVOS --}}
       <div x-show="tab==='activos'">
@@ -183,6 +185,7 @@
                 <th class="px-5 py-3 text-left font-bold">Colaborador</th>
                 <th class="px-5 py-3 text-left font-bold">Puesto</th>
                 <th class="px-5 py-3 text-center font-bold">Estado</th>
+                <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
                 <th class="px-5 py-3 text-right font-bold">Acciones</th>
               </tr>
             </thead>
@@ -191,10 +194,12 @@
               @forelse($activos as $c)
                 <tr class="transition hover:bg-blue-50/40">
                   <td class="px-5 py-4 align-middle">
-                    <input type="checkbox"
+                    @rutaDisponible($routePrefix . '.colaboradores.fichas_tecnicas_masivas')
+                      <input type="checkbox"
                            class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                            :checked="isSelected('{{ $c->codigo }}')"
                            @change="toggleSeleccion('{{ $c->codigo }}')">
+                    @endrutaDisponible
                   </td>
 
                   <td class="px-5 py-4 align-middle">
@@ -223,6 +228,7 @@
                     </span>
                   </td>
 
+                  <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$c->codigo" />
                   <td class="px-5 py-4 align-middle">
                     <div class="flex flex-wrap justify-end gap-2">
                       <button type="button"
@@ -256,7 +262,7 @@
                 </tr>
               @empty
                 <tr>
-                  <td colspan="6" class="px-6 py-14 text-center">
+                  <td colspan="{{ 6 + $tablaCampos['campos']->count() }}" class="px-6 py-14 text-center">
                     <div class="text-sm font-bold text-slate-900">
                       No hay colaboradores activos.
                     </div>
@@ -287,6 +293,7 @@
                 <th class="px-5 py-3 text-left font-bold">Colaborador</th>
                 <th class="px-5 py-3 text-left font-bold">Puesto</th>
                 <th class="px-5 py-3 text-center font-bold">Estado</th>
+                <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
                 <th class="px-5 py-3 text-right font-bold">Acciones</th>
               </tr>
             </thead>
@@ -295,10 +302,12 @@
               @forelse($inactivos as $c)
                 <tr class="transition hover:bg-slate-50">
                   <td class="px-5 py-4 align-middle">
-                    <input type="checkbox"
+                    @rutaDisponible($routePrefix . '.colaboradores.fichas_tecnicas_masivas')
+                      <input type="checkbox"
                            class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                            :checked="isSelected('{{ $c->codigo }}')"
                            @change="toggleSeleccion('{{ $c->codigo }}')">
+                    @endrutaDisponible
                   </td>
 
                   <td class="px-5 py-4 align-middle">
@@ -327,6 +336,7 @@
                     </span>
                   </td>
 
+                  <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$c->codigo" />
                   <td class="px-5 py-4 align-middle">
                     <div class="flex flex-wrap justify-end gap-2">
                       <button type="button"
@@ -360,7 +370,7 @@
                 </tr>
               @empty
                 <tr>
-                  <td colspan="6" class="px-6 py-14 text-center">
+                  <td colspan="{{ 6 + $tablaCampos['campos']->count() }}" class="px-6 py-14 text-center">
                     <div class="text-sm font-bold text-slate-900">
                       No hay colaboradores inactivos.
                     </div>

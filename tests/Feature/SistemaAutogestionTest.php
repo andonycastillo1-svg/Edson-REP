@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\AsignacionInventario;
 use App\Models\Bodega;
+use App\Models\Colaborador;
+use App\Models\Producto;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\MovimientoInventarioNotification;
@@ -18,6 +21,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\Support\RefreshDatabase;
 use Tests\TestCase;
 
@@ -254,6 +258,8 @@ class SistemaAutogestionTest extends TestCase
         $this->actingAs($this->operador->fresh())->get(route('sistema.datos.lista', 'bodegas'))->assertOk()->assertDontSee('Sucursal-Visible');
         $this->getJson(route('sistema.datos.lista', ['modulo' => 'bodegas', 'campo' => [$campo->id => 'Sucursal-Visible']]))
             ->assertUnprocessable();
+        $this->get(route('operador.bodegas.index'))->assertOk()->assertDontSee('Referencia de bodega')->assertDontSee('Sucursal-Visible');
+        $this->getJson(route('operador.bodegas.index', ['campo' => [$campo->id => 'Sucursal-Visible']]))->assertUnprocessable();
     }
 
     public function test_selectores_predeterminados_vinculan_filas_nuevas_y_preservan_la_configuracion_ante_un_error(): void
@@ -551,6 +557,198 @@ class SistemaAutogestionTest extends TestCase
         $this->putJson(route('sistema.parametros.guardar'), [
             'bodega_principal' => $otra->id, 'current_password' => 'password',
         ])->assertUnprocessable()->assertJsonValidationErrors('bodega_principal');
+    }
+
+    public function test_usuarios_permite_asignar_roles_personalizados_con_las_protecciones_de_su_ambito(): void
+    {
+        $this->superadministrador();
+        foreach (['Auditor interno' => 1, 'Almacenista auxiliar' => 2] as $nombre => $ambito) {
+            $this->post(route('sistema.rol.crear'), [
+                'nombre' => $nombre, 'ambito_operativo' => $ambito, 'copiar_rol' => $ambito, 'current_password' => 'password',
+            ])->assertSessionHasNoErrors();
+        }
+        $auditor = Role::where('nombre', 'Auditor interno')->sole();
+        $auxiliar = Role::where('nombre', 'Almacenista auxiliar')->sole();
+        $datos = [
+            'name' => 'Cuenta de auditoría', 'email' => 'auditor@example.test', 'role_id' => $auditor->id,
+            'password' => 'Cuenta-Auditoria-480!', 'password_confirmation' => 'Cuenta-Auditoria-480!',
+        ];
+
+        $this->get(route('admin.usuarios.create'))->assertOk()->assertSee('Auditor interno')->assertSee('Almacenista auxiliar');
+        $this->postJson(route('admin.usuarios.store'), $datos + ['current_password' => 'incorrecta'])
+            ->assertUnprocessable()->assertJsonValidationErrors('current_password');
+        $this->actingAs($this->admin)->get(route('admin.usuarios.create'))->assertOk()
+            ->assertDontSee('Auditor interno')->assertSee('Almacenista auxiliar');
+        $this->postJson(route('admin.usuarios.store'), $datos + ['current_password' => 'password'])
+            ->assertUnprocessable()->assertJsonValidationErrors('role_id');
+        $this->assertDatabaseMissing('users', ['email' => $datos['email']]);
+
+        $this->actingAs($this->super)->post(route('admin.usuarios.store'), $datos + ['current_password' => 'password'])
+            ->assertSessionHasNoErrors();
+        $cuenta = User::where('email', $datos['email'])->sole();
+        $this->assertSame($auditor->id, $cuenta->role_id);
+        $this->assertDatabaseMissing('sistema_superadministradores', ['user_id' => $cuenta->id]);
+        $this->get(route('admin.usuarios.edit', $cuenta))->assertOk()->assertSee('Auditor interno');
+        $this->get(route('admin.usuarios.edit', $this->super))->assertRedirect(route('admin.usuarios.index'));
+
+        $edicion = ['name' => $datos['name'], 'email' => $datos['email'], 'role_id' => $auxiliar->id, 'current_password' => 'password'];
+        $this->putJson(route('admin.usuarios.update', $cuenta), $edicion)->assertUnprocessable()->assertJsonValidationErrors('bodega_id');
+        $this->put(route('admin.usuarios.update', $cuenta), $edicion + ['bodega_id' => $this->regional->id])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('users', ['id' => $cuenta->id, 'role_id' => $auxiliar->id, 'bodega_id' => $this->regional->id]);
+    }
+
+    public function test_acciones_de_devolucion_siguen_la_regla_efectiva_y_el_alcance_de_bodega(): void
+    {
+        $this->superadministrador();
+        $colaborador = Colaborador::create(['codigo' => 'C-QA', 'nombre' => 'Persona de pruebas', 'puesto' => 'Técnico', 'estado' => 'Activo']);
+        $producto = Producto::create(['codigo' => 'P-QA', 'nombre' => 'Equipo de pruebas', 'categoria' => 'Equipo']);
+        $asignacion = AsignacionInventario::create([
+            'user_id' => $this->operador->id, 'bodega_id' => $this->regional->id, 'producto_codigo' => $producto->codigo,
+            'colaborador_codigo' => $colaborador->codigo, 'cantidad_asignada' => 2, 'costo_unitario' => 12, 'estado' => 'Activa', 'fecha' => now(),
+        ]);
+        $listado = route('operador.asignaciones.index');
+        $devolucion = route('operador.asignaciones.devolver_lote');
+        $rutaExcepciones = route('sistema.usuario.permisos', $this->operador);
+
+        foreach (['heredar', 'denegar', 'permitir'] as $regla) {
+            $this->actingAs($this->super)->put($rutaExcepciones, [
+                'reglas' => ['asignaciones.devolver' => $regla], 'current_password' => 'password',
+            ])->assertSessionHasNoErrors();
+            $this->actingAs($this->operador->fresh());
+            $vista = $this->get($listado)->assertOk()->assertSee('Nueva asignación')->assertSee('Historial de movimientos');
+            if ($regla === 'denegar') {
+                $vista->assertDontSee('Devolver todo')->assertDontSee('Devolver seleccionados')->assertDontSee('name="seleccionadas[]"', false);
+                $this->postJson($devolucion, ['seleccionadas' => [$asignacion->id], 'devoluciones' => [$asignacion->id => 1]])
+                    ->assertForbidden();
+            } else {
+                $vista->assertSee('Devolver todo')->assertSee('Devolver seleccionados')->assertSee('name="seleccionadas[]"', false);
+            }
+            $this->get(route('operador.asignaciones.create'))->assertOk();
+        }
+
+        $asignacion->replicate()->fill(['bodega_id' => $this->principal->id])->save();
+        $this->get($listado)->assertOk()->assertDontSee('Devolver todo')->assertSee('Devolver seleccionados');
+        $this->postJson(route('operador.asignaciones.devolver_todo_colaborador', $colaborador->codigo))->assertForbidden();
+        $this->assertSame(2, $asignacion->fresh()->cantidad_asignada);
+    }
+
+    public function test_departamento_se_persiste_filtra_ordena_y_configura_en_ambas_superficies(): void
+    {
+        $this->superadministrador();
+        $this->post(route('sistema.campos.guardar'), $this->definicion([
+            'modulo' => 'colaboradores', 'clave' => 'departamento', 'etiqueta' => 'Departamento QA', 'tipo' => 'lista',
+            'opciones' => [['etiqueta' => 'IT', 'activo' => true], ['etiqueta' => 'Finanzas', 'activo' => true]],
+        ]))->assertSessionHasNoErrors();
+        $campo = Campo::sole();
+        [$it, $finanzas] = $campo->opciones->pluck('id')->all();
+        $listado = route('admin.colaboradores.index');
+        $datos = route('sistema.datos.lista', 'colaboradores');
+        $presentacion = route('sistema.presentacion', ['modulo' => 'colaboradores']);
+        $this->get(route('admin.colaboradores.create'))->assertOk()->assertSeeInOrder(['Departamento QA', 'Guardar']);
+        $ana = ['codigo' => 'QA-ANA-12', 'nombre' => 'Ana  María Ríos', 'puesto' => 'Analista', 'estado' => 'Activo'];
+        $luis = ['codigo' => 'QA-LUIS-34', 'nombre' => 'Luis Gómez', 'puesto' => 'Contador', 'estado' => 'Activo'];
+        $this->post(route('admin.colaboradores.store'), $ana + [
+            'campos_personalizados' => ['departamento' => $it],
+        ])->assertSessionHasNoErrors();
+        $this->post(route('admin.colaboradores.store'), $luis + [
+            'campos_personalizados' => ['departamento' => $finanzas],
+        ])->assertSessionHasNoErrors();
+        $this->get(route('admin.colaboradores.edit', $ana['codigo']))->assertOk()->assertSeeInOrder(['Departamento QA', 'Guardar']);
+        $this->assertDatabaseHas('sistema_campo_valores', ['campo_id' => $campo->id, 'registro' => $ana['codigo'], 'busqueda' => (string) $it]);
+        $this->get($listado)->assertOk()->assertSee('Departamento QA')->assertSeeInOrder([$ana['codigo'], '>IT</td>'], false);
+        foreach ([$listado, $datos] as $ruta) {
+            $this->get($ruta.'?'.http_build_query(['campo' => [$campo->id => $it]]))->assertOk()
+                ->assertSee($ana['codigo'])->assertDontSee($luis['codigo']);
+        }
+        $this->get($datos.'?orden=campo_'.$campo->id.'&direccion=asc')->assertOk()->assertSeeInOrder([$luis['codigo'], $ana['codigo']]);
+        $this->get($datos)->assertOk()->assertSee($presentacion);
+        $this->get($presentacion)->assertOk()->assertSee('Departamento QA');
+        $this->get(route('sistema.campos.editar', $campo))->assertOk()
+            ->assertSeeInOrder(['Usar acceso del módulo', 'label="Colaboradores"', 'label="Alertas"'], false);
+
+        $this->put(route('sistema.presentacion.guardar', 'colaboradores'), [
+            'columnas' => ['codigo' => ['orden' => 8, 'visible' => false, 'filtro' => false, 'buscar' => true]],
+            'campos' => [$campo->id => ['orden' => 0, 'visible' => true]],
+        ])->assertSessionHasNoErrors();
+        $this->get($datos)->assertOk()->assertSeeInOrder(['Ordenar por Departamento QA', 'Ordenar por Código'], false);
+
+        $this->put(route('admin.colaboradores.update', $ana['codigo']), $ana + [
+            'campos_personalizados' => ['departamento' => $finanzas],
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('sistema_campo_valores', ['campo_id' => $campo->id, 'registro' => $ana['codigo'], 'busqueda' => (string) $finanzas]);
+        $this->put(route('sistema.presentacion.guardar', 'colaboradores'), [
+            'campos' => [$campo->id => ['orden' => 0, 'visible' => false]],
+        ])->assertSessionHasNoErrors();
+        foreach ([$listado, $datos] as $ruta) {
+            $this->get($ruta)->assertOk()->assertDontSee('Ordenar por Departamento QA')->assertDontSee('>Departamento QA</th>', false);
+        }
+        $this->put(route('sistema.usuario.permisos', $this->super), [
+            'reglas' => ['colaboradores.datos_exportar' => 'permitir'], 'current_password' => 'password',
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($this->super->fresh());
+        $csv = $this->get(route('sistema.datos.exportar', 'colaboradores'))->assertDownload('colaboradores.csv')->streamedContent();
+        $this->assertStringContainsString('Departamento QA', $csv);
+        $this->assertStringContainsString('Finanzas', $csv);
+    }
+
+    public function test_datos_de_colaboradores_busca_por_nombre_parcial_espacios_y_codigo(): void
+    {
+        Colaborador::create(['codigo' => 'COD-QA-58', 'nombre' => 'Ana  María Ríos', 'puesto' => 'Analista', 'estado' => 'Activo']);
+        Colaborador::create(['codigo' => 'COD-QA-65', 'nombre' => 'Otra Persona', 'puesto' => 'Analista', 'estado' => 'Activo']);
+        $this->actingAs($this->admin);
+        foreach (["  ANA\u{00A0} María\t Ríos  ", 'na Ríos', 'QA-58'] as $texto) {
+            $this->get(route('sistema.datos.lista', ['modulo' => 'colaboradores', 'q' => $texto]))->assertOk()
+                ->assertSee('COD-QA-58')->assertDontSee('COD-QA-65');
+        }
+    }
+
+    public function test_inventario_agrupa_campos_por_condicion_y_limita_filtros_y_exportacion_a_la_bodega(): void
+    {
+        $this->superadministrador();
+        $this->post(route('sistema.campos.guardar'), $this->definicion([
+            'modulo' => 'inventario', 'clave' => 'pasillo', 'etiqueta' => 'Pasillo QA',
+        ]))->assertSessionHasNoErrors();
+        $campo = Campo::sole();
+        $this->put(route('sistema.usuario.permisos', $this->super), [
+            'reglas' => ['inventario.campos_editar' => 'permitir'], 'current_password' => 'password',
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($this->super->fresh());
+        $producto = Producto::create(['codigo' => 'PRUEBA-PASILLO', 'nombre' => 'Artículo de prueba', 'categoria' => 'Equipo']);
+        $ids = [];
+        foreach ([
+            [$this->regional->id, 'nuevo', 20, 'Estante nuevo'],
+            [$this->regional->id, 'usado', 3, 'Estante usado'],
+            [$this->principal->id, 'nuevo', 80, 'Solo central'],
+        ] as [$bodega, $condicion, $cantidad, $valor]) {
+            $id = DB::table('inventarios')->insertGetId([
+                'producto_codigo' => $producto->codigo, 'bodega_id' => $bodega, 'stock_tipo' => $condicion, 'cantidad' => $cantidad,
+            ]);
+            $ids[$valor] = $id;
+            $this->put(route('sistema.operacion.campos.actualizar', ['inventario', $id]), [
+                'campos_personalizados' => ['pasillo' => $valor],
+            ])->assertRedirect()->assertSessionHasNoErrors();
+        }
+        $this->put(route('sistema.usuario.permisos', $this->operador), [
+            'reglas' => ['inventario.datos_exportar' => 'permitir'], 'current_password' => 'password',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('sistema_campo_valores', ['campo_id' => $campo->id, 'registro' => (string) $ids['Estante nuevo'], 'busqueda' => 'Estante nuevo']);
+        $respuesta = $this->actingAs($this->operador->fresh())->get(route('operador.bodegas.show', $this->regional))->assertOk();
+        $this->assertSame('Nuevo: Estante nuevo · Usado: Estante usado', $respuesta->viewData('tablaCampos')['valoresPresentados']->get($producto->codigo)?->get($campo->id));
+        $respuesta->assertSee('Nuevo: Estante nuevo')->assertSee('Usado: Estante usado')->assertDontSee('Solo central')
+            ->assertViewHas('stockTotal', 23);
+        $query = ['bodega' => $this->regional->id, 'campo' => [$campo->id => 'Estante usado']];
+        $this->get(route('operador.bodegas.show', $query))->assertOk()->assertSee('Estante usado')
+            ->assertDontSee('Estante nuevo')->assertViewHas('stockTotal', 3);
+        $this->get(route('operador.bodegas.show', $this->principal))->assertForbidden();
+        $export = $this->get(route('operador.bodegas.inventario.export', $query))->assertOk()->assertDownload();
+        $excel = IOFactory::load($export->baseResponse->getFile()->getPathname());
+        $this->assertSame('Pasillo QA', $excel->getActiveSheet()->getCell('K7')->getValue());
+        $this->assertSame('Estante usado', $excel->getActiveSheet()->getCell('K8')->getValue());
+        $this->assertSame(3, (int) $excel->getActiveSheet()->getCell('F8')->getValue());
+        $this->assertDatabaseHas('inventarios', ['id' => $ids['Estante nuevo'], 'cantidad' => 20]);
+        $this->assertDatabaseHas('inventarios', ['id' => $ids['Solo central'], 'cantidad' => 80]);
     }
 
     private function superadministrador(): void

@@ -13,6 +13,7 @@ class InventarioBodegaExport extends FormattedExcelExport
         protected string $bodega,
         string $generatedBy,
         array $filters = [],
+        private array $personalizados = [],
     ) {
         parent::__construct('Inventario de bodega: '.$bodega, $generatedBy, $filters);
     }
@@ -30,6 +31,7 @@ class InventarioBodegaExport extends FormattedExcelExport
             'Costo unitario',
             'Costo total',
             'Última actualización',
+            ...($this->personalizados['campos'] ?? collect())->pluck('etiqueta')->all(),
         ];
     }
 
@@ -46,6 +48,9 @@ class InventarioBodegaExport extends FormattedExcelExport
             (float) $item->costo_unitario,
             (float) $item->costo_total,
             $item->updated_at ? Date::dateTimeToExcel(new \DateTime($item->updated_at)) : null,
+            ...($this->personalizados['campos'] ?? collect())->map(
+                fn ($campo) => $this->personalizados['valoresPresentados']->get($item->producto_codigo)?->get($campo->id, '') ?? ''
+            )->all(),
         ])->all();
     }
 
