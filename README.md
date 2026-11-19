@@ -8,6 +8,7 @@ La documentación técnica y funcional fue generada analizando el código real d
 
 - [Resumen general](docs/README_GENERAL.md)
 - [Instalación y configuración](docs/INSTALACION.md)
+- [Guía de administración y consulta](docs/GUIA_ADMINISTRADOR.md)
 - [Roles y permisos](docs/ROLES_Y_PERMISOS.md)
 - [Rutas](docs/RUTAS.md)
 - [Módulos](docs/MODULOS.md)

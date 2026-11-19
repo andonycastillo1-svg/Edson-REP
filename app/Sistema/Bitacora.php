@@ -39,6 +39,7 @@ class Bitacora
             'superadministrador' => 'Cambiar acceso de Superadministrador',
             'crear_cuenta_administrativa' => 'Crear cuenta administrativa',
             'actualizar_acceso_cuenta' => 'Actualizar acceso de una cuenta',
+            'actualizar_contrasena' => 'Cambiar contraseña de una cuenta',
             'estado_cuenta' => 'Cambiar estado de una cuenta',
             'confirmacion_invalida' => 'Confirmación de seguridad incorrecta',
             default => Str::headline($accion),
@@ -59,6 +60,11 @@ class Bitacora
             'notificaciones' => 'Notificaciones',
             default => $registro,
         };
+    }
+
+    public static function persona(object $actor): string
+    {
+        return $actor->name ?? ($actor->actor_id === null ? 'Sistema' : 'Cuenta histórica');
     }
 
     public static function detalles(?string $antes, ?string $despues, string $accion): array

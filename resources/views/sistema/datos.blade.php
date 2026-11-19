@@ -3,6 +3,7 @@
     $filtrosNativos = array_filter($columnas, fn ($columna) => $columna['filtro']);
     $ruta = route($operativa ? 'sistema.operacion.campos' : 'sistema.datos.lista', $modulo);
     $consulta = request()->query();
+    $criterios = request()->only('q', 'nativo', 'campo', 'orden', 'direccion');
     $lector = app(\App\Sistema\ValoresCampos::class);
     $acciones = app(\App\Sistema\Modulos::class);
 @endphp
@@ -15,7 +16,7 @@
                 <x-sistema.elegir-modulo :modulos="$modulos" :seleccionado="$modulo" :accion="route('sistema.datos')" texto="Cambiar módulo" />
             @endunless
             @if($puedeExportar)
-                <a href="{{ route('sistema.datos.exportar', ['modulo' => $modulo, ...request()->only('q', 'nativo', 'campo', 'orden', 'direccion')]) }}"
+                <a href="{{ route('sistema.datos.exportar', ['modulo' => $modulo, ...$criterios]) }}"
                    class="ui-btn-secondary">Exportar resultados (CSV)</a>
             @endif
         </div>
@@ -88,7 +89,22 @@
             <table class="ui-table">
                 <thead><tr>
                     @foreach($distribucion as $columna)
-                        <th scope="col" @if(!$columna['campo'] && $columna['clave'] === $orden) aria-sort="{{ $direccion === 'asc' ? 'ascending' : 'descending' }}" @endif>{{ $columna['etiqueta'] }}</th>
+                        @php
+                            $ordenada = !$columna['campo'] && $columna['clave'] === $orden;
+                            $sentido = $ordenada && $direccion === 'asc' ? 'desc' : 'asc';
+                        @endphp
+                        <th scope="col" @if($ordenada) aria-sort="{{ $direccion === 'asc' ? 'ascending' : 'descending' }}" @endif>
+                            @if($operativa || $columna['campo'])
+                                {{ $columna['etiqueta'] }}
+                            @else
+                                <a class="inline-flex min-h-8 items-center gap-1 rounded text-blue-900 hover:underline"
+                                   data-orden-columna="{{ $ordenada ? $direccion : '' }}"
+                                   aria-label="Ordenar por {{ $columna['etiqueta'] }}, {{ $sentido === 'asc' ? 'ascendente' : 'descendente' }}"
+                                   href="{{ route('sistema.datos.lista', ['modulo' => $modulo, ...$criterios, 'orden' => $columna['clave'], 'direccion' => $sentido]) }}">
+                                    {{ $columna['etiqueta'] }}
+                                </a>
+                            @endif
+                        </th>
                     @endforeach
                     <th scope="col">{{ $operativa ? 'Acciones' : 'Detalle' }}</th>
                 </tr></thead>
@@ -109,7 +125,7 @@
                             <td>
                                 @unless($operativa)
                                     <a class="ui-btn-secondary ui-btn-sm whitespace-nowrap"
-                                       href="{{ route('sistema.datos.ficha', ['modulo' => $modulo, 'registro' => $registro->{$id}, ...request()->only('q', 'nativo', 'campo', 'orden', 'direccion', 'page')]) }}">Ver registro</a>
+                                       href="{{ route('sistema.datos.ficha', ['modulo' => $modulo, 'registro' => $registro->{$id}, ...$criterios, ...request()->only('page')]) }}">Ver registro</a>
                                 @else
                                     <div class="flex flex-wrap gap-2">
                                         @if($acciones->editar(auth()->user(), $modulo, $registro))

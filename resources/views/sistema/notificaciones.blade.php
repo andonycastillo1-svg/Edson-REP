@@ -14,11 +14,17 @@
         </form>
     </x-sistema.panel>
     <x-sistema.panel :titulo="\App\Sistema\Ajustes::EVENTOS[$evento]">
+        <div class="mb-4 flex flex-wrap items-center gap-2">
+            <span @class(['ui-badge', 'ui-badge-success' => $envioActivo, 'ui-badge-warning' => !$envioActivo])>
+                {{ $envioActivo ? 'Envío activo' : 'Envío desactivado' }}
+            </span>
+            <p class="text-xs">Estado guardado</p>
+        </div>
         <form method="POST" action="{{ route('sistema.notificaciones.guardar', $evento) }}" class="space-y-4" data-destinatarios>
             @csrf @method('PUT')
             <input type="hidden" name="evento_formulario" value="{{ $evento }}">
             <x-sistema.casilla name="activo" id="notificacion-activa" :marcada="$regla['activo'] ?? true">Enviar aviso de este evento</x-sistema.casilla>
-            <p class="text-sm">Puedes marcar varios destinatarios. Cada persona debe tener acceso al evento. Si dejas ambas listas vacías, se usan los destinatarios habituales del módulo.</p>
+            <p class="text-sm">Marca los roles o cuentas que quieras incluir. Solo recibirán el aviso las personas que ya tienen acceso a la operación, según sus permisos y bodega. Si dejas ambas listas vacías, se usan los destinatarios habituales.</p>
 
             <div class="sistema-formulario">
                 <fieldset class="min-w-0">
@@ -54,6 +60,6 @@
         </form>
     </x-sistema.panel>
     <x-sistema.panel titulo="Avisos obligatorios">
-        <p class="text-sm">Los avisos de seguridad, supervisión y revisión de Recursos Humanos siguen activos para quienes deben recibirlos.</p>
+        <p class="text-sm">Los avisos obligatorios de seguridad, supervisión y revisión de Recursos Humanos siguen activos. La bitácora registra los cambios aunque desactives un aviso operativo.</p>
     </x-sistema.panel>
 </x-sistema.pagina>

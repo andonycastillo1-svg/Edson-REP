@@ -14,6 +14,7 @@ use App\Sistema\CatalogoPermisos;
 use App\Sistema\Permisos;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -136,6 +137,55 @@ class SistemaAutogestionTest extends TestCase
         ])->assertSessionHasNoErrors();
         $this->actingAs($this->admin)->get(route('admin.usuarios.edit', $operativo))->assertRedirect();
         $this->assertDatabaseHas('users', ['id' => $operativo->id, 'acceso_activo' => false]);
+    }
+
+    public function test_tarjetas_de_permiso_distinguen_herencia_excepcion_y_acceso_guardado(): void
+    {
+        $this->superadministrador();
+        $vista = $this->get(route('sistema.rol', 1))->assertOk();
+        $vista->assertSee('Registrar compras')->assertSee('Documentos y reportes')
+            ->assertSee('name="reglas[compras.crear]" value="heredar" checked', false)
+            ->assertSee('name="reglas[compras.crear]" value="permitir"', false)
+            ->assertSee('name="reglas[compras.crear]" value="denegar"', false);
+
+        $cuenta = route('sistema.usuario', $this->operador);
+        $accion = route('sistema.usuario.permisos', $this->operador);
+        $this->from($cuenta)->put($accion, [
+            'reglas' => ['bodegas.consultar' => 'denegar'], 'current_password' => 'incorrecta',
+        ])->assertSessionHasErrors('current_password');
+        $this->get($cuenta)->assertOk()->assertSee('Del rol')->assertSee('Acceso efectivo')
+            ->assertSee('name="reglas[bodegas.consultar]" value="denegar" checked', false);
+        $this->assertDatabaseMissing('sistema_permisos_usuario', ['user_id' => $this->operador->id, 'permiso' => 'bodegas.consultar']);
+
+        $this->put($accion, ['reglas' => ['bodegas.consultar' => 'denegar'], 'current_password' => 'password'])->assertSessionHasNoErrors();
+        $this->get($cuenta)->assertOk()->assertSee('Regla individual');
+        $this->put($accion, ['reglas' => ['bodegas.consultar' => 'heredar'], 'current_password' => 'password'])->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('sistema_permisos_usuario', ['user_id' => $this->operador->id, 'permiso' => 'bodegas.consultar']);
+        $this->actingAs($this->operador->fresh())->get(route('operador.bodegas.index'))->assertOk();
+    }
+
+    public function test_contrasena_desde_seguridad_exige_superadministrador_y_preserva_el_acceso(): void
+    {
+        $ruta = route('sistema.usuario.contrasena', $this->operador);
+        $nueva = 'Prueba-De-Cuenta-48!';
+        $datos = ['password' => $nueva, 'password_confirmation' => $nueva, 'current_password' => 'password'];
+        $anterior = $this->operador->fresh();
+        $this->actingAs($this->admin)->putJson($ruta, $datos)->assertForbidden();
+        $this->superadministrador();
+        $this->putJson($ruta, array_replace($datos, ['current_password' => 'incorrecta']))
+            ->assertUnprocessable()->assertJsonValidationErrors('current_password');
+        $this->putJson($ruta, array_replace($datos, ['password_confirmation' => 'diferente']))
+            ->assertUnprocessable()->assertJsonValidationErrors('password');
+        $this->assertSame($anterior->password, $this->operador->fresh()->password);
+
+        $this->put($ruta, $datos)->assertRedirect(route('sistema.usuario', $this->operador).'#seguridad')->assertSessionHasNoErrors();
+        $cuenta = $this->operador->fresh();
+        $this->assertTrue(Hash::check($nueva, $cuenta->password));
+        $this->assertSame($this->operador->role_id, $cuenta->role_id);
+        $this->assertSame($this->operador->bodega_id, $cuenta->bodega_id);
+        $this->assertSame($anterior->acceso_activo, $cuenta->acceso_activo);
+        $this->assertNull($cuenta->remember_token);
+        $this->assertDatabaseHas('sistema_auditoria', ['registro' => (string) $cuenta->id, 'accion' => 'actualizar_contrasena', 'despues' => '{"credencial_actualizada":true}']);
     }
 
     public function test_superadministrador_puede_asignar_un_rol_delegado_y_no_puede_degradar_su_ultimo_acceso(): void
@@ -365,6 +415,7 @@ class SistemaAutogestionTest extends TestCase
         $criterios = ['modulo' => 'bodegas', 'q' => 'Zona', 'nativo' => ['tipo' => 'Regional']];
         $this->get(route('sistema.datos.lista', $criterios))->assertOk()
             ->assertSeeInOrder(['Zona Alfa', 'Zona Zeta'])->assertSee('Nombre público')
+            ->assertSee(route('sistema.datos.lista', $criterios + ['orden' => 'nombre', 'direccion' => 'desc']))
             ->assertDontSee('Dato reservado para tabla');
         $this->get(route('sistema.datos.lista', $criterios + ['orden' => 'nombre', 'direccion' => 'desc']))->assertOk()
             ->assertSeeInOrder(['Zona Zeta', 'Zona Alfa']);
@@ -394,11 +445,14 @@ class SistemaAutogestionTest extends TestCase
             ->assertOk()->assertSee('Cambiar parámetros generales')->assertSee('Empresa de auditoría')
             ->assertSee('Anterior')->assertDontSee('ruta-privada-sintetica');
         $this->getJson(route('sistema.auditoria', ['desde' => $fecha, 'hasta' => now()->subDay()->toDateString()]))->assertUnprocessable();
+        $this->get(route('sistema.auditoria', ['q' => 'CONFIGURACION parámetros']))->assertOk()->assertSee('Empresa de auditoría');
+        $this->get(route('sistema.auditoria', ['q' => 'ruta-privada-sintetica']))->assertOk()->assertSee('No hay eventos para estos filtros.');
 
         $this->actingAs($this->operador->fresh());
         $bitacora->registrar('bodegas', 'guardar_campo', $this->regional->id);
         $this->get(route('sistema.auditoria'))->assertOk()->assertSee('Guardar valor de un campo')
             ->assertDontSee('Empresa de auditoría')->assertDontSee('Cambiar acceso de una cuenta');
+        $this->get(route('sistema.auditoria', ['q' => 'configuración']))->assertOk()->assertSee('No hay eventos para estos filtros.');
     }
 
     public function test_notificaciones_configurables_filtran_sin_ampliar_y_seguridad_sigue_activa(): void
