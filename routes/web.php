@@ -227,9 +227,6 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
-        Route::get('asignaciones/activas-producto', [AsignacionInventarioController::class, 'asignacionesActivas'])
-            ->name('asignaciones.activas_producto');
-
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
 
@@ -300,9 +297,6 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
-
-        Route::get('asignaciones/activas-producto', [AsignacionInventarioController::class, 'asignacionesActivas'])
-            ->name('asignaciones.activas_producto');
 
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
@@ -429,6 +423,7 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
         Route::get('/alertas/{alerta}/evidencia', [RrhhDashboardController::class, 'evidencia'])->name('alertas.evidencia');
         Route::get('/alertas/{alerta}/documentos/{archivo}', [RrhhDashboardController::class, 'documento'])->name('alertas.documento');
         Route::get('/alertas/{alerta}/refacciones/{archivo}', [RrhhDashboardController::class, 'documentoRefaccion'])->name('alertas.documento_refaccion');
+        Route::post('/alertas/{alerta}/regularizacion', [RrhhDashboardController::class, 'regularizacion'])->name('alertas.regularizacion');
         Route::post('/alertas/{alerta}/actuaciones', [RrhhDashboardController::class, 'actuacion'])->name('alertas.actuacion');
 
         Route::post('/alertas/{alerta}/finalizar', [RrhhDashboardController::class, 'finalizar'])

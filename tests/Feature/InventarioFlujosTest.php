@@ -56,6 +56,8 @@ class InventarioFlujosTest extends TestCase
         $this->actingAs($this->admin);
         $central = User::factory()->create(['role_id' => 2, 'bodega_id' => $this->principal->id]);
         $data = $this->compra();
+        $ingreso = now()->subDay()->startOfDay();
+        $data['fecha_ingreso'] = $ingreso->toDateTimeString();
         $data['pdfs'] = [UploadedFile::fake()->create('factura.pdf', 10, 'application/pdf')];
 
         $this->post(route('admin.compras.store'), $data)->assertRedirect(route('admin.compras.index'));
@@ -68,6 +70,8 @@ class InventarioFlujosTest extends TestCase
         $this->assertDatabaseHas('compras', ['id' => $id, 'total_factura' => 0.30]);
         $this->assertDatabaseHas('inventarios', ['bodega_id' => $this->principal->id, 'stock_tipo' => 'nuevo', 'cantidad' => 3]);
         $this->assertDatabaseCount('inventario_existencias', 3);
+        $this->assertDatabaseHas('inventario_existencias', ['ingresado_en' => $ingreso->toDateTimeString()]);
+        $this->assertDatabaseHas('movimientos', ['tipo_movimiento' => 'Entrada', 'fecha' => $ingreso->toDateTimeString()]);
         $archivo = DB::table('compra_archivos')->first();
         Storage::disk('documentos')->assertExists($archivo->ruta);
         $this->assertCount(1, Storage::disk('documentos')->allFiles());
@@ -96,6 +100,10 @@ class InventarioFlujosTest extends TestCase
         $devolucion = ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado'];
         $this->post($ruta, $devolucion)->assertSessionHasNoErrors();
         $this->postJson($ruta, $devolucion)->assertUnprocessable()->assertJsonValidationErrors('solicitud_id');
+        $this->postJson(route('admin.asignaciones.devolver_lote'), [
+            'solicitud_id' => $devolucion['solicitud_id'], 'estado_devolucion' => 'buen_estado',
+            'seleccionadas' => [$asignacion->id], 'devoluciones' => [$asignacion->id => 1],
+        ])->assertUnprocessable()->assertJsonValidationErrors('solicitud_id');
         $this->assertDatabaseHas('inventarios', ['bodega_id' => $this->principal->id, 'stock_tipo' => 'usado', 'cantidad' => 1]);
         $this->assertDatabaseHas('inventarios', ['bodega_id' => $this->principal->id, 'stock_tipo' => 'nuevo', 'cantidad' => 0]);
         $this->assertSame(1, $asignacion->fresh()->cantidad_asignada);
@@ -108,36 +116,39 @@ class InventarioFlujosTest extends TestCase
         $this->assertDatabaseCount('asignacion_movimientos', 3);
     }
 
-    public function test_operador_no_puede_reemplazar_asignacion_ajena(): void
+    public function test_operador_puede_asignar_el_mismo_codigo_sin_poder_resolver_custodia_ajena(): void
     {
         $this->actingAs($this->admin);
         $this->agregarStock($this->regional, 2);
         $this->post(route('admin.asignaciones.store'), $this->asignacion($this->regional))->assertSessionHasNoErrors();
         $anterior = AsignacionInventario::sole();
 
-        $data = $this->asignacion($this->regional);
-        $data['items'][0]['resoluciones'][$anterior->id] = ['estado_devolucion' => 'danado'];
-        $this->actingAs($this->operador)->postJson(route('operador.asignaciones.store'), $data)
-            ->assertUnprocessable()->assertJsonValidationErrors('items');
+        $this->actingAs($this->operador)->post(route('operador.asignaciones.store'), $this->asignacion($this->regional))
+            ->assertSessionHasNoErrors();
+        $this->postJson(route('operador.asignaciones.devolver', $anterior), [
+            'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado',
+        ])->assertForbidden();
 
-        $this->assertDatabaseCount('asignaciones_inventarios', 1);
+        $this->assertDatabaseCount('asignaciones_inventarios', 2);
         $this->assertSame('Activa', $anterior->fresh()->estado);
+        $this->assertDatabaseCount('asignacion_movimientos', 2);
     }
 
-    public function test_reemplazo_resuelve_el_saldo_historico_completo(): void
+    public function test_nueva_salida_conserva_saldo_historico_completo_como_custodia_anterior(): void
     {
         $this->actingAs($this->operador);
         $this->agregarStock($this->regional, 3);
         $anterior = $this->custodiaHistorica($this->regional, 2);
+        $this->post(route('operador.asignaciones.store'), [...$this->asignacion($this->regional), 'fecha' => now()->toDateTimeString()])->assertSessionHasNoErrors();
+        $nueva = AsignacionInventario::custodiaActiva()->sole();
 
-        $data = $this->asignacion($this->regional);
-        $data['items'][0]['resoluciones'][$anterior->id] = ['estado_devolucion' => 'danado'];
-        $this->post(route('operador.asignaciones.store'), $data)->assertSessionHasNoErrors();
-
-        $this->assertDatabaseHas('asignaciones_inventarios', ['id' => $anterior->id, 'estado' => 'Dañada', 'cantidad_asignada' => 0]);
-        $this->assertDatabaseHas('asignacion_movimientos', ['asignacion_inventario_id' => $anterior->id, 'tipo' => 'Reemplazo', 'cantidad' => 2]);
-        $this->assertDatabaseHas('inventarios', ['bodega_id' => $this->regional->id, 'stock_tipo' => 'danado', 'cantidad' => 2]);
-        $this->assertDatabaseHas('alertas_reemplazos_rrhh', ['asignacion_anterior_id' => $anterior->id, 'estado' => 'pendiente']);
+        $this->assertDatabaseHas('asignaciones_inventarios', [
+            'id' => $anterior->id, 'estado' => 'Activa', 'cantidad_asignada' => 2, 'sustituida_por_id' => $nueva->id,
+        ]);
+        $this->assertDatabaseCount('asignacion_movimientos', 2);
+        $this->assertDatabaseHas('alertas_reemplazos_rrhh', [
+            'asignacion_anterior_id' => $anterior->id, 'motivo_revision' => 'reemplazo_sin_datos',
+        ]);
         $this->artisan('inventario:contrastar-saldos')->assertExitCode(0);
     }
 
@@ -148,7 +159,7 @@ class InventarioFlujosTest extends TestCase
         $this->agregarStock($this->principal, 1);
         $this->post(route('admin.asignaciones.store'), $this->asignacion($this->principal))->assertSessionHasNoErrors();
         $asignacion = AsignacionInventario::sole();
-        $this->post(route('admin.asignaciones.devolver', $asignacion), ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado'])->assertSessionHasNoErrors();
+        $this->post(route('admin.asignaciones.devolver', $asignacion), ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado', 'motivo_administrativo' => 'renuncia'])->assertSessionHasNoErrors();
 
         $grupo = DB::table('asignacion_movimientos')->where('tipo', 'Devolucion')->value('grupo_devolucion');
         $ruta = route('admin.asignaciones.upload_pdf_devolucion_firmado', $grupo);

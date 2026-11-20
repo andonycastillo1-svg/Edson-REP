@@ -15,6 +15,7 @@ class InventarioExistencia extends Model
         'vida_util_restante_segundos' => 'integer',
         'valor_referencia' => 'decimal:2',
         'disponible_desde' => 'datetime',
+        'ingresado_en' => 'datetime',
     ];
 
     public function producto() { return $this->belongsTo(Producto::class, 'producto_codigo', 'codigo'); }

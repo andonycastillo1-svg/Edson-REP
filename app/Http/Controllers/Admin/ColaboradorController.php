@@ -167,14 +167,20 @@ class ColaboradorController extends Controller
 
     private function generarFichaColaborador(Colaborador $colaborador): array
     {
-        $asignaciones = AsignacionInventario::with('producto', 'bodega', 'entrega')
-            ->where('colaborador_codigo', $colaborador->codigo)
-            ->where('cantidad_asignada', '>', 0)
-            ->where(function ($q) {
-                $q->whereNull('estado')
-                    ->orWhere('estado', 'Activa');
-            })
-            ->get();
+        $usuario = auth()->user();
+        $permisos = app(Permisos::class);
+        $puedeRevisar = $permisos->ruta($usuario, 'rrhh.alertas.show');
+        $puedeConsultarInventario = $permisos->ruta($usuario, 'admin.asignaciones.index');
+        $puedeHistorial = $puedeConsultarInventario || $puedeRevisar;
+        $puedeAbrirArchivos = $permisos->ruta($usuario, 'admin.asignaciones.ver_pdf_firmado');
+        $consulta = AsignacionInventario::with('producto', 'bodega', 'entrega')
+            ->where('colaborador_codigo', $colaborador->codigo)->latest('id');
+        if ($puedeHistorial) {
+            $consulta->with('movimientos.user', 'movimientoInicial', 'incidencias.registrador', 'entrega.documentos', 'evidencias');
+        } else {
+            $consulta->custodiaAbierta();
+        }
+        $asignaciones = $consulta->get();
 
         if (config('inventario.seguimiento_unidades')) {
             $asignaciones->load('periodosActivos');
@@ -185,10 +191,10 @@ class ColaboradorController extends Controller
         $totalInventario = 0;
 
         $vida = app(AsignacionVidaUtilService::class);
-        $dataAsignaciones = $asignaciones->map(function ($a) use (&$totalInventario, $ultimosCostos, $vida) {
+        $dataAsignaciones = $asignaciones->map(function ($a) use (&$totalInventario, $ultimosCostos, $vida, $puedeHistorial, $puedeAbrirArchivos) {
             $costoUnitario = $a->costo_unitario ?? 0;
 
-            if ((float) $costoUnitario <= 0 && isset($ultimosCostos[$a->producto_codigo])) {
+            if ($a->entrega === null && (float) $costoUnitario <= 0 && isset($ultimosCostos[$a->producto_codigo])) {
                 $costoUnitario = (float) $ultimosCostos[$a->producto_codigo];
             }
 
@@ -196,7 +202,11 @@ class ColaboradorController extends Controller
             $fechaAsignacion = $a->fecha ? Carbon::parse($a->fecha) : null;
             $fechaVencimiento = $a->fecha_vencimiento ? Carbon::parse($a->fecha_vencimiento) : null;
 
-            $segundos = $vida->restante($a, now());
+            $retornos = $puedeHistorial ? $a->movimientos->whereIn('tipo', ['Devolucion', 'Reemplazo']) : collect();
+            $incidencias = $puedeHistorial ? $a->incidencias : collect();
+            $segundos = $a->estado === 'Activa' ? $vida->restante($a, now())
+                : ($retornos->sortByDesc('id')->first()?->vida_restante_segundos ?? $incidencias->sortByDesc('id')->first()?->vida_restante_segundos);
+            $documentos = $puedeHistorial ? ($a->entrega?->documentos ?? $a->evidencias) : collect();
             $estadoVidaUtil = match (true) {
                 $segundos === null => 'Desconocida',
                 $segundos > 0 => 'Vigente',
@@ -210,9 +220,30 @@ class ColaboradorController extends Controller
                 'producto_codigo' => $a->producto_codigo,
                 'bodega' => $a->bodega->nombre ?? '—',
                 'cantidad' => $a->cantidad_asignada,
+                'cantidad_entregada' => $puedeHistorial
+                    ? ($a->movimientoInicial?->cantidad ?? $a->cantidad_asignada + $retornos->sum('cantidad')
+                        + $incidencias->where('resultado_stock', 'sin_retorno')->sum('cantidad'))
+                    : $a->cantidad_asignada,
+                'custodia' => $a->custodia_etiqueta,
+                'tipo_entrega' => $a->asignacion_anterior_id ? 'Nueva entrega del mismo código' : 'Asignación inicial',
+                'condicion_salida' => $a->stock_tipo === 'usado' ? 'Reutilizado' : ($a->stock_tipo === 'nuevo' ? 'Nuevo' : 'No registrada'),
+                'retornos' => $retornos->map(fn ($movimiento) => [
+                    'condicion' => \App\Services\ResolverCustodia::CONDICIONES[$movimiento->estado_devolucion] ?? 'Retorno físico',
+                    'fecha' => ($movimiento->ocurrio_en ?? $movimiento->created_at)?->format('d/m/Y H:i'),
+                    'cantidad' => $movimiento->cantidad, 'responsable' => $movimiento->user?->name,
+                ])->values(),
+                'incidencias' => $incidencias->map(fn ($incidencia) => [
+                    'condicion' => $incidencia->motivo_etiqueta, 'fecha' => $incidencia->ocurrio_en?->format('d/m/Y H:i'),
+                    'cantidad' => $incidencia->cantidad, 'responsable' => $incidencia->registrador?->name,
+                ])->values(),
+                'documentos' => $documentos->map(fn ($archivo) => [
+                    'nombre' => $puedeAbrirArchivos ? $archivo->nombre_original : null,
+                    'tipo' => $archivo->tipo_documento === 'asignacion_firmada' ? 'Hoja firmada' : 'Fotografía',
+                    'url' => $puedeAbrirArchivos ? route('admin.asignaciones.ver_pdf_firmado', $archivo) : null,
+                ])->values(),
                 'costo_unitario' => (float) $costoUnitario,
                 'total' => (float) $total,
-                'fecha_asignacion' => $fechaAsignacion?->format('d/m/Y'),
+                'fecha_asignacion' => ($a->entrega?->salida_en ?? $fechaAsignacion)?->format('d/m/Y H:i'),
                 'fecha_vencimiento' => $fechaVencimiento?->format('d/m/Y'),
                 'estado_vida_util' => $estadoVidaUtil,
             ];
@@ -228,9 +259,6 @@ class ColaboradorController extends Controller
         }
 
         $incidencias = collect();
-        $usuario = auth()->user();
-        $permisos = app(Permisos::class);
-        $puedeRevisar = $permisos->ruta($usuario, 'rrhh.alertas.show');
         if ($puedeRevisar || $usuario->rolOperativo() === 1) {
             $incidencias = AlertaReemplazo::with(AlertaReemplazo::RELACIONES_LISTADO)
                 ->where('colaborador_codigo', $colaborador->codigo)->latest()->get()

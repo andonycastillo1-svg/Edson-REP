@@ -5,9 +5,10 @@
     <x-sistema.panel titulo="Información del registro">
         <dl class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             @foreach($columnas as $clave => $columna)
+                @php($valorNativo = \App\Sistema\Modulos::valorNativo($modulo, $fila, $clave))
                 <div class="rounded-lg bg-slate-50 p-3">
                     <dt class="text-xs font-semibold text-slate-600">{{ $columna['etiqueta'] }}</dt>
-                    <dd class="mt-1 break-words text-sm font-semibold text-slate-900">{{ filled($fila->{$clave}) ? $fila->{$clave} : 'Sin valor' }}</dd>
+                    <dd class="mt-1 break-words text-sm font-semibold text-slate-900">{{ filled($valorNativo) ? $valorNativo : 'Sin valor' }}</dd>
                 </div>
             @endforeach
         </dl>

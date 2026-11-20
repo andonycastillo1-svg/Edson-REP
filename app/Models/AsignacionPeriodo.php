@@ -12,6 +12,8 @@ class AsignacionPeriodo extends Model
     protected $casts = [
         'asignado_en' => 'datetime',
         'inicio_uso_en' => 'datetime',
+        'vida_util_al_asignar_segundos' => 'integer',
+        'vida_util_restante_segundos' => 'integer',
         'devuelto_en' => 'datetime',
         'reutilizable' => 'boolean',
         'evidencia_calculo' => 'array',

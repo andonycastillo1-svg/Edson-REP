@@ -26,13 +26,13 @@ if (
 ) {
     throw new LogicException('Usa una base MySQL local y desechable edson_*_qa con APP_ENV=testing.');
 }
-config(['inventario.seguimiento_unidades' => true]);
 
 if (($argv[1] ?? '') === '--solicitud') {
     $solicitud = json_decode($argv[2], true, flags: JSON_THROW_ON_ERROR);
     $usuario = User::findOrFail($solicitud['usuario']);
     Auth::guard('web')->setUser($usuario);
-    $peticion = Request::create('/operador/asignaciones', 'POST', $solicitud['datos'], server: ['HTTP_ACCEPT' => 'application/json']);
+    $peticion = Request::create($solicitud['ruta'] ?? '/operador/asignaciones', 'POST', $solicitud['datos'],
+        server: ['HTTP_ACCEPT' => 'application/json']);
     echo "LISTA\n";
     flush();
     $respuesta = $app->make(HttpKernel::class)->handle($peticion);
@@ -104,29 +104,52 @@ foreach (['Norte', 'Sur'] as $region) {
     ];
 }
 
-$resultados = ejecutarEnParalelo($colaborador, $peticiones);
-$estados = array_column($resultados, 'estado');
-sort($estados);
-comprobar($estados === [302, 422], 'Dos bodegas deben producir una única salida. Resultados: '.json_encode($resultados));
-comprobar(collect($resultados)->firstWhere('estado', 422)['errores'] === ['items'], 'La otra bodega debe quedar bloqueada por la custodia.');
 $asignaciones = AsignacionInventario::where('colaborador_codigo', $colaborador->codigo)->where('producto_codigo', $producto->codigo);
-$anterior = (clone $asignaciones)->custodiaActiva()->sole();
 $saldo = fn (string $tipo) => (int) DB::table('inventarios')->where('producto_codigo', $producto->codigo)->where('stock_tipo', $tipo)->sum('cantidad');
-comprobar($saldo('nuevo') === 3, 'La primera salida debe consumir exactamente una unidad.');
+$porUnidad = config('inventario.seguimiento_unidades');
+$conciliar = function () use ($producto, $saldo, $porUnidad) {
+    foreach (['nuevo', 'usado'] as $tipo) {
+        $cantidad = $porUnidad
+            ? DB::table('inventario_existencias')->where('producto_codigo', $producto->codigo)->where('condicion', $tipo)->count()
+            : DB::table('inventario_lotes_operativos')->where('producto_codigo', $producto->codigo)->where('stock_tipo', $tipo)->sum('cantidad');
+        comprobar($saldo($tipo) === (int) $cantidad, 'El saldo de '.$tipo.' debe coincidir con el detalle de las existencias.');
+    }
+};
+$conciliar();
+$resultados = ejecutarEnParalelo($colaborador, $peticiones);
+comprobar(array_column($resultados, 'estado') === [302, 302], 'Ambas salidas independientes deben registrarse. Resultados: '.json_encode($resultados));
+$primera = (clone $asignaciones)->whereNotNull('sustituida_por_id')->sole();
+$vigente = (clone $asignaciones)->custodiaActiva()->sole();
+comprobar($vigente->asignacion_anterior_id === $primera->id, 'Las salidas deben quedar enlazadas, con una única custodia ordinaria.');
+comprobar($primera->estado === 'Activa' && $primera->cantidad_asignada === 1, 'Debe conservarse la custodia anterior.');
+comprobar($saldo('nuevo') === 2 && $saldo('usado') === 0, 'Las dos salidas no deben incorporar inventario ficticio.');
+$conciliar();
 
-$peticion = collect($peticiones)->firstWhere('usuario', $anterior->user_id);
+$peticion = collect($peticiones)->firstWhere('usuario', $vigente->user_id);
 $peticion['datos']['solicitud_id'] = (string) Str::uuid();
 $peticion['datos']['items'][0]['producto_codigo'] = strtolower($producto->codigo);
-$peticion['datos']['items'][0]['resoluciones'] = [$anterior->id => ['estado_devolucion' => 'buen_estado']];
 $resultados = ejecutarEnParalelo($colaborador, [$peticion, $peticion]);
 $estados = array_column($resultados, 'estado');
 sort($estados);
-comprobar($estados === [302, 422], 'El mismo reemplazo debe aplicarse una sola vez. Resultados: '.json_encode($resultados));
-comprobar(collect($resultados)->firstWhere('estado', 422)['errores'] === ['solicitud_id'], 'El reintento debe rechazarse por su identificador.');
+comprobar($estados === [302, 422], 'El reintento de la misma salida debe aplicarse una sola vez. Resultados: '.json_encode($resultados));
+comprobar(collect($resultados)->firstWhere('estado', 422)['errores'] === ['solicitud_id'], 'Debe rechazarse por su identificador.');
 $nueva = (clone $asignaciones)->custodiaActiva()->sole();
 comprobar($nueva->producto_codigo === $producto->codigo, 'La custodia debe usar el código canónico.');
-comprobar($anterior->refresh()->estado === 'Devuelta' && $nueva->asignacion_anterior_id === $anterior->id, 'La custodia debe enlazar el reemplazo.');
-comprobar($saldo('nuevo') === 2 && $saldo('usado') === 1, 'Los saldos deben reflejar una devolución y una salida.');
-comprobar($anterior->movimientos()->where('tipo', 'Reemplazo')->count() === 1, 'Debe existir un único movimiento de retorno.');
+comprobar($saldo('nuevo') === 1 && $saldo('usado') === 0, 'La salida debe descontar una unidad.');
+comprobar((clone $asignaciones)->custodiaAbierta()->count() === 3, 'Las tres custodias deben conservar sus saldos.');
+comprobar(DB::table('alertas_reemplazos_rrhh')->where('producto_codigo', $producto->codigo)->count() === 2, 'Deben quedar dos reemplazos potenciales.');
+$conciliar();
 
-echo "MySQL: concurrencia entre bodegas, reintento simultáneo y saldos verificados.\n";
+$devolucion = [
+    'usuario' => $primera->user_id, 'ruta' => '/operador/asignaciones/'.$primera->id.'/devolver',
+    'datos' => ['solicitud_id' => (string) Str::uuid(), 'estado_devolucion' => 'buen_estado', 'cantidad_devuelta' => 1],
+];
+$resultados = ejecutarEnParalelo($colaborador, [$devolucion, $devolucion]);
+$estados = array_column($resultados, 'estado');
+sort($estados);
+comprobar($estados === [302, 422], 'El mismo retorno físico solo debe aplicarse una vez. Resultados: '.json_encode($resultados));
+comprobar($primera->fresh()->estado === 'Devuelta' && $saldo('usado') === 1 && $saldo('nuevo') === 1, 'El retorno real debe sumar un usado.');
+comprobar($primera->movimientos()->where('tipo', 'Reemplazo')->count() === 1, 'Debe existir un único movimiento de retorno.');
+$conciliar();
+
+echo 'MySQL: salidas concurrentes, reintentos, retorno real y conciliación verificados por '.($porUnidad ? 'unidad' : 'lotes').".\n";

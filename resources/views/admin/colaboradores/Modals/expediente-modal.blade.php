@@ -53,7 +53,7 @@
                 class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold"
                 :class="expedienteTab === 'productos' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
                 @click="expedienteTab = 'productos'">
-          Productos directos
+          Historial de productos
           <span class="ml-1 rounded-full bg-white/30 px-2 py-0.5" x-text="asignaciones.length"></span>
         </button>
 
@@ -92,7 +92,7 @@
             <button type="button"
                     @click="expedienteTab = 'productos'"
                     class="text-left rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-slate-100">
-              <div class="text-xs font-semibold text-slate-500">Productos directos</div>
+              <div class="text-xs font-semibold text-slate-500">Historial de productos</div>
               <div class="mt-1 text-2xl font-bold text-slate-900" x-text="asignaciones.length"></div>
               <div class="text-sm text-slate-600">
                 Q <span class="font-semibold" x-text="money(totalInventario)"></span>
@@ -132,7 +132,7 @@
               <div>
                 <div class="text-sm font-semibold">Total general asignado</div>
                 <div class="text-xs text-slate-300">
-                  Productos directos + productos asociados al vehículo.
+                  Historial de productos + productos asociados al vehículo.
                 </div>
               </div>
 
@@ -161,7 +161,7 @@
 
             <template x-if="asignaciones.length === 0">
               <div class="px-3 py-3 text-sm text-slate-600">
-                No tiene productos asignados directamente.
+                No hay asignaciones directas registradas.
               </div>
             </template>
 
@@ -173,11 +173,11 @@
                       <tr>
                         <th class="px-3 py-2 text-left font-semibold">Artículo</th>
                         <th class="px-3 py-2 text-left font-semibold">Bodega</th>
-                        <th class="px-3 py-2 text-left font-semibold">Cant.</th>
+                        <th class="px-3 py-2 text-left font-semibold">Entregadas / en custodia</th>
                         <th class="px-3 py-2 text-left font-semibold">Costo</th>
                         <th class="px-3 py-2 text-left font-semibold">Total</th>
                         <th class="px-3 py-2 text-left font-semibold">Asignado</th>
-                        <th class="px-3 py-2 text-left font-semibold">Estado</th>
+                        <th class="px-3 py-2 text-left font-semibold">Custodia y vida útil</th>
                       </tr>
                     </thead>
 
@@ -187,18 +187,29 @@
                           <td class="px-3 py-2">
                             <div class="font-semibold text-slate-900" x-text="item.producto || '—'"></div>
                             <div class="text-[11px] text-slate-500" x-text="'Código: ' + (item.producto_codigo || '—')"></div>
+                            <div x-text="item.tipo_entrega + ' · ' + item.condicion_salida"></div>
+                            <template x-for="(documento, indice) in item.documentos" :key="'doc-'+indice">
+                              <div>
+                                <a x-show="documento.url" :href="documento.url" x-text="documento.nombre" class="underline"></a>
+                                <span x-show="!documento.url" x-text="documento.tipo"></span>
+                              </div>
+                            </template>
                           </td>
 
                           <td class="px-3 py-2 text-slate-700" x-text="item.bodega || '—'"></td>
-                          <td class="px-3 py-2 text-slate-700" x-text="item.cantidad || 0"></td>
+                          <td class="px-3 py-2 text-slate-700" x-text="item.cantidad_entregada + ' / ' + item.cantidad"></td>
                           <td class="px-3 py-2 text-slate-700" x-text="'Q ' + money(item.costo_unitario)"></td>
                           <td class="px-3 py-2 font-semibold text-slate-900" x-text="'Q ' + money(item.total)"></td>
                           <td class="px-3 py-2 text-slate-700" x-text="item.fecha_asignacion || '—'"></td>
 
                           <td class="px-3 py-2">
+                            <p class="mb-1 font-semibold" x-text="item.custodia"></p>
                             <span class="inline-flex rounded-full px-2 py-1 text-[11px] font-semibold"
                                   :class="badgeVidaUtil(item.estado_vida_util)"
-                                  x-text="item.estado_vida_util || '—'"></span>
+                                  x-text="'Vida útil: ' + item.estado_vida_util"></span>
+                            <template x-for="(evento, indice) in [...item.retornos, ...item.incidencias]" :key="'evento-'+indice">
+                              <p class="mt-1" x-text="evento.condicion + ' · ' + evento.cantidad + ' unidad(es) · ' + (evento.fecha || 'Fecha desconocida') + (evento.responsable ? ' · ' + evento.responsable : '')"></p>
+                            </template>
                           </td>
                         </tr>
                       </template>

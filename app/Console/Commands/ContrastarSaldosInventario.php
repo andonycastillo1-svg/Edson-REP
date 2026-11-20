@@ -7,12 +7,16 @@ use Illuminate\Support\Facades\DB;
 
 class ContrastarSaldosInventario extends Command
 {
-    protected $signature = 'inventario:contrastar-saldos';
+    protected $signature = 'inventario:contrastar-saldos {--lotes : Contrasta saldos del seguimiento por lotes}';
 
     protected $description = 'Compara saldos, existencias y asignaciones para preparar la conciliación';
 
     public function handle(): int
     {
+        if ($this->option('lotes')) {
+            return $this->contrastarLotes();
+        }
+
         $saldos = DB::table('inventarios')
             ->select('producto_codigo', 'bodega_id', 'stock_tipo')
             ->selectRaw('SUM(cantidad) AS saldo, 0 AS unidades, COUNT(*) AS filas')
@@ -57,6 +61,30 @@ class ContrastarSaldosInventario extends Command
             $total++;
         }
 
+        $this->info("Diferencias encontradas: {$total}");
+
+        return $total === 0 ? self::SUCCESS : self::FAILURE;
+    }
+    private function contrastarLotes(): int
+    {
+        $saldos = DB::table('inventarios')->whereIn('stock_tipo', ['nuevo', 'usado'])
+            ->select('producto_codigo', 'bodega_id', 'stock_tipo')
+            ->selectRaw('SUM(cantidad) AS saldo, 0 AS lotes, MAX(CASE WHEN lotes_inicializados THEN 1 ELSE 0 END) AS inicializado, COUNT(*) AS filas')
+            ->groupBy('producto_codigo', 'bodega_id', 'stock_tipo');
+        $lotes = DB::table('inventario_lotes_operativos')->where('cantidad', '>', 0)
+            ->select('producto_codigo', 'bodega_id', 'stock_tipo')
+            ->selectRaw('0 AS saldo, SUM(cantidad) AS lotes, 0 AS inicializado, 0 AS filas')
+            ->groupBy('producto_codigo', 'bodega_id', 'stock_tipo');
+        $diferencias = DB::query()->fromSub($saldos->unionAll($lotes), 's')
+            ->select('producto_codigo', 'bodega_id', 'stock_tipo')
+            ->selectRaw('SUM(saldo) AS saldo, SUM(lotes) AS lotes')
+            ->groupBy('producto_codigo', 'bodega_id', 'stock_tipo')
+            ->havingRaw('SUM(lotes) > SUM(saldo) OR (MAX(inicializado) = 1 AND SUM(lotes) <> SUM(saldo)) OR SUM(filas) > 1');
+        $total = 0;
+        foreach ($diferencias->cursor() as $fila) {
+            $this->line("Bodega {$fila->bodega_id} / {$fila->producto_codigo} / {$fila->stock_tipo} — saldo {$fila->saldo}, lotes {$fila->lotes}");
+            $total++;
+        }
         $this->info("Diferencias encontradas: {$total}");
 
         return $total === 0 ? self::SUCCESS : self::FAILURE;

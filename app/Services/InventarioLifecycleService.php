@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AsignacionInventario;
 use App\Models\AsignacionPeriodo;
 use App\Models\InventarioExistencia;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -16,11 +17,12 @@ class InventarioLifecycleService
     public const ESTADOS_RETORNO = ['buen_estado', 'danado', 'perdido', 'robado', 'baja', 'sin_retorno'];
     public const SIN_RETORNO = ['perdido', 'robado', 'sin_retorno'];
 
-    public function crearNuevas(string $productoCodigo, int $bodegaId, int $cantidad, ?float $valor = null): void
+    public function crearNuevas(string $productoCodigo, int $bodegaId, int $cantidad, ?float $valor = null, ?Carbon $ingreso = null): void
     {
         $producto = DB::table('productos')->where('codigo', $productoCodigo)->first();
         $vida = $producto?->vida_util_meses === null ? null : max(0, (int) $producto->vida_util_meses) * 30 * 86400;
 
+        $ingreso ??= now();
         for ($i = 0; $i < $cantidad; $i++) {
             InventarioExistencia::create([
                 'producto_codigo' => $productoCodigo,
@@ -29,7 +31,8 @@ class InventarioLifecycleService
                 'vida_util_inicial_segundos' => $vida,
                 'vida_util_restante_segundos' => $vida,
                 'valor_referencia' => $valor,
-                'disponible_desde' => now(),
+                'disponible_desde' => $ingreso,
+                'ingresado_en' => $ingreso,
                 'creado_por_user_id' => auth()->id(),
             ]);
         }
@@ -51,13 +54,7 @@ class InventarioLifecycleService
             ->where('condicion', $tipo)
             ->lockForUpdate();
 
-        if ($tipo === 'usado') {
-            // NULL (sin vida útil) se conserva separado; entre vidas aplicables se usa primero la menor.
-            $query->orderByRaw('vida_util_restante_segundos IS NULL')
-                ->orderBy('vida_util_restante_segundos');
-        } else {
-            $query->orderBy('id');
-        }
+        $this->ordenSalida($query, $tipo);
 
         $existencias = $query->limit($cantidad)->get();
         if ($existencias->count() !== $cantidad) {
@@ -83,6 +80,15 @@ class InventarioLifecycleService
         }
 
         return $existencias;
+    }
+
+    public function ordenSalida(Builder $consulta, string $tipo): Builder
+    {
+        if ($tipo === 'usado') {
+            $consulta->orderByRaw('vida_util_restante_segundos IS NULL')->orderBy('vida_util_restante_segundos');
+        }
+
+        return $consulta->orderByRaw('ingresado_en IS NOT NULL')->orderBy('ingresado_en')->orderBy('id');
     }
 
     public function devolver(
@@ -135,11 +141,14 @@ class InventarioLifecycleService
                     'fecha_devolucion' => 'La fecha del servidor no puede ser anterior a la asignación.',
                 ]);
             }
-            $inicio = $periodo->inicio_uso_en ?? ($asignacion->entrega === null ? $periodo->asignado_en : null);
-            $consumido = $inicio === null ? null : max(0, (int) $inicio->diffInSeconds($devueltoEn));
-            $restante = $periodo->vida_util_al_asignar_segundos === null || $consumido === null
-                ? null
-                : max(0, (int) $periodo->vida_util_al_asignar_segundos - $consumido);
+            $inicio = $periodo->inicio_uso_en;
+            $consumido = $inicio === null || $devueltoEn->lt($inicio) ? null : (int) $inicio->diffInSeconds($devueltoEn);
+            $vidaAlAsignar = $periodo->vida_util_al_asignar_segundos;
+            $restante = match (true) {
+                $vidaAlAsignar === 0 => 0,
+                $vidaAlAsignar === null || $consumido === null => null,
+                default => max(0, (int) $vidaAlAsignar - $consumido),
+            };
             $condicion = $estado === 'buen_estado' ? 'usado' : $estado;
             $reutilizable = $estado === 'buen_estado';
             $sinRetorno = in_array($estado, self::SIN_RETORNO, true);

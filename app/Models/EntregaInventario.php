@@ -46,16 +46,8 @@ class EntregaInventario extends Model
         return $this->belongsTo(User::class, 'confirmada_por');
     }
 
-    public function pendientes(): array
+    public function faltaHojaFirmada(): bool
     {
-        $motivos = [];
-        if ($this->confirmada_en === null) {
-            $motivos[] = 'Recepción sin confirmar';
-        }
-        if (!$this->documentos->contains('tipo_documento', 'asignacion_firmada')) {
-            $motivos[] = 'Hoja firmada faltante';
-        }
-
-        return $motivos;
+        return !$this->documentos->contains('tipo_documento', 'asignacion_firmada');
     }
 }

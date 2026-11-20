@@ -30,6 +30,7 @@ class CatalogoPermisos
             'usuarios.crear' => ['Crear cuentas de usuarios', 'Dar de alta cuentas dentro del ámbito autorizado.'],
             'usuarios.desactivar' => ['Desactivar cuentas de usuarios', 'Suspender el inicio de sesión de una cuenta.'],
             'asignaciones.crear' => ['Asignar inventario', 'Entregar equipo a colaboradores y registrar la asignación.'],
+            'asignaciones.entregar_nuevo' => ['Entregar inventario nuevo por excepción', 'Autorizar una salida de inventario nuevo y registrar el motivo.'],
             'asignaciones.devolver' => ['Registrar devoluciones', 'Registrar el retorno parcial o total de equipo asignado.'],
             'traslados.aprobar' => ['Resolver solicitudes de traslado', 'Aprobar o rechazar traslados de la bodega correspondiente.'],
             'alertas.modificar' => ['Gestionar incidencias de RR. HH.', 'Registrar notas de seguimiento y finalizar incidencias.'],
@@ -72,7 +73,7 @@ class CatalogoPermisos
             'edit' => 'modificar', 'update' => 'modificar', 'destroy' => 'eliminar',
         ];
         $asignaciones = [
-            'index' => 'consultar', 'create' => 'crear', 'store' => 'crear', 'activas_producto' => 'crear',
+            'index' => 'consultar', 'create' => 'crear', 'store' => 'crear',
             'pdf' => 'exportar', 'hoja_devolucion' => 'exportar', 'upload_pdf_firmado' => 'evidencias',
             'upload_pdf_devolucion_firmado' => 'evidencias', 'ver_pdf_firmado' => 'archivos',
             'entrega' => 'consultar', 'documento_entrega' => 'evidencias', 'confirmar_recepcion' => 'crear',
@@ -123,7 +124,7 @@ class CatalogoPermisos
                 'alertas' => ['alertas', [
                     'index' => 'consultar', 'show' => 'consultar', 'evidencia' => 'consultar',
                     'documento' => 'consultar', 'documento_refaccion' => 'consultar',
-                    'export' => 'exportar', 'actuacion' => 'modificar', 'finalizar' => 'modificar',
+                    'export' => 'exportar', 'actuacion' => 'modificar', 'regularizacion' => 'modificar', 'finalizar' => 'modificar',
                 ]],
             ],
             default => [],
@@ -161,6 +162,9 @@ class CatalogoPermisos
 
         $base = array_values(array_unique(self::rutas($ambito)));
         $extras = array_keys(self::CONFIGURACION);
+        if (in_array('asignaciones.crear', $base, true)) {
+            $extras[] = 'asignaciones.entregar_nuevo';
+        }
         foreach (array_keys(Modulos::DEFINICIONES) as $modulo) {
             if (in_array(Modulos::permisoLectura($modulo), $base, true)) {
                 $extras[] = $modulo.'.campos_editar';

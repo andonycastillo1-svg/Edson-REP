@@ -44,9 +44,12 @@ class AsignacionVidaUtilService
                 ? $asignacion->periodosActivos->take($cantidad)
                 : $asignacion->periodosActivos()->limit($cantidad)->get();
             if ($periodos->isNotEmpty()) {
-                $vidas = $periodos->map(function ($periodo) use ($fechaCorte, $asignacion) {
-                    $inicio = $periodo->inicio_uso_en ?? ($asignacion->entrega === null ? $periodo->asignado_en : null);
+                $vidas = $periodos->map(function ($periodo) use ($fechaCorte) {
+                    $inicio = $periodo->inicio_uso_en;
                     $vida = $periodo->vida_util_al_asignar_segundos;
+                    if ($vida === 0) {
+                        return 0;
+                    }
                     if ($vida === null || $inicio === null || $fechaCorte->lt($inicio)) {
                         return null;
                     }
@@ -61,15 +64,13 @@ class AsignacionVidaUtilService
             }
         }
 
-        $vencimiento = $asignacion->fecha_vencimiento;
-        $entrega = $asignacion->entrega;
-        if ($entrega?->recibida_en && $fechaCorte->lt($entrega->recibida_en)) {
-            return null;
+        if ($asignacion->stock_tipo === 'usado' && $asignacion->vida_util_disponible_segundos === 0) {
+            return 0;
         }
-        if ($vencimiento === null && $entrega === null) {
-            $meses = $asignacion->vida_util_restante_meses
-                ?? ($asignacion->stock_tipo === 'usado' ? null : $asignacion->vida_util_original_meses);
-            $vencimiento = $meses === null ? null : $asignacion->fecha->copy()->addMonthsNoOverflow($meses);
+        $vencimiento = $asignacion->fecha_vencimiento;
+        $recibida = $asignacion->entrega?->recibida_en;
+        if ($recibida === null || $fechaCorte->lt($recibida)) {
+            return null;
         }
 
         return $vencimiento === null ? null : max(0, (int) $fechaCorte->diffInSeconds($vencimiento));

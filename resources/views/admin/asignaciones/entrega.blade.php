@@ -6,7 +6,7 @@
     <header class="rounded-2xl border border-slate-200 bg-white p-6">
         <h1 class="text-2xl font-extrabold text-slate-900">Entrega a {{ $asignaciones->first()->colaborador?->nombre ?? $asignaciones->first()->colaborador_codigo }}</h1>
         @if($entrega)
-            <p class="mt-1 text-slate-600">Salida del {{ $entrega->salida_en->format('d/m/Y H:i') }} · {{ $entrega->modalidad === 'tercero' ? 'Transporta '.$entrega->tercero : 'Entrega directa' }}</p>
+            <p class="mt-1 text-slate-600">Salida del {{ $entrega->salida_en->format('d/m/Y H:i') }} · {{ $entrega->modalidad === 'tercero' ? ($entrega->tercero ? 'Transporta '.$entrega->tercero : 'Salida por tercero') : 'Entrega directa' }}</p>
         @endif
         <div class="mt-4 flex flex-wrap gap-3">
             @rutaDisponible($routePrefix.'.asignaciones.pdf')
@@ -27,7 +27,11 @@
                 @php($segundos = $vigencias[$fila->id])
                 <li class="flex flex-wrap justify-between gap-2 py-3">
                     <div><strong>{{ $fila->producto?->nombre ?? $fila->producto_codigo }}</strong> · {{ $fila->producto_codigo }}
-                        <p class="text-sm text-slate-600">{{ $fila->bodega?->nombre ?? 'Bodega sin identificar' }}</p>
+                        <p class="text-sm text-slate-600">{{ $fila->bodega?->nombre ?? 'Bodega sin identificar' }}
+                            @if(in_array($fila->stock_tipo, ['nuevo', 'usado'], true))
+                                · {{ $fila->stock_tipo === 'usado' ? 'Inventario usado' : 'Inventario nuevo' }}
+                            @endif
+                        </p>
                         @foreach($fila->incidencias as $incidencia)
                             @rutaDisponible($routePrefix.'.asignaciones.incidencia')
                                 <a class="block text-sm underline" href="{{ route($routePrefix.'.asignaciones.incidencia', $incidencia) }}">{{ $incidencia->motivo_etiqueta }}</a>
@@ -36,7 +40,7 @@
                     </div>
                     <div class="text-sm">
                         @if($fila->estado === 'Activa')
-                            Activa · {{ $fila->cantidad_asignada }} unidad(es)
+                            {{ $fila->custodia_etiqueta }} · {{ $fila->cantidad_asignada }} unidad(es)
                             <p>Vida útil {{ $segundos === null ? 'desconocida' : ($segundos > 0 ? 'vigente' : 'vencida') }}</p>
                         @else
                             Cerrada · {{ $fila->estado }}
@@ -53,12 +57,14 @@
             <p>Confirmada por {{ $entrega->confirmador?->name ?? 'Usuario histórico' }} el {{ $entrega->confirmada_en->format('d/m/Y H:i') }} · {{ \App\Models\EntregaInventario::MEDIOS[$entrega->medio_confirmacion] ?? $entrega->medio_confirmacion }}</p>
             <p>Recepción real {{ $entrega->recibida_en?->format('d/m/Y H:i') ?? 'sin fecha registrada' }}</p>
         @elseif($entrega)
-            <p class="text-amber-800">Recepción sin confirmar</p>
+            <p>Salida registrada. La recepción se puede documentar si se conoce.</p>
         @else
             <p>Recepción sin datos históricos</p>
         @endif
 
         @if($puedeConfirmar && $entrega->recibida_en === null)
+            <details class="mt-3">
+            <summary class="cursor-pointer font-semibold">Agregar datos de recepción (opcional)</summary>
             <form method="POST" action="{{ route($routePrefix.'.asignaciones.confirmar_recepcion', $grupo) }}" class="mt-4 flex flex-wrap items-end gap-3">
                 @csrf
                 @unless($entrega->confirmada_en)
@@ -77,6 +83,7 @@
                 </label>
                 <button class="ui-btn-primary">{{ $entrega->confirmada_en ? 'Registrar fecha real' : 'Confirmar recepción' }}</button>
             </form>
+            </details>
         @endif
     </section>
 

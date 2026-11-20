@@ -48,6 +48,7 @@ class InventarioLifecycleServiceTest extends TestCase
         $inicio = Carbon::parse('2026-01-01 08:00:00');
         $asignacion = $this->asignacion('P1', 1, $inicio);
         $this->service->reservar($asignacion, 'nuevo', 1, $inicio);
+        $asignacion->periodos()->update(['inicio_uso_en' => $inicio]);
         $this->service->devolver($asignacion, 1, 'buen_estado', 2, 'Cambio', null, $inicio->copy()->addDays(5));
 
         $existencia = InventarioExistencia::first();

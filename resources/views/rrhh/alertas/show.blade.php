@@ -12,10 +12,16 @@
             <div><dt class="font-bold">Fecha del incidente</dt><dd>{{ $alerta->fecha_incidente?->format('d/m/Y H:i') ?? 'Desconocida' }}</dd></div>
             <div><dt class="font-bold">Fecha de asignación</dt><dd>{{ $alerta->fecha_asignacion_anterior?->format('d/m/Y') ?? 'Desconocida' }}</dd></div>
             <div><dt class="font-bold">Vida útil al ocurrir</dt><dd>{{ $alerta->vida_etiqueta }}</dd></div>
-            <div><dt class="font-bold">Registrado por</dt><dd>{{ $alerta->registrador?->name ?? 'No registrado' }}</dd></div>
+            <div><dt class="font-bold">Registrado por</dt><dd>{{ $alerta->incidencia?->registrador?->name ?? $alerta->registrador?->name ?? 'No registrado' }}</dd></div>
             <div><dt class="font-bold">Bodega</dt><dd>{{ $alerta->bodega_nombre ?? 'No registrada' }}</dd></div>
-            <div><dt class="font-bold">Observaciones</dt><dd class="whitespace-pre-wrap">{{ $alerta->detalle ?? '—' }}</dd></div>
+            <div><dt class="font-bold">Observaciones</dt><dd class="whitespace-pre-wrap">{{ $alerta->incidencia?->observaciones ?? $alerta->detalle ?? '—' }}</dd></div>
         </dl>
+        @if($alerta->asignacionAnterior && $alerta->asignacionNueva)
+            <dl class="my-4 grid gap-3 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
+                <div><dt class="font-bold">Custodia anterior</dt><dd>{{ $alerta->asignacionAnterior->custodia_etiqueta }}</dd></div>
+                <div><dt class="font-bold">Fecha de la nueva salida</dt><dd>{{ ($alerta->asignacionNueva->entrega?->salida_en ?? $alerta->asignacionNueva->fecha)->format('d/m/Y H:i') }} · {{ $alerta->asignacionNueva->bodega?->nombre }}</dd></div>
+            </dl>
+        @endif
         @if($alerta->incidencia?->archivo)
             <a class="ui-btn-download" href="{{ route('rrhh.alertas.evidencia', $alerta) }}">Respaldo del incidente</a>
             <p class="mt-1 text-sm text-slate-600">{{ $alerta->incidencia->archivoSubidoPor?->name }} · {{ $alerta->incidencia->archivo_subido_en?->format('d/m/Y H:i') }}</p>
@@ -32,12 +38,27 @@
             </ul>
         @endif
     </section>
+    @if($historial->isNotEmpty())
+        <section class="rounded-xl border border-slate-200 bg-white p-5">
+            <h2 class="text-lg font-bold">Historial del producto</h2>
+            <ul class="divide-y divide-slate-200 text-sm">
+                @foreach($historial as $fila)
+                    <li class="py-2">
+                        <p>{{ ($fila->entrega?->salida_en ?? $fila->fecha)->format('d/m/Y H:i') }} · {{ $fila->bodega?->nombre }} · {{ $fila->custodia_etiqueta }}</p>
+                        @foreach($fila->movimientos->whereIn('tipo', ['Devolucion', 'Reemplazo']) as $movimiento)
+                            <p>Retorno físico · {{ ($movimiento->ocurrio_en ?? $movimiento->created_at)?->format('d/m/Y H:i') }} · {{ $movimiento->cantidad }} unidad(es)</p>
+                        @endforeach
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
     <section class="rounded-xl border border-slate-200 bg-white p-5">
         <h2 class="text-lg font-bold">Seguimiento</h2>
         <ul class="my-3 divide-y divide-slate-200">
             @forelse($alerta->actuaciones->sortBy('id') as $actuacion)
                 <li class="py-3">
-                    <div class="font-semibold">{{ \App\Models\AlertaReemplazo::ESTADOS[$actuacion->estado] }} · {{ $actuacion->usuario?->name ?? 'Usuario histórico' }} · {{ $actuacion->created_at->format('d/m/Y H:i') }}</div>
+                    <div class="font-semibold">{{ $actuacion->accion === 'solicitar_regularizacion' ? 'Regularización solicitada' : \App\Models\AlertaReemplazo::ESTADOS[$actuacion->estado] }} · {{ $actuacion->usuario?->name ?? 'Usuario histórico' }} · {{ $actuacion->created_at->format('d/m/Y H:i') }}</div>
                     <p class="whitespace-pre-wrap">{{ $actuacion->nota }}</p>
                 </li>
             @empty
@@ -52,6 +73,9 @@
                         <textarea name="nota" required maxlength="4000" rows="3" class="mt-1 block w-full rounded-xl border-slate-300">{{ old('nota') }}</textarea>
                     </label>
                     <button class="ui-btn-primary">Guardar nota</button>
+                    @if($alerta->asignacionAnterior?->estado === 'Activa' && $alerta->asignacionAnterior?->sustituida_por_id)
+                        <button class="ui-btn-secondary" formaction="{{ route('rrhh.alertas.regularizacion', $alerta) }}">Solicitar regularización</button>
+                    @endif
                     <button name="confirmar" value="1" formaction="{{ route('rrhh.alertas.finalizar', $alerta) }}"
                         onclick="return confirm('¿Finalizar esta incidencia con la nota registrada?')" class="ui-btn-secondary">Finalizar incidencia</button>
                 </form>

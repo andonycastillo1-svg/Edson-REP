@@ -18,7 +18,12 @@ class AsignacionMovimiento extends Model
         'stock_tipo_resultante',
         'bodega_retorno_id',
         'user_id',
+        'motivo_administrativo',
+        'ocurrio_en',
+        'vida_restante_segundos',
     ];
+
+    protected $casts = ['ocurrio_en' => 'datetime', 'vida_restante_segundos' => 'integer'];
 
     public function asignacion()
     {

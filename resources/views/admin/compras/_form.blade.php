@@ -86,6 +86,11 @@
         </div>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <label class="text-sm font-semibold">
+                Fecha real de ingreso (si se registró después)
+                <input type="datetime-local" name="fecha_ingreso" value="{{ old('fecha_ingreso') }}"
+                       class="mt-1 block w-full rounded-xl border-slate-300">
+            </label>
             <x-sistema.campos-nativos modulo="compras" />
 
             <div>
