@@ -64,7 +64,8 @@ class Permisos
             return ['permitido' => $regla, 'origen' => 'Regla del rol'];
         }
         $heredado = in_array((int) $rol?->id, [1, 2, 3, 4], true)
-            && in_array($permiso, CatalogoPermisos::rutas($ambito ?? $rol->ambito()), true);
+            && in_array($permiso, [...CatalogoPermisos::rutas($ambito ?? $rol->ambito()),
+                ...CatalogoPermisos::flujoPara($ambito ?? $rol->ambito())], true);
 
         return ['permitido' => $heredado, 'origen' => $heredado ? 'Acceso preexistente' : 'Denegación por defecto'];
     }

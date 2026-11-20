@@ -69,6 +69,9 @@ class CompraController extends Controller
             ->orderBy('nombre')
             ->get();
 
+        $consolidados = app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'compras')
+            ? \App\Models\Consolidado::where('estado', 'aprobado')->orderBy('nombre')->get(['id', 'nombre']) : collect();
+
         $categorias = DB::table('productos')
             ->whereNotNull('categoria')
             ->where('categoria', '<>', '')
@@ -82,7 +85,7 @@ class CompraController extends Controller
         return view('admin.compras.create', compact(
             'proveedores',
             'productos',
-            'categorias'
+            'categorias', 'consolidados'
         ));
     }
 
@@ -93,6 +96,8 @@ class CompraController extends Controller
 
         $data = $request->validate([
             'fecha_compra' => ['required', 'date_format:Y-m-d', 'after_or_equal:' . today()->subDays(7)->toDateString(), 'before_or_equal:' . today()->addDays(7)->toDateString()],
+            'consolidados' => ['nullable', 'array', 'max:200'],
+            'consolidados.*' => ['required', 'integer', 'distinct'],
             'fecha_ingreso' => ['nullable', 'date', 'before_or_equal:now'],
             'no_factura' => ['required', 'string', 'max:50'],
             'proveedor_tipo' => ['required', 'in:existente,nuevo'],
@@ -130,6 +135,9 @@ class CompraController extends Controller
         app(Presentacion::class)->validar($request, 'compras', true);
         $campos = app(ValoresCampos::class);
         $valores = $campos->preparar($request, 'compras', true);
+        if (!empty($data['consolidados'])) {
+            app(\App\Services\FlujoAcceso::class)->autorizar($request->user(), 'compras');
+        }
         [$lineas, $total] = $this->lineasCompra($data);
         foreach ($lineas as &$linea) {
             if ($linea['nuevo']) {
@@ -161,6 +169,8 @@ class CompraController extends Controller
                         throw ValidationException::withMessages(['bodega_id' => 'La bodega principal cambió. Vuelve a enviar la compra.']);
                     }
                 }
+                $consolidados = empty($data['consolidados']) ? collect()
+                    : app(\App\Services\PlanCompras::class)->aprobados($data['consolidados'], bloquear: true);
                 $proveedorId = $this->proveedor($data);
                 $compraId = DB::table('compras')->insertGetId([
                     'fecha_compra' => $data['fecha_compra'],
@@ -220,6 +230,9 @@ class CompraController extends Controller
                     ]);
                 }
 
+                foreach ($consolidados as $consolidado) {
+                    DB::table('compra_consolidado')->insert(['compra_id' => $compraId, 'consolidado_id' => $consolidado->id]);
+                }
                 $campos->guardar('compras', $compraId, $valores);
                 app(Auditoria::class)->registrar('compras', 'registrar', $compraId, null, ['bodega_id' => $bodega->id, 'lineas' => count($lineas)]);
                 return $compraId;
@@ -375,7 +388,11 @@ class CompraController extends Controller
 
         $tablaCampos = app(Presentacion::class)->operativa('productos', auth()->user(), $detalles->pluck('producto_codigo'));
 
-        return view('admin.compras.show', compact('compra', 'detalles', 'archivos', 'tablaCampos'));
+        $consolidados = app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'consolidados')
+            ? \App\Models\Consolidado::whereIn('id', DB::table('compra_consolidado')->where('compra_id', $id)->select('consolidado_id'))
+                ->get(['id', 'nombre']) : collect();
+
+        return view('admin.compras.show', compact('compra', 'detalles', 'archivos', 'tablaCampos', 'consolidados'));
     }
     public function archivo(string $compra, string $archivo)
     {

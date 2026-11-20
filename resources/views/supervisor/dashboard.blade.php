@@ -11,4 +11,5 @@
             <a class="ui-btn-secondary" href="{{ route('supervisor.asignaciones.index', ['seguimiento' => 'documentacion']) }}">Hojas firmadas faltantes</a>
         </nav>
     @endrutaDisponible
+    @include('flujo.accesos')
 @endsection

@@ -454,3 +454,5 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 */
 require __DIR__ . '/auth.php';
 require __DIR__.'/sistema.php';
+
+require __DIR__.'/flujo.php';

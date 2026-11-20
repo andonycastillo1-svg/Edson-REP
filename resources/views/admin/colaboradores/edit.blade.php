@@ -68,6 +68,16 @@
           @enderror
         </div>
 
+        <div class="space-y-1">
+          <label for="region-id" class="block text-sm font-medium text-slate-700">Región</label>
+          <select id="region-id" name="region_id" class="w-full rounded-xl border-slate-300">
+            <option value="">Sin región asignada</option>
+            @foreach($regiones as $region)
+              <option value="{{ $region->id }}" @selected((int) old('region_id', $colaborador->region_id) === $region->id)>{{ $region->nombre }}</option>
+            @endforeach
+          </select>
+        </div>
+
       </div>
 
       <x-sistema.campos modulo="colaboradores" :registro="$colaborador->codigo" />

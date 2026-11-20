@@ -482,7 +482,7 @@
         <table class="header-table">
             <tr>
                 <td class="logo-box">
-                    <img src="{{ asset('img/logo.png') }}" class="logo" alt="Logo NMS">
+                    <img src="{{ $portatil ? 'logo.png' : asset('img/logo.png') }}" class="logo" alt="Logo NMS">
                 </td>
 
                 <td class="title-box">
@@ -725,7 +725,7 @@
                             <tr>
                                 <td class="field-label">Nombre</td>
                                 <td class="field-line">
-                                    {{ auth()->user()->name ?? 'Edson Alexander Gallina Tinti' }}
+                                    {{ $asignadorNombre }}
                                 </td>
                             </tr>
                         </table>

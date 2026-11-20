@@ -18,6 +18,8 @@ class AsignacionInventario extends Model
         'sustituida_por_id',
         'lote_operativo_id',
         'motivo_inventario_nuevo',
+        'motivo_asignacion_id',
+        'motivo_registrado',
         'colaborador_codigo',
         'producto_codigo',
         'bodega_id',

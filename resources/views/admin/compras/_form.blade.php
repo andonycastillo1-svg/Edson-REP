@@ -91,6 +91,18 @@
                 <input type="datetime-local" name="fecha_ingreso" value="{{ old('fecha_ingreso') }}"
                        class="mt-1 block w-full rounded-xl border-slate-300">
             </label>
+            @if(($consolidados ?? collect())->isNotEmpty())
+                <fieldset class="sm:col-span-2">
+                    <legend class="font-semibold">Consolidados aprobados vinculados</legend>
+                    @foreach($consolidados as $consolidado)
+                        <label class="mr-4 inline-flex items-center gap-2 text-sm">
+                            <input type="checkbox" name="consolidados[]" value="{{ $consolidado->id }}"
+                                   @checked(in_array($consolidado->id, old('consolidados', (array) request('consolidados', []))))>
+                            {{ $consolidado->nombre }}
+                        </label>
+                    @endforeach
+                </fieldset>
+            @endif
             <x-sistema.campos-nativos modulo="compras" />
 
             <div>

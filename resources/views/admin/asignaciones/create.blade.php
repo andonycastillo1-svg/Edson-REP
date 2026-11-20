@@ -60,6 +60,14 @@
                         <span class="text-sm text-slate-600">Cantidad: 1 unidad</span>
                         <button type="button" class="ui-btn-secondary" data-quitar>Quitar</button>
                     </div>
+                    <label class="text-sm font-semibold">Motivo de asignación o reemplazo
+                        <select data-campo="motivo_asignacion" class="mt-1 w-full rounded-xl border-slate-300">
+                            <option value="">Sin motivo específico</option>
+                            @foreach($motivos as $razon)
+                                <option value="{{ $razon->codigo }}">{{ $razon->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                     @if($puedeElegirNuevo)
                         <details class="sm:col-span-2">
                             <summary class="cursor-pointer text-sm font-semibold">Entregar inventario nuevo por excepción</summary>
@@ -116,6 +124,7 @@
         const bodega = fila.querySelector('[data-campo="bodega_id"]');
         const producto = fila.querySelector('[data-campo="producto_codigo"]');
         const motivo = fila.querySelector('[data-campo="motivo_inventario_nuevo"]');
+        fila.querySelector('[data-campo="motivo_asignacion"]').value = datos.motivo_asignacion ?? '';
         if (datos.bodega_id) bodega.value = datos.bodega_id;
         if (motivo && datos.motivo_inventario_nuevo) {
             motivo.value = datos.motivo_inventario_nuevo;

@@ -39,7 +39,7 @@ class SistemaAutogestionTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
-        foreach (CatalogoPermisos::AMBITOS as $id => $nombre) {
+        foreach (array_intersect_key(CatalogoPermisos::AMBITOS, array_flip([1, 2, 3, 4])) as $id => $nombre) {
             DB::table('roles')->insert(['id' => $id, 'nombre' => $nombre]);
         }
         $this->regional = Bodega::create(['nombre' => 'Sucursal', 'tipo' => 'Regional']);
@@ -54,7 +54,8 @@ class SistemaAutogestionTest extends TestCase
         $permisos = app(Permisos::class);
         $supervisor = User::factory()->create(['role_id' => 3]);
         $rrhh = User::factory()->create(['role_id' => 4]);
-        $identidades = [1 => $this->admin, 2 => $this->operador, 3 => $supervisor, 4 => $rrhh];
+        $coordinador = User::factory()->create(['role_id' => Role::where('ambito_operativo', 5)->sole()->id]);
+        $identidades = [1 => $this->admin, 2 => $this->operador, 3 => $supervisor, 4 => $rrhh, 5 => $coordinador];
         foreach (Route::getRoutes() as $ruta) {
             foreach ($ruta->middleware() as $middleware) {
                 if (str_starts_with($middleware, 'role:')) {

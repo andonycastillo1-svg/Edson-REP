@@ -16,6 +16,7 @@ use App\Sistema\Permisos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -38,7 +39,7 @@ class ColaboradorController extends Controller
 
     public function create()
     {
-        return view('admin.colaboradores.create');
+        return view('admin.colaboradores.create', ['regiones' => \App\Models\Region::where('activa', true)->orderBy('nombre')->get()]);
     }
 
     public function store(Request $request)
@@ -47,6 +48,7 @@ class ColaboradorController extends Controller
             'codigo' => ['required', 'unique:colaboradores,codigo'],
             'nombre' => ['required', 'max:255'],
             'puesto' => ['required', 'max:255'],
+            'region_id' => ['nullable', 'integer', Rule::exists('regiones', 'id')->where('activa', true)],
             'estado' => ['required', 'in:Activo,Inactivo'],
         ]);
 
@@ -65,7 +67,9 @@ class ColaboradorController extends Controller
 
     public function edit(Colaborador $colaborador)
     {
-        return view('admin.colaboradores.edit', compact('colaborador'));
+        $regiones = \App\Models\Region::where('activa', true)->orWhere('id', $colaborador->region_id)->orderBy('nombre')->get();
+
+        return view('admin.colaboradores.edit', compact('colaborador', 'regiones'));
     }
 
     public function update(Request $request, Colaborador $colaborador)
@@ -74,6 +78,8 @@ class ColaboradorController extends Controller
             'codigo' => ['required', 'unique:colaboradores,codigo,'.$colaborador->codigo.',codigo'],
             'nombre' => ['required', 'max:255'],
             'puesto' => ['required', 'max:255'],
+            'region_id' => ['nullable', 'integer', Rule::exists('regiones', 'id')->where(fn ($q) => $q
+                ->where(fn ($region) => $region->where('activa', true)->orWhere('id', $colaborador->region_id)))],
             'estado' => ['required', 'in:Activo,Inactivo'],
         ]);
 
@@ -226,6 +232,7 @@ class ColaboradorController extends Controller
                     : $a->cantidad_asignada,
                 'custodia' => $a->custodia_etiqueta,
                 'tipo_entrega' => $a->asignacion_anterior_id ? 'Nueva entrega del mismo código' : 'Asignación inicial',
+                'motivo_registrado' => $a->motivo_registrado,
                 'condicion_salida' => $a->stock_tipo === 'usado' ? 'Reutilizado' : ($a->stock_tipo === 'nuevo' ? 'Nuevo' : 'No registrada'),
                 'retornos' => $retornos->map(fn ($movimiento) => [
                     'condicion' => \App\Services\ResolverCustodia::CONDICIONES[$movimiento->estado_devolucion] ?? 'Retorno físico',

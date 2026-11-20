@@ -4,7 +4,7 @@ namespace App\Sistema;
 
 class CatalogoPermisos
 {
-    public const AMBITOS = [1 => 'Administrador', 2 => 'Operador', 3 => 'Supervisor', 4 => 'Recursos Humanos'];
+    public const AMBITOS = [1 => 'Administrador', 2 => 'Operador', 3 => 'Supervisor', 4 => 'Recursos Humanos', 5 => 'Coordinador'];
 
     public const CONFIGURACION = [
         'sistema.campos' => 'Administrar campos personalizados',
@@ -19,12 +19,22 @@ class CatalogoPermisos
         [$modulo, $accion] = explode('.', $permiso, 2);
         $grupo = Modulos::DEFINICIONES[$modulo][0] ?? match ($modulo) {
             'panel' => 'Panel principal',
+            'flujo' => 'Requerimientos y compras',
             'alertas' => 'Incidencias para revisión de RR. HH.',
             'sistema' => 'Configuración del sistema',
             default => 'Otros permisos',
         };
         $recurso = mb_strtolower($grupo);
         [$titulo, $descripcion] = match ($permiso) {
+            'flujo.inspecciones' => ['Consultar inspecciones', 'Consultar requerimientos dentro del ámbito asignado.'],
+            'flujo.capturar' => ['Registrar inspecciones', 'Enviar requerimientos para colaboradores inspeccionados.'],
+            'flujo.consolidados' => ['Consultar consolidados', 'Ver consolidados y solicitudes relacionadas.'],
+            'flujo.consolidar' => ['Consolidar requerimientos', 'Preparar y enviar requerimientos de bodega central.'],
+            'flujo.revisar' => ['Revisar y aprobar consolidados', 'Ajustar y aprobar los consolidados del equipo.'],
+            'flujo.reabrir' => ['Reabrir aprobaciones', 'Reabrir un consolidado sin constancia ni compras vinculadas.'],
+            'flujo.compras' => ['Preparar necesidades de compra', 'Consultar faltantes y registrar constancias externas.'],
+            'flujo.importar' => ['Importar asignaciones', 'Validar y registrar entregas desde un Excel de bodega central.'],
+            'flujo.configurar' => ['Administrar catálogos operativos', 'Configurar regiones, artículos de inspección y motivos de asignación.'],
             'panel.consultar' => ['Abrir el panel principal', 'Ver los accesos disponibles para el ámbito.'],
             'inventario.entrada' => ['Registrar entradas de inventario', 'Agregar existencias mediante una entrada manual.'],
             'usuarios.crear' => ['Crear cuentas de usuarios', 'Dar de alta cuentas dentro del ámbito autorizado.'],
@@ -151,7 +161,18 @@ class CatalogoPermisos
 
     public static function prefijo(int $ambito): ?string
     {
-        return [1 => 'admin', 2 => 'operador', 3 => 'supervisor', 4 => 'rrhh'][$ambito] ?? null;
+        return [1 => 'admin', 2 => 'operador', 3 => 'supervisor', 4 => 'rrhh', 5 => 'coordinacion'][$ambito] ?? null;
+    }
+
+    public static function flujoPara(int $ambito): array
+    {
+        return match ($ambito) {
+            1 => ['flujo.inspecciones', 'flujo.consolidados', 'flujo.consolidar', 'flujo.reabrir', 'flujo.compras', 'flujo.importar', 'flujo.configurar'],
+            2 => ['flujo.inspecciones', 'flujo.consolidados', 'flujo.consolidar', 'flujo.compras', 'flujo.importar'],
+            3 => ['flujo.inspecciones', 'flujo.capturar'],
+            5 => ['flujo.inspecciones', 'flujo.consolidados', 'flujo.revisar'],
+            default => [],
+        };
     }
 
     public static function disponibles(int $ambito): array
@@ -161,7 +182,7 @@ class CatalogoPermisos
         }
 
         $base = array_values(array_unique(self::rutas($ambito)));
-        $extras = array_keys(self::CONFIGURACION);
+        $extras = [...array_keys(self::CONFIGURACION), ...self::flujoPara($ambito)];
         if (in_array('asignaciones.crear', $base, true)) {
             $extras[] = 'asignaciones.entregar_nuevo';
         }

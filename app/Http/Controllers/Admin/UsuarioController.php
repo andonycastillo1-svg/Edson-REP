@@ -52,6 +52,7 @@ class UsuarioController extends Controller
     public function create()
     {
         $roles = $this->rolesPermitidosParaGestion();
+        $coordinadores = $this->coordinadores();
         $bodegas = Bodega::orderBy('nombre')->get();
 
         $rolAlmacenistaId = $this->rolAlmacenistaId();
@@ -65,7 +66,7 @@ class UsuarioController extends Controller
         return view('admin.usuarios.create', compact(
             'roles',
             'bodegas',
-            'almacenistas',
+            'almacenistas', 'coordinadores',
             'rolAlmacenistaId',
             'rolSupervisorId'
         ));
@@ -92,6 +93,7 @@ class UsuarioController extends Controller
                 'exists:bodegas,id',
             ],
 
+            'coordinador_id' => $this->reglasCoordinador($ambito),
             'almacenista_id' => [
                 Rule::requiredIf(fn () => $ambito === $rolSupervisorId),
                 'nullable',
@@ -121,6 +123,7 @@ class UsuarioController extends Controller
                 'bodega_id' => $rol->ambito() === $rolAlmacenistaId
                     ? ($data['bodega_id'] ?? null)
                     : null,
+                'coordinador_id' => $rol->ambito() === $rolSupervisorId ? ($data['coordinador_id'] ?? null) : null,
                 'created_by' => auth()->id(),
             ]);
 
@@ -131,7 +134,7 @@ class UsuarioController extends Controller
             }
 
             $campos->guardar('usuarios', $usuario->id, $valores);
-            app(Auditoria::class)->registrar('seguridad', 'crear_usuario', $usuario->id, null, $usuario->only(['role_id', 'bodega_id']));
+            app(Auditoria::class)->registrar('seguridad', 'crear_usuario', $usuario->id, null, $usuario->only(['role_id', 'bodega_id', 'coordinador_id']));
             return $usuario;
         });
 
@@ -161,6 +164,7 @@ class UsuarioController extends Controller
         }
 
         $roles = $this->rolesPermitidosParaGestion();
+        $coordinadores = $this->coordinadores();
         $bodegas = Bodega::orderBy('nombre')->get();
 
         $rolAlmacenistaId = $this->rolAlmacenistaId();
@@ -178,7 +182,7 @@ class UsuarioController extends Controller
             'usuario',
             'roles',
             'bodegas',
-            'almacenistas',
+            'almacenistas', 'coordinadores',
             'rolAlmacenistaId',
             'rolSupervisorId'
         ));
@@ -210,6 +214,7 @@ class UsuarioController extends Controller
                 'exists:bodegas,id',
             ],
 
+            'coordinador_id' => $this->reglasCoordinador($ambito),
             'almacenista_id' => [
                 Rule::requiredIf(fn () => $ambito === $rolSupervisorId),
                 'nullable',
@@ -233,13 +238,14 @@ class UsuarioController extends Controller
             $rol = Role::findOrFail($data['role_id']);
             abort_unless($seguridad->puedeGestionar($request->user(), $usuario) && $seguridad->rolAsignable($request->user(), $rol), 403);
             abort_if($request->user()->is($usuario) && (int) $usuario->role_id !== (int) $rol->id, 403);
-            $antes = $usuario->only(['role_id', 'bodega_id']);
+            $antes = $usuario->only(['role_id', 'bodega_id', 'coordinador_id']);
             $valores = $campos->preparar($request, 'usuarios', false, (string) $usuario->id);
 
             $payload = [
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'role_id' => $rol->id,
+                'coordinador_id' => $rol->ambito() === $rolSupervisorId ? ($data['coordinador_id'] ?? $usuario->coordinador_id) : null,
                 'bodega_id' => $rol->ambito() === $rolAlmacenistaId
                     ? ($data['bodega_id'] ?? null)
                     : null,
@@ -271,7 +277,7 @@ class UsuarioController extends Controller
             }
             $campos->guardar('usuarios', $usuario->id, $valores);
             app(Auditoria::class)->registrar('seguridad', 'actualizar_usuario', $usuario->id, $antes,
-                $usuario->only(['role_id', 'bodega_id']) + ['credencial_actualizada' => isset($payload['password'])]);
+                $usuario->only(['role_id', 'bodega_id', 'coordinador_id']) + ['credencial_actualizada' => isset($payload['password'])]);
         });
 
         $nuevoAlmacenistaId = $ambito === $rolSupervisorId
@@ -314,6 +320,25 @@ class UsuarioController extends Controller
 
         return redirect()->route($this->usuariosRoutePrefix() . '.usuarios.index')
             ->with('ok', 'Usuario desactivado.');
+    }
+
+    private function coordinadores(): \Illuminate\Support\Collection
+    {
+        return app(Permisos::class)->permite(auth()->user(), 'flujo.configurar')
+            ? User::deAmbito(5)->orderBy('name')->get(['users.id', 'users.name']) : collect();
+    }
+
+    private function reglasCoordinador(?int $ambito): array
+    {
+        $permitido = $ambito === $this->rolSupervisorId() && app(Permisos::class)->permite(auth()->user(), 'flujo.configurar');
+        if (!$permitido) {
+            return ['prohibited'];
+        }
+
+        return [
+            Rule::requiredIf(fn () => User::deAmbito(5)->exists()), 'nullable', 'integer',
+            Rule::exists('users', 'id')->where(fn ($q) => $q->whereIn('id', User::deAmbito(5)->select('users.id'))),
+        ];
     }
 
     private function usuariosRoutePrefix(): string
