@@ -103,6 +103,17 @@
                 </p>
             </div>
 
+            @if($coordinadores->isNotEmpty())
+                <div id="coordinador-wrap" class="{{ $mostrarAlmacenista ? '' : 'hidden' }}">
+                    <label class="block text-sm font-medium" for="coordinador_id">Coordinador de requerimientos</label>
+                    <select id="coordinador_id" name="coordinador_id" class="mt-1 w-full rounded-xl border-slate-300">
+                        <option value="">Selecciona el coordinador</option>
+                        @foreach($coordinadores as $coordinador)
+                            <option value="{{ $coordinador->id }}" @selected((int) old('coordinador_id', $usuario->coordinador_id) === $coordinador->id)>{{ $coordinador->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             <div id="almacenista_wrap" class="{{ $mostrarAlmacenista ? '' : 'hidden' }}">
                 <label for="almacenista_id" class="block text-sm font-medium text-gray-700">Almacenista asignado</label>
 
@@ -191,6 +202,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const esAlmacenista = tipoRol === 'almacenista';
         const esSupervisor = tipoRol === 'supervisor';
+        const coordinador = document.getElementById('coordinador_id');
+        if (coordinador) {
+            document.getElementById('coordinador-wrap').classList.toggle('hidden', !esSupervisor);
+            coordinador.disabled = !esSupervisor;
+            coordinador.required = esSupervisor;
+        }
         const confirmacion = document.getElementById('confirmacion-rol');
         if (confirmacion) {
             const protegida = confirmacion.dataset.cuentaProtegida === '1' || selectedOption?.dataset.ambito === '1';

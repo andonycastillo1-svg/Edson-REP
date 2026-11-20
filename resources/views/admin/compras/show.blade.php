@@ -6,6 +6,14 @@
 @php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
 <div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
     <x-internal-navigation :back-url="route($routePrefix . '.compras.index')" />
+    @if($consolidados->isNotEmpty())
+        <p class="my-3 text-sm font-semibold">Consolidados vinculados</p>
+        <ul class="mb-4 flex flex-wrap gap-3 text-sm">
+            @foreach($consolidados as $consolidado)
+                <li><a class="underline" href="{{ route('flujo.consolidados.show', $consolidado) }}">{{ $consolidado->nombre }}</a></li>
+            @endforeach
+        </ul>
+    @endif
 
     <div class="flex items-start justify-between gap-4 mb-6">
         <div>

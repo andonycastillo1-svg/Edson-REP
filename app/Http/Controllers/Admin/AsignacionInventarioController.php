@@ -26,7 +26,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Services\AccesoCustodia;
 use App\Services\AsignacionVidaUtilService;
-use App\Services\DetectarReemplazos;
+use App\Services\RegistrarAsignaciones;
+use App\Models\MotivoAsignacion;
 use App\Services\NotificacionService;
 use Carbon\Carbon;
 use App\Services\ResolverCustodia;
@@ -190,15 +191,16 @@ class AsignacionInventarioController extends Controller
         $inventarios = $inventariosQuery->get();
         $colaboradores = Colaborador::where('estado', 'Activo')->get();
         $bodegas = $bodegasQuery->get();
+        $motivos = MotivoAsignacion::where('activo', true)->orderBy('id')->get();
 
         return view('admin.asignaciones.create', compact(
             'inventarios',
             'colaboradores',
-            'bodegas'
+            'bodegas', 'motivos'
         ));
     }
 
-    public function store(Request $request, ValoresCampos $campos, AsignacionVidaUtilService $vida, DetectarReemplazos $reemplazos)
+    public function store(Request $request, ValoresCampos $campos, RegistrarAsignaciones $registro)
     {
         $data = $request->validate([
             'solicitud_id' => ['required', 'uuid'],
@@ -222,6 +224,7 @@ class AsignacionInventarioController extends Controller
             'items.*.bodega_id' => ['required', 'integer', 'exists:bodegas,id'],
             'items.*.cantidad_asignada' => ['sometimes', 'required', 'integer', 'in:1'],
             'items.*.motivo_inventario_nuevo' => ['nullable', 'string', 'max:500'],
+            'items.*.motivo_asignacion' => ['nullable', 'string', 'max:45'],
             'items.*.resoluciones' => ['missing'],
         ], [
             'items.*.cantidad_asignada.in' => 'Solo se puede asignar una unidad por código al colaborador.',
@@ -231,11 +234,6 @@ class AsignacionInventarioController extends Controller
         app(Presentacion::class)->validar($request, 'asignaciones', true);
         $valores = $campos->preparar($request, 'asignaciones', true);
         $usuario = $request->user();
-        $salida = isset($data['fecha']) ? Carbon::parse($data['fecha']) : now();
-        $recibida = isset($data['recibida_en']) ? Carbon::parse($data['recibida_en']) : null;
-        if ($recibida?->lt($salida)) {
-            throw ValidationException::withMessages(['recibida_en' => 'La recepción no puede ser anterior a la salida.']);
-        }
         $items = collect($data['items'])->map(function ($item) use ($usuario) {
             abort_unless($this->bodegaAccess->canModifyStock($usuario, (int) $item['bodega_id']), 403);
             if (filled($item['motivo_inventario_nuevo'] ?? null)) {
@@ -250,93 +248,13 @@ class AsignacionInventarioController extends Controller
             throw ValidationException::withMessages(['items' => 'Incluye cada código de producto una sola vez.']);
         }
 
-        $grupo = (string) Str::uuid();
         $foto = $request->file('imagen');
         $rutaFoto = $foto ? DocumentoPrivado::guardar($foto, 'asignaciones/entregas') : null;
-
+        $adjuntar = $rutaFoto ? fn ($entrega, $primera) => $entrega->documentos()->create(
+            $this->datosArchivo($foto, $rutaFoto, $primera, 'evidencia_entrega')
+        ) : null;
         try {
-            [$asignacionId, $alertas] = DB::transaction(function () use ($data, $items, $grupo, $usuario, $campos, $valores, $vida, $foto, $rutaFoto, $reemplazos, $salida, $recibida) {
-                SolicitudInventarioService::registrar('asignacion', $data['solicitud_id']);
-                $colaborador = Colaborador::whereKey($data['colaborador_codigo'])->lockForUpdate()->firstOrFail();
-                if ($colaborador->estado !== 'Activo') {
-                    throw ValidationException::withMessages(['colaborador_codigo' => 'El colaborador no está activo.']);
-                }
-
-                $anteriores = AsignacionInventario::custodiaActiva()->where('colaborador_codigo', $colaborador->codigo)
-                    ->whereIn('producto_codigo', $items->pluck('producto_codigo'))
-                    ->orderBy('producto_codigo')->orderBy('id')->lockForUpdate()->get()->groupBy('producto_codigo');
-                $modalidad = $data['modalidad'] ?? 'directa';
-                $directa = $modalidad === 'directa' && !array_key_exists('confirmar_recepcion', $data);
-                $confirmada = $directa || (bool) ($data['confirmar_recepcion'] ?? false);
-                $fechaReal = $directa ? $salida : $recibida;
-                $entrega = EntregaInventario::create([
-                    'id' => $grupo,
-                    'modalidad' => $modalidad,
-                    'tercero' => $modalidad === 'tercero' ? ($data['tercero'] ?? null) : null,
-                    'salida_en' => $salida,
-                    'recibida_en' => $confirmada ? $fechaReal : null,
-                    'confirmada_en' => $confirmada ? now() : null,
-                    'confirmada_por' => $confirmada ? $usuario->id : null,
-                    'medio_confirmacion' => $directa ? 'presencial' : ($confirmada ? $data['medio_confirmacion'] : null),
-                ]);
-
-                $primera = null;
-                $alertas = [];
-                foreach ($items as $item) {
-                    $codigo = $item['producto_codigo'];
-                    $motivoNuevo = $item['motivo_inventario_nuevo'] ?? null;
-                    $tipo = $this->stock->tipoParaAsignar((int) $item['bodega_id'], $codigo, filled($motivoNuevo));
-                    $previas = $anteriores->get($codigo, collect());
-                    $anterior = $previas->last() ?? AsignacionInventario::where('colaborador_codigo', $colaborador->codigo)
-                        ->where('producto_codigo', $codigo)->latest('id')->lockForUpdate()->first();
-                    $asignacion = AsignacionInventario::create([
-                        'grupo_asignacion' => $grupo,
-                        'colaborador_codigo' => $colaborador->codigo,
-                        'producto_codigo' => $codigo,
-                        'bodega_id' => $item['bodega_id'],
-                        'cantidad_asignada' => 1,
-                        'fecha' => $entrega->salida_en->toDateString(),
-                        'costo_unitario' => $data['costo_unitario'] ?? null,
-                        'aprobado_por' => $data['aprobado_por'] ?? null,
-                        'medio_solicitud' => $data['medio_solicitud'] ?? null,
-                        'observaciones' => $data['observaciones'] ?? null,
-                        'estado' => 'Activa',
-                        'stock_tipo' => $tipo,
-                        'tipo_entrega' => $anterior === null ? 'inicial' : 'reposicion',
-                        'asignacion_anterior_id' => $anterior?->id,
-                        'motivo_inventario_nuevo' => $motivoNuevo,
-                        'user_id' => $usuario->id,
-                    ]);
-                    $asignacion->setRelation('entrega', $entrega);
-                    $primera ??= $asignacion->id;
-
-                    $this->stock->asignar($asignacion, $tipo);
-                    if ($entrega->recibida_en !== null) {
-                        $vida->registrarInicio($asignacion, $entrega->recibida_en);
-                    }
-                    $campos->guardar('asignaciones', $asignacion->id, $valores);
-                    $asignacion->movimientos()->create([
-                        'tipo' => 'Asignacion', 'cantidad' => 1, 'detalle' => 'Salida registrada.',
-                        'user_id' => $usuario->id, 'ocurrio_en' => $salida,
-                    ]);
-                    $vida->registrarEstado($asignacion, 'activo', 'Salida de bodega registrada.');
-                    app(Auditoria::class)->registrar('asignaciones', 'registrar', $asignacion->id, null,
-                        ['bodega_id' => $asignacion->bodega_id, 'cantidad' => 1, 'stock_tipo' => $tipo,
-                            'motivo_inventario_nuevo' => $motivoNuevo]);
-
-                    $alertas = [...$alertas, ...$reemplazos->registrar($asignacion, $previas)];
-                }
-
-                if ($rutaFoto !== null) {
-                    $entrega->documentos()->create($this->datosArchivo($foto, $rutaFoto, $primera, 'evidencia_entrega'));
-                }
-                if ($confirmada) {
-                    app(Auditoria::class)->registrar('asignaciones', 'confirmar_recepcion', $grupo, null,
-                        ['recibida_en' => $entrega->recibida_en?->toDateTimeString(), 'medio' => $entrega->medio_confirmacion]);
-                }
-
-                return [$primera, $alertas];
-            }, 3);
+            $entrega = DB::transaction(fn () => $registro->registrar($usuario, $data, $items, $valores, $adjuntar), 3);
         } catch (\Throwable $e) {
             if ($rutaFoto !== null) {
                 DocumentoPrivado::descartar($rutaFoto);
@@ -345,14 +263,9 @@ class AsignacionInventarioController extends Controller
             throw $e;
         }
 
-        app(NotificacionService::class)->safeAction(fn ($servicio) => $servicio->notificarNuevaAsignacion(
-            AsignacionInventario::findOrFail($asignacionId), $usuario, route($this->asignacionesRoutePrefix().'.asignaciones.index')
-        ));
-        $this->notificarAlertas($alertas, $usuario);
-
         $prefijo = $this->asignacionesRoutePrefix();
         $destino = app(Permisos::class)->ruta($usuario, $prefijo.'.asignaciones.entrega')
-            ? route($prefijo.'.asignaciones.entrega', $grupo) : route($prefijo.'.asignaciones.create');
+            ? route($prefijo.'.asignaciones.entrega', $entrega) : route($prefijo.'.asignaciones.create');
 
         return redirect()->to($destino)->with('success', 'Salida registrada correctamente.');
     }
@@ -532,45 +445,9 @@ class AsignacionInventarioController extends Controller
         return redirect()->to($destino)->with('success', $mensaje);
     }
 
-    public function pdf($grupo)
+    public function pdf(string $grupo)
     {
-        $asignaciones = AsignacionInventario::with(['producto', 'bodega', 'colaborador', 'user.bodega', 'movimientoInicial', 'movimientos', 'incidencias'])
-            ->where('grupo_asignacion', $grupo)
-            ->get();
-
-        abort_if($asignaciones->isEmpty(), 404, 'No se encontraron asignaciones para este PDF.');
-        $asignaciones->each(function (AsignacionInventario $asignacion) {
-            $this->autorizarAsignacionInventario($asignacion);
-            $asignacion->cantidad = $asignacion->movimientoInicial?->cantidad
-                ?? ($asignacion->cantidad_asignada + $asignacion->movimientos->whereIn('tipo', ['Devolucion', 'Reemplazo'])->sum('cantidad')
-                    + $asignacion->incidencias->where('resultado_stock', 'sin_retorno')->sum('cantidad'));
-        });
-
-        $colaborador = $asignaciones->first()->colaborador;
-
-        if (!$colaborador) {
-            abort(404, 'No se encontró el colaborador de esta asignación.');
-        }
-
-        $total = $asignaciones->sum(function ($a) {
-            return ($a->costo_unitario ?? 0) * $a->cantidad;
-        });
-
-        $creador = $asignaciones->first()->user;
-        $asignadorNombre = $creador?->name ?? 'No identificado';
-
-        $bodegaAsignador = $creador?->bodega?->nombre
-            ?? optional($asignaciones->first()?->bodega)->nombre
-            ?? 'No definida';
-
-        return view('admin.asignaciones.pdf', compact(
-            'colaborador',
-            'asignaciones',
-            'total',
-            'asignadorNombre',
-            'bodegaAsignador',
-            'grupo'
-        ));
+        return app(\App\Services\HojaAsignacion::class)->vista(auth()->user(), $grupo);
     }
 
     public function uploadPdfFirmado(Request $request, AsignacionInventario $asignacion)

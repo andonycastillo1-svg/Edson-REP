@@ -16,6 +16,9 @@
             <div><dt class="font-bold">Bodega</dt><dd>{{ $alerta->bodega_nombre ?? 'No registrada' }}</dd></div>
             <div><dt class="font-bold">Observaciones</dt><dd class="whitespace-pre-wrap">{{ $alerta->incidencia?->observaciones ?? $alerta->detalle ?? '—' }}</dd></div>
         </dl>
+        @if($alerta->referencia_proporcional !== null)
+            <p class="rounded-lg bg-slate-50 p-3 text-sm"><strong>Referencia proporcional provisional</strong> Q {{ number_format((float) $alerta->referencia_proporcional, 2) }}. La decisión se documenta en el seguimiento de RR. HH.</p>
+        @endif
         @if($alerta->asignacionAnterior && $alerta->asignacionNueva)
             <dl class="my-4 grid gap-3 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
                 <div><dt class="font-bold">Custodia anterior</dt><dd>{{ $alerta->asignacionAnterior->custodia_etiqueta }}</dd></div>

@@ -14,4 +14,5 @@
         'admin.vehiculos.index' => ['Vehículos', 'Control de flota', '🚚'],
         'admin.vehiculos.productos.index' => ['Productos del vehículo', 'Refacciones por unidad', '🧰'],
     ]" />
+    @include('flujo.accesos')
 @endsection

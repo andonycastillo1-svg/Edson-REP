@@ -144,6 +144,11 @@ class Seguridad
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($usuario->id)],
             'bodega_id' => [Rule::requiredIf($ambito === 2), 'nullable', 'integer', 'exists:bodegas,id'],
+            'coordinador_id' => [
+                Rule::prohibitedIf(fn () => $ambito !== 3 || ($desdeUsuarios && !$this->permisos->permite($request->user(), 'flujo.configurar'))),
+                'nullable', 'integer',
+                Rule::exists('users', 'id')->where(fn ($q) => $q->whereIn('id', User::deAmbito(5)->select('users.id'))),
+            ],
             'almacenista_id' => [
                 Rule::requiredIf($ambito === 3), 'nullable', 'integer',
                 Rule::exists('users', 'id')->where(fn ($q) => $q->whereIn('id', User::deAmbito(2)->select('users.id'))),
@@ -166,8 +171,10 @@ class Seguridad
             }
             $antes = $usuario->only(['role_id', 'bodega_id']);
             $antes['almacenista_id'] = $usuario->almacenistasAsignados()->value('users.id');
+            $antes['coordinador_id'] = $usuario->coordinador_id;
             $cambio = Arr::only($data, ['role_id', 'name', 'email']) + [
                 'bodega_id' => $rol->ambito() === 2 ? $data['bodega_id'] : null,
+                'coordinador_id' => $rol->ambito() === 3 ? ($data['coordinador_id'] ?? $usuario->coordinador_id) : null,
             ];
             if (!empty($data['password'])) {
                 $cambio['password'] = Hash::make($data['password']);
@@ -188,7 +195,7 @@ class Seguridad
             $usuario->almacenistasAsignados()->sync($almacenista === null ? [] : [$almacenista]);
             $campos->guardar('usuarios', $usuario->id, $campos->preparar($request, 'usuarios', false, (string) $usuario->id));
             $this->auditoria->registrar('seguridad', 'actualizar_acceso_cuenta', $usuario->id, $antes,
-                $usuario->only(['role_id', 'bodega_id']) + ['almacenista_id' => $almacenista, 'credencial_actualizada' => isset($cambio['password'])]);
+                $usuario->only(['role_id', 'bodega_id']) + ['almacenista_id' => $almacenista, 'coordinador_id' => $usuario->coordinador_id, 'credencial_actualizada' => isset($cambio['password'])]);
         });
     }
 

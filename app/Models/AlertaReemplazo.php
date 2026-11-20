@@ -34,6 +34,7 @@ class AlertaReemplazo extends Model
         'vida_util_meses',
         'meses_restantes',
         'motivo_revision',
+        'referencia_proporcional',
         'vida_restante_segundos',
         'descuento_aplicable',
         'estado',
@@ -45,6 +46,7 @@ class AlertaReemplazo extends Model
         'fecha_dano_reemplazo' => 'datetime',
         'descuento_aplicable' => 'boolean',
         'vida_restante_segundos' => 'integer',
+        'referencia_proporcional' => 'decimal:2',
     ];
 
     public const ESTADOS = [
@@ -93,6 +95,7 @@ class AlertaReemplazo extends Model
         return $this->incidencia?->motivo_etiqueta ?? match ($this->motivo_revision) {
             self::REEMPLAZO_ANTICIPADO => 'Posible reemplazo anticipado',
             self::REEMPLAZO_SIN_DATOS => 'Reemplazo por verificar',
+            'motivo_asignacion' => $this->asignacionNueva?->motivo_registrado ?? 'Motivo de asignación',
             default => $this->vehiculo_vin ? 'Daño de refacción' : 'Incidencia histórica',
         };
     }
@@ -100,7 +103,7 @@ class AlertaReemplazo extends Model
     public function getBodegaNombreAttribute(): ?string
     {
         return $this->incidencia?->asignacion?->bodega?->nombre
-            ?? $this->asignacionAnterior?->bodega?->nombre ?? $this->refaccion?->bodega?->nombre;
+            ?? $this->asignacionAnterior?->bodega?->nombre ?? $this->asignacionNueva?->bodega?->nombre ?? $this->refaccion?->bodega?->nombre;
     }
 
     public function getFechaIncidenteAttribute()
@@ -115,6 +118,11 @@ class AlertaReemplazo extends Model
             'vencida' => 'Vencida',
             'desconocida' => 'Desconocida',
             default => match ($this->motivo_revision) {
+                'motivo_asignacion' => match (true) {
+                    $this->vida_restante_segundos === null => 'Desconocida',
+                    $this->vida_restante_segundos === 0 => 'Vencida',
+                    default => 'Vigente ('.(int) ceil($this->vida_restante_segundos / 86400).' días)',
+                },
                 self::REEMPLAZO_SIN_DATOS => 'Desconocida',
                 self::REEMPLAZO_ANTICIPADO => 'Vigente ('.max(1, (int) ceil($this->vida_restante_segundos / 86400)).' días)',
                 default => $this->vida_util_meses > 0 ? $this->meses_restantes.' meses registrados' : 'Desconocida',

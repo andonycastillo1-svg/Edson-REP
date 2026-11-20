@@ -16,9 +16,13 @@ class Colaborador extends Model
     protected $fillable = [
         'codigo',
         'nombre',
-        'puesto',
+        'puesto', 'region_id',
         'estado',
         'created_at',
         'updated_at',
     ];
+    public function region()
+    {
+        return $this->belongsTo(Region::class);
+    }
 }

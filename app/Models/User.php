@@ -17,6 +17,7 @@ class User extends Authenticatable
         'role_id',
         'bodega_id',
         'created_by',
+        'coordinador_id',
     ];
 
     protected $hidden = [
@@ -53,8 +54,17 @@ class User extends Authenticatable
         }
 
         return $query->where('users.acceso_activo', true)->whereHas('role', fn ($rol) => $rol
-            ->where('activo', true)->where(fn ($q) => $q->where('id', $ambito)
-                ->orWhere(fn ($extra) => $extra->whereNotIn('id', [1, 2, 3, 4])->where('ambito_operativo', $ambito))));
+            ->where('activo', true)->where(function ($q) use ($ambito) {
+                $q->where(fn ($extra) => $extra->whereNotIn('id', [1, 2, 3, 4])->where('ambito_operativo', $ambito));
+                if (in_array($ambito, [1, 2, 3, 4], true)) {
+                    $q->orWhere('id', $ambito);
+                }
+            }));
+    }
+
+    public function coordinador()
+    {
+        return $this->belongsTo(self::class, 'coordinador_id');
     }
 
     public function bodega()

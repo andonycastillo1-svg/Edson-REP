@@ -188,6 +188,7 @@
                             <div class="font-semibold text-slate-900" x-text="item.producto || '—'"></div>
                             <div class="text-[11px] text-slate-500" x-text="'Código: ' + (item.producto_codigo || '—')"></div>
                             <div x-text="item.tipo_entrega + ' · ' + item.condicion_salida"></div>
+                            <div x-show="item.motivo_registrado" x-text="item.motivo_registrado"></div>
                             <template x-for="(documento, indice) in item.documentos" :key="'doc-'+indice">
                               <div>
                                 <a x-show="documento.url" :href="documento.url" x-text="documento.nombre" class="underline"></a>
