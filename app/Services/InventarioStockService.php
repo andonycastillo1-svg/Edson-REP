@@ -13,15 +13,25 @@ use Illuminate\Validation\ValidationException;
 
 class InventarioStockService
 {
-    public function __construct(private InventarioLifecycleService $lifecycle) {}
+    public function __construct(
+        private InventarioLifecycleService $lifecycle,
+        private LotesInventario $lotes,
+    ) {}
 
-    public function incrementar(int $bodegaId, string $codigo, int $cantidad, ?float $valor = null): void
+    public function incrementar(int $bodegaId, string $codigo, int $cantidad, ?float $valor = null, ?Carbon $ingreso = null): void
     {
-        $this->bloquearProducto($codigo);
+        $producto = $this->bloquearProducto($codigo);
+        $ingreso ??= now();
         $this->saldo($bodegaId, $codigo, 'nuevo');
 
         if ($this->porUnidad()) {
-            $this->lifecycle->crearNuevas($codigo, $bodegaId, $cantidad, $valor);
+            $this->lifecycle->crearNuevas($codigo, $bodegaId, $cantidad, $valor, $ingreso);
+        } else {
+            $this->lotes->registrar($bodegaId, $codigo, 'nuevo', $cantidad, [
+                'ingresado_en' => $ingreso, 'vida_original_meses' => $producto->vida_util_meses,
+                'vida_restante_segundos' => $producto->vida_util_meses === null ? null : $producto->vida_util_meses * 30 * 86400,
+                'valor_referencia' => $valor,
+            ]);
         }
 
         $this->ajustar($bodegaId, $codigo, 'nuevo', $cantidad);
@@ -34,12 +44,30 @@ class InventarioStockService
         $this->saldo($destino, $codigo, 'nuevo');
 
         if ($this->porUnidad()) {
-            $ids = $this->existencias($origen, $codigo, 'nuevo')->orderBy('id')->limit($cantidad)->lockForUpdate()->pluck('id');
+            $ids = $this->lifecycle->ordenSalida($this->existencias($origen, $codigo, 'nuevo'), 'nuevo')
+                ->limit($cantidad)->lockForUpdate()->pluck('id');
             InventarioExistencia::whereKey($ids)->update(['bodega_id' => $destino]);
+        } else {
+            foreach ($this->lotes->retirar($origen, $codigo, 'nuevo', $cantidad) as $retirado) {
+                $this->lotes->registrar($destino, $codigo, 'nuevo', $retirado['cantidad'], $retirado['lote']
+                    ->only(['ingresado_en', 'vida_original_meses', 'vida_restante_segundos', 'valor_referencia']));
+            }
         }
 
         $this->ajustar($origen, $codigo, 'nuevo', -$cantidad);
         $this->ajustar($destino, $codigo, 'nuevo', $cantidad);
+    }
+
+    public function tipoParaAsignar(int $bodega, string $codigo, bool $excepcionNuevo): string
+    {
+        $this->bloquearProducto($codigo);
+        if (!$excepcionNuevo && $this->saldo($bodega, $codigo, 'usado') > 0) {
+            return 'usado';
+        }
+
+        $this->exigirStock($bodega, $codigo, 'nuevo', 1);
+
+        return 'nuevo';
     }
 
     public function asignar(AsignacionInventario $asignacion, string $tipo): Collection
@@ -53,9 +81,31 @@ class InventarioStockService
         $unidades = collect();
         if ($this->porUnidad()) {
             $unidades = $this->lifecycle->reservar($asignacion, $tipo, $cantidad, Carbon::parse($asignacion->entrega?->salida_en ?? $asignacion->fecha));
-        } elseif ($tipo === 'usado') {
-            $asignacion->update(['vida_util_disponible_segundos' => $this->inventario($bodega, $codigo, $tipo)
-                ->lockForUpdate()->value('vida_util_disponible_segundos')]);
+            if ($cantidad === 1) {
+                $unidad = $unidades->sole();
+                $segundos = $unidad->vida_util_restante_segundos;
+                $original = $unidad->vida_util_inicial_segundos;
+                $asignacion->update([
+                    'vida_util_original_meses' => $original === null ? null : intdiv($original, 30 * 86400),
+                    'vida_util_disponible_segundos' => $segundos,
+                    'vida_util_restante_meses' => $segundos === null ? null : intdiv($segundos, 30 * 86400),
+                    'costo_unitario' => $asignacion->costo_unitario ?? $unidad->valor_referencia,
+                ]);
+            }
+        } else {
+            $retirados = $this->lotes->retirar($bodega, $codigo, $tipo, $cantidad);
+            if ($cantidad === 1) {
+                $lote = $retirados->sole()['lote'];
+                $segundos = $lote->vida_restante_segundos;
+                $asignacion->update([
+                    'lote_operativo_id' => $lote->id,
+                    'vida_util_original_meses' => $lote->vida_original_meses,
+                    'vida_util_disponible_segundos' => $segundos,
+                    'vida_util_restante_meses' => $tipo === 'nuevo'
+                        ? $lote->vida_original_meses : ($segundos === null ? null : intdiv($segundos, 30 * 86400)),
+                    'costo_unitario' => $asignacion->costo_unitario ?? $lote->valor_referencia,
+                ]);
+            }
         }
 
         $this->ajustar($bodega, $codigo, $tipo, -$cantidad);
@@ -87,7 +137,16 @@ class InventarioStockService
         }
 
         if ($retorno) {
-            $this->ajustar($bodega, $codigo, $tipo, $cantidad, $vidaRestante);
+            if (!$this->porUnidad() && $tipo === 'usado') {
+                $this->lotes->registrar($bodega, $codigo, $tipo, $cantidad, [
+                    'ingresado_en' => $fecha ?? now(),
+                    'vida_original_meses' => $asignacion->vida_util_original_meses,
+                    'vida_restante_segundos' => $vidaRestante,
+                    'valor_referencia' => $asignacion->costo_unitario,
+                    'retornado_desde_id' => $asignacion->id,
+                ]);
+            }
+            $this->ajustar($bodega, $codigo, $tipo, $cantidad);
         }
 
         return $periodos;
@@ -111,13 +170,16 @@ class InventarioStockService
             }
 
             if ($this->porUnidad()) {
-                $ids = $this->existencias($bodega, $codigo, $tipo)->orderBy('id')->limit($unidades)->lockForUpdate()->pluck('id');
+                $ids = $this->lifecycle->ordenSalida($this->existencias($bodega, $codigo, $tipo), $tipo)
+                    ->limit($unidades)->lockForUpdate()->pluck('id');
                 InventarioExistencia::whereKey($ids)->update([
                     'condicion' => 'asignado_vehiculo',
                     'bodega_id' => null,
                     'disponible_desde' => null,
                     'vehiculo_producto_asignacion_id' => $asignacion->id,
                 ]);
+            } else {
+                $this->lotes->retirar($bodega, $codigo, $tipo, $unidades);
             }
             $this->ajustar($bodega, $codigo, $tipo, -$unidades);
         }
@@ -154,6 +216,9 @@ class InventarioStockService
         }
 
         if ($tipo !== null) {
+            if (!$this->porUnidad() && $tipo === 'usado') {
+                $this->lotes->registrar($bodega, $codigo, $tipo, $cantidad, ['ingresado_en' => now()]);
+            }
             $this->ajustar($bodega, $codigo, $tipo, $cantidad);
         }
     }
@@ -163,13 +228,13 @@ class InventarioStockService
         return (bool) config('inventario.seguimiento_unidades');
     }
 
-    private function bloquearProducto(string $codigo): void
+    private function bloquearProducto(string $codigo): Producto
     {
         if (DB::transactionLevel() === 0) {
             throw new \LogicException('Las operaciones de inventario requieren una transacción.');
         }
 
-        Producto::whereKey($codigo)->lockForUpdate()->firstOrFail();
+        return Producto::whereKey($codigo)->lockForUpdate()->firstOrFail();
     }
 
     private function existencias(int $bodega, string $codigo, string $tipo)
@@ -194,6 +259,22 @@ class InventarioStockService
             $this->requiereConciliacion($codigo, $bodega);
         }
 
+        if (!$this->porUnidad() && in_array($tipo, InventarioLifecycleService::CONDICIONES_DISPONIBLES, true)) {
+            $suma = (int) $this->lotes->saldo($bodega, $codigo, $tipo)->lockForUpdate()->pluck('cantidad')->sum();
+            $fila = $filas->first();
+            if ($suma > $saldo || ($fila?->lotes_inicializados && $suma !== $saldo)) {
+                $this->requiereConciliacion($codigo, $bodega);
+            }
+            if ($suma < $saldo) {
+                $this->lotes->registrar($bodega, $codigo, $tipo, $saldo - $suma, [
+                    'vida_restante_segundos' => $tipo === 'usado' && $suma === 0 ? $fila->vida_util_disponible_segundos : null,
+                ]);
+            }
+            if ($fila && !$fila->lotes_inicializados) {
+                $this->inventario($bodega, $codigo, $tipo)->update(['lotes_inicializados' => true]);
+            }
+        }
+
         return $saldo;
     }
 
@@ -204,7 +285,7 @@ class InventarioStockService
         }
     }
 
-    private function ajustar(int $bodega, string $codigo, string $tipo, int $delta, ?int $vidaEntrada = null): void
+    private function ajustar(int $bodega, string $codigo, string $tipo, int $delta): void
     {
         $consulta = $this->inventario($bodega, $codigo, $tipo);
         $fila = $consulta->lockForUpdate()->first();
@@ -218,15 +299,8 @@ class InventarioStockService
                 ->lockForUpdate()->value('vida_util_restante_segundos');
             $datos['vida_util_restante_meses'] = $vidaMinima === null ? null : intdiv((int) $vidaMinima, 30 * 86400);
         } elseif ($tipo === 'usado') {
-            // El saldo agregado solo permite atribuir una vida si todas las unidades la comparten.
-            $vidaAnterior = $fila?->vida_util_disponible_segundos;
-            $vida = match (true) {
-                $datos['cantidad'] === 0 => null,
-                $delta < 0 => $vidaAnterior,
-                (int) ($fila?->cantidad ?? 0) === 0 => $vidaEntrada,
-                $vidaEntrada !== null && $vidaAnterior !== null && $vidaEntrada === (int) $vidaAnterior => $vidaEntrada,
-                default => null,
-            };
+            $vidas = $this->lotes->saldo($bodega, $codigo, $tipo)->lockForUpdate()->pluck('vida_restante_segundos')->uniqueStrict();
+            $vida = $vidas->count() === 1 ? $vidas->first() : null;
             $datos['vida_util_disponible_segundos'] = $vida;
             $datos['vida_util_restante_meses'] = $vida === null ? null : intdiv((int) $vida, 30 * 86400);
         }
@@ -236,6 +310,7 @@ class InventarioStockService
         } else {
             $id = DB::table('inventarios')->insertGetId($datos + [
                 'bodega_id' => $bodega, 'producto_codigo' => $codigo, 'stock_tipo' => $tipo, 'created_at' => now(),
+                'lotes_inicializados' => !$this->porUnidad() && in_array($tipo, InventarioLifecycleService::CONDICIONES_DISPONIBLES, true),
             ]);
             $campos = app(\App\Sistema\ValoresCampos::class);
             $campos->guardar('inventario', $id, $campos->predeterminadosAutomaticos('inventario'));

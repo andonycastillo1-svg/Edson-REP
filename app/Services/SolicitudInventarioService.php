@@ -7,6 +7,16 @@ use Illuminate\Validation\ValidationException;
 
 class SolicitudInventarioService
 {
+    public static function registrarDevolucion(string $clave): void
+    {
+        if (DB::table('solicitudes_inventario')->where('user_id', auth()->id())->where('clave', $clave)
+            ->whereIn('operacion', ['devolucion_individual', 'devolucion_lote', 'devolucion_total'])->exists()) {
+            throw ValidationException::withMessages(['solicitud_id' => 'Esta operación ya fue procesada.']);
+        }
+
+        self::registrar('devolucion', $clave);
+    }
+
     public static function registrar(string $operacion, ?string $clave): void
     {
         if ($clave === null) {

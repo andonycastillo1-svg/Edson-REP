@@ -8,7 +8,7 @@ class AlertaRrhhActuacion extends Model
 {
     protected $table = 'alerta_rrhh_actuaciones';
 
-    protected $fillable = ['usuario_id', 'estado', 'nota'];
+    protected $fillable = ['usuario_id', 'estado', 'nota', 'accion'];
 
     public function usuario()
     {

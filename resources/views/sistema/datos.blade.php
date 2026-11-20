@@ -103,7 +103,7 @@
                         @php($actuales = $valores->get((string) $registro->{$id}) ?? collect())
                         <tr>
                             @foreach($distribucion as $columna)
-                                @php($valor = $columna['campo'] ? $lector->mostrar($columna['campo'], $actuales->get($columna['clave'])) : $registro->{$columna['clave']})
+                                @php($valor = $columna['campo'] ? $lector->mostrar($columna['campo'], $actuales->get($columna['clave'])) : \App\Sistema\Modulos::valorNativo($modulo, $registro, $columna['clave']))
                                 <td>
                                     @if(!$columna['campo'] && $columna['clave'] === 'estado' && filled($valor))
                                         <span class="ui-badge ui-badge-info">{{ $valor }}</span>

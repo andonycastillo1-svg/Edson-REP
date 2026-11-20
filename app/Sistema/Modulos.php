@@ -2,6 +2,7 @@
 
 namespace App\Sistema;
 
+use App\Models\AsignacionInventario;
 use App\Models\User;
 use App\Services\BodegaAccessService;
 use Illuminate\Database\Query\Builder;
@@ -63,6 +64,15 @@ class Modulos
         abort_unless(isset(self::DEFINICIONES[$modulo]), 404);
 
         return self::DEFINICIONES[$modulo];
+    }
+
+    public static function valorNativo(string $modulo, object $fila, string $campo): mixed
+    {
+        if ($modulo === 'asignaciones' && $campo === 'estado' && $fila->estado === 'Activa' && $fila->sustituida_por_id !== null) {
+            return AsignacionInventario::CUSTODIA_ANTERIOR;
+        }
+
+        return $fila->{$campo};
     }
 
     public function consultar(User $user, string $modulo): bool

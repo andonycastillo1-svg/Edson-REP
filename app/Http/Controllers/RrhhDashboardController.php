@@ -4,15 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Exports\AlertasRrhhExport;
 use App\Models\AlertaReemplazo;
+use App\Models\AsignacionInventario;
 use App\Models\AsignacionInventarioArchivo;
 use App\Models\VehiculoProductoArchivo;
-use Illuminate\Support\Collection;
 use App\Services\DocumentoPrivado;
 use App\Services\NotificacionService;
 use App\Sistema\Auditoria;
 use App\Sistema\Permisos;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -39,11 +40,15 @@ class RrhhDashboardController extends Controller
 
     public function show(AlertaReemplazo $alerta)
     {
-        $alerta->load([...AlertaReemplazo::RELACIONES_LISTADO, 'actuaciones.usuario', 'incidencia.archivoSubidoPor']);
+        $alerta->load([...AlertaReemplazo::RELACIONES_LISTADO, 'actuaciones.usuario', 'incidencia.archivoSubidoPor', 'incidencia.registrador',
+            'asignacionAnterior.entrega', 'asignacionNueva.bodega']);
         $documentos = $this->documentosAsignacion($alerta);
         $refacciones = $alerta->refaccion?->archivosFirmados()->get() ?? collect();
 
-        return view('rrhh.alertas.show', compact('alerta', 'documentos', 'refacciones'));
+        $historial = AsignacionInventario::where('colaborador_codigo', $alerta->colaborador_codigo)
+            ->where('producto_codigo', $alerta->producto_codigo)->with('entrega', 'bodega', 'movimientos')->latest('id')->get();
+
+        return view('rrhh.alertas.show', compact('alerta', 'documentos', 'refacciones', 'historial'));
     }
 
     public function evidencia(AlertaReemplazo $alerta)
@@ -56,7 +61,7 @@ class RrhhDashboardController extends Controller
 
     public function documento(AlertaReemplazo $alerta, AsignacionInventarioArchivo $archivo)
     {
-        abort_unless($this->documentosAsignacion($alerta)->contains($archivo), 404);
+        abort_unless($this->documentosAsignacion($alerta)->contains('id', $archivo->id), 404);
 
         return DocumentoPrivado::responder($archivo->ruta, $archivo->nombre_original);
     }
@@ -70,43 +75,60 @@ class RrhhDashboardController extends Controller
 
     private function documentosAsignacion(AlertaReemplazo $alerta): Collection
     {
-        $asignacion = $alerta->incidencia?->asignacion ?? $alerta->asignacionAnterior;
+        $previa = $alerta->incidencia?->asignacion ?? $alerta->asignacionAnterior;
+        $nueva = $alerta->asignacionNueva;
 
-        return $asignacion?->entrega?->documentos ?? $asignacion?->evidencias ?? collect();
+        return collect([$previa, $nueva])->filter()->flatMap(fn (AsignacionInventario $asignacion) =>
+            $asignacion->entrega?->documentos ?? $asignacion->evidencias)->unique('id');
     }
 
     public function actuacion(Request $request, AlertaReemplazo $alerta)
     {
-        return $this->registrar($request, $alerta, AlertaReemplazo::ESTADO_EN_REVISION);
+        return $this->registrar($request, $alerta, AlertaReemplazo::ESTADO_EN_REVISION, 'nota');
+    }
+
+    public function regularizacion(Request $request, AlertaReemplazo $alerta)
+    {
+        return $this->registrar($request, $alerta, AlertaReemplazo::ESTADO_EN_REVISION, 'solicitar_regularizacion');
     }
 
     public function finalizar(Request $request, AlertaReemplazo $alerta)
     {
         $request->validate(['confirmar' => ['required', 'accepted']]);
 
-        return $this->registrar($request, $alerta, AlertaReemplazo::ESTADO_FINALIZADO);
+        return $this->registrar($request, $alerta, AlertaReemplazo::ESTADO_FINALIZADO, 'finalizar');
     }
 
-    private function registrar(Request $request, AlertaReemplazo $alerta, string $estado)
+    private function registrar(Request $request, AlertaReemplazo $alerta, string $estado, string $accion)
     {
         $nota = $request->validate(['nota' => ['required', 'string', 'max:4000']])['nota'];
 
-        DB::transaction(function () use ($request, $alerta, $estado, $nota) {
+        DB::transaction(function () use ($request, $alerta, $estado, $nota, $accion) {
+            $custodia = $accion === 'solicitar_regularizacion'
+                ? AsignacionInventario::whereKey($alerta->asignacion_anterior_id)->lockForUpdate()->first()
+                : null;
             $bloqueada = AlertaReemplazo::whereKey($alerta->id)->lockForUpdate()->firstOrFail();
             if ($bloqueada->estado === AlertaReemplazo::ESTADO_FINALIZADO) {
                 throw ValidationException::withMessages(['nota' => 'La incidencia ya fue finalizada.']);
             }
+            if ($accion === 'solicitar_regularizacion' && ($custodia?->estado !== 'Activa' || !$custodia?->sustituida_por_id)) {
+                throw ValidationException::withMessages(['nota' => 'La solicitud requiere una custodia anterior sin retorno confirmado.']);
+            }
             $anterior = $bloqueada->estado;
             $bloqueada->update(['estado' => $estado]);
             $actuacion = $bloqueada->actuaciones()->create([
-                'usuario_id' => $request->user()->id, 'estado' => $estado, 'nota' => $nota,
+                'usuario_id' => $request->user()->id, 'estado' => $estado, 'nota' => $nota, 'accion' => $accion,
             ]);
-            app(Auditoria::class)->registrar('alertas', 'actuacion', $bloqueada->id, ['estado' => $anterior],
+            app(Auditoria::class)->registrar('alertas', $accion, $bloqueada->id, ['estado' => $anterior],
                 ['estado' => $estado, 'actuacion_id' => $actuacion->id]);
         }, 3);
 
         if ($estado === AlertaReemplazo::ESTADO_FINALIZADO) {
             app(NotificacionService::class)->safeAction(fn ($service) => $service->notificarResolucionAlertaRrhh($alerta->refresh(), $request->user()));
+        }
+        if ($accion === 'solicitar_regularizacion') {
+            app(NotificacionService::class)->safeAction(fn ($service) =>
+                $service->notificarRegularizacionCustodia($alerta->asignacionAnterior, $request->user()));
         }
         $destino = app(Permisos::class)->ruta($request->user(), 'rrhh.alertas.show')
             ? route('rrhh.alertas.show', $alerta) : route('dashboard');
@@ -147,7 +169,11 @@ class RrhhDashboardController extends Controller
         }
         foreach (['desde' => '>=', 'hasta' => '<='] as $campo => $comparacion) {
             if (!empty($datos[$campo])) {
-                $consulta->whereDate('fecha_dano_reemplazo', $comparacion, $datos[$campo]);
+                $fecha = $datos[$campo];
+                $consulta->where(fn (Builder $q) => $q->whereHas('incidencia',
+                    fn (Builder $incidencia) => $incidencia->whereDate('ocurrio_en', $comparacion, $fecha))
+                    ->orWhere(fn (Builder $anterior) => $anterior->whereNull('incidencia_inventario_id')
+                        ->whereDate('fecha_dano_reemplazo', $comparacion, $fecha)));
                 $filtros[ucfirst($campo)] = $datos[$campo];
             }
         }

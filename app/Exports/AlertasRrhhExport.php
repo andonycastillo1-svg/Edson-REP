@@ -20,7 +20,7 @@ class AlertasRrhhExport extends FormattedExcelExport
         return [
             'Motivo', 'Código colaborador', 'Colaborador', 'Código producto', 'Producto / refacción',
             'Cantidad', 'Bodega', 'Vehículo VIN', 'Fecha de asignación', 'Fecha del incidente',
-            'Vida al ocurrir', 'Estado', 'Registrado por', 'Observaciones',
+            'Vida al ocurrir', 'Estado', 'Registrado por', 'Observaciones', 'Nueva salida', 'Custodia anterior',
         ];
     }
 
@@ -33,6 +33,8 @@ class AlertasRrhhExport extends FormattedExcelExport
             $alerta->fecha_asignacion_anterior ? Date::dateTimeToExcel($alerta->fecha_asignacion_anterior) : null,
             $alerta->fecha_incidente ? Date::dateTimeToExcel($alerta->fecha_incidente) : null,
             $alerta->vida_etiqueta, $alerta->estado_etiqueta, $alerta->registrador?->name, $alerta->detalle,
+            $alerta->asignacionNueva ? Date::dateTimeToExcel($alerta->asignacionNueva->entrega?->salida_en ?? $alerta->asignacionNueva->fecha) : null,
+            $alerta->asignacionAnterior?->custodia_etiqueta,
         ])->all();
     }
 
@@ -43,6 +45,6 @@ class AlertasRrhhExport extends FormattedExcelExport
 
     protected function numberFormats(): array
     {
-        return ['I' => 'dd/mm/yyyy', 'J' => 'dd/mm/yyyy hh:mm'];
+        return ['I' => 'dd/mm/yyyy', 'J' => 'dd/mm/yyyy hh:mm', 'O' => 'dd/mm/yyyy hh:mm'];
     }
 }

@@ -212,6 +212,10 @@ class NotificacionService
 
         $this->safeNotify($rrhh, new AlertaRrhhNotification($data));
 
+        if ($alerta->motivo_revision !== null) {
+            return;
+        }
+
         $adminData = $data;
         $adminData['url'] = route('dashboard');
 
@@ -230,6 +234,31 @@ class NotificacionService
         $this->safeNotify($this->almacenistasDeBodega($bodega->id, $actor->id), new MovimientoInventarioNotification($data + [
             'url' => route('operador.bodegas.show', $bodega),
         ]));
+    }
+
+    public function notificarRegularizacionCustodia(?AsignacionInventario $anterior, User $actor): void
+    {
+        if ($anterior === null) {
+            return;
+        }
+
+        $acceso = app(AccesoCustodia::class);
+        $autor = $anterior->user;
+        $autorPuedeAtender = $autor && $acceso->puedeResolver($autor, $anterior)
+            && app(\App\Sistema\Permisos::class)->permite($autor, 'asignaciones.consultar');
+        $responsables = $autorPuedeAtender ? collect([$autor]) : $this->administradores();
+        $data = $this->payload('Regularización de custodia solicitada',
+            'RR. HH. solicitó verificar la custodia del código '.$anterior->producto_codigo.'.', $anterior, $actor);
+        foreach ($responsables as $responsable) {
+            if (!$acceso->puedeResolver($responsable, $anterior)) {
+                continue;
+            }
+            $prefijo = \App\Sistema\CatalogoPermisos::prefijo($responsable->rolOperativo());
+            $ruta = $anterior->grupo_asignacion
+                ? route($prefijo.'.asignaciones.entrega', $anterior->grupo_asignacion)
+                : route($prefijo.'.asignaciones.index');
+            $this->safeNotify([$responsable], new CambioEstadoAsignacionNotification($data + ['url' => $ruta]));
+        }
     }
 
     public function notificarCambioEstadoAsignacion(iterable $asignaciones, User $actor, string $estado): void

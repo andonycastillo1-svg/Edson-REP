@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sistema;
 
 use App\Http\Controllers\Controller;
+use App\Models\AsignacionInventario;
 use App\Services\DocumentoPrivado;
 use App\Sistema\Ajustes;
 use App\Sistema\Campo;
@@ -67,7 +68,7 @@ class DatosController extends Controller
         $consulta = $this->consulta($request, $modulo, $columnas);
         $this->aplicarOrden($consulta, $orden, $direccion, $campoOrden, $tabla, $id);
         if (!$operativa) {
-            $consulta->select(array_keys($nativas));
+            $consulta->select($this->columnasLectura($modulo, $nativas));
         }
         $registros = $consulta->paginate($config['pagina'] ?? 20)->withQueryString();
         $valores = $this->valores->cargar($campos, $registros->pluck($id));
@@ -75,8 +76,15 @@ class DatosController extends Controller
         $opcionesNativas = [];
         foreach (['tipo', 'estado', 'stock_tipo'] as $clave) {
             if ($columnas[$clave]['filtro'] ?? false) {
-                $opcionesNativas[$clave] = $this->modulos->registros($request->user(), $modulo)
-                    ->whereNotNull($clave)->distinct()->orderBy($clave)->pluck($clave);
+                $opciones = $this->modulos->registros($request->user(), $modulo)->whereNotNull($clave)->distinct();
+                if ($modulo === 'asignaciones' && $clave === 'estado') {
+                    $opciones->selectRaw('CASE WHEN estado = ? AND sustituida_por_id IS NOT NULL THEN ? ELSE estado END AS etiqueta',
+                        ['Activa', AsignacionInventario::CUSTODIA_ANTERIOR]);
+                    $claveOrden = 'etiqueta';
+                } else {
+                    $claveOrden = $clave;
+                }
+                $opcionesNativas[$clave] = $opciones->orderBy($claveOrden)->pluck($claveOrden);
             }
         }
         $puedeExportar = !$operativa && $this->permisos->permite($request->user(), $modulo.'.datos_exportar');
@@ -161,12 +169,12 @@ class DatosController extends Controller
         $campos = $this->presentacion->personalizadas($modulo, $request->user(), 'exportacion');
         $ordenables = $this->presentacion->personalizadas($modulo, $request->user(), 'tabla');
         [$orden, $direccion, $campoOrden] = $this->orden($request, $columnas, $ordenables, $config, $id);
-        $q = $this->consulta($request, $modulo, $columnas)->select(array_keys($nativas));
+        $q = $this->consulta($request, $modulo, $columnas)->select($this->columnasLectura($modulo, $nativas));
         $this->aplicarOrden($q, $orden, $direccion, $campoOrden, $tabla, $id);
 
         $distribucion = $this->distribucion($columnas, $campos, $config);
 
-        return response()->streamDownload(function () use ($id, $distribucion, $campos, $q) {
+        return response()->streamDownload(function () use ($id, $distribucion, $campos, $q, $modulo) {
             $salida = fopen('php://output', 'w');
             fputcsv($salida, array_map($this->celda(...), array_column($distribucion, 'etiqueta')), escape: '');
             foreach ($q->lazy(250)->chunk(250) as $grupo) {
@@ -177,13 +185,18 @@ class DatosController extends Controller
                     $lista = [];
                     foreach ($distribucion as $columna) {
                         $clave = $columna['clave'];
-                        $lista[] = $this->celda($columna['campo'] ? $this->valores->mostrar($columna['campo'], $valores->get($clave)) : (string) $registro->{$clave});
+                        $lista[] = $this->celda($columna['campo'] ? $this->valores->mostrar($columna['campo'], $valores->get($clave)) : (string) Modulos::valorNativo($modulo, $registro, $clave));
                     }
                     fputcsv($salida, $lista, escape: '');
                 }
             }
             fclose($salida);
         }, $modulo.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'private, no-store']);
+    }
+
+    private function columnasLectura(string $modulo, array $nativas): array
+    {
+        return $modulo === 'asignaciones' ? [...array_keys($nativas), 'sustituida_por_id'] : array_keys($nativas);
     }
 
     private function distribucion(array $columnas, Collection $campos, array $config): array
@@ -249,7 +262,13 @@ class DatosController extends Controller
                 if (!($columnas[$col]['filtro'] ?? false)) {
                     throw ValidationException::withMessages(['nativo' => 'El filtro solicitado no está disponible.']);
                 }
-                $q->where($col, $valor);
+                if ($modulo === 'asignaciones' && $col === 'estado' && $valor === AsignacionInventario::CUSTODIA_ANTERIOR) {
+                    $q->where('estado', 'Activa')->whereNotNull('sustituida_por_id');
+                } elseif ($modulo === 'asignaciones' && $col === 'estado' && $valor === 'Activa') {
+                    $q->where('estado', 'Activa')->whereNull('sustituida_por_id');
+                } else {
+                    $q->where($col, $valor);
+                }
             }
         }
         $this->consultaCampos->filtrar($q, $request, $modulo);

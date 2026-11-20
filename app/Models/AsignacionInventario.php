@@ -7,12 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class AsignacionInventario extends Model
 {
+    public const CUSTODIA_ANTERIOR = 'Custodia anterior sin retorno confirmado';
+
     protected $table = 'asignaciones_inventarios';
 
     protected $fillable = [
         'grupo_asignacion',
         'tipo_entrega',
         'asignacion_anterior_id',
+        'sustituida_por_id',
+        'lote_operativo_id',
+        'motivo_inventario_nuevo',
         'colaborador_codigo',
         'producto_codigo',
         'bodega_id',
@@ -44,7 +49,22 @@ class AsignacionInventario extends Model
 
     public function scopeCustodiaActiva(Builder $consulta): Builder
     {
+        return $this->scopeCustodiaAbierta($consulta)->whereNull('sustituida_por_id');
+    }
+
+    public function scopeCustodiaAbierta(Builder $consulta): Builder
+    {
         return $consulta->where('estado', 'Activa')->where('cantidad_asignada', '>', 0);
+    }
+
+    public function getCustodiaEtiquetaAttribute(): string
+    {
+        return match (true) {
+            $this->estado === 'Activa' && $this->sustituida_por_id !== null => self::CUSTODIA_ANTERIOR,
+            $this->estado === 'Activa' => 'Activa',
+            $this->estado === 'Dañada' => 'Devuelta con daño',
+            default => $this->estado ?? 'Histórica',
+        };
     }
 
     public function entrega()

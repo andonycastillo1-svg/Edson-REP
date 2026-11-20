@@ -523,7 +523,7 @@
     </div>
 
     <nav class="mb-5 flex flex-wrap gap-3" aria-label="Seguimiento de entregas">
-      @foreach(['' => 'Todas las asignaciones', 'recepcion' => 'Recepciones sin confirmar', 'documentacion' => 'Hojas firmadas faltantes'] as $filtro => $etiqueta)
+      @foreach(['' => 'Todas las asignaciones', 'documentacion' => 'Hojas firmadas faltantes'] as $filtro => $etiqueta)
         <a href="{{ route($routePrefix.'.asignaciones.index', $filtro ? ['seguimiento' => $filtro] : []) }}"
            @if(request('seguimiento', '') === $filtro) aria-current="page" @endif
            class="rounded-xl border px-3 py-2 text-sm font-semibold {{ request('seguimiento', '') === $filtro ? 'bg-blue-100 text-blue-900' : 'bg-white text-slate-700' }}">{{ $etiqueta }}</a>
@@ -587,6 +587,12 @@
                     <span class="asg-pill">{{ $grupo['total_activo'] }}</span>
                   </div>
 
+                  @if($grupo['sin_retorno'] > 0)
+                    <div>
+                      <span class="asg-metric-label">Custodia anterior sin retorno</span>
+                      <span class="asg-pill">{{ $grupo['sin_retorno'] }}</span>
+                    </div>
+                  @endif
                   <span class="asg-detail-btn">Ver detalle</span>
                 </div>
               </div>
@@ -601,6 +607,7 @@
                       action="{{ route($routePrefix.'.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}">
                   @csrf
                   <input type="hidden" name="solicitud_id" value="{{ \Illuminate\Support\Str::uuid() }}">
+                  @include('admin.asignaciones.motivo-devolucion')
                   @include('admin.asignaciones.condicion')
                   <button type="submit" class="asg-btn-warning"
                     onclick="return confirm('¿Aplicar esta condición a todos los productos bajo custodia?')">
@@ -620,7 +627,7 @@
                         <th>Fecha</th>
                         <th>Bodega</th>
                         <th>Custodia</th>
-                        <th>Recepción y hoja firmada</th>
+                        <th>Documentación</th>
                         <th>Vida útil</th>
                         <th style="text-align:center;">Activa</th>
                         @if($puedeSeleccionar)<th style="text-align:center;">Cantidad a resolver</th>@endif
@@ -671,7 +678,9 @@
                           </td>
 
                           <td>
-                            @if($estado === 'Activa')
+                            @if($estado === 'Activa' && $a->sustituida_por_id)
+                              <span class="asg-status asg-status-amber">{{ $a->custodia_etiqueta }}</span>
+                            @elseif($estado === 'Activa')
                               <span class="asg-status asg-status-green">Activa</span>
                             @elseif($estado === 'Dañada')
                               <span class="asg-status asg-status-gray">Cerrada · daño</span>
@@ -682,10 +691,8 @@
 
                           <td>
                             @if($a->entrega)
-                              <div>{{ $a->entrega->confirmada_en ? 'Recepción confirmada' : 'Recepción sin confirmar' }}</div>
                               <div>{{ $a->entrega->documentos->contains('tipo_documento', 'asignacion_firmada') ? 'Hoja firmada cargada' : 'Hoja firmada faltante' }}</div>
                             @else
-                              <div>Recepción sin datos históricos</div>
                               <div>{{ $a->evidencias->contains('tipo_documento', 'asignacion_firmada') ? 'Hoja firmada cargada' : 'Sin hoja registrada' }}</div>
                             @endif
                           </td>
@@ -808,6 +815,7 @@
                     <div>
                       <p class="asg-footer-title">Resolución de custodia</p>
                       <p class="asg-footer-text">Selecciona los productos e indica qué ocurrió con cada uno.</p>
+                      @include('admin.asignaciones.motivo-devolucion', ['formulario' => $bulkFormId])
                     </div>
 
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -859,17 +867,22 @@
                 @php
                   $pdfDevolucionFirmado = null;
 
-                  if (in_array($m->tipo, ['Devolucion', 'Reemplazo'], true) && !empty($m->grupo_devolucion) && $puedeGestionarPdfsFirmados) {
+                  if (in_array($m->tipo, ['Devolucion', 'Reemplazo'], true) && $m->motivo_administrativo !== 'ordinaria' && !empty($m->grupo_devolucion) && $puedeGestionarPdfsFirmados) {
                     $pdfDevolucionFirmado = $pdfsDevolucionFirmados->get($m->grupo_devolucion);
                   }
                 @endphp
 
                 <tr>
-                  <td>{{ $m->created_at?->format('d/m/Y H:i') }}</td>
+                  <td>{{ ($m->ocurrio_en ?? $m->created_at)?->format('d/m/Y H:i') }}</td>
 
                   <td>
                     <span class="asg-status asg-status-gray">
-                      {{ $m->tipo }}
+                      {{ match ($m->tipo) {
+                        'Asignacion' => 'Salida',
+                        'Devolucion' => 'Devolución física',
+                        'Reemplazo' => 'Retorno de reemplazo',
+                        default => $m->tipo,
+                      } }}
                     </span>
                   </td>
 
@@ -890,7 +903,7 @@
                   </td>
 
                   <td style="text-align:center;">
-                    @if(in_array($m->tipo, ['Devolucion', 'Reemplazo'], true) && !empty($m->grupo_devolucion))
+                    @if(in_array($m->tipo, ['Devolucion', 'Reemplazo'], true) && $m->motivo_administrativo !== 'ordinaria' && !empty($m->grupo_devolucion))
                       <div class="asg-upload-form">
                         @rutaDisponible($routePrefix.'.asignaciones.hoja_devolucion')
                         <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', $m->grupo_devolucion) }}"

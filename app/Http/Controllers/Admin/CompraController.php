@@ -93,6 +93,7 @@ class CompraController extends Controller
 
         $data = $request->validate([
             'fecha_compra' => ['required', 'date_format:Y-m-d', 'after_or_equal:' . today()->subDays(7)->toDateString(), 'before_or_equal:' . today()->addDays(7)->toDateString()],
+            'fecha_ingreso' => ['nullable', 'date', 'before_or_equal:now'],
             'no_factura' => ['required', 'string', 'max:50'],
             'proveedor_tipo' => ['required', 'in:existente,nuevo'],
             'proveedor_id' => ['required_if:proveedor_tipo,existente', 'nullable', 'exists:proveedores,id'],
@@ -175,6 +176,7 @@ class CompraController extends Controller
                     'updated_at' => now(),
                 ]);
 
+                $ingreso = isset($data['fecha_ingreso']) ? \Illuminate\Support\Carbon::parse($data['fecha_ingreso']) : now();
                 foreach ($lineas as $linea) {
                     $codigo = $linea['codigo'];
                     if ($linea['nuevo']) {
@@ -198,14 +200,14 @@ class CompraController extends Controller
                         'updated_at' => now(),
                     ]);
 
-                    $this->stockService->incrementar((int) $bodega->id, $codigo, $linea['cantidad'], $linea['precio'] / 100);
+                    $this->stockService->incrementar((int) $bodega->id, $codigo, $linea['cantidad'], $linea['precio'] / 100, $ingreso);
 
                     DB::table('movimientos')->insert([
                         'producto_codigo' => $codigo,
                         'bodega_destino_id' => $bodega->id,
                         'tipo_movimiento' => 'Entrada',
                         'cantidad' => $linea['cantidad'],
-                        'fecha' => now(),
+                        'fecha' => $ingreso,
                         'user_id' => $request->user()->id,
                         'created_at' => now(),
                         'updated_at' => now(),

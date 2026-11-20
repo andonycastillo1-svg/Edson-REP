@@ -72,8 +72,16 @@ class ColaboradoresFichaExport extends FormattedExcelExport
                         10 => (float) ($item['total'] ?? 0),
                         16 => $this->excelDate($item['fecha_asignacion'] ?? ''),
                         17 => $this->excelDate($item['fecha_vencimiento'] ?? ''),
-                        18 => $item['estado_vida_util'] ?? '',
+                        18 => $item['custodia'].' · Vida útil: '.$item['estado_vida_util'],
+                        19 => $item['tipo_entrega'].' · '.$item['condicion_salida'],
+                        23 => 'Unidades entregadas: '.$item['cantidad_entregada'],
                     ]);
+                    foreach ($item['retornos']->concat($item['incidencias']) as $evento) {
+                        $rows[] = $this->makeRow($evento['condicion'], $base, [
+                            5 => $item['producto_codigo'], 6 => $item['producto'], 7 => $item['bodega'],
+                            8 => $evento['cantidad'], 20 => $this->excelDate($evento['fecha']), 21 => $evento['responsable'],
+                        ]);
+                    }
                 }
             } else {
                 $rows[] = $this->makeRow('Inventario directo', $base, [

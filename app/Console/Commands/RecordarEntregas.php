@@ -16,7 +16,7 @@ class RecordarEntregas extends Command
 {
     protected $signature = 'inventario:recordar-entregas';
 
-    protected $description = 'Envía recordatorios de recepción o documentación a las 24 horas de la salida';
+    protected $description = 'Envía recordatorios de hoja firmada a las 24 horas de la salida';
 
     public function handle(AccesoCustodia $acceso, Ajustes $ajustes, Permisos $permisos): int
     {
@@ -27,17 +27,14 @@ class RecordarEntregas extends Command
 
         $corte = now()->subHours(24);
         $enviados = 0;
-        EntregaInventario::where('salida_en', '<=', $corte)->where(function ($q) {
-            $q->whereNull('confirmada_en')->orWhereDoesntHave('documentos',
-                fn ($archivos) => $archivos->where('tipo_documento', 'asignacion_firmada'));
-        })->chunkById(100, function ($entregas) use ($acceso, $permisos, $regla, &$enviados) {
+        EntregaInventario::where('salida_en', '<=', $corte)->whereDoesntHave('documentos',
+            fn ($archivos) => $archivos->where('tipo_documento', 'asignacion_firmada'))->chunkById(100, function ($entregas) use ($acceso, $permisos, $regla, &$enviados) {
             foreach ($entregas as $candidata) {
                 $enviados += DB::transaction(function () use ($candidata, $acceso, $permisos, $regla) {
                     $entrega = EntregaInventario::with('documentos', 'asignaciones.user.role', 'asignaciones.colaborador')
                         ->whereKey($candidata->id)->lockForUpdate()->firstOrFail();
-                    $motivos = $entrega->pendientes();
                     $filas = $entrega->asignaciones;
-                    if ($motivos === [] || $filas->isEmpty()) {
+                    if (!$entrega->faltaHojaFirmada() || $filas->isEmpty()) {
                         return 0;
                     }
 
@@ -47,7 +44,7 @@ class RecordarEntregas extends Command
                     if ($autor?->rolOperativo() === 2) {
                         $usuarios = $usuarios->merge($autor->supervisoresAsignados()->deAmbito(3)->with('role')->get());
                     }
-                    if (!$autor || $autor->acceso_activo === false || !$acceso->puedeConfirmar($autor, $filas)) {
+                    if (!$autor || !$permisos->ruta($autor, CatalogoPermisos::prefijo($autor->rolOperativo()).'.asignaciones.documento_entrega')) {
                         $usuarios = $usuarios->merge(User::deAmbito(1)->with('role')->get());
                     }
 
@@ -69,8 +66,8 @@ class RecordarEntregas extends Command
                             continue;
                         }
                         $usuario->notifyNow(new AsignacionPendienteNotification([
-                            'titulo' => 'Seguimiento de entrega',
-                            'mensaje' => ($primera->colaborador?->nombre ?? $primera->colaborador_codigo).' · '.implode(' · ', $motivos),
+                            'titulo' => 'Hoja firmada faltante',
+                            'mensaje' => ($primera->colaborador?->nombre ?? $primera->colaborador_codigo).' · Carga el PDF de la hoja firmada.',
                             'url' => route($ruta, $entrega),
                             'entidad_id' => $entrega->id,
                             'entidad_tipo' => class_basename($entrega),

@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class AlertaReemplazo extends Model
 {
     public const RELACIONES_LISTADO = ['colaborador', 'producto', 'registrador', 'incidencia.asignacion.bodega',
-        'asignacionAnterior.bodega', 'refaccion.bodega'];
+        'asignacionAnterior.bodega', 'asignacionNueva.entrega', 'refaccion.bodega'];
+
+    public const REEMPLAZO_ANTICIPADO = 'reemplazo_anticipado';
+    public const REEMPLAZO_SIN_DATOS = 'reemplazo_sin_datos';
 
     public const ESTADO_PENDIENTE = 'pendiente';
     public const ESTADO_EN_REVISION = 'en_revision';
@@ -30,6 +33,8 @@ class AlertaReemplazo extends Model
         'fecha_dano_reemplazo',
         'vida_util_meses',
         'meses_restantes',
+        'motivo_revision',
+        'vida_restante_segundos',
         'descuento_aplicable',
         'estado',
         'detalle',
@@ -39,6 +44,7 @@ class AlertaReemplazo extends Model
         'fecha_asignacion_anterior' => 'datetime',
         'fecha_dano_reemplazo' => 'datetime',
         'descuento_aplicable' => 'boolean',
+        'vida_restante_segundos' => 'integer',
     ];
 
     public const ESTADOS = [
@@ -67,6 +73,11 @@ class AlertaReemplazo extends Model
         return $this->belongsTo(AsignacionInventario::class, 'asignacion_anterior_id');
     }
 
+    public function asignacionNueva()
+    {
+        return $this->belongsTo(AsignacionInventario::class, 'asignacion_nueva_id');
+    }
+
     public function refaccion()
     {
         return $this->belongsTo(VehiculoProductoAsignacion::class, 'vehiculo_producto_asignacion_id');
@@ -79,7 +90,11 @@ class AlertaReemplazo extends Model
 
     public function getMotivoEtiquetaAttribute(): string
     {
-        return $this->incidencia?->motivo_etiqueta ?? ($this->vehiculo_vin ? 'Daño de refacción' : 'Incidencia histórica');
+        return $this->incidencia?->motivo_etiqueta ?? match ($this->motivo_revision) {
+            self::REEMPLAZO_ANTICIPADO => 'Posible reemplazo anticipado',
+            self::REEMPLAZO_SIN_DATOS => 'Reemplazo por verificar',
+            default => $this->vehiculo_vin ? 'Daño de refacción' : 'Incidencia histórica',
+        };
     }
 
     public function getBodegaNombreAttribute(): ?string
@@ -99,7 +114,11 @@ class AlertaReemplazo extends Model
             'vigente' => 'Vigente ('.max(1, (int) ceil($this->incidencia->vida_restante_segundos / 86400)).' días)',
             'vencida' => 'Vencida',
             'desconocida' => 'Desconocida',
-            default => $this->vida_util_meses > 0 ? $this->meses_restantes.' meses registrados' : 'Desconocida',
+            default => match ($this->motivo_revision) {
+                self::REEMPLAZO_SIN_DATOS => 'Desconocida',
+                self::REEMPLAZO_ANTICIPADO => 'Vigente ('.max(1, (int) ceil($this->vida_restante_segundos / 86400)).' días)',
+                default => $this->vida_util_meses > 0 ? $this->meses_restantes.' meses registrados' : 'Desconocida',
+            },
         };
     }
 
