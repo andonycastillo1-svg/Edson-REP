@@ -1,0 +1,349 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\AlertaReemplazo;
+use App\Models\AsignacionInventario;
+use App\Models\Bodega;
+use App\Models\Colaborador;
+use App\Models\EntregaInventario;
+use App\Models\IncidenciaInventario;
+use App\Models\Producto;
+use App\Models\Role;
+use App\Models\User;
+use App\Services\InventarioStockService;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\RefreshDatabase;
+use Tests\TestCase;
+
+class EntregaCustodiaTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Bodega $regional;
+    private Bodega $central;
+    private User $almacenista;
+    private User $rrhh;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+        Storage::fake('documentos');
+        DB::table('roles')->insert([
+            ['id' => 1, 'nombre' => 'Administrador'], ['id' => 2, 'nombre' => 'Almacenista'],
+            ['id' => 3, 'nombre' => 'Supervisor'], ['id' => 4, 'nombre' => 'Recursos Humanos'],
+        ]);
+        $this->central = Bodega::create(['nombre' => 'Central', 'tipo' => 'Principal']);
+        $this->regional = Bodega::create(['nombre' => 'Norte', 'tipo' => 'Regional']);
+        $this->almacenista = User::factory()->create(['role_id' => 2, 'bodega_id' => $this->regional->id]);
+        $this->rrhh = User::factory()->create(['role_id' => 4]);
+        Colaborador::create(['codigo' => 'C01', 'nombre' => 'Persona destinataria', 'puesto' => 'Técnico', 'estado' => 'Activo']);
+        Producto::create(['codigo' => 'P01', 'nombre' => 'Botas', 'vida_util_meses' => 2]);
+        config(['inventario.seguimiento_unidades' => true]);
+        $this->agregarStock($this->regional, 3);
+        $this->actingAs($this->almacenista);
+    }
+
+    public function test_una_unidad_por_codigo_vista_previa_reintento_y_almacenista_ajeno(): void
+    {
+        $datos = $this->datosSalida();
+        $ruta = route('operador.asignaciones.store');
+        $this->postJson($ruta, [...$datos, 'items' => [[...$datos['items'][0], 'cantidad_asignada' => 2]]])
+            ->assertUnprocessable()->assertJsonValidationErrors('items.0.cantidad_asignada');
+        $this->postJson($ruta, [...$datos, 'items' => [...$datos['items'], ...$datos['items']]])
+            ->assertUnprocessable()->assertJsonValidationErrors('items.0.producto_codigo');
+        $this->post($ruta, $datos)->assertSessionHasNoErrors();
+        $fila = AsignacionInventario::sole();
+        $this->assertSame('Activa', $fila->estado);
+        $this->assertNull($fila->fecha_vencimiento);
+        $this->assertNull($fila->entrega->confirmada_en);
+        $this->assertEquals(2, $this->saldo('nuevo'));
+        $this->postJson($ruta, $datos)->assertUnprocessable()->assertJsonValidationErrors('solicitud_id');
+        $this->postJson($ruta, $this->datosSalida())->assertUnprocessable()->assertJsonValidationErrors('estado_devolucion');
+
+        $consulta = ['colaborador_codigo' => 'C01', 'producto_codigo' => 'P01'];
+        $this->getJson(route('operador.asignaciones.activas_producto', $consulta))->assertOk()
+            ->assertJsonPath('data.0.id', $fila->id);
+        $otro = User::factory()->create(['role_id' => 2, 'bodega_id' => $this->central->id]);
+        $this->actingAs($otro)->getJson(route('operador.asignaciones.activas_producto', $consulta))->assertOk()
+            ->assertJsonPath('bloqueada', true)->assertJsonCount(0, 'data');
+        $otraBodega = $this->datosSalida();
+        $otraBodega['items'][0]['bodega_id'] = $this->central->id;
+        $this->postJson($ruta, $otraBodega)->assertUnprocessable()->assertJsonValidationErrors('items');
+        $this->postJson($ruta, $datos)->assertForbidden();
+        $this->assertDatabaseCount('asignaciones_inventarios', 1);
+    }
+
+    public function test_reemplazo_integrado_devuelve_stock_usado_y_conserva_vida_y_documentacion(): void
+    {
+        $salida = now()->subDays(12);
+        $recibida = now()->subDays(10);
+        $this->crearSalida($this->datosSalida([
+            'fecha' => $salida->toDateTimeString(), 'confirmar_recepcion' => 1,
+            'medio_confirmacion' => 'presencial', 'recibida_en' => $recibida->toDateTimeString(),
+        ]));
+        $anterior = AsignacionInventario::sole();
+        $this->assertEquals($recibida->timestamp, $anterior->periodos()->sole()->inicio_uso_en->timestamp);
+        $this->assertEquals($recibida->copy()->addDays(60)->timestamp, $anterior->fecha_vencimiento->timestamp);
+        $this->assertEquals($this->almacenista->id, $anterior->entrega->confirmada_por);
+
+        $datos = $this->datosSalida();
+        $datos['items'][0]['resoluciones'] = [$anterior->id => ['estado_devolucion' => 'buen_estado']];
+        $this->crearSalida($datos);
+        $nueva = AsignacionInventario::custodiaActiva()->sole();
+        $this->assertEquals($anterior->id, $nueva->asignacion_anterior_id);
+        $this->assertSame('Devuelta', $anterior->refresh()->estado);
+        $this->assertEquals(1, $this->saldo('usado'));
+        $this->assertEquals(1, $this->saldo('nuevo'));
+        $this->assertGreaterThan(49 * 86400, $anterior->periodos()->sole()->vida_util_restante_segundos);
+        $this->assertDatabaseCount('alertas_reemplazos_rrhh', 0);
+        $this->get(route('operador.asignaciones.hoja_devolucion', $nueva->grupo_asignacion))->assertOk();
+        $datos['solicitud_id'] = (string) Str::uuid();
+        $this->postJson(route('operador.asignaciones.store'), $datos)->assertUnprocessable();
+        $this->assertDatabaseHas('inventarios', ['stock_tipo' => 'usado', 'cantidad' => 1]);
+    }
+
+    #[DataProvider('condiciones')]
+    public function test_condiciones_separan_devolucion_fisica_de_revision(string $motivo, ?int $dias, string $vida, bool $alerta, bool $retorno): void
+    {
+        $recibida = $dias === null ? null : now()->subDays($dias);
+        $this->crearSalida($this->datosSalida([
+            'fecha' => ($recibida ?? now())->copy()->subDay()->toDateTimeString(),
+            'confirmar_recepcion' => 1, 'medio_confirmacion' => 'presencial',
+            'recibida_en' => $recibida?->toDateTimeString(),
+        ]));
+        $asignacion = AsignacionInventario::sole();
+        $this->assertSame('Activa', $asignacion->estado);
+        $ruta = route('operador.asignaciones.devolver', $asignacion);
+        $datos = ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'fecha_incidente' => now()->toDateTimeString()];
+        $this->postJson($ruta, $datos)->assertUnprocessable()->assertJsonValidationErrors('estado_devolucion');
+        $this->postJson($ruta, [...$datos, 'estado_devolucion' => 'otra'])->assertUnprocessable()->assertJsonValidationErrors('resultado_otra');
+        $this->post($ruta, [...$datos, 'estado_devolucion' => $motivo])->assertSessionHasNoErrors();
+        $incidencia = IncidenciaInventario::sole();
+        $this->assertSame($motivo, $incidencia->motivo);
+        $this->assertSame($vida, $incidencia->estado_vida);
+        $this->assertEquals($retorno ? 1 : 0, $this->saldo('danado'));
+        $this->assertEquals(2, $this->saldo('nuevo'));
+        $this->assertDatabaseCount('asignacion_movimientos', $retorno ? 2 : 1);
+        $this->assertDatabaseCount('alertas_reemplazos_rrhh', $alerta ? 1 : 0);
+        $this->assertSame($retorno ? 'Dañada' : 'Cerrada', $asignacion->refresh()->estado);
+        if (!$retorno) {
+            $this->assertNull($asignacion->periodos()->sole()->bodega_retorno_id);
+            $this->assertFalse(DB::table('inventarios')->whereIn('stock_tipo', ['perdido', 'robado'])->exists());
+        }
+    }
+
+    public static function condiciones(): array
+    {
+        return [
+            'daño vigente' => ['danado', 5, 'vigente', true, true],
+            'daño vencido' => ['danado', 70, 'vencida', false, true],
+            'daño desconocido' => ['danado', null, 'desconocida', true, true],
+            'pérdida' => ['perdido', 70, 'vencida', true, false],
+            'robo sin fecha de recepción' => ['robado', null, 'desconocida', true, false],
+        ];
+    }
+
+    public function test_tercero_confirmacion_posterior_pdf_privado_versionado_y_fotografia_opcional(): void
+    {
+        $datos = $this->datosSalida(['modalidad' => 'tercero', 'fecha' => now()->subDays(2)->toDateTimeString()]);
+        $this->postJson(route('operador.asignaciones.store'), $datos)->assertUnprocessable()->assertJsonValidationErrors('tercero');
+        $this->crearSalida([...$datos, 'tercero' => 'Persona de transporte']);
+        $entrega = EntregaInventario::sole();
+        $fila = $entrega->asignaciones()->sole();
+        $ruta = route('operador.asignaciones.entrega', $entrega);
+        $confirmacion = route('operador.asignaciones.confirmar_recepcion', $entrega);
+        $this->get($ruta)->assertOk()->assertSee('Persona de transporte')->assertSee('Recepción sin confirmar');
+        $this->get(route('operador.asignaciones.index', ['seguimiento' => 'recepcion']))->assertSee('Persona destinataria');
+        $this->post($confirmacion, ['medio_confirmacion' => 'whatsapp'])->assertRedirect($ruta);
+        $this->assertNull($entrega->refresh()->recibida_en);
+        $this->assertNull($fila->refresh()->fecha_vencimiento);
+        $confirmada = $entrega->confirmada_en;
+        $this->post($confirmacion, ['recibida_en' => now()->subDay()->toDateTimeString()])->assertRedirect($ruta);
+        $this->assertEquals($confirmada, $entrega->refresh()->confirmada_en);
+        $this->assertNotNull($fila->refresh()->fecha_vencimiento);
+        $this->get(route('operador.asignaciones.index', ['seguimiento' => 'recepcion']))->assertViewHas('asignacionesPorColaborador', fn ($grupos) => $grupos->isEmpty());
+        $documentos = route('operador.asignaciones.documento_entrega', $entrega);
+        $pdf = fn ($nombre) => UploadedFile::fake()->create($nombre, 4, 'application/pdf');
+        $this->post($documentos, ['pdf_firmado' => $pdf('firmado-1.pdf')])->assertRedirect($ruta);
+        $this->post($documentos, ['pdf_firmado' => $pdf('firmado-2.pdf')])->assertRedirect($ruta);
+        $this->post($documentos, ['foto' => UploadedFile::fake()->image('evidencia.png')])->assertRedirect($ruta);
+        $this->get($ruta)->assertOk()->assertSee('Versión 1')->assertSee('Versión 2');
+        $this->get(route('operador.asignaciones.index', ['seguimiento' => 'documentacion']))->assertViewHas('asignacionesPorColaborador', fn ($grupos) => $grupos->isEmpty());
+        $this->assertCount(3, $entrega->documentos);
+        $archivo = $entrega->documentos->first();
+        Storage::disk('documentos')->assertExists($archivo->ruta);
+        $descarga = route('operador.asignaciones.ver_pdf_firmado', $archivo);
+        $this->get($descarga)->assertOk();
+        $this->actingAs(User::factory()->create(['role_id' => 2, 'bodega_id' => $this->regional->id]))->get($descarga)->assertForbidden();
+        $this->assertEquals(2, $this->saldo('nuevo'));
+    }
+
+    public function test_recordatorio_reune_los_motivos_y_solo_notifica_responsables_autorizados(): void
+    {
+        $supervisor = User::factory()->create(['role_id' => 3]);
+        $ajeno = User::factory()->create(['role_id' => 3]);
+        $this->almacenista->supervisoresAsignados()->attach($supervisor);
+        $this->crearSalida($this->datosSalida(['fecha' => now()->subHours(23)->toDateTimeString()]));
+        $entrega = EntregaInventario::sole();
+        $this->artisan('inventario:recordar-entregas')->assertSuccessful();
+        $this->assertDatabaseCount('entrega_avisos', 0);
+        $this->travel(1)->hours();
+        $this->artisan('inventario:recordar-entregas')->assertSuccessful();
+        $this->assertDatabaseCount('entrega_avisos', 2);
+        foreach ([$supervisor, $this->almacenista] as $usuario) {
+            $aviso = $usuario->notifications()->get()->firstWhere('data.entidad_id', $entrega->id);
+            $this->assertNotNull($aviso);
+            $avisos = $usuario->notifications()->get()->where('data.tipo', 'asignacion_pendiente');
+            $this->assertCount(1, $avisos);
+            $this->assertStringContainsString('Recepción sin confirmar · Hoja firmada faltante', $avisos->sole()->data['mensaje']);
+        }
+        $this->assertDatabaseMissing('entrega_avisos', ['user_id' => $ajeno->id]);
+        $this->artisan('inventario:recordar-entregas')->assertSuccessful();
+        $this->assertDatabaseCount('entrega_avisos', 2);
+        $this->assertEquals(2, $this->saldo('nuevo'));
+        $this->travelBack();
+    }
+
+    public function test_roles_personalizados_y_actuaciones_de_rrhh_con_evidencia(): void
+    {
+        $rol = Role::create(['nombre' => 'Custodia restringida', 'ambito_operativo' => 2, 'activo' => true]);
+        DB::table('sistema_permisos_rol')->insert([
+            ['role_id' => $rol->id, 'permiso' => 'asignaciones.consultar', 'permitido' => true],
+            ['role_id' => $rol->id, 'permiso' => 'asignaciones.crear', 'permitido' => true],
+        ]);
+        $operador = User::factory()->create(['role_id' => $rol->id, 'bodega_id' => $this->regional->id]);
+        $this->actingAs($operador);
+        $this->crearSalida($this->datosSalida());
+        $fila = AsignacionInventario::sole();
+        $ruta = route('operador.asignaciones.devolver', $fila);
+        $datos = ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'robado'];
+        $this->postJson($ruta, $datos)->assertForbidden();
+        DB::table('sistema_permisos_usuario')->insert([
+            'user_id' => $operador->id, 'permiso' => 'asignaciones.devolver', 'permitido' => true,
+        ]);
+        $this->actingAs($operador->fresh())->post($ruta, $datos)->assertSessionHasNoErrors();
+
+        $alerta = AlertaReemplazo::sole();
+        $incidencia = $alerta->incidencia;
+        $documento = route('operador.asignaciones.documento_incidencia', $incidencia);
+        $archivo = UploadedFile::fake()->create('acta.pdf', 4, 'application/pdf');
+        $this->postJson($documento, ['evidencia' => $archivo])->assertForbidden();
+        $admin = User::factory()->create(['role_id' => 1]);
+        $this->actingAs($admin)->post(route('admin.asignaciones.documento_incidencia', $incidencia), ['evidencia' => $archivo])
+            ->assertSessionHasNoErrors();
+        $detalle = route('rrhh.alertas.show', $alerta);
+        $this->get($detalle)->assertForbidden();
+        $this->actingAs($this->rrhh)->get($detalle)->assertOk()->assertSee('Robo')->assertSee('Respaldo del incidente');
+        $this->get(route('rrhh.alertas.evidencia', $alerta))->assertOk();
+        $this->post(route('rrhh.alertas.actuacion', $alerta), ['nota' => 'Solicitado el acta.'])->assertRedirect($detalle);
+        $this->assertSame('en_revision', $alerta->fresh()->estado);
+        $fin = route('rrhh.alertas.finalizar', $alerta);
+        $this->post($fin, ['nota' => 'Acta revisada.', 'confirmar' => 1])->assertRedirect($detalle);
+        $this->postJson($fin, ['nota' => 'Intento repetido.', 'confirmar' => 1])->assertUnprocessable();
+        $this->assertDatabaseHas('alertas_reemplazos_rrhh', ['id' => $alerta->id, 'estado' => 'finalizado', 'descuento_aplicable' => false]);
+        $this->assertDatabaseHas('alerta_rrhh_actuaciones', ['alerta_id' => $alerta->id, 'usuario_id' => $this->rrhh->id, 'nota' => 'Acta revisada.']);
+        $this->assertDatabaseCount('alerta_rrhh_actuaciones', 2);
+        $this->get(route('rrhh.alertas.export'))->assertOk();
+    }
+
+    public function test_otra_incidencia_explicada_sin_retorno_en_lote(): void
+    {
+        $this->crearSalida($this->datosSalida());
+        $asignacion = AsignacionInventario::sole();
+        $this->post(route('operador.asignaciones.devolver_lote'), [
+            'solicitud_id' => (string) Str::uuid(), 'seleccionadas' => [$asignacion->id], 'devoluciones' => [$asignacion->id => 1],
+            'resoluciones' => [$asignacion->id => [
+                'estado_devolucion' => 'otra', 'resultado_otra' => 'sin_retorno', 'detalle_devolucion' => 'Custodia resuelta con acta.',
+            ]],
+        ])->assertSessionHasNoErrors()->assertSessionMissing('grupo_devolucion');
+        $this->assertDatabaseCount('asignacion_movimientos', 1);
+        $this->assertDatabaseHas('incidencias_inventario', ['motivo' => 'otra', 'resultado_stock' => 'sin_retorno']);
+    }
+
+    public function test_hoja_firmada_es_del_grupo_y_el_respaldo_historico_sigue_disponible(): void
+    {
+        $otro = Producto::create(['codigo' => 'P02', 'nombre' => 'Casco', 'vida_util_meses' => 12]);
+        DB::transaction(fn () => app(InventarioStockService::class)->incrementar($this->regional->id, $otro->codigo, 1));
+        $datos = $this->datosSalida();
+        $datos['items'][] = [...$datos['items'][0], 'producto_codigo' => $otro->codigo];
+        $this->crearSalida($datos);
+        $entrega = EntregaInventario::sole();
+        $this->assertCount(2, $entrega->asignaciones);
+        $pdf = UploadedFile::fake()->create('hoja-grupal.pdf', 4, 'application/pdf');
+        $this->post(route('operador.asignaciones.documento_entrega', $entrega), ['pdf_firmado' => $pdf])->assertSessionHasNoErrors();
+        $this->assertCount(1, $entrega->documentos);
+        $this->get(route('operador.asignaciones.pdf', $entrega->id))->assertOk()
+            ->assertViewHas('asignaciones', fn ($filas) => $filas->count() === 2);
+
+        $legado = AsignacionInventario::create([
+            'grupo_asignacion' => (string) Str::uuid(), 'user_id' => $this->almacenista->id,
+            'bodega_id' => $this->regional->id, 'colaborador_codigo' => 'C01', 'producto_codigo' => 'P01',
+            'cantidad_asignada' => 0, 'estado' => 'Devuelta', 'fecha' => now()->subMonths(9),
+        ]);
+        $this->post(route('operador.asignaciones.upload_pdf_firmado', $legado), [
+            'pdf_firmado' => UploadedFile::fake()->create('hoja-historica.pdf', 4, 'application/pdf'),
+        ])->assertSessionHasNoErrors();
+        $archivo = $legado->evidencias()->sole();
+        $this->assertNull($archivo->grupo_entrega);
+        $this->get(route('operador.asignaciones.ver_pdf_firmado', $archivo))->assertOk();
+        $this->artisan('inventario:recordar-entregas')->assertSuccessful();
+        $this->assertDatabaseCount('entrega_avisos', 0);
+        $this->assertDatabaseCount('entregas_inventario', 1);
+    }
+
+    public function test_stock_agregado_conserva_vida_conocida_al_reutilizar_una_unidad(): void
+    {
+        config(['inventario.seguimiento_unidades' => false]);
+        $recibida = now()->subDays(5)->toDateTimeString();
+        $this->crearSalida($this->datosSalida([
+            'fecha' => $recibida, 'confirmar_recepcion' => true,
+            'medio_confirmacion' => 'presencial', 'recibida_en' => $recibida,
+        ]));
+        $anterior = AsignacionInventario::sole();
+        $this->post(route('operador.asignaciones.devolver', $anterior), [
+            'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado',
+        ])->assertSessionHasNoErrors();
+        $vida = (int) DB::table('inventarios')->where('stock_tipo', 'usado')->value('vida_util_disponible_segundos');
+        $this->assertGreaterThan(0, $vida);
+        $fecha = now()->toDateTimeString();
+        $datos = $this->datosSalida(['fecha' => $fecha, 'confirmar_recepcion' => true,
+            'recibida_en' => $fecha, 'medio_confirmacion' => 'presencial']);
+        $datos['items'][0]['stock_tipo'] = 'usado';
+        $this->crearSalida($datos);
+        $nueva = AsignacionInventario::custodiaActiva()->sole();
+        $this->assertSame($vida, $nueva->vida_util_disponible_segundos);
+        $this->assertEquals($nueva->entrega->recibida_en->copy()->addSeconds($vida), $nueva->fecha_vencimiento);
+        $this->assertEquals(0, $this->saldo('usado'));
+        $this->assertDatabaseCount('alertas_reemplazos_rrhh', 0);
+    }
+
+    private function datosSalida(array $cambios = []): array
+    {
+        return $cambios + [
+            'solicitud_id' => (string) Str::uuid(), 'colaborador_codigo' => 'C01', 'fecha' => now()->toDateTimeString(),
+            'aprobado_por' => 'Gerencia', 'medio_solicitud' => 'Correo',
+            'items' => [['producto_codigo' => 'P01', 'bodega_id' => $this->regional->id, 'cantidad_asignada' => 1]],
+        ];
+    }
+
+    private function crearSalida(array $datos): void
+    {
+        $this->post(route('operador.asignaciones.store'), $datos)->assertSessionHasNoErrors()->assertRedirect();
+    }
+
+    private function saldo(string $tipo): int
+    {
+        return (int) DB::table('inventarios')->where('bodega_id', $this->regional->id)->where('stock_tipo', $tipo)->value('cantidad');
+    }
+
+    private function agregarStock(Bodega $bodega, int $cantidad): void
+    {
+        DB::transaction(fn () => app(InventarioStockService::class)->incrementar($bodega->id, 'P01', $cantidad));
+    }
+}

@@ -522,6 +522,14 @@
       @endif
     </div>
 
+    <nav class="mb-5 flex flex-wrap gap-3" aria-label="Seguimiento de entregas">
+      @foreach(['' => 'Todas las asignaciones', 'recepcion' => 'Recepciones sin confirmar', 'documentacion' => 'Hojas firmadas faltantes'] as $filtro => $etiqueta)
+        <a href="{{ route($routePrefix.'.asignaciones.index', $filtro ? ['seguimiento' => $filtro] : []) }}"
+           @if(request('seguimiento', '') === $filtro) aria-current="page" @endif
+           class="rounded-xl border px-3 py-2 text-sm font-semibold {{ request('seguimiento', '') === $filtro ? 'bg-blue-100 text-blue-900' : 'bg-white text-slate-700' }}">{{ $etiqueta }}</a>
+      @endforeach
+    </nav>
+
     @if(session('grupo_devolucion'))
         @rutaDisponible($routePrefix.'.asignaciones.hoja_devolucion')
             <a class="ui-btn-download mb-4" href="{{ route($routePrefix.'.asignaciones.hoja_devolucion', session('grupo_devolucion')) }}"
@@ -587,32 +595,19 @@
             <div class="asg-detail">
 
               @if($grupo['puede_devolver_todo'])
-              <div class="asg-mini-card">
-                <form method="POST"
-                      action="{{ route($routePrefix . '.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}">
+              <details class="asg-mini-card">
+                <summary class="cursor-pointer font-bold">Resolver todo lo activo con la misma condición</summary>
+                <form method="POST" class="mt-3 space-y-3"
+                      action="{{ route($routePrefix.'.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}">
                   @csrf
                   <input type="hidden" name="solicitud_id" value="{{ \Illuminate\Support\Str::uuid() }}">
-
-                  <div>
-                    <p class="asg-mini-title">Acciones del colaborador</p>
-                    <p class="asg-mini-text">Puedes devolver todo lo activo o seleccionar productos específicos.</p>
-                  </div>
-
-                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <input type="text"
-                           name="detalle_devolucion"
-                           placeholder="Motivo devolución total"
-                           class="asg-input"
-                           style="width:260px;">
-
-                    <button type="submit"
-                            class="asg-btn-warning"
-                            onclick="return confirm('¿Devolver todo lo activo de este colaborador?')">
-                      Devolver todo
-                    </button>
-                  </div>
+                  @include('admin.asignaciones.condicion')
+                  <button type="submit" class="asg-btn-warning"
+                    onclick="return confirm('¿Aplicar esta condición a todos los productos bajo custodia?')">
+                    Registrar resolución total
+                  </button>
                 </form>
-              </div>
+              </details>
               @endif
 
               <div class="asg-table-wrap">
@@ -620,15 +615,15 @@
                   <table class="asg-table">
                     <thead>
                       <tr>
-                        @if($puedeSeleccionar)<th>Sel.</th>@endif
+                        @if($puedeSeleccionar)<th>Resolver</th>@endif
                         <th>Producto</th>
                         <th>Fecha</th>
                         <th>Bodega</th>
-                        <th>Estado inventario</th>
-                        <th>Entrega</th>
+                        <th>Custodia</th>
+                        <th>Recepción y hoja firmada</th>
                         <th>Vida útil</th>
                         <th style="text-align:center;">Activa</th>
-                        @if($puedeSeleccionar)<th style="text-align:center;">Dev.</th>@endif
+                        @if($puedeSeleccionar)<th style="text-align:center;">Cantidad a resolver</th>@endif
                         <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
                         <th style="text-align:center;">PDF</th>
                         <th>Evidencias</th>
@@ -641,10 +636,7 @@
                           $estado = $a->estado ?? 'Activa';
                           $productoNombre = optional($a->producto)->descripcion ?? optional($a->producto)->nombre ?? $a->producto_codigo;
 
-                          $fechaVenc = !empty($a->fecha_vencimiento)
-                            ? \Carbon\Carbon::parse($a->fecha_vencimiento)
-                            : null;
-
+                          $segundosVida = $vigencias[$a->id] ?? null;
                         @endphp
 
                         <tr>
@@ -657,7 +649,8 @@
                                      value="{{ $a->id }}"
                                      form="{{ $bulkFormId }}"
                                      class="selector"
-                                     data-target="devolucion_{{ $a->id }}">
+                                     data-target="devolucion_{{ $a->id }}"
+                                     data-condicion-id="condicion_{{ $a->id }}">
                             @else
                               —
                             @endif
@@ -681,27 +674,31 @@
                             @if($estado === 'Activa')
                               <span class="asg-status asg-status-green">Activa</span>
                             @elseif($estado === 'Dañada')
-                              <span class="asg-status asg-status-red">Dañada</span>
+                              <span class="asg-status asg-status-gray">Cerrada · daño</span>
                             @else
                               <span class="asg-status asg-status-gray">{{ $estado }}</span>
                             @endif
                           </td>
 
                           <td>
-                            @if(($a->estado_evidencia ?? 'completa') === 'completa')
-                              <span class="asg-status asg-status-green">Completa</span>
+                            @if($a->entrega)
+                              <div>{{ $a->entrega->confirmada_en ? 'Recepción confirmada' : 'Recepción sin confirmar' }}</div>
+                              <div>{{ $a->entrega->documentos->contains('tipo_documento', 'asignacion_firmada') ? 'Hoja firmada cargada' : 'Hoja firmada faltante' }}</div>
                             @else
-                              <span class="asg-status asg-status-amber">Pendiente</span>
+                              <div>Recepción sin datos históricos</div>
+                              <div>{{ $a->evidencias->contains('tipo_documento', 'asignacion_firmada') ? 'Hoja firmada cargada' : 'Sin hoja registrada' }}</div>
                             @endif
                           </td>
 
                           <td>
-                            @if($fechaVenc && $fechaVenc->isFuture())
-                              <span class="asg-status asg-status-green">Dentro de vida útil</span>
-                            @elseif($fechaVenc)
-                              <span class="asg-status asg-status-amber">Depreciado</span>
+                            @if($estado !== 'Activa')
+                              <span>—</span>
+                            @elseif($segundosVida > 0)
+                              <span class="asg-status asg-status-green">Vigente</span>
+                            @elseif($segundosVida !== null)
+                              <span class="asg-status asg-status-amber">Vencida</span>
                             @else
-                              <span style="color:#94a3b8;">Sin dato</span>
+                              <span>Desconocida</span>
                             @endif
                           </td>
 
@@ -745,6 +742,11 @@
                           </td>
 
                           <td>
+                            @if($a->entrega)
+                              @rutaDisponible($routePrefix.'.asignaciones.entrega')
+                                <a class="asg-pdf-btn" href="{{ route($routePrefix.'.asignaciones.entrega', $a->grupo_asignacion) }}">Ver entrega</a>
+                              @endrutaDisponible
+                            @else
                             @rutaDisponible($routePrefix.'.asignaciones.upload_pdf_firmado')
                               <form method="POST"
                                     action="{{ route($routePrefix . '.asignaciones.upload_pdf_firmado', $a) }}"
@@ -760,7 +762,7 @@
                                          class="asg-file">
                                   <button type="submit" class="asg-upload-btn">Subir</button>
                                 </div>
-                                <span style="font-size:11px; color:#64748b;">Requiere 1 PDF firmado y 1 imagen.</span>
+                                <span style="font-size:11px; color:#64748b;">PDF firmado o imagen opcional.</span>
                               </form>
                             @endrutaDisponible
 
@@ -781,8 +783,21 @@
                               </div>
                               @endrutaDisponible
                             @endif
+                            @endif
+                            @foreach($a->incidencias as $incidencia)
+                              @rutaDisponible($routePrefix.'.asignaciones.incidencia')
+                                <a class="block underline" href="{{ route($routePrefix.'.asignaciones.incidencia', $incidencia) }}">{{ $incidencia->motivo_etiqueta }}</a>
+                              @endrutaDisponible
+                            @endforeach
                           </td>
                         </tr>
+                        @if($puedeSeleccionar && $grupo['devolvibles_lote']->contains($a->id))
+                          <tr id="condicion_{{ $a->id }}" hidden>
+                            <td colspan="99">
+                              @include('admin.asignaciones.condicion', ['prefijo' => 'resoluciones['.$a->id.']', 'formulario' => $bulkFormId])
+                            </td>
+                          </tr>
+                        @endif
                       <?php endforeach; ?>
                     </tbody>
                   </table>
@@ -791,22 +806,15 @@
                 @if($puedeSeleccionar)
                   <div class="asg-footer-actions">
                     <div>
-                      <p class="asg-footer-title">Devolución de seleccionados</p>
-                      <p class="asg-footer-text">Marca asignaciones y coloca la cantidad a devolver.</p>
+                      <p class="asg-footer-title">Resolución de custodia</p>
+                      <p class="asg-footer-text">Selecciona los productos e indica qué ocurrió con cada uno.</p>
                     </div>
 
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                      <input type="text"
-                             name="detalle_devolucion"
-                             form="{{ $bulkFormId }}"
-                             placeholder="Detalle devolución múltiple"
-                             class="asg-input"
-                             style="width:260px;">
-
                       <button type="submit"
                               form="{{ $bulkFormId }}"
                               class="asg-btn-warning">
-                        Devolver seleccionados
+                        Registrar seleccionados
                       </button>
                     </div>
                   </div>
@@ -851,7 +859,7 @@
                 @php
                   $pdfDevolucionFirmado = null;
 
-                  if ($m->tipo === 'Devolucion' && !empty($m->grupo_devolucion) && $puedeGestionarPdfsFirmados) {
+                  if (in_array($m->tipo, ['Devolucion', 'Reemplazo'], true) && !empty($m->grupo_devolucion) && $puedeGestionarPdfsFirmados) {
                     $pdfDevolucionFirmado = $pdfsDevolucionFirmados->get($m->grupo_devolucion);
                   }
                 @endphp
@@ -882,7 +890,7 @@
                   </td>
 
                   <td style="text-align:center;">
-                    @if($m->tipo === 'Devolucion' && !empty($m->grupo_devolucion))
+                    @if(in_array($m->tipo, ['Devolucion', 'Reemplazo'], true) && !empty($m->grupo_devolucion))
                       <div class="asg-upload-form">
                         @rutaDisponible($routePrefix.'.asignaciones.hoja_devolucion')
                         <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', $m->grupo_devolucion) }}"
@@ -941,12 +949,14 @@
   </div>
 </div>
 
+@include('admin.asignaciones.condicion-script')
 <script>
 @if(session('pdf_url'))
   window.addEventListener('load', function () {
     window.open(@json(session('pdf_url')), '_blank', 'noopener,noreferrer');
   });
 @endif
+  document.querySelectorAll('[id^="condicion_"] [data-campo]').forEach(campo => campo.disabled = true);
   document.querySelectorAll('.selector').forEach((checkbox) => {
     checkbox.addEventListener('change', function () {
       const targetId = this.dataset.target;
@@ -955,6 +965,12 @@
       if (!input) return;
 
       input.disabled = !this.checked;
+      const fila = document.getElementById(this.dataset.condicionId);
+      fila.hidden = !this.checked;
+      fila.querySelectorAll('[data-campo]').forEach(campo => campo.disabled = !this.checked);
+      const motivo = fila.querySelector('[data-campo="estado_devolucion"]');
+      motivo.required = this.checked;
+      if (this.checked) motivo.dispatchEvent(new Event('change'));
 
       if (!this.checked) {
         input.value = 1;

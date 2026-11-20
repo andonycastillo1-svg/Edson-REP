@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class AsignacionInventario extends Model
@@ -10,6 +11,8 @@ class AsignacionInventario extends Model
 
     protected $fillable = [
         'grupo_asignacion',
+        'tipo_entrega',
+        'asignacion_anterior_id',
         'colaborador_codigo',
         'producto_codigo',
         'bodega_id',
@@ -26,6 +29,7 @@ class AsignacionInventario extends Model
         'stock_tipo',
         'vida_util_original_meses',
         'vida_util_restante_meses',
+        'vida_util_disponible_segundos',
         'estado_evidencia',
         'pdf_firmado',
     ];
@@ -33,9 +37,25 @@ class AsignacionInventario extends Model
     protected $casts = [
         'fecha' => 'datetime',
         'fecha_vencimiento' => 'datetime',
+        'vida_util_disponible_segundos' => 'integer',
         'cantidad_asignada' => 'integer',
         'costo_unitario' => 'decimal:2',
     ];
+
+    public function scopeCustodiaActiva(Builder $consulta): Builder
+    {
+        return $consulta->where('estado', 'Activa')->where('cantidad_asignada', '>', 0);
+    }
+
+    public function entrega()
+    {
+        return $this->belongsTo(EntregaInventario::class, 'grupo_asignacion');
+    }
+
+    public function incidencias()
+    {
+        return $this->hasMany(IncidenciaInventario::class, 'asignacion_id');
+    }
 
     public function colaborador()
     {
@@ -97,6 +117,11 @@ class AsignacionInventario extends Model
     {
         return $this->hasMany(AsignacionEstadoHistorial::class, 'asignacion_inventario_id');
     }
+    public function periodosActivos()
+    {
+        return $this->periodos()->whereNull('devuelto_en')->orderBy('id');
+    }
+
     public function periodos()
     {
         return $this->hasMany(AsignacionPeriodo::class, 'asignacion_inventario_id');

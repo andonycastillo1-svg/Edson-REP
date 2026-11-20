@@ -10,6 +10,9 @@ use App\Sistema\Presentacion;
 use App\Models\AlertaReemplazo;
 use App\Models\AsignacionInventario;
 use App\Models\Colaborador;
+use App\Models\IncidenciaInventario;
+use App\Services\AsignacionVidaUtilService;
+use App\Sistema\Permisos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -108,8 +111,7 @@ class ColaboradorController extends Controller
 
             'total_general' => $ficha['total_general'],
 
-            'cobros' => $ficha['cobros'],
-            'total_cobros' => $ficha['total_cobros'],
+            'incidencias' => $ficha['incidencias'],
         ]);
     }
 
@@ -165,7 +167,7 @@ class ColaboradorController extends Controller
 
     private function generarFichaColaborador(Colaborador $colaborador): array
     {
-        $asignaciones = AsignacionInventario::with('producto', 'bodega')
+        $asignaciones = AsignacionInventario::with('producto', 'bodega', 'entrega')
             ->where('colaborador_codigo', $colaborador->codigo)
             ->where('cantidad_asignada', '>', 0)
             ->where(function ($q) {
@@ -174,12 +176,16 @@ class ColaboradorController extends Controller
             })
             ->get();
 
+        if (config('inventario.seguimiento_unidades')) {
+            $asignaciones->load('periodosActivos');
+        }
         $codigosProducto = $asignaciones->pluck('producto_codigo')->filter()->unique()->values();
         $ultimosCostos = $this->obtenerUltimosCostos($codigosProducto);
 
         $totalInventario = 0;
 
-        $dataAsignaciones = $asignaciones->map(function ($a) use (&$totalInventario, $ultimosCostos) {
+        $vida = app(AsignacionVidaUtilService::class);
+        $dataAsignaciones = $asignaciones->map(function ($a) use (&$totalInventario, $ultimosCostos, $vida) {
             $costoUnitario = $a->costo_unitario ?? 0;
 
             if ((float) $costoUnitario <= 0 && isset($ultimosCostos[$a->producto_codigo])) {
@@ -190,11 +196,12 @@ class ColaboradorController extends Controller
             $fechaAsignacion = $a->fecha ? Carbon::parse($a->fecha) : null;
             $fechaVencimiento = $a->fecha_vencimiento ? Carbon::parse($a->fecha_vencimiento) : null;
 
-            $estadoVidaUtil = 'Sin vida útil';
-
-            if ($fechaVencimiento) {
-                $estadoVidaUtil = now()->greaterThan($fechaVencimiento) ? 'Vencido' : 'Vigente';
-            }
+            $segundos = $vida->restante($a, now());
+            $estadoVidaUtil = match (true) {
+                $segundos === null => 'Desconocida',
+                $segundos > 0 => 'Vigente',
+                default => 'Vencida',
+            };
 
             $totalInventario += $total;
 
@@ -220,60 +227,46 @@ class ColaboradorController extends Controller
             $totalProductosVehiculo = (float) $productosVehiculo->sum('total');
         }
 
-        $cobros = collect();
-        $totalCobros = 0;
-
-        if (Schema::hasTable('alertas_reemplazos_rrhh')) {
-            $cobros = AlertaReemplazo::query()
-                ->leftJoin('productos as p', 'p.codigo', '=', 'alertas_reemplazos_rrhh.producto_codigo')
-                ->where('alertas_reemplazos_rrhh.colaborador_codigo', $colaborador->codigo)
-                ->addSelect('alertas_reemplazos_rrhh.*')
-                ->addSelect('p.nombre as producto_nombre')
-                ->addSelect('p.descripcion as producto_descripcion')
-                ->selectRaw('
-                    COALESCE(
-                        (
-                            SELECT cd.precio_unitario
-                            FROM compra_detalles cd
-                            WHERE cd.producto_codigo = alertas_reemplazos_rrhh.producto_codigo
-                            ORDER BY cd.id DESC
-                            LIMIT 1
-                        ),
-                        0
-                    ) as costo_producto
-                ')
-                ->latest('alertas_reemplazos_rrhh.created_at')
-                ->get()
-                ->map(function ($alerta) use (&$totalCobros) {
-                    $vidaUtilMeses = (int) ($alerta->vida_util_meses ?? 0);
-                    $mesesRestantes = max(0, (int) ($alerta->meses_restantes ?? 0));
-                    $costoProducto = (float) ($alerta->costo_producto ?? 0);
-
-                    $montoCobro = ($alerta->descuento_aplicable && $vidaUtilMeses > 0)
-                        ? round($costoProducto * ($mesesRestantes / $vidaUtilMeses), 2)
-                        : 0;
-
-                    $totalCobros += $montoCobro;
-
-                    return [
-                        'producto_codigo' => $alerta->producto_codigo,
-                        'producto' => $alerta->producto_descripcion ?: ($alerta->producto_nombre ?: $alerta->producto_codigo),
-                        'fecha_asignacion_anterior' => $alerta->fecha_asignacion_anterior
-                            ? Carbon::parse($alerta->fecha_asignacion_anterior)->format('d/m/Y')
-                            : '—',
-                        'fecha_dano_reemplazo' => $alerta->fecha_dano_reemplazo
-                            ? Carbon::parse($alerta->fecha_dano_reemplazo)->format('d/m/Y')
-                            : '—',
-                        'vida_util_meses' => $vidaUtilMeses,
-                        'meses_restantes' => $mesesRestantes,
-                        'costo_producto' => $costoProducto,
-                        'descuento_aplicable' => (bool) $alerta->descuento_aplicable,
-                        'monto_cobro' => $montoCobro,
-                        'estado' => $alerta->estado ?? 'pendiente',
-                        'detalle' => $alerta->detalle ?? '—',
-                    ];
-                })
-                ->values();
+        $incidencias = collect();
+        $usuario = auth()->user();
+        $permisos = app(Permisos::class);
+        $puedeRevisar = $permisos->ruta($usuario, 'rrhh.alertas.show');
+        if ($puedeRevisar || $usuario->rolOperativo() === 1) {
+            $incidencias = AlertaReemplazo::with(AlertaReemplazo::RELACIONES_LISTADO)
+                ->where('colaborador_codigo', $colaborador->codigo)->latest()->get()
+                ->map(fn (AlertaReemplazo $alerta) => [
+                    'producto_codigo' => $alerta->producto_codigo,
+                    'producto' => $alerta->producto?->nombre ?? $alerta->producto_codigo,
+                    'bodega' => $alerta->bodega_nombre,
+                    'cantidad' => $alerta->cantidad,
+                    'fecha_asignacion' => $alerta->fecha_asignacion_anterior?->format('d/m/Y'),
+                    'fecha_incidente' => $alerta->fecha_incidente?->format('d/m/Y H:i'),
+                    'vida' => $alerta->vida_etiqueta,
+                    'motivo' => $alerta->motivo_etiqueta,
+                    'estado' => $alerta->estado_etiqueta,
+                    'registrador' => $alerta->registrador?->name,
+                    'detalle' => $alerta->detalle,
+                    'url' => $puedeRevisar ? route('rrhh.alertas.show', $alerta) : null,
+                ]);
+        }
+        if ($usuario->rolOperativo() === 1 && $permisos->permite($usuario, 'asignaciones.consultar')) {
+            $sinAlerta = IncidenciaInventario::with('asignacion.bodega', 'asignacion.producto', 'registrador')
+                ->whereDoesntHave('alerta')->whereHas('asignacion', fn ($q) => $q->where('colaborador_codigo', $colaborador->codigo))
+                ->latest()->get()->map(fn (IncidenciaInventario $incidencia) => [
+                    'producto_codigo' => $incidencia->asignacion->producto_codigo,
+                    'producto' => $incidencia->asignacion->producto?->nombre,
+                    'bodega' => $incidencia->asignacion->bodega?->nombre,
+                    'cantidad' => $incidencia->cantidad,
+                    'fecha_asignacion' => $incidencia->asignacion->fecha?->format('d/m/Y'),
+                    'fecha_incidente' => $incidencia->ocurrio_en?->format('d/m/Y H:i'),
+                    'vida' => ucfirst($incidencia->estado_vida),
+                    'motivo' => $incidencia->motivo_etiqueta,
+                    'estado' => 'Registrada en inventario',
+                    'registrador' => $incidencia->registrador?->name,
+                    'detalle' => $incidencia->observaciones,
+                    'url' => route('admin.asignaciones.incidencia', $incidencia),
+                ]);
+            $incidencias = $incidencias->concat($sinAlerta);
         }
 
         return [
@@ -293,8 +286,7 @@ class ColaboradorController extends Controller
 
             'total_general' => (float) ($totalInventario + $totalProductosVehiculo),
 
-            'cobros' => $cobros,
-            'total_cobros' => (float) $totalCobros,
+            'incidencias' => $incidencias,
         ];
     }
 

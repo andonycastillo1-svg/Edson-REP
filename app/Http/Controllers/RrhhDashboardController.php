@@ -4,167 +4,154 @@ namespace App\Http\Controllers;
 
 use App\Exports\AlertasRrhhExport;
 use App\Models\AlertaReemplazo;
+use App\Models\AsignacionInventarioArchivo;
+use App\Models\VehiculoProductoArchivo;
+use Illuminate\Support\Collection;
+use App\Services\DocumentoPrivado;
 use App\Services\NotificacionService;
+use App\Sistema\Auditoria;
+use App\Sistema\Permisos;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
 class RrhhDashboardController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $totalAlertas = $this->buildQuery($request)
-            ->where('alertas_reemplazos_rrhh.estado', AlertaReemplazo::ESTADO_PENDIENTE)
-            ->count();
+        $totalAlertas = auth()->user() && app(Permisos::class)->permite(auth()->user(), 'alertas.consultar')
+            ? AlertaReemplazo::whereIn('estado', [AlertaReemplazo::ESTADO_PENDIENTE, AlertaReemplazo::ESTADO_EN_REVISION])->count()
+            : 0;
 
         return view('rrhh.dashboard', compact('totalAlertas'));
     }
 
     public function alertas(Request $request)
     {
-        $alertas = $this->buildQuery($request)
-            ->latest('alertas_reemplazos_rrhh.created_at')
-            ->paginate(20)
-            ->appends($request->query());
-
-        $alertas->through(fn ($a) => $this->mapAlerta($a));
+        [$query] = $this->consulta($request);
+        $alertas = $query->latest()->paginate(20)->withQueryString();
 
         return view('rrhh.alertas.index', compact('alertas'));
     }
 
+    public function show(AlertaReemplazo $alerta)
+    {
+        $alerta->load([...AlertaReemplazo::RELACIONES_LISTADO, 'actuaciones.usuario', 'incidencia.archivoSubidoPor']);
+        $documentos = $this->documentosAsignacion($alerta);
+        $refacciones = $alerta->refaccion?->archivosFirmados()->get() ?? collect();
+
+        return view('rrhh.alertas.show', compact('alerta', 'documentos', 'refacciones'));
+    }
+
+    public function evidencia(AlertaReemplazo $alerta)
+    {
+        $incidencia = $alerta->incidencia;
+        abort_unless($incidencia?->archivo, 404);
+
+        return DocumentoPrivado::responder($incidencia->archivo, $incidencia->archivo_nombre);
+    }
+
+    public function documento(AlertaReemplazo $alerta, AsignacionInventarioArchivo $archivo)
+    {
+        abort_unless($this->documentosAsignacion($alerta)->contains($archivo), 404);
+
+        return DocumentoPrivado::responder($archivo->ruta, $archivo->nombre_original);
+    }
+
+    public function documentoRefaccion(AlertaReemplazo $alerta, VehiculoProductoArchivo $archivo)
+    {
+        abort_unless($alerta->refaccion?->archivosFirmados()->whereKey($archivo->id)->exists(), 404);
+
+        return DocumentoPrivado::responder($archivo->ruta, $archivo->nombre_original);
+    }
+
+    private function documentosAsignacion(AlertaReemplazo $alerta): Collection
+    {
+        $asignacion = $alerta->incidencia?->asignacion ?? $alerta->asignacionAnterior;
+
+        return $asignacion?->entrega?->documentos ?? $asignacion?->evidencias ?? collect();
+    }
+
+    public function actuacion(Request $request, AlertaReemplazo $alerta)
+    {
+        return $this->registrar($request, $alerta, AlertaReemplazo::ESTADO_EN_REVISION);
+    }
+
     public function finalizar(Request $request, AlertaReemplazo $alerta)
     {
-        $request->validate([
-            'confirmar' => ['required', 'accepted'],
-        ]);
+        $request->validate(['confirmar' => ['required', 'accepted']]);
 
-        if (! $alerta->estaPendiente()) {
-            return back()->with('info', 'La alerta ya se encuentra finalizada.');
+        return $this->registrar($request, $alerta, AlertaReemplazo::ESTADO_FINALIZADO);
+    }
+
+    private function registrar(Request $request, AlertaReemplazo $alerta, string $estado)
+    {
+        $nota = $request->validate(['nota' => ['required', 'string', 'max:4000']])['nota'];
+
+        DB::transaction(function () use ($request, $alerta, $estado, $nota) {
+            $bloqueada = AlertaReemplazo::whereKey($alerta->id)->lockForUpdate()->firstOrFail();
+            if ($bloqueada->estado === AlertaReemplazo::ESTADO_FINALIZADO) {
+                throw ValidationException::withMessages(['nota' => 'La incidencia ya fue finalizada.']);
+            }
+            $anterior = $bloqueada->estado;
+            $bloqueada->update(['estado' => $estado]);
+            $actuacion = $bloqueada->actuaciones()->create([
+                'usuario_id' => $request->user()->id, 'estado' => $estado, 'nota' => $nota,
+            ]);
+            app(Auditoria::class)->registrar('alertas', 'actuacion', $bloqueada->id, ['estado' => $anterior],
+                ['estado' => $estado, 'actuacion_id' => $actuacion->id]);
+        }, 3);
+
+        if ($estado === AlertaReemplazo::ESTADO_FINALIZADO) {
+            app(NotificacionService::class)->safeAction(fn ($service) => $service->notificarResolucionAlertaRrhh($alerta->refresh(), $request->user()));
         }
+        $destino = app(Permisos::class)->ruta($request->user(), 'rrhh.alertas.show')
+            ? route('rrhh.alertas.show', $alerta) : route('dashboard');
 
-        $alerta->marcarFinalizada();
-        app(NotificacionService::class)->safeAction(
-            fn (NotificacionService $service) => $service->notificarResolucionAlertaRrhh($alerta, $request->user())
-        );
-
-        return back()->with('success', 'Alerta de descuento marcada como finalizada.');
+        return redirect()->to($destino)->with('success', 'Actuación registrada.');
     }
 
     public function export(Request $request)
     {
-        $alertas = $this->buildQuery($request)
-            ->latest('alertas_reemplazos_rrhh.created_at')
-            ->get()
-            ->map(fn ($alerta) => $this->mapAlerta($alerta));
+        [$query, $filtros] = $this->consulta($request);
 
-        $filters = [];
-        if ($request->filled('q')) {
-            $filters['Búsqueda'] = trim((string) $request->query('q'));
-        }
-        if ($request->filled('estado')) {
-            $filters['Estado'] = ucfirst((string) $request->query('estado'));
-        }
-        if ($request->filled('desde')) {
-            $filters['Desde'] = $request->query('desde');
-        }
-        if ($request->filled('hasta')) {
-            $filters['Hasta'] = $request->query('hasta');
-        }
-
-        return Excel::download(
-            new AlertasRrhhExport($alertas, $request->user()->name, $filters),
-            'alertas_rrhh_'.now()->format('Y-m-d_Hi').'.xlsx'
-        );
+        return Excel::download(new AlertasRrhhExport($query->latest()->get(), $request->user()->name, $filtros),
+            'incidencias_rrhh_'.now()->format('Y-m-d_Hi').'.xlsx');
     }
 
-    private function buildQuery(Request $request)
+    private function consulta(Request $request): array
     {
-        if (! Schema::hasTable('alertas_reemplazos_rrhh')) {
-            return AlertaReemplazo::query()->whereRaw('1 = 0');
-        }
-
-        return AlertaReemplazo::query()
-            ->leftJoin('colaboradores as c', 'c.codigo', '=', 'alertas_reemplazos_rrhh.colaborador_codigo')
-            ->leftJoin('productos as p', 'p.codigo', '=', 'alertas_reemplazos_rrhh.producto_codigo')
-            ->leftJoin('users as u', 'u.id', '=', 'alertas_reemplazos_rrhh.registrado_por_user_id')
-            ->addSelect('alertas_reemplazos_rrhh.*')
-            ->addSelect('c.nombre as colaborador_nombre')
-            ->addSelect('p.nombre as producto_nombre')
-            ->addSelect('p.descripcion as producto_descripcion')
-            ->addSelect('u.name as registrado_por_nombre')
-            ->selectRaw('
-                GREATEST(
-                    alertas_reemplazos_rrhh.vida_util_meses - TIMESTAMPDIFF(
-                        MONTH,
-                        alertas_reemplazos_rrhh.fecha_asignacion_anterior,
-                        alertas_reemplazos_rrhh.fecha_dano_reemplazo
-                    ),
-                    0
-                ) as meses_restantes_reales
-            ')
-            ->selectRaw('
-                COALESCE(
-                    (
-                        SELECT cd.precio_unitario
-                        FROM compra_detalles cd
-                        WHERE cd.producto_codigo = alertas_reemplazos_rrhh.producto_codigo
-                        ORDER BY cd.id DESC
-                        LIMIT 1
-                    ),
-                    0
-                ) as costo_producto
-            ')
-            ->when($request->filled('q'), function ($query) use ($request) {
-                $q = trim($request->query('q'));
-
-                $query->where(function ($w) use ($q) {
-                    $w->where('alertas_reemplazos_rrhh.colaborador_codigo', 'like', "%{$q}%")
-                        ->orWhere('alertas_reemplazos_rrhh.producto_codigo', 'like', "%{$q}%")
-                        ->orWhere('c.nombre', 'like', "%{$q}%")
-                        ->orWhere('p.nombre', 'like', "%{$q}%")
-                        ->orWhere('p.descripcion', 'like', "%{$q}%");
-                });
-            })
-            ->when($request->filled('estado'), function ($query) use ($request) {
-                $estado = $request->query('estado');
-
-                if (in_array($estado, [AlertaReemplazo::ESTADO_PENDIENTE, AlertaReemplazo::ESTADO_FINALIZADO], true)) {
-                    $query->where('alertas_reemplazos_rrhh.estado', $estado);
-                }
-            })
-            ->when($request->filled('desde'), function ($query) use ($request) {
-                $query->whereDate(
-                    'alertas_reemplazos_rrhh.fecha_dano_reemplazo',
-                    '>=',
-                    $request->query('desde')
-                );
-            })
-            ->when($request->filled('hasta'), function ($query) use ($request) {
-                $query->whereDate(
-                    'alertas_reemplazos_rrhh.fecha_dano_reemplazo',
-                    '<=',
-                    $request->query('hasta')
-                );
+        $datos = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+            'estado' => ['nullable', Rule::in(array_keys(AlertaReemplazo::ESTADOS))],
+            'desde' => ['nullable', 'date_format:Y-m-d'],
+            'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],
+        ]);
+        $consulta = AlertaReemplazo::with(AlertaReemplazo::RELACIONES_LISTADO);
+        $filtros = [];
+        if (!empty($datos['q'])) {
+            $filtros['Búsqueda'] = $datos['q'];
+            $patron = '%'.$datos['q'].'%';
+            $consulta->where(function (Builder $q) use ($patron) {
+                $q->where('colaborador_codigo', 'like', $patron)->orWhere('producto_codigo', 'like', $patron)
+                    ->orWhereHas('colaborador', fn (Builder $c) => $c->where('nombre', 'like', $patron))
+                    ->orWhereHas('producto', fn (Builder $p) => $p->where('nombre', 'like', $patron)->orWhere('descripcion', 'like', $patron));
             });
-    }
+        }
+        if (!empty($datos['estado'])) {
+            $consulta->where('estado', $datos['estado']);
+            $filtros['Estado'] = AlertaReemplazo::ESTADOS[$datos['estado']];
+        }
+        foreach (['desde' => '>=', 'hasta' => '<='] as $campo => $comparacion) {
+            if (!empty($datos[$campo])) {
+                $consulta->whereDate('fecha_dano_reemplazo', $comparacion, $datos[$campo]);
+                $filtros[ucfirst($campo)] = $datos[$campo];
+            }
+        }
 
-    private function mapAlerta($alerta)
-    {
-        $vidaUtilMeses = (int) ($alerta->vida_util_meses ?? 0);
-        $mesesRestantes = max(0, (int) ($alerta->meses_restantes_reales ?? 0));
-        $costoProducto = (float) ($alerta->costo_producto ?? 0);
-
-        $alerta->meses_restantes_reales = $mesesRestantes;
-
-        $alerta->descuento_calculado = ($alerta->descuento_aplicable && $vidaUtilMeses > 0)
-            ? round($costoProducto * ($mesesRestantes / $vidaUtilMeses), 2)
-            : 0;
-
-        $estado = $alerta->estado ?? AlertaReemplazo::ESTADO_PENDIENTE;
-        $alerta->estado_etiqueta = $estado === AlertaReemplazo::ESTADO_FINALIZADO
-            ? 'Finalizado'
-            : 'Pendiente';
-
-        return $alerta;
+        return [$consulta, $filtros];
     }
 }

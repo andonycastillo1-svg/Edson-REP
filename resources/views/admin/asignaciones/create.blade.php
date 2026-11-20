@@ -24,17 +24,12 @@
     <div class="mb-6 rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-xl shadow-slate-200/60">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-            <span class="h-2 w-2 rounded-full bg-blue-600"></span>
-            Inventario / Asignaciones
-          </div>
-
           <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
             Nueva asignación
           </h1>
 
           <p class="mt-2 max-w-3xl text-sm text-slate-600">
-            Registra la entrega de productos a un colaborador y genera la hoja de asignación correspondiente.
+            Registra la salida de bodega. Puedes confirmar la recepción y cargar la hoja firmada después.
           </p>
         </div>
 
@@ -57,16 +52,10 @@
       <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
         <div class="border-b border-slate-200 bg-slate-50 px-6 py-5">
           <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-sm font-black text-white">
-              1
-            </div>
             <div>
               <h2 class="text-base font-extrabold text-slate-900">
                 Datos generales
               </h2>
-              <p class="text-sm text-slate-500">
-                Información principal de la asignación.
-              </p>
             </div>
           </div>
         </div>
@@ -91,11 +80,11 @@
 
           <div>
             <label for="campo-fecha" class="mb-1 block text-sm font-bold text-slate-700">
-              Fecha
+              Fecha y hora de salida
             </label>
-            <input id="campo-fecha" type="date"
+            <input id="campo-fecha" type="datetime-local"
               name="fecha"
-              value="{{ old('fecha', date('Y-m-d')) }}"
+              value="{{ old('fecha', now()->format('Y-m-d\TH:i')) }}"
               class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               required>
           </div>
@@ -129,15 +118,49 @@
 
           <div>
             <label for="campo-imagen" class="mb-1 block text-sm font-bold text-slate-700">
-              Adjuntar evidencia
+              Fotografía (opcional)
             </label>
             <input id="campo-imagen" type="file"
-              name="imagen"
+              name="imagen" accept="image/jpeg,image/png,image/webp"
               class="w-full cursor-pointer rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-sm file:mr-4 file:rounded-xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white hover:bg-slate-100">
             <p class="mt-2 text-xs text-slate-500">
-              Puedes adjuntar imagen como respaldo de la solicitud.
+              Formatos JPG, PNG o WebP. Máximo 10 MB.
             </p>
           </div>
+
+          <fieldset class="grid gap-4 rounded-2xl border border-slate-200 p-4 md:col-span-2 sm:grid-cols-2">
+            <legend class="px-1 font-bold text-slate-900">Entrega y recepción</legend>
+            <label class="text-sm font-semibold">
+              Modalidad de entrega
+              <select name="modalidad" class="mt-1 block w-full rounded-xl border-slate-300">
+                <option value="directa" @selected(old('modalidad', 'directa') === 'directa')>Directa al colaborador</option>
+                <option value="tercero" @selected(old('modalidad') === 'tercero')>A través de un tercero</option>
+              </select>
+            </label>
+            <label data-tercero class="text-sm font-semibold">
+              Responsable del transporte
+              <input class="mt-1 block w-full rounded-xl border-slate-300" name="tercero" value="{{ old('tercero') }}" maxlength="180">
+            </label>
+            <label class="text-sm font-semibold sm:col-span-2">
+              <input type="checkbox" name="confirmar_recepcion" value="1" @checked(old('confirmar_recepcion'))> El colaborador ya confirmó la recepción
+            </label>
+            <div data-confirmacion class="grid gap-4 sm:col-span-2 sm:grid-cols-2">
+              <label class="text-sm font-semibold">
+                Medio de confirmación
+                <select name="medio_confirmacion" class="mt-1 block w-full rounded-xl border-slate-300">
+                  <option value="">Selecciona un medio</option>
+                  @foreach(\App\Models\EntregaInventario::MEDIOS as $medio => $nombre)
+                    <option value="{{ $medio }}" @selected(old('medio_confirmacion') === $medio)>{{ $nombre }}</option>
+                  @endforeach
+                </select>
+              </label>
+              <label class="text-sm font-semibold">
+                Fecha y hora de recepción (si se conocen)
+                <input type="datetime-local" name="recibida_en" value="{{ old('recibida_en') }}"
+                  class="mt-1 block w-full rounded-xl border-slate-300">
+              </label>
+            </div>
+          </fieldset>
 
           <x-sistema.campos-nativos modulo="asignaciones" />
         </div>
@@ -147,15 +170,12 @@
         <div class="border-b border-slate-200 bg-slate-50 px-6 py-5">
           <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-sm font-black text-white">
-                2
-              </div>
               <div>
                 <h2 class="text-base font-extrabold text-slate-900">
                   Productos a asignar
                 </h2>
                 <p class="text-sm text-slate-500">
-                  Detalla producto, bodega, cantidad y reemplazo si aplica.
+                  Se entrega una unidad por código. Si hay una custodia anterior, resuélvela aquí.
                 </p>
               </div>
             </div>
@@ -219,7 +239,7 @@
                     Cantidad
                   </label>
                   <input id="campo-cantidad-asignada" type="number"
-                    min="1"
+                    readonly
                     data-name="cantidad_asignada"
                     class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                     value="1"
@@ -237,41 +257,7 @@
                   </label>
                 </div>
 
-                <div class="md:col-span-5">
-                  <div class="h-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                    <label class="inline-flex items-center gap-3 text-sm font-bold text-amber-800">
-                      <input type="checkbox"
-                        value="1"
-                        data-name="es_reemplazo"
-                        class="rounded border-amber-300 text-blue-600 focus:ring-blue-500">
-                      Reemplazo por daño
-                    </label>
-                    <p class="mt-1 text-xs text-amber-700">
-                      Úsalo solo si reemplaza una asignación activa previa.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="md:col-span-7">
-                  <label for="campo-fecha-dano" class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
-                    Fecha daño/reemplazo
-                  </label>
-                  <input id="campo-fecha-dano" type="date"
-                    data-name="fecha_dano"
-                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
-                  <p class="mt-2 text-xs text-slate-500">
-                    Opcional. Si queda vacío, se usará la fecha de asignación.
-                  </p>
-                </div>
-                <div class="md:col-span-12" data-reemplazo-anterior hidden>
-                  <label class="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
-                    Asignación anterior
-                    <select data-name="asignacion_anterior_id"
-                      class="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800" disabled>
-                      <option value="">Seleccionar asignación</option>
-                    </select>
-                  </label>
-                </div>
+                <div class="md:col-span-12" data-custodias aria-live="polite"></div>
               </div>
             </div>
           </template>
@@ -282,12 +268,8 @@
 
       <div class="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-xl shadow-slate-200/60">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p class="text-xs text-slate-500">
-            Revisa los datos antes de guardar. Esta acción registrará la asignación.
-          </p>
-
-          <button class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-3 text-sm font-extrabold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700 hover:shadow-xl">
-            Guardar asignación
+          <button type="submit" class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-3 text-sm font-extrabold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700 hover:shadow-xl">
+            Registrar salida
           </button>
         </div>
       </div>
@@ -296,7 +278,31 @@
   </div>
 </div>
 
+@include('admin.asignaciones.condicion-script')
+<template id="custodia-template">
+  <fieldset class="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-4">
+    <legend class="px-1 text-sm font-bold" data-custodia-titulo></legend>
+    @include('admin.asignaciones.condicion')
+  </fieldset>
+</template>
 <script>
+  const formulario = document.querySelector('#items-wrapper').closest('form');
+  const modalidad = formulario.elements.modalidad;
+  const confirmar = formulario.elements.confirmar_recepcion;
+  function actualizarEntrega() {
+    const tercero = modalidad.value === 'tercero';
+    formulario.querySelector('[data-tercero]').hidden = !tercero;
+    formulario.elements.tercero.required = tercero;
+    formulario.elements.tercero.disabled = !tercero;
+    formulario.querySelector('[data-confirmacion]').style.display = confirmar.checked ? '' : 'none';
+    formulario.elements.medio_confirmacion.required = confirmar.checked;
+    formulario.elements.medio_confirmacion.disabled = !confirmar.checked;
+    formulario.elements.recibida_en.disabled = !confirmar.checked;
+  }
+  modalidad.addEventListener('change', actualizarEntrega);
+  confirmar.addEventListener('change', actualizarEntrega);
+  actualizarEntrega();
+
   const inventarioOptions = @json($inventarioOptions);
   const itemsWrapper = document.getElementById('items-wrapper');
   const addItemBtn = document.getElementById('add-item');
@@ -315,16 +321,26 @@
     selectElement.dispatchEvent(new Event('options:updated'));
   }
 
+  function actualizarValidacion() {
+    const seleccionados = Array.from(itemsWrapper.querySelectorAll('[data-name="producto_codigo"]'));
+    seleccionados.forEach(select => {
+      const repetido = select.value && seleccionados.filter(otro => otro.value === select.value).length > 1;
+      select.setCustomValidity(repetido ? 'Incluye cada código una sola vez.' : '');
+    });
+    formulario.querySelector('button[type="submit"]').disabled = Array.from(
+      itemsWrapper.querySelectorAll('.item-row')
+    ).some(fila => ['consultando', 'bloqueada'].includes(fila.dataset.estado));
+  }
+
   function renumberRows() {
-    const rows = itemsWrapper.querySelectorAll('.item-row');
-    rows.forEach((row, index) => {
-      row.querySelectorAll('[data-name]').forEach((field) => {
-        field.name = `items[${index}][${field.dataset.name}]`;
-        if (field.type === 'checkbox') {
-          field.value = 1;
-        }
+    itemsWrapper.querySelectorAll('.item-row').forEach((row, index) => {
+      row.querySelectorAll('[data-name]').forEach(field => field.name = `items[${index}][${field.dataset.name}]`);
+      row.querySelectorAll('[data-custodia-id] [data-campo]').forEach(field => {
+        const id = field.closest('[data-custodia-id]').dataset.custodiaId;
+        field.name = `items[${index}][resoluciones][${id}][${field.dataset.campo}]`;
       });
     });
+    actualizarValidacion();
   }
 
   function addItem(defaults = {}) {
@@ -335,94 +351,89 @@
       campo.id += '-' + siguienteFila;
       label.htmlFor = campo.id;
     });
-    const productoSelect = clone.querySelector('[data-name="producto_codigo"]');
-    const bodegaSelect = clone.querySelector('[data-name="bodega_id"]');
-    const cantidadInput = clone.querySelector('[data-name="cantidad_asignada"]');
-    const reemplazoInput = clone.querySelector('[data-name="es_reemplazo"]');
-    const fechaDanioInput = clone.querySelector('[data-name="fecha_dano"]');
+    const producto = clone.querySelector('[data-name="producto_codigo"]');
+    const bodega = clone.querySelector('[data-name="bodega_id"]');
+    const tipo = clone.querySelector('[data-name="stock_tipo"]');
+    const contenedor = clone.querySelector('[data-custodias]');
+    if (defaults.bodega_id) bodega.value = defaults.bodega_id;
+    if (defaults.stock_tipo) tipo.value = defaults.stock_tipo;
 
-    const tipoSelect = clone.querySelector('[data-name="stock_tipo"]');
-    const anteriorSelect = clone.querySelector('[data-name="asignacion_anterior_id"]');
-    const contenedorAnterior = clone.querySelector('[data-reemplazo-anterior]');
-    if (defaults.bodega_id) bodegaSelect.value = defaults.bodega_id;
-    if (defaults.stock_tipo) tipoSelect.value = defaults.stock_tipo;
-    if (defaults.cantidad_asignada) cantidadInput.value = defaults.cantidad_asignada;
-    if (typeof defaults.es_reemplazo !== 'undefined') reemplazoInput.checked = defaults.es_reemplazo == 1 || defaults.es_reemplazo === true;
-    if (defaults.fecha_dano) fechaDanioInput.value = defaults.fecha_dano;
-
-    let consultaAnterior;
-    async function cargarAnteriores(seleccionada = '') {
-      consultaAnterior?.abort();
-      contenedorAnterior.hidden = !reemplazoInput.checked;
-      anteriorSelect.disabled = !reemplazoInput.checked;
-      anteriorSelect.required = reemplazoInput.checked;
-      anteriorSelect.replaceChildren(new Option('Seleccionar asignación', ''));
-      if (!reemplazoInput.checked || !colaboradorSelect.value || !productoSelect.value) return;
-
-      consultaAnterior = new AbortController();
-      const parametros = new URLSearchParams({
-        colaborador_codigo: colaboradorSelect.value,
-        producto_codigo: productoSelect.value,
-      });
-
+    let consulta;
+    async function cargarAnteriores(resoluciones = {}) {
+      consulta?.abort();
+      contenedor.replaceChildren();
+      clone.dataset.estado = '';
+      if (!colaboradorSelect.value || !producto.value) {
+        actualizarValidacion();
+        return;
+      }
+      clone.dataset.estado = 'consultando';
+      contenedor.textContent = 'Consultando custodias activas…';
+      actualizarValidacion();
+      consulta = new AbortController();
+      const parametros = new URLSearchParams({ colaborador_codigo: colaboradorSelect.value, producto_codigo: producto.value });
       try {
-        const response = await fetch(urlActivas + '?' + parametros, {
-          headers: { Accept: 'application/json' },
-          signal: consultaAnterior.signal,
+        const respuesta = await fetch(urlActivas + '?' + parametros, {
+          headers: { Accept: 'application/json' }, signal: consulta.signal,
         });
-        if (!response.ok) throw new Error('No se pudieron consultar las asignaciones.');
-        const { data } = await response.json();
-        data.filter(item => String(item.bodega_id) === bodegaSelect.value).forEach(item => {
-          const fecha = item.fecha ? item.fecha.slice(0, 10) : '';
-          anteriorSelect.add(new Option('#' + item.id + ' · ' + fecha + ' · ' + item.cantidad_activa + ' disponibles', item.id));
+        if (!respuesta.ok) throw new Error();
+        const { data, bloqueada } = await respuesta.json();
+        contenedor.replaceChildren();
+        clone.dataset.estado = bloqueada ? 'bloqueada' : '';
+        if (bloqueada) contenedor.textContent = 'Una custodia anterior requiere atención de una persona autorizada.';
+        data.forEach(item => {
+          const ficha = document.querySelector('#custodia-template').content.firstElementChild.cloneNode(true);
+          ficha.dataset.custodiaId = item.id;
+          ficha.querySelector('[data-custodia-titulo]').textContent =
+            `Custodia del ${item.fecha} · ${item.bodega ?? 'Bodega sin identificar'} · ${item.cantidad_activa} unidad(es)`;
+          ficha.querySelectorAll('[data-campo]').forEach(campo => {
+            campo.value = resoluciones[item.id]?.[campo.dataset.campo] ?? '';
+          });
+          configurarCondicion(ficha.querySelector('[data-condicion]'));
+          contenedor.append(ficha);
         });
-        if (seleccionada) anteriorSelect.value = seleccionada;
+        renumberRows();
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          anteriorSelect.replaceChildren(new Option('No se pudieron consultar las asignaciones', ''));
-        }
+        if (error.name === 'AbortError') return;
+        clone.dataset.estado = 'bloqueada';
+        const reintentar = document.createElement('button');
+        reintentar.type = 'button';
+        reintentar.className = 'underline';
+        reintentar.textContent = 'Volver a consultar';
+        reintentar.addEventListener('click', () => cargarAnteriores(resoluciones));
+        contenedor.replaceChildren('La consulta de custodias falló. ', reintentar);
+        actualizarValidacion();
       }
     }
 
-    function actualizarProductos(seleccionado = productoSelect.value) {
-      buildProductoOptions(productoSelect, bodegaSelect.value, tipoSelect.value, seleccionado);
-      cargarAnteriores();
+    function actualizarProductos() {
+      const seleccionado = producto.value;
+      buildProductoOptions(producto, bodega.value, tipo.value, seleccionado);
+      if (producto.value !== seleccionado) cargarAnteriores();
     }
-
-    buildProductoOptions(productoSelect, bodegaSelect.value, tipoSelect.value, defaults.producto_codigo);
-    cargarAnteriores(defaults.asignacion_anterior_id);
-    productoSelect.addEventListener('change', () => cargarAnteriores());
-    reemplazoInput.addEventListener('change', () => cargarAnteriores());
-    bodegaSelect.addEventListener('change', () => actualizarProductos());
-    tipoSelect.addEventListener('change', () => actualizarProductos());
+    buildProductoOptions(producto, bodega.value, tipo.value, defaults.producto_codigo);
+    producto.addEventListener('change', () => cargarAnteriores());
+    bodega.addEventListener('change', actualizarProductos);
+    tipo.addEventListener('change', actualizarProductos);
     const actualizarColaborador = () => cargarAnteriores();
     colaboradorSelect.addEventListener('change', actualizarColaborador);
-
     clone.querySelector('.remove-item').addEventListener('click', () => {
-      consultaAnterior?.abort();
+      consulta?.abort();
       colaboradorSelect.removeEventListener('change', actualizarColaborador);
       clone.remove();
-
-      if (!itemsWrapper.querySelector('.item-row')) {
-        addItem();
-      }
-
+      if (!itemsWrapper.children.length) addItem();
       renumberRows();
     });
 
     itemsWrapper.appendChild(clone);
     renumberRows();
-    if (window.enhanceSearchableSelect) window.enhanceSearchableSelect(productoSelect);
+    if (window.enhanceSearchableSelect) window.enhanceSearchableSelect(producto);
+    cargarAnteriores(defaults.resoluciones);
   }
 
   addItemBtn.addEventListener('click', () => addItem());
-
-  const oldItems = @json(old('items', []));
-
-  if (oldItems.length) {
-    oldItems.forEach((item) => addItem(item));
-  } else {
-    addItem();
-  }
+  const oldItems = Object.values(@json(old('items', [])));
+  if (oldItems.length) oldItems.forEach(addItem);
+  else addItem();
 </script>
 @endsection

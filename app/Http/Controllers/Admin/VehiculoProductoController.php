@@ -18,7 +18,6 @@ use App\Models\Vehiculo;
 use App\Models\VehiculoProductoAsignacion;
 use App\Models\VehiculoProductoArchivo;
 use App\Services\BodegaAccessService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -464,27 +463,10 @@ class VehiculoProductoController extends Controller
         int $cantidadCerrar,
         ?string $observaciones
     ): AlertaReemplazo {
-        $costoUnitario = $this->ultimoCostoUnitario($asignacion->producto_codigo);
-        $vidaUtilMeses = (int) ($asignacion->producto->vida_util_meses ?? 0);
-
-        $fechaAsignacion = $asignacion->fecha
-            ? Carbon::parse($asignacion->fecha)->startOfDay()
-            : now()->startOfDay();
-
-        $fechaDano = now()->startOfDay();
-
-        $mesesUsados = $fechaAsignacion->diffInMonths($fechaDano);
-        $mesesRestantes = $vidaUtilMeses > 0
-            ? max(0, $vidaUtilMeses - $mesesUsados)
-            : 0;
-
-        $costoTotal = $costoUnitario !== null
-            ? round($costoUnitario * $cantidadCerrar, 2)
-            : null;
-
-        $montoCobro = ($costoTotal !== null && $vidaUtilMeses > 0)
-            ? round($costoTotal * ($mesesRestantes / $vidaUtilMeses), 2)
-            : 0;
+        $vida = $asignacion->producto?->vida_util_meses;
+        $fecha = $asignacion->fecha;
+        $mesesRestantes = $fecha && $vida
+            ? max(0, $vida - (int) $fecha->diffInMonths(now())) : 0;
 
         return AlertaReemplazo::create([
             'colaborador_codigo' => $colaboradorCodigo,
@@ -492,81 +474,14 @@ class VehiculoProductoController extends Controller
             'vehiculo_vin' => $asignacion->vehiculo_vin,
             'vehiculo_producto_asignacion_id' => $asignacion->id,
             'cantidad' => $cantidadCerrar,
-            'costo_estimado' => $costoTotal,
             'registrado_por_user_id' => auth()->id(),
-            'fecha_asignacion_anterior' => $asignacion->fecha ?? now(),
+            'fecha_asignacion_anterior' => $fecha ?? now(),
             'fecha_dano_reemplazo' => now(),
-            'vida_util_meses' => $vidaUtilMeses,
+            'vida_util_meses' => $vida ?? 0,
             'meses_restantes' => $mesesRestantes,
-            'descuento_aplicable' => $montoCobro > 0,
-            'estado' => 'pendiente',
-            'detalle' => $this->detalleAlertaVehiculo(
-                asignacion: $asignacion,
-                observaciones: $observaciones,
-                costoUnitario: $costoUnitario,
-                cantidadCerrar: $cantidadCerrar,
-                vidaUtilMeses: $vidaUtilMeses,
-                mesesRestantes: $mesesRestantes,
-                montoCobro: $montoCobro
-            ),
+            'descuento_aplicable' => false,
+            'estado' => AlertaReemplazo::ESTADO_PENDIENTE,
+            'detalle' => filled($observaciones) ? $observaciones : 'Daño por mal uso registrado en una refacción.',
         ]);
     }
-
-    private function ultimoCostoUnitario(string $productoCodigo): ?float
-    {
-        if (!Schema::hasTable('compra_detalles') || !Schema::hasColumn('compra_detalles', 'precio_unitario')) {
-            return null;
-        }
-
-        $query = DB::table('compra_detalles as cd')
-            ->where('cd.producto_codigo', $productoCodigo);
-
-        if (Schema::hasTable('compras') && Schema::hasColumn('compra_detalles', 'compra_id')) {
-            $query->leftJoin('compras as c', 'c.id', '=', 'cd.compra_id');
-
-            if (Schema::hasColumn('compras', 'fecha_compra')) {
-                $query->orderByDesc('c.fecha_compra');
-            }
-        }
-
-        $precio = $query
-            ->orderByDesc('cd.id')
-            ->value('cd.precio_unitario');
-
-        return $precio !== null ? (float) $precio : null;
-    }
-
-    private function detalleAlertaVehiculo(
-        VehiculoProductoAsignacion $asignacion,
-        ?string $observaciones,
-        ?float $costoUnitario,
-        int $cantidadCerrar,
-        int $vidaUtilMeses,
-        int $mesesRestantes,
-        float $montoCobro
-    ): string {
-        $vehiculo = trim(
-            ($asignacion->vehiculo->marca ?? 'Vehículo') .
-            ' ' .
-            ($asignacion->vehiculo->placa ?? '') .
-            ' VIN ' .
-            $asignacion->vehiculo_vin
-        );
-
-        $producto = $asignacion->producto->nombre ?? $asignacion->producto_codigo;
-
-        $costo = $costoUnitario !== null
-            ? ' Costo unitario según última compra: Q ' . number_format($costoUnitario, 2) . '.'
-            : ' No se encontró precio/costo histórico suficiente para calcular costo automático.';
-
-        return 'Daño por mal uso registrado desde Productos del vehículo.'
-            . ' Vehículo: ' . $vehiculo . '.'
-            . ' Producto/refacción: ' . $producto . '.'
-            . ' Cantidad dañada: ' . $cantidadCerrar . '.'
-            . ' Vida útil: ' . $vidaUtilMeses . ' meses.'
-            . ' Meses restantes: ' . $mesesRestantes . '.'
-            . ' Cobro calculado: Q ' . number_format($montoCobro, 2) . '.'
-            . $costo
-            . ($observaciones ? ' Observaciones: ' . $observaciones : '');
-    }
-}   
+}

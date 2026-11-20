@@ -67,10 +67,10 @@
 
         <button type="button"
                 class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold"
-                :class="expedienteTab === 'descuentos' ? 'bg-rose-700 text-white' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'"
-                @click="expedienteTab = 'descuentos'">
-          Descuentos RRHH
-          <span class="ml-1 rounded-full bg-white/30 px-2 py-0.5" x-text="cobros.length"></span>
+                :class="expedienteTab === 'incidencias' ? 'bg-rose-700 text-white' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'"
+                @click="expedienteTab = 'incidencias'">
+          Incidencias
+          <span class="ml-1 rounded-full bg-white/30 px-2 py-0.5" x-text="incidencias.length"></span>
         </button>
       </div>
     </div>
@@ -120,15 +120,10 @@
             </button>
 
             <button type="button"
-                    @click="expedienteTab = 'descuentos'"
+                    @click="expedienteTab = 'incidencias'"
                     class="text-left rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 hover:bg-rose-100">
-              <div class="text-xs font-semibold text-rose-700">Descuentos RRHH</div>
-              <div class="mt-1 text-2xl font-bold text-rose-950">
-                Q <span x-text="money(totalCobros)"></span>
-              </div>
-              <div class="text-sm text-rose-800">
-                Casos: <span class="font-semibold" x-text="cobros.length"></span>
-              </div>
+              <div class="text-xs font-semibold text-rose-700">Incidencias</div>
+              <div class="mt-1 text-2xl font-bold text-rose-950" x-text="incidencias.length"></div>
             </button>
           </div>
 
@@ -431,133 +426,19 @@
           </div>
         </div>
 
-        {{-- TAB DESCUENTOS --}}
-        <div x-show="expedienteTab === 'descuentos'">
-          <div class="rounded-xl border border-rose-200 bg-white overflow-hidden">
-            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-rose-200 bg-rose-50 px-3 py-2">
-              <div>
-                <h3 class="text-sm font-semibold text-rose-950">Descuentos pendientes de revisión RRHH</h3>
-                <p class="text-xs text-rose-700">
-                  Montos sugeridos por daño o reemplazo antes de completar la vida útil.
-                </p>
-              </div>
-
-              <div class="flex items-center gap-2">
-                <div class="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-right">
-                  <div class="text-[11px] font-semibold text-rose-700">Total sugerido</div>
-                  <div class="text-sm font-bold text-rose-950">
-                    Q <span x-text="money(totalCobros)"></span>
-                  </div>
-                </div>
-
-                <div class="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-right">
-                  <div class="text-[11px] font-semibold text-rose-700">Casos</div>
-                  <div class="text-sm font-bold text-rose-950" x-text="cobros.length"></div>
-                </div>
-              </div>
-            </div>
-
-            <template x-if="cobros.length === 0">
-              <div class="px-3 py-3 text-sm text-slate-600">
-                Este colaborador no tiene descuentos pendientes de revisión.
-              </div>
+        <section x-show="expedienteTab === 'incidencias'" class="rounded-xl border border-slate-200 bg-white p-4">
+          <h3 class="font-bold text-slate-900">Incidencias registradas</h3>
+          <p class="mt-2 text-sm text-slate-600" x-show="!incidencias.length">Sin incidencias disponibles.</p>
+          <ul class="divide-y divide-slate-200">
+            <template x-for="(incidencia, index) in incidencias" :key="index">
+              <li class="py-3 text-sm">
+                <p class="font-semibold" x-text="(incidencia.producto || incidencia.producto_codigo) + ' · ' + incidencia.motivo"></p>
+                <p x-text="(incidencia.fecha_incidente || 'Fecha desconocida') + ' · ' + incidencia.estado"></p>
+                <a x-show="incidencia.url" :href="incidencia.url" class="underline">Ver incidencia</a>
+              </li>
             </template>
-
-            <template x-if="cobros.length > 0">
-              <div>
-                <div class="overflow-x-auto">
-                  <table class="w-full text-xs">
-                    <thead class="bg-slate-100 text-slate-600">
-                      <tr>
-                        <th class="px-3 py-2 text-left font-semibold">Artículo</th>
-                        <th class="px-3 py-2 text-left font-semibold">Razón</th>
-                        <th class="px-3 py-2 text-left font-semibold">Monto sugerido</th>
-                        <th class="px-3 py-2 text-left font-semibold">Estado</th>
-                        <th class="px-3 py-2 text-right font-semibold">Acción</th>
-                      </tr>
-                    </thead>
-
-                    <tbody class="divide-y divide-slate-200">
-                      <template x-for="cobro in cobrosPaginados()" :key="'cobro-visible-' + cobro._index">
-                        <tr class="align-top hover:bg-slate-50">
-                          <td class="px-3 py-2">
-                            <div class="font-semibold text-slate-900" x-text="cobro.producto || '—'"></div>
-                            <div class="text-[11px] text-slate-500">
-                              Código: <span x-text="cobro.producto_codigo || '—'"></span>
-                            </div>
-                          </td>
-
-                          <td class="px-3 py-2 text-slate-700" x-text="razonCobro(cobro)"></td>
-
-                          <td class="px-3 py-2">
-                            <template x-if="Number(cobro.monto_cobro || 0) > 0">
-                              <div class="font-bold text-rose-700">
-                                Q <span x-text="money(cobro.monto_cobro)"></span>
-                              </div>
-                            </template>
-
-                            <template x-if="Number(cobro.monto_cobro || 0) <= 0">
-                              <div>
-                                <div class="font-semibold text-slate-700">Q 0.00</div>
-                                <div class="text-[11px] text-slate-500">Sin cobro</div>
-                              </div>
-                            </template>
-                          </td>
-
-                          <td class="px-3 py-2">
-                            <span class="inline-flex rounded-full px-2 py-1 text-[11px] font-semibold"
-                                  :class="badgeCobro(cobro.estado)"
-                                  x-text="estadoCobroTexto(cobro.estado)">
-                            </span>
-                          </td>
-
-                          <td class="px-3 py-2 text-right">
-                            <button type="button"
-                                    class="rounded-lg bg-rose-700 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-rose-800"
-                                    @click="seleccionarCobroRRHH(cobro._index); abrirCentroRRHH();">
-                              Revisar
-                            </button>
-                          </td>
-                        </tr>
-                      </template>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="flex flex-col gap-1 border-t border-rose-100 bg-rose-50 px-3 py-1.5 md:flex-row md:items-center md:justify-between">
-                  <div class="text-[10px] text-rose-700">
-                    <span x-text="cobrosPaginados().length"></span>
-                    de
-                    <span x-text="cobros.length"></span>
-                    registros
-                  </div>
-
-                  <template x-if="totalPaginasCobros() > 1">
-                    <div class="flex items-center gap-1">
-                      <button type="button"
-                              class="rounded-md border border-rose-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-40"
-                              :disabled="cobrosPage <= 1"
-                              @click="cambiarPaginaCobros(cobrosPage - 1)">
-                        ‹
-                      </button>
-
-                      <div class="px-1 text-[10px] font-semibold text-rose-800">
-                        <span x-text="cobrosPage"></span>/<span x-text="totalPaginasCobros()"></span>
-                      </div>
-
-                      <button type="button"
-                              class="rounded-md border border-rose-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-40"
-                              :disabled="cobrosPage >= totalPaginasCobros()"
-                              @click="cambiarPaginaCobros(cobrosPage + 1)">
-                        ›
-                      </button>
-                    </div>
-                  </template>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
+          </ul>
+        </section>
 
       </div>
     </div>

@@ -394,7 +394,6 @@
   </div>
 
   @include('admin.colaboradores.Modals.expediente-modal')
-  @include('admin.colaboradores.Modals.rrhh-revision-modal')
 </div>
 
 @include('admin.colaboradores.Modals.expediente-script')
