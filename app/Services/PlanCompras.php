@@ -34,18 +34,21 @@ class PlanCompras
         $planes = ($bloquear ? $planes->lockForUpdate() : $planes)->get()->unique('consolidado_linea_id')->keyBy('consolidado_linea_id');
         $recibidas = ($bloquear ? $recibidas->lockForUpdate() : $recibidas)->get()->groupBy('consolidado_linea_id');
 
-        return $lineas->map(function ($fila) use ($planes, $recibidas) {
-            $plan = $planes->get($fila->id);
+        $planesInternos = $consolidados->keyBy('id')->map->plan_compra;
+
+        return $lineas->map(function ($fila) use ($planes, $recibidas, $planesInternos) {
+            $anterior = $planes->get($fila->id);
+            $plan = $planesInternos->get($fila->consolidado_id)[$fila->id] ?? null;
             $comprada = (int) $recibidas->get($fila->id, collect())->sum('cantidad');
-            $decidida = $plan ? (int) $plan->cantidad_decidida : null;
-            $considerada = $plan ? (int) $plan->existencia_considerada : null;
+            $decidida = $plan['compra'] ?? ($anterior ? (int) $anterior->cantidad_decidida : null);
+            $considerada = $plan['existencia'] ?? ($anterior ? (int) $anterior->existencia_considerada : null);
 
             return [
                 'id' => $fila->id, 'consolidado_id' => $fila->consolidado_id,
                 'codigo' => $fila->producto_codigo, 'producto' => $fila->nombre, 'aprobada' => (int) $fila->cantidad,
                 'comprada' => $comprada, 'considerada' => $considerada, 'decidida' => $decidida,
                 'pendiente' => max(0, ($decidida ?? $fila->cantidad) - $comprada),
-                'sin_cobertura' => $plan ? max(0, $fila->cantidad - $considerada - $decidida) : 0,
+                'sin_cobertura' => $decidida !== null ? max(0, $fila->cantidad - $considerada - $decidida) : 0,
             ];
         });
     }
@@ -57,7 +60,7 @@ class PlanCompras
             ->join('proveedores', 'proveedores.id', '=', 'compras.proveedor_id')
             ->orderByDesc('compras.fecha_compra')->orderByDesc('compras.id')
             ->get(['compra_consolidado.consolidado_id', 'compras.id', 'compras.no_factura', 'compras.fecha_compra',
-                'compras.distribucion_confirmada_en', 'proveedores.nombre as proveedor'])->groupBy('consolidado_id');
+                'compras.distribucion_confirmada_en', 'compras.autorizado_por', 'proveedores.nombre as proveedor'])->groupBy('consolidado_id');
     }
 
     public function conciliacionesPendientes(Collection $consolidados, bool $bloquear = false): bool
@@ -69,6 +72,14 @@ class PlanCompras
         return ($bloquear ? $consulta->lockForUpdate() : $consulta)->first(['compras.id']) !== null;
     }
 
+    public function puedeCerrar(Consolidado $consolidado, bool $bloquear = false): bool
+    {
+        $seleccion = collect([$consolidado]);
+
+        return !$this->conciliacionesPendientes($seleccion, $bloquear)
+            && !$this->avance($seleccion, $bloquear)->contains(fn ($fila) => $fila['pendiente'] > 0 || $fila['sin_cobertura'] > 0);
+    }
+
     public function saldoCentral(Collection $lineas, int $bodega): Collection
     {
         return DB::table('inventarios')->where('bodega_id', $bodega)->whereIn('stock_tipo', ['nuevo', 'usado'])
@@ -76,9 +87,9 @@ class PlanCompras
             ->select('producto_codigo')->selectRaw('SUM(cantidad) AS disponible')->pluck('disponible', 'producto_codigo');
     }
 
-    public function sugerencias(Collection $seleccion, Collection $activas, Collection $saldo): Collection
+    public function sugerencias(Collection $seleccion, Collection $activas, Collection $saldo, bool $estimarStock = true): Collection
     {
-        $libre = $this->saldoParaPlan($activas, $saldo)->all();
+        $libre = $estimarStock ? $this->saldoParaPlan($activas, $saldo)->all() : [];
 
         return $seleccion->map(function ($fila) use ($saldo, &$libre) {
             $codigo = $fila['codigo'];
@@ -94,6 +105,31 @@ class PlanCompras
                 'sugerida' => $fila['decidida'] === null ? $fila['pendiente'] - $considerada : $fila['pendiente'],
             ];
         });
+    }
+
+    public function resumen(Collection $lineas, Collection $facturas, ?Collection $saldo): Collection
+    {
+        $facturasPorId = $facturas->collapse()->keyBy('id');
+        $reparto = DB::table('compra_detalle_consolidado as reparto')
+            ->join('compra_detalles as detalle', 'detalle.id', '=', 'reparto.compra_detalle_id')
+            ->whereIn('reparto.consolidado_linea_id', $lineas->pluck('id'))
+            ->get(['reparto.consolidado_linea_id', 'detalle.compra_id', 'reparto.cantidad'])->groupBy('consolidado_linea_id');
+
+        return $lineas->groupBy('codigo')->map(function ($filas, $codigo) use ($saldo, $facturasPorId, $reparto) {
+            $comprada = (int) $filas->sum('comprada');
+            $pendiente = $saldo !== null ? (int) $filas->sum('sugerida') : null;
+            $facturadas = $filas->flatMap(fn ($fila) => $reparto->get($fila['id'], collect()))->groupBy('compra_id');
+
+            return [
+                'codigo' => $codigo, 'producto' => $filas->first()['producto'],
+                'aprobada' => (int) $filas->sum('aprobada'), 'central' => $saldo !== null ? (int) $saldo->get($codigo, 0) : null,
+                'compra_total' => $pendiente !== null ? $comprada + $pendiente : null,
+                'comprada' => $comprada, 'pendiente' => $pendiente, 'sin_cobertura' => $filas->sum('sin_cobertura'),
+                'facturas' => $facturadas->map(fn ($grupo, $id) => [
+                    'factura' => $facturasPorId->get($id), 'cantidad' => $grupo->sum('cantidad'),
+                ])->filter(fn ($registro) => $registro['factura'] !== null)->values(),
+            ];
+        })->sortBy('producto', SORT_NATURAL | SORT_FLAG_CASE)->values();
     }
 
     private function saldoParaPlan(Collection $activas, Collection $saldo): Collection

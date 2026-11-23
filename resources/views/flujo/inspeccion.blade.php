@@ -1,11 +1,12 @@
 <x-sistema.pagina :titulo="'Inspección de '.$inspeccion->colaborador?->nombre" :volver="route('flujo.inspecciones.index')">
+    @include('flujo.accesos')
     <x-sistema.panel titulo="Datos registrados">
-        <dl class="grid gap-3 text-sm sm:grid-cols-2">
+        <dl class="flujo-dato">
             <div><dt class="font-bold">Fecha</dt><dd>{{ $inspeccion->fecha->format('d/m/Y') }}</dd></div>
             <div><dt class="font-bold">Región</dt><dd>{{ $inspeccion->region?->nombre }}</dd></div>
             <div><dt class="font-bold">Supervisor</dt><dd>{{ $inspeccion->supervisor?->name }}</dd></div>
             <div><dt class="font-bold">Puesto</dt><dd>{{ $inspeccion->puesto }}</dd></div>
-            <div><dt class="font-bold">Estado</dt><dd>{{ \App\Models\Consolidado::ESTADOS[$inspeccion->consolidados->first()?->estado] ?? 'Recibido' }}</dd></div>
+            <div><dt class="font-bold">Estado</dt><dd>@include('flujo.estado', ['estado' => $inspeccion->consolidados->first()?->estado ?? 'recibido'])</dd></div>
         </dl>
     </x-sistema.panel>
     <x-sistema.panel titulo="Productos solicitados">

@@ -101,7 +101,7 @@ class CompraController extends Controller
         $puedeDistribuir = app(Permisos::class)->ruta($usuario, $this->rutaPrefijo().'.compras.create')
             && $acceso->puede($usuario, 'compras') && $acceso->central($usuario);
         $candidatos = $puedeDistribuir
-            ? Consolidado::where('estado', 'aprobado')->orderBy('nombre')->get(['id', 'nombre']) : collect();
+            ? Consolidado::where('estado', 'aprobado')->orderBy('nombre')->get(['id', 'nombre', 'plan_compra']) : collect();
         $facturas = $this->plan->facturas($candidatos);
         $consolidados = $candidatos->reject(fn ($fila) => $facturas->get($fila->id, collect())->contains('distribucion_confirmada_en', null));
         $pendientes = $this->plan->avance($consolidados)->where('pendiente', '>', 0)->groupBy('consolidado_id');
@@ -157,6 +157,11 @@ class CompraController extends Controller
         $valores = $campos->preparar($request, 'compras', true);
         if (!empty($data['consolidados']) || !empty($data['distribucion'])) {
             app(FlujoAcceso::class)->autorizar($request->user(), 'compras');
+        }
+        if (!empty($data['consolidados']) && app(Presentacion::class)->nativos('compras')['autorizado_por']['visible']) {
+            $request->validate(['autorizado_por' => ['required']], [
+                'autorizado_por.required' => 'Indica quién autorizó la compra del consolidado.',
+            ]);
         }
         [$lineas, $total] = $this->lineasCompra($data);
         foreach ($lineas as &$linea) {
@@ -425,7 +430,7 @@ class CompraController extends Controller
         $acceso = app(FlujoAcceso::class);
         $usuario = auth()->user();
         $consolidados = $acceso->puede($usuario, 'consolidados') || $acceso->puede($usuario, 'compras')
-            ? Consolidado::whereIn('id', $this->vinculos($id))->orderBy('id')->get(['id', 'nombre']) : collect();
+            ? Consolidado::whereIn('id', $this->vinculos($id))->orderBy('id')->get(['id', 'nombre', 'plan_compra']) : collect();
         $puedeVerConsolidado = $acceso->puede($usuario, 'consolidados');
         $distribucion = DB::table('compra_detalle_consolidado as distribucion')->whereIn('compra_detalle_id', $detalles->pluck('id'))
             ->join('consolidado_lineas as linea', 'linea.id', '=', 'distribucion.consolidado_linea_id')

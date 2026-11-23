@@ -32,6 +32,7 @@ Route::middleware(['auth', 'auto.logout'])->prefix('flujo')->name('flujo.')->gro
         ->whereNumber('consolidado')->name('consolidados.transicion');
 
     Route::get('necesidades', [PlanComprasController::class, 'index'])->name('compras.index');
+    Route::post('necesidades/plan', [PlanComprasController::class, 'guardarPlan'])->name('compras.plan');
     Route::post('constancias', [PlanComprasController::class, 'store'])->name('compras.constancia');
     Route::get('constancias/{constancia}/documento', [PlanComprasController::class, 'documento'])->name('compras.documento');
 

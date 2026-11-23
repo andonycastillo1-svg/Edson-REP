@@ -1,4 +1,5 @@
 <x-sistema.pagina :titulo="isset($importacion) && $importacion->confirmada_en ? 'Importación registrada' : 'Vista previa de asignaciones'" :volver="route('flujo.importar.index')">
+    @include('flujo.accesos')
     @php
         $errores = $errores ?? [];
         $prefijo = \App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo());
@@ -6,7 +7,7 @@
     @if(isset($importacion) && $importacion->confirmada_en)
         <x-sistema.panel titulo="Hojas de asignación">
             @rutaDisponible($prefijo.'.asignaciones.pdf')
-                <a class="ui-btn-secondary mb-3" href="{{ route('flujo.importar.hojas', $importacion) }}">Descargar hojas imprimibles (ZIP)</a>
+                <a class="ui-btn-primary mb-3" href="{{ route('flujo.importar.hojas', $importacion) }}">Descargar hojas imprimibles (ZIP)</a>
             @endrutaDisponible
             <ul class="divide-y divide-slate-200 text-sm">
                 @foreach($importacion->entregas as $entrega)
@@ -23,13 +24,23 @@
             </ul>
         </x-sistema.panel>
     @else
-        <x-sistema.panel :titulo="'Bodega central · '.$bodega->nombre">
+        <x-sistema.panel>
+            <div class="flujo-cabecera-panel">
+                <h2 class="text-lg font-bold">{{ $errores ? 'Cambios necesarios' : 'Archivo listo para importar' }}</h2>
+                <span class="ui-badge ui-badge-info">Salida de {{ $bodega->nombre }}</span>
+            </div>
             @if($errores)
                 <p class="ui-alert-error" role="alert">Corrige el Excel y cárgalo de nuevo. El archivo se importa completo cuando todas las filas son válidas.</p>
                 @foreach($errores[1] ?? [] as $mensaje)<p class="py-2 text-sm">{{ $mensaje }}</p>@endforeach
+                <a class="ui-btn-secondary mt-3" href="{{ route('flujo.importar.index') }}">Cargar archivo corregido</a>
             @else
-                <p class="mb-3 text-sm">{{ count($filas) }} filas válidas. Al confirmar se registrará una entrega por colaborador y se actualizará el inventario.</p>
-                <form method="POST" action="{{ route('flujo.importar.confirmar', $importacion) }}">
+                <dl class="flujo-dato mb-4">
+                    <div><dt>Filas válidas</dt><dd>{{ count($filas) }}</dd></div>
+                    <div><dt>Colaboradores</dt><dd>{{ collect($filas)->pluck('colaborador_codigo')->unique()->count() }}</dd></div>
+                </dl>
+                <p class="mb-3 text-sm">Al confirmar se registra una asignación por colaborador y se descuenta el inventario.</p>
+                <form method="POST" action="{{ route('flujo.importar.confirmar', $importacion) }}"
+                      data-confirmar="¿Registrar estas asignaciones y descontar las cantidades del inventario de central?">
                     @csrf
                     <button class="ui-btn-primary">Confirmar importación</button>
                 </form>
@@ -37,8 +48,8 @@
         </x-sistema.panel>
     @endif
     <x-sistema.panel titulo="Filas de la hoja Asignaciones">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
+        <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Filas de asignación">
+            <table class="ui-table min-w-[580px]">
                 <thead class="bg-slate-50"><tr><th class="p-3">Fila</th><th class="p-3">Colaborador</th><th class="p-3">Producto</th><th class="p-3">Cantidad</th><th class="p-3">Fecha</th><th class="p-3">Motivo</th>@if($errores)<th class="p-3">Corrección necesaria</th>@endif</tr></thead>
                 <tbody class="divide-y divide-slate-200">
                     @foreach($filas as $numero => $fila)

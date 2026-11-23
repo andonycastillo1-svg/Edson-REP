@@ -8,14 +8,14 @@ class Consolidado extends Model
 {
     public const ESTADOS = [
         'borrador' => 'Borrador', 'enviado' => 'Enviado a coordinación', 'revision' => 'En revisión',
-        'aprobado' => 'Aprobado', 'correccion' => 'Devuelto para corrección', 'cerrado' => 'Cerrado',
+        'aprobado' => 'Aprobado', 'correccion' => 'Devuelto para corrección', 'cerrado' => 'Compras cerradas',
     ];
 
     protected $table = 'consolidados';
 
     protected $fillable = ['coordinador_id', 'operador_id', 'nombre', 'desde', 'hasta', 'estado', 'aprobado_por', 'aprobado_en'];
 
-    protected $casts = ['desde' => 'date', 'hasta' => 'date', 'aprobado_en' => 'datetime'];
+    protected $casts = ['desde' => 'date', 'hasta' => 'date', 'aprobado_en' => 'datetime', 'plan_compra' => 'array'];
 
     public function coordinador() { return $this->belongsTo(User::class); }
     public function aprobador() { return $this->belongsTo(User::class, 'aprobado_por'); }

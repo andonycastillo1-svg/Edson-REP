@@ -17,7 +17,7 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="p-4 rounded-2xl bg-white border border-slate-200">
             <div class="text-slate-500 text-sm">Proyecto</div>
             <div class="font-semibold text-slate-800">{{ $compra->proyecto ?? '—' }}</div>
@@ -26,6 +26,13 @@
             <div class="text-slate-500 text-sm">Forma de pago</div>
             <div class="font-semibold text-slate-800">{{ $compra->forma_pago ?? '—' }}</div>
         </div>
+        @php($autorizacion = app(\App\Sistema\Presentacion::class)->nativos('compras')['autorizado_por'])
+        @if($autorizacion['visible'])
+            <div class="p-4 rounded-2xl bg-white border border-slate-200">
+                <div class="text-slate-500 text-sm">{{ $autorizacion['etiqueta'] }}</div>
+                <div class="font-semibold text-slate-800">{{ $compra->autorizado_por ?? 'Sin registrar' }}</div>
+            </div>
+        @endif
         <div class="p-4 rounded-2xl bg-white border border-slate-200">
             <div class="text-slate-500 text-sm">Total factura</div>
             <div class="text-2xl font-bold text-slate-800">{{ number_format($compra->total_factura, 2) }}</div>

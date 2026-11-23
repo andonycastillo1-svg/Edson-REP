@@ -1,4 +1,4 @@
-@props(['modulo', 'registro' => null])
+@props(['modulo', 'registro' => null, 'ayudas' => []])
 @php($campos = app(\App\Sistema\Presentacion::class)->nativos($modulo))
 <div class="grid gap-3 sm:grid-cols-2">
     @foreach($campos as $clave => $campo)
@@ -10,7 +10,7 @@
                 @else
                     <input type="text" name="{{ $clave }}" maxlength="{{ $campo['max'] }}" value="{{ old($clave, $registro?->{$clave}) }}" class="mt-1 w-full rounded-xl border-slate-300 bg-white" @required($campo['obligatorio'] && $registro === null)>
                 @endif
-                @if($campo['ayuda'])<span class="mt-1 block text-xs font-normal text-slate-600">{{ $campo['ayuda'] }}</span>@endif
+                @if($campo['ayuda'] || isset($ayudas[$clave]))<span class="mt-1 block text-xs font-normal text-slate-600">{{ $campo['ayuda'] ?: $ayudas[$clave] }}</span>@endif
             </label>
         @endif
     @endforeach
