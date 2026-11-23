@@ -62,7 +62,7 @@ $preparar = function (string $codigo) use ($usuarios, $coordinador, $proveedor) 
 
     return [$consolidado, [
         'fecha_compra' => today()->toDateString(), 'no_factura' => $codigo, 'proveedor_tipo' => 'existente',
-        'proveedor_id' => $proveedor, 'forma_pago' => 'Al contado', 'producto_tipo' => ['existente'],
+        'proveedor_id' => $proveedor, 'autorizado_por' => 'Gerencia QA', 'forma_pago' => 'Al contado', 'producto_tipo' => ['existente'],
         'producto_codigo' => [$codigo], 'cantidad' => [4], 'precio_unitario' => ['9.00'],
         'consolidados' => [$consolidado->id], 'distribucion' => [$consolidado->id => [bin2hex($codigo) => 4]],
     ]];

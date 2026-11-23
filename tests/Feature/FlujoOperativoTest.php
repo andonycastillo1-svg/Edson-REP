@@ -195,7 +195,7 @@ class FlujoOperativoTest extends TestCase
 
         $factura = [
             'fecha_compra' => today()->toDateString(), 'no_factura' => 'QA-100', 'proveedor_tipo' => 'nuevo',
-            'proveedor_nombre' => 'Proveedor flujo', 'forma_pago' => 'Al contado', 'producto_tipo' => ['existente'],
+            'proveedor_nombre' => 'Proveedor flujo', 'autorizado_por' => 'Gerencia QA', 'forma_pago' => 'Al contado', 'producto_tipo' => ['existente'],
             'producto_codigo' => ['P-001'], 'cantidad' => [5], 'precio_unitario' => ['12.00'],
             'consolidados' => [$a->id, $b->id],
             'distribucion' => [$a->id => [bin2hex('P-001') => 2], $b->id => [bin2hex('P-001') => 3]],
@@ -387,6 +387,71 @@ class FlujoOperativoTest extends TestCase
         $this->assertDatabaseCount('movimientos', 0);
     }
 
+    public function test_resumen_totaliza_el_saldo_y_una_factura_compartida_una_sola_vez(): void
+    {
+        $a = $this->aprobado('Equipo norte', 8);
+        $b = $this->aprobado('Equipo sur', 7);
+        $this->stock('P-001', 4);
+        $ruta = route('flujo.compras.index', ['consolidados' => [$a->id, $b->id]]);
+        $this->actingAs($this->central)->get($ruta)->assertOk()->assertSee('Resumen por producto')
+            ->assertDontSee('Registrar constancia')->assertViewHas('resumen', fn ($filas) =>
+                $filas->sole()['central'] === 4 && $filas->sole()['compra_total'] === 11);
+        $this->get(route('flujo.compras.index', ['seleccion_manual' => 1]))->assertOk()
+            ->assertViewHas('resumen', fn ($filas) => $filas->isEmpty());
+
+        $datos = $this->datosCompra('REPARTO-06', ['P-001'], [6], [
+            'consolidados' => [$a->id, $b->id],
+            'distribucion' => [$a->id => [bin2hex('P-001') => 2], $b->id => [bin2hex('P-001') => 4]],
+        ]);
+        $this->postJson(route('operador.compras.store'), [...$datos, 'autorizado_por' => null])
+            ->assertUnprocessable()->assertJsonValidationErrors('autorizado_por');
+        $this->assertDatabaseCount('movimientos', 0);
+        $this->post(route('operador.compras.store'), $datos)->assertSessionHasNoErrors();
+
+        $this->get($ruta)->assertOk()->assertViewHas('resumen', function ($filas) {
+            $fila = $filas->sole();
+
+            return $fila['aprobada'] === 15 && $fila['central'] === 10 && $fila['compra_total'] === 11
+                && $fila['comprada'] === 6 && $fila['pendiente'] === 5
+                && $fila['facturas']->count() === 1 && (int) $fila['facturas']->first()['cantidad'] === 6;
+        });
+        $this->get(route('flujo.compras.index', ['consolidados' => [$a->id]]))->assertOk()
+            ->assertViewHas('resumen', fn ($filas) => $filas->sole()['comprada'] === 2
+                && (int) $filas->sole()['facturas']->sole()['cantidad'] === 2);
+        $this->get(route('operador.compras.show', DB::table('compras')->sole()->id))
+            ->assertOk()->assertSee('Autorizado por')->assertSee('Gerencia QA');
+        $this->assertDatabaseHas('compras', ['no_factura' => 'REPARTO-06', 'autorizado_por' => 'Gerencia QA']);
+        $this->assertDatabaseCount('constancias_gerencia', 0);
+        $this->assertDatabaseCount('movimientos', 1);
+    }
+
+    public function test_plan_interno_cubre_con_existencias_y_cerrar_compras_no_entrega_productos(): void
+    {
+        $consolidado = $this->aprobado('Reposición de campo', 7);
+        $linea = $consolidado->lineas()->sole();
+        $this->stock('P-001', 7);
+        $url = route('flujo.compras.plan');
+        $datos = ['consolidados' => [$consolidado->id], 'propuestas' => [
+            $linea->id => ['existencia' => 7, 'compra' => 0],
+        ]];
+        $this->actingAs($this->coordinador)->post($url, $datos)->assertForbidden();
+        $this->actingAs($this->regional)->post($url, $datos)->assertForbidden();
+        $this->actingAs($this->central)->post($url, $datos)->assertSessionHasNoErrors();
+        $this->assertSame($datos['propuestas'], $consolidado->fresh()->plan_compra);
+        $this->assertSame('aprobado', $consolidado->fresh()->estado);
+        $this->assertSame(7, $this->saldo('P-001'));
+        $this->assertDatabaseCount('constancias_gerencia', 0);
+
+        $this->get(route('flujo.consolidados.show', $consolidado))->assertOk()->assertSee('Cerrar compras');
+        $this->estado($consolidado, 'cerrar');
+        $this->assertSame('cerrado', $consolidado->fresh()->estado);
+        $this->get(route('flujo.consolidados.show', $consolidado))->assertOk()
+            ->assertSee('Compras cerradas')->assertSee('Consulta las asignaciones para conocer el avance de las entregas');
+        $this->assertDatabaseCount('asignaciones_inventarios', 0);
+        $this->assertDatabaseCount('movimientos', 0);
+        $this->assertSame(7, $this->saldo('P-001'));
+    }
+
     public function test_excel_valida_filas_revierte_si_falta_stock_y_genera_hojas_por_colaborador(): void
     {
         $this->stock('P-001', 3);
@@ -533,7 +598,7 @@ class FlujoOperativoTest extends TestCase
     {
         return $extra + [
             'fecha_compra' => today()->toDateString(), 'no_factura' => $factura, 'proveedor_tipo' => 'nuevo',
-            'proveedor_nombre' => 'Proveedor A', 'forma_pago' => 'Al contado', 'producto_tipo' => array_fill(0, count($productos), 'existente'),
+            'proveedor_nombre' => 'Proveedor A', 'autorizado_por' => 'Gerencia QA', 'forma_pago' => 'Al contado', 'producto_tipo' => array_fill(0, count($productos), 'existente'),
             'producto_codigo' => $productos, 'cantidad' => $cantidades, 'precio_unitario' => array_fill(0, count($productos), '12.00'),
         ];
     }

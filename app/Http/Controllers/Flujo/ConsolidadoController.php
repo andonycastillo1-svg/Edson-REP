@@ -98,7 +98,9 @@ class ConsolidadoController extends Controller
         $seguimiento = $puedeCompras && in_array($consolidado->estado, ['aprobado', 'cerrado'], true);
         $facturas = $seguimiento ? $this->plan->facturas(collect([$consolidado]))->get($consolidado->id, collect()) : collect();
 
-        return view('flujo.consolidado', compact('consolidado', 'acciones', 'productos', 'facturas', 'constancias', 'seguimiento'));
+        $puedeCerrarCompra = $acciones->contains('cerrar') && $this->plan->puedeCerrar($consolidado);
+
+        return view('flujo.consolidado', compact('consolidado', 'acciones', 'productos', 'facturas', 'constancias', 'seguimiento', 'puedeCerrarCompra'));
     }
 
     public function transicion(Request $request, int $consolidado, string $accion)
@@ -125,12 +127,8 @@ class ConsolidadoController extends Controller
                 DB::table('compra_consolidado')->where('consolidado_id', $fila->id)->exists())) {
                 throw ValidationException::withMessages(['estado' => 'Una constancia o compra vinculada conserva esta aprobación.']);
             }
-            if ($accion === 'cerrar') {
-                $seleccion = collect([$fila]);
-                if ($this->plan->conciliacionesPendientes($seleccion, bloquear: true)
-                    || $this->plan->avance($seleccion, bloquear: true)->contains(fn ($linea) => $linea['pendiente'] > 0 || $linea['sin_cobertura'] > 0)) {
-                    throw ValidationException::withMessages(['estado' => 'Completa la cobertura aprobada y concilia las facturas históricas antes de cerrar.']);
-                }
+            if ($accion === 'cerrar' && !$this->plan->puedeCerrar($fila, bloquear: true)) {
+                throw ValidationException::withMessages(['estado' => 'Completa la cobertura y concilia las facturas antes de cerrar compras. Si usarás existencias de central, guárdalas en el plan.']);
             }
             if ($accion === 'enviar') {
                 $inspecciones = $fila->inspecciones()->get();
@@ -162,12 +160,13 @@ class ConsolidadoController extends Controller
             } elseif ($accion === 'reabrir') {
                 $fila->aprobado_por = null;
                 $fila->aprobado_en = null;
+                $fila->plan_compra = null;
             }
             $fila->save();
             $this->evento($fila, $usuario, $accion, $datos['nota'] ?? null, $cambios);
         }, 3);
 
-        return back()->with('success', 'Consolidado actualizado.');
+        return back()->with('success', $accion === 'cerrar' ? 'Compras cerradas. Las entregas se registran por separado.' : 'Consolidado actualizado.');
     }
 
     private function ajustes(Consolidado $fila, array $datos): array

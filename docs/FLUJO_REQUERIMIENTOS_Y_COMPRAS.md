@@ -1,6 +1,6 @@
 # Inspecciones, consolidados, compras y asignaciones masivas
 
-El supervisor registra un requerimiento. Bodega central reúne las inspecciones de un equipo y envía un consolidado. El coordinador revisa los ajustes y aprueba el conjunto. Bodega central calcula los faltantes, registra la constancia externa de Gerencia y distribuye las compras por factura. Las asignaciones se registran cuando ocurre la salida real.
+El supervisor registra un requerimiento. Bodega central reúne las inspecciones de un equipo y envía un consolidado. El coordinador revisa los ajustes y aprueba el conjunto. Bodega central calcula los faltantes y registra quién autorizó cada factura al distribuir sus cantidades. Las asignaciones se registran cuando ocurre la salida real.
 
 ## Configuración inicial
 
@@ -21,13 +21,13 @@ Los permisos operativos aplican junto con las excepciones individuales y la bode
 
 ## Necesidades de compra
 
-1. En **Necesidades de compra**, selecciona los consolidados que quieres seguir. Cada producto muestra el requerimiento aprobado, el stock considerado al guardar el plan, la compra total decidida, lo comprado y recibido y el saldo central actual.
-2. En **Plan y constancia de autorización externa**, distribuye las unidades de stock a considerar y la compra total decidida por producto y consolidado. La sugerencia descuenta las unidades ya registradas y usa una sola vez el saldo disponible entre los consolidados seleccionados. Registra el correo o mensaje de WhatsApp, la fecha, quién autorizó y la referencia. Puedes adjuntar evidencia privada. Cada registro conserva su versión del plan y el stock es una referencia de planificación.
-3. Desde **Registrar nueva compra** o **Compras**, registra la factura, sus productos y los PDF. Selecciona los consolidados y distribuye las unidades de cada línea. La suma distribuida se limita a la cantidad facturada y cada destino se limita a su pendiente. El resto de la factura ingresa como stock general. Cada factura sigue disponible en la consulta por número y proveedor. Puedes agregar facturas de diferentes fechas y proveedores al mismo consolidado.
-4. El pendiente de compra es la cantidad decidida menos la recibida. Si falta un plan desglosado, se usa la cantidad aprobada como referencia. Puedes cerrar un consolidado cuando las facturas vinculadas estén conciliadas y la cantidad recibida más el stock considerado cubran toda la aprobación. Los cerrados permanecen disponibles en el seguimiento.
-5. Las facturas históricas sin cantidades distribuidas conservan sus vinculaciones y aparecen como pendientes de conciliación. Desde el detalle de la factura, registra el desglose respaldado por sus documentos y confirma las unidades que quedan sin atribuir. Completa esa conciliación antes de guardar un plan o vincular nuevas facturas al consolidado. Las constancias antiguas conservan sus cantidades originales y puedes registrar un plan desglosado a partir de la documentación.
+1. En **Necesidades de compra**, selecciona los consolidados aprobados y consulta **Resumen por producto**. Se suma el requerimiento aprobado y se muestra el saldo central actual una sola vez por código. El pendiente estima las unidades adicionales a comprar, y la compra total prevista suma lo ya recibido y el pendiente. Con un plan guardado, el pendiente se calcula sobre su cantidad decidida. El seguimiento por consolidado muestra sus cantidades y facturas.
+2. Si usarás existencias de central para cubrir parte de un requerimiento, puedes guardar esas cantidades en **Ajustar plan de compra**. Este control es opcional para registrar facturas y conserva la planificación separada del saldo actual. El stock del plan sirve como referencia para el cierre y no reserva unidades.
+3. Solicita la autorización de Gerencia fuera del sistema. Al registrar la factura, usa el campo **Autorizado por** y adjunta sus PDF. Distribuye las cantidades entre los consolidados que correspondan. Puedes agregar más facturas de otros proveedores o fechas. Cada factura conserva su consulta tradicional y las unidades no distribuidas ingresan a stock general.
+4. **Cerrar compras** es una acción manual. Se habilita cuando se cubre lo aprobado con las compras recibidas y, cuando corresponde, el saldo considerado en el plan. Las facturas históricas se deben conciliar antes. El cierre conserva el estado técnico y su historial. Las asignaciones y las entregas continúan por su flujo habitual.
+5. Las constancias y sus documentos previos están disponibles en **Constancias históricas**. Para facturas históricas sin reparto, abre el detalle y confirma solo las cantidades respaldadas. El sistema conserva los vínculos y añade las unidades al seguimiento cuando se confirma el desglose.
 
-La entrada de inventario se aplica al registrar la factura. La planificación, la consulta y la conciliación dejan intactas las existencias.
+Solo registrar la factura aplica la entrada de inventario. La planificación, la consulta, el cierre y la conciliación conservan las existencias.
 
 ## Importación desde Excel
 
@@ -52,14 +52,27 @@ La migración `2026_11_20_000002_create_flujo_operativo.php` agrega regiones, co
 
 La migración aditiva `2026_11_23_000001_track_consolidated_purchases.php` agrega el historial de planes por línea, la distribución por línea de factura y la fecha de confirmación. Las vinculaciones previas quedan disponibles para conciliación.
 
+La migración `2026_11_23_000002_add_internal_purchase_plan_to_consolidados.php` agrega la planificación opcional. Conserva las constancias, las compras y las relaciones anteriores.
+
 Prueba en un entorno aislado.
 
 1. Da de alta dos coordinadores, un supervisor y colaboradores de dos regiones. Busca y registra una inspección con foto. Verifica las restricciones desde el otro equipo.
 2. Consolida dos inspecciones, modifica una cantidad con nota, aprueba y comprueba los valores originales, las diferencias y el historial.
-3. Revisa existencias y faltantes. Guarda la constancia y verifica que no cambie el saldo. Registra una compra vinculada, repite la factura y comprueba que el movimiento se registró una sola vez.
+3. Revisa existencias y faltantes. Guarda un plan opcional y verifica que no cambie el saldo. Registra una compra vinculada, repite la factura y comprueba que el movimiento se registró una sola vez.
 4. Importa un Excel inválido y otro válido. Comprueba la vista previa, el descuento en central, las hojas, el ZIP y el reintento. Registra una asignación manual y un traslado desde las rutas habituales.
 5. Prueba los tres motivos y consulta el caso de robo injustificado como RR. HH. La referencia proporcional queda como dato de revisión.
 
 La prueba concurrente `php tests/Integration/flujo_mysql.php` usa MySQL local y una base desechable `edson_*_qa` con `APP_ENV=testing`. Registra dos previsualizaciones equivalentes con usuarios distintos e intenta confirmar ambas en paralelo.
 
 La prueba `php tests/Integration/compras_consolidadas_mysql.php` usa el mismo entorno local desechable. Envía dos facturas en paralelo para el mismo pendiente y repite una factura de manera concurrente. Comprueba las distribuciones, los movimientos y el saldo.
+
+## Capturas
+
+Las pantallas se capturaron en Chromium con datos ficticios.
+
+- [Inspección del supervisor en móvil](capturas/flujo-operativo/01-inspeccion-movil.png)
+- [Revisión y ajustes del coordinador](capturas/flujo-operativo/02-revision-coordinacion.png)
+- [Registro de factura y reparto entre consolidados](capturas/flujo-operativo/03-registro-compra.png)
+- [Resumen de necesidades y compras parciales](capturas/flujo-operativo/04-necesidades-de-compra.png)
+- [Necesidades de compra en móvil](capturas/flujo-operativo/05-necesidades-movil.png)
+- [Vista previa de asignaciones desde Excel](capturas/flujo-operativo/06-excel-vista-previa.png)

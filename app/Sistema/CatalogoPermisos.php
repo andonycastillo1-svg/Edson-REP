@@ -32,7 +32,7 @@ class CatalogoPermisos
             'flujo.consolidar' => ['Consolidar requerimientos', 'Preparar y enviar requerimientos de bodega central.'],
             'flujo.revisar' => ['Revisar y aprobar consolidados', 'Ajustar y aprobar los consolidados del equipo.'],
             'flujo.reabrir' => ['Reabrir aprobaciones', 'Reabrir un consolidado sin constancia ni compras vinculadas.'],
-            'flujo.compras' => ['Preparar necesidades de compra', 'Consultar faltantes y registrar constancias externas.'],
+            'flujo.compras' => ['Preparar necesidades de compra', 'Consultar faltantes, seguimiento de facturas y guardar planes de compra.'],
             'flujo.importar' => ['Importar asignaciones', 'Validar y registrar entregas desde un Excel de bodega central.'],
             'flujo.configurar' => ['Administrar catálogos operativos', 'Configurar regiones, artículos de inspección y motivos de asignación.'],
             'panel.consultar' => ['Abrir el panel principal', 'Ver los accesos disponibles para el ámbito.'],

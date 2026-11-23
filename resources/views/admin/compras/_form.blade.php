@@ -1,6 +1,6 @@
 @php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
 
-<form action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
+<form data-confirmar="¿Registrar esta factura y aplicar la entrada en la bodega central?" action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
 @csrf
 
     {{-- DATOS PRINCIPALES --}}
@@ -91,7 +91,9 @@
                 <input type="datetime-local" name="fecha_ingreso" value="{{ old('fecha_ingreso') }}"
                        class="mt-1 block w-full rounded-xl border-slate-300">
             </label>
-            <x-sistema.campos-nativos modulo="compras" />
+            <div class="md:col-span-2">
+                <x-sistema.campos-nativos modulo="compras" :ayudas="['autorizado_por' => 'Registra aquí a la persona que autorizó la compra.']" />
+            </div>
 
             <div>
                 <label for="campo-pdfs" class="mb-1 block text-sm font-semibold text-slate-700">Facturas y respaldos en PDF</label>
@@ -157,11 +159,11 @@
     @if($consolidados->isNotEmpty())
         <div class="ui-panel p-4 sm:p-5">
             <fieldset id="distribucion-compra" class="space-y-3">
-                <legend class="font-bold text-slate-900">Distribución por consolidado (opcional)</legend>
-                <p class="text-sm text-slate-600">Selecciona los consolidados e indica cuántas unidades de cada producto facturado recibe cada uno.</p>
+                <legend class="font-bold text-slate-900">Distribución por consolidado</legend>
+                <p class="text-sm text-slate-600">Si la factura corresponde a un consolidado, selecciónalo e indica cuántas unidades le corresponden.</p>
                 @foreach($consolidados as $consolidado)
                     <div class="rounded-xl border border-slate-200 p-3" data-destino>
-                        <label class="inline-flex items-center gap-2 text-sm font-semibold">
+                        <label class="flex min-h-10 items-center gap-2 text-sm font-semibold">
                             <input type="checkbox" name="consolidados[]" value="{{ $consolidado->id }}"
                                 @checked(in_array($consolidado->id, old('consolidados', (array) request('consolidados', []))))>
                             {{ $consolidado->nombre }}
@@ -299,7 +301,12 @@
     }
 
     const destinos = document.querySelectorAll('#distribucion-compra [data-destino]');
+    const autorizo = tipoProveedor.form.elements.namedItem('autorizado_por');
+    const autorizacionObligatoria = autorizo?.required ?? false;
     function actualizarReparto() {
+        const seleccionados = tipoProveedor.form.querySelectorAll('[name="consolidados[]"]:checked');
+        if (autorizo) autorizo.required = autorizacionObligatoria || seleccionados.length > 0;
+
         const codigos = new Set([...body.rows]
             .filter(fila => fila.querySelector('.productoTipo').value === 'existente')
             .map(fila => fila.querySelector('.productoCodigo').value));
