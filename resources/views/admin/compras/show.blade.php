@@ -6,15 +6,6 @@
 @php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
 <div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
     <x-internal-navigation :back-url="route($routePrefix . '.compras.index')" />
-    @if($consolidados->isNotEmpty())
-        <p class="my-3 text-sm font-semibold">Consolidados vinculados</p>
-        <ul class="mb-4 flex flex-wrap gap-3 text-sm">
-            @foreach($consolidados as $consolidado)
-                <li><a class="underline" href="{{ route('flujo.consolidados.show', $consolidado) }}">{{ $consolidado->nombre }}</a></li>
-            @endforeach
-        </ul>
-    @endif
-
     <div class="flex items-start justify-between gap-4 mb-6">
         <div>
             <h1 class="text-2xl font-bold text-slate-800">Compra #{{ $compra->id }}</h1>
@@ -69,6 +60,62 @@
             </tbody>
         </table>
     </div>
+
+    @if($consolidados->isNotEmpty())
+        <section class="ui-panel mb-6 space-y-3 p-4">
+            <h2 class="font-bold">Distribución por consolidado</h2>
+            @if(!$compra->distribucion_confirmada_en)
+                <p class="ui-alert-warning">Factura histórica pendiente de conciliación. Sus unidades se incorporan al seguimiento cuando se confirme su distribución.</p>
+            @endif
+            <ul class="space-y-2 text-sm">
+                @foreach($consolidados as $consolidado)
+                    <li>
+                        @if($puedeVerConsolidado)
+                            <a class="font-semibold underline" href="{{ route('flujo.consolidados.show', $consolidado) }}">{{ $consolidado->nombre }}</a>
+                        @else
+                            <span class="font-semibold">{{ $consolidado->nombre }}</span>
+                        @endif
+                        @if($compra->distribucion_confirmada_en)
+                            <ul class="ml-4 list-disc">
+                                @forelse($distribucion->get($consolidado->id, collect()) as $asignada)
+                                    <li>{{ $detalles->firstWhere('id', $asignada->compra_detalle_id)->producto_codigo }} · {{ $asignada->cantidad }} unidades</li>
+                                @empty
+                                    <li>Sin unidades distribuidas.</li>
+                                @endforelse
+                            </ul>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+            @if($conciliar)
+                @rutaDisponible($routePrefix.'.compras.conciliar')
+                    <form method="POST" action="{{ route($routePrefix.'.compras.conciliar', $compra->id) }}" class="space-y-4">
+                        @csrf
+                        <p class="text-sm">Ingresa las cantidades respaldadas por la documentación. Puedes dejar en blanco las unidades que no correspondan a un consolidado.</p>
+                        @foreach($consolidados as $consolidado)
+                            <fieldset class="space-y-2 rounded-xl border border-slate-200 p-3">
+                                <legend class="font-semibold">{{ $consolidado->nombre }}</legend>
+                                @forelse($detalles->filter(fn ($d) => ($pendientes->get($consolidado->id.'|'.$d->producto_codigo)['pendiente'] ?? 0) > 0) as $d)
+                                    @php($limite = $pendientes->get($consolidado->id.'|'.$d->producto_codigo)['pendiente'])
+                                    <label class="flex items-center gap-3 text-sm">
+                                        <span>{{ $d->producto_nombre }} · {{ $d->producto_codigo }} · {{ $d->cantidad }} facturadas · {{ $limite }} pendientes</span>
+                                        <input type="number" min="0" max="{{ min($limite, $d->cantidad) }}" class="w-24 rounded-xl border-slate-300"
+                                            name="distribucion[{{ $consolidado->id }}][{{ $d->id }}]"
+                                            value="{{ old('distribucion.'.$consolidado->id.'.'.$d->id) }}"
+                                            aria-label="Unidades de {{ $d->producto_codigo }} para {{ $consolidado->nombre }}">
+                                    </label>
+                                @empty
+                                    <p class="text-sm text-slate-600">No hay productos facturados con cantidades pendientes en este consolidado.</p>
+                                @endforelse
+                            </fieldset>
+                        @endforeach
+                        <label class="block text-sm"><input type="checkbox" name="confirmar" value="1" required> Confirmo la distribución, incluidas las unidades que quedan sin atribuir.</label>
+                        <button class="ui-btn-primary">Confirmar conciliación</button>
+                    </form>
+                @endrutaDisponible
+            @endif
+        </section>
+    @endif
 
     @rutaDisponible(\App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo()).'.compras.archivo')
     <div class="rounded-2xl border border-slate-200 bg-white p-4">

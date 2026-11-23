@@ -8,6 +8,7 @@ use App\Models\Inspeccion;
 use App\Models\Producto;
 use App\Models\User;
 use App\Services\FlujoAcceso;
+use App\Services\PlanCompras;
 use App\Sistema\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,7 @@ class ConsolidadoController extends Controller
         'cerrar' => ['consolidar', ['aprobado'], 'cerrado'],
     ];
 
-    public function __construct(private FlujoAcceso $acceso, private Auditoria $auditoria) {}
+    public function __construct(private FlujoAcceso $acceso, private Auditoria $auditoria, private PlanCompras $plan) {}
 
     public function index(Request $request)
     {
@@ -94,11 +95,10 @@ class ConsolidadoController extends Controller
             ? Producto::orderBy('nombre')->get(['codigo', 'nombre']) : collect();
         $puedeCompras = $this->acceso->puede($usuario, 'compras');
         $constancias = $puedeCompras ? $consolidado->constancias : collect();
-        $compras = $puedeCompras
-            ? DB::table('compra_consolidado')->join('compras', 'compras.id', '=', 'compra_consolidado.compra_id')
-                ->where('consolidado_id', $consolidado->id)->get(['compras.id', 'compras.no_factura']) : collect();
+        $seguimiento = $puedeCompras && in_array($consolidado->estado, ['aprobado', 'cerrado'], true);
+        $facturas = $seguimiento ? $this->plan->facturas(collect([$consolidado]))->get($consolidado->id, collect()) : collect();
 
-        return view('flujo.consolidado', compact('consolidado', 'acciones', 'productos', 'compras', 'constancias'));
+        return view('flujo.consolidado', compact('consolidado', 'acciones', 'productos', 'facturas', 'constancias', 'seguimiento'));
     }
 
     public function transicion(Request $request, int $consolidado, string $accion)
@@ -124,6 +124,13 @@ class ConsolidadoController extends Controller
             if ($accion === 'reabrir' && ($fila->constancias()->exists() ||
                 DB::table('compra_consolidado')->where('consolidado_id', $fila->id)->exists())) {
                 throw ValidationException::withMessages(['estado' => 'Una constancia o compra vinculada conserva esta aprobación.']);
+            }
+            if ($accion === 'cerrar') {
+                $seleccion = collect([$fila]);
+                if ($this->plan->conciliacionesPendientes($seleccion, bloquear: true)
+                    || $this->plan->avance($seleccion, bloquear: true)->contains(fn ($linea) => $linea['pendiente'] > 0 || $linea['sin_cobertura'] > 0)) {
+                    throw ValidationException::withMessages(['estado' => 'Completa la cobertura aprobada y concilia las facturas históricas antes de cerrar.']);
+                }
             }
             if ($accion === 'enviar') {
                 $inspecciones = $fila->inspecciones()->get();

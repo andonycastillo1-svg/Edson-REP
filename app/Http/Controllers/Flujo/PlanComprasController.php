@@ -23,13 +23,22 @@ class PlanComprasController extends Controller
         $usuario = $request->user();
         $this->acceso->autorizar($usuario, 'compras');
         $bodega = $this->acceso->central($usuario);
-        $datos = $request->validate($this->reglas());
-        $disponibles = Consolidado::where('estado', 'aprobado')->with('coordinador')->orderBy('nombre')->get();
-        $seleccion = isset($datos['consolidados']) ? $this->plan->aprobados($datos['consolidados']) : $disponibles;
-        $lineas = $bodega ? $this->plan->cantidades($seleccion, $bodega->id) : collect();
-        $constancias = ConstanciaGerencia::with('consolidados')->latest('id')->paginate(15);
+        $datos = $request->validate($this->reglas() + ['estado' => ['nullable', 'in:aprobado,cerrado']]);
+        $estado = $datos['estado'] ?? 'aprobado';
+        $disponibles = Consolidado::where('estado', $estado)->with('coordinador')->orderBy('id')->get();
+        $seleccion = isset($datos['consolidados'])
+            ? $disponibles->whereIn('id', $datos['consolidados'])->values()
+            : $disponibles->take(200);
+        $lineas = $this->plan->avance($seleccion);
+        if ($bodega) {
+            $activas = $this->plan->avance(Consolidado::where('estado', 'aprobado')->get(['id']));
+            $lineas = $this->plan->sugerencias($lineas, $activas, $this->plan->saldoCentral($lineas, $bodega->id));
+        }
+        $facturas = $this->plan->facturas($seleccion);
+        $planificables = $seleccion->reject(fn ($fila) => $facturas->get($fila->id, collect())->contains('distribucion_confirmada_en', null));
+        $constancias = ConstanciaGerencia::with('consolidados')->latest('id')->paginate(15)->withQueryString();
 
-        return view('flujo.plan-compras', compact('bodega', 'disponibles', 'seleccion', 'lineas', 'constancias'));
+        return view('flujo.plan-compras', compact('bodega', 'estado', 'disponibles', 'seleccion', 'lineas', 'facturas', 'planificables', 'constancias'));
     }
 
     public function store(Request $request)
@@ -42,25 +51,42 @@ class PlanComprasController extends Controller
             'fecha' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'autorizo' => ['required', 'string', 'max:160'], 'referencia' => ['required', 'string', 'max:4000'],
             'documento' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
-            'propuestas' => ['nullable', 'array', 'max:1000'], 'propuestas.*' => ['nullable', 'integer', 'between:0,400000000'],
+            'propuestas' => ['required', 'array', 'max:1000'],
+            'propuestas.*' => ['required', 'array:existencia,compra'],
+            'propuestas.*.existencia' => ['required', 'integer', 'between:0,400000000'],
+            'propuestas.*.compra' => ['required', 'integer', 'between:0,400000000'],
         ] + $this->reglas());
         $archivo = $request->file('documento');
         $ruta = $archivo ? DocumentoPrivado::guardar($archivo, 'constancias-gerencia') : null;
         try {
             DB::transaction(function () use ($usuario, $bodega, $datos, $archivo, $ruta) {
-                $consolidados = $this->plan->aprobados($datos['consolidados'], bloquear: true);
-                $lineas = $this->plan->cantidades($consolidados, $bodega->id);
-                $indices = $lineas->map(fn ($fila) => bin2hex($fila['codigo']))->all();
-                if (array_diff(array_keys($datos['propuestas'] ?? []), $indices) !== []) {
-                    throw ValidationException::withMessages(['propuestas' => 'Vuelve a calcular el plan con los consolidados vigentes.']);
+                $activos = Consolidado::where('estado', 'aprobado')->orderBy('id')->lockForUpdate()->get(['id']);
+                $consolidados = $activos->whereIn('id', $datos['consolidados']);
+                if ($consolidados->count() !== count($datos['consolidados'])) {
+                    throw ValidationException::withMessages(['consolidados' => 'Selecciona consolidados aprobados y vigentes.']);
                 }
-                $plan = $lineas->map(fn ($fila, $i) => $fila + ['propuesta' => (int) ($datos['propuestas'][bin2hex($fila['codigo'])] ?? $fila['sugerida'])])->values()->all();
+                if ($this->plan->conciliacionesPendientes($consolidados, bloquear: true)) {
+                    throw ValidationException::withMessages(['propuestas' => 'Concilia primero las facturas históricas de los consolidados que vas a planificar.']);
+                }
+                $activas = $this->plan->avance($activos, bloquear: true);
+                $seleccion = $activas->whereIn('consolidado_id', $consolidados->modelKeys());
+                $saldo = $this->plan->saldoCentral($seleccion, $bodega->id);
+                $filas = $this->plan->validarPlan($seleccion, $activas, $saldo, $datos['propuestas']);
+                $plan = $filas->map(fn ($fila) => [
+                    'consolidado_id' => $fila['consolidado_id'], 'codigo' => $fila['codigo'], 'producto' => $fila['producto'],
+                    'aprobada' => $fila['aprobada'], 'central' => (int) $saldo->get($fila['codigo'], 0),
+                    'existencia' => $fila['existencia'], 'propuesta' => $fila['propuesta'],
+                ])->values()->all();
                 $constancia = ConstanciaGerencia::create([
                     'user_id' => $usuario->id, 'medio' => $datos['medio'], 'fecha' => $datos['fecha'], 'autorizo' => $datos['autorizo'],
                     'referencia' => $datos['referencia'], 'plan' => $plan, 'ruta' => $ruta,
                     'nombre_archivo' => $archivo ? Str::limit($archivo->getClientOriginalName(), 240, '') : null,
                 ]);
                 $constancia->consolidados()->attach($consolidados->modelKeys());
+                DB::table('consolidado_planes_compra')->insert($filas->map(fn ($fila) => [
+                    'consolidado_linea_id' => $fila['id'], 'constancia_id' => $constancia->id,
+                    'existencia_considerada' => $fila['existencia'], 'cantidad_decidida' => $fila['propuesta'],
+                ])->all());
                 app(Auditoria::class)->registrar('flujo', 'constancia_gerencia', $constancia->id, null,
                     ['consolidados' => $consolidados->modelKeys()]);
             }, 3);

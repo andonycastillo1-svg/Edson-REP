@@ -91,18 +91,6 @@
                 <input type="datetime-local" name="fecha_ingreso" value="{{ old('fecha_ingreso') }}"
                        class="mt-1 block w-full rounded-xl border-slate-300">
             </label>
-            @if(($consolidados ?? collect())->isNotEmpty())
-                <fieldset class="sm:col-span-2">
-                    <legend class="font-semibold">Consolidados aprobados vinculados</legend>
-                    @foreach($consolidados as $consolidado)
-                        <label class="mr-4 inline-flex items-center gap-2 text-sm">
-                            <input type="checkbox" name="consolidados[]" value="{{ $consolidado->id }}"
-                                   @checked(in_array($consolidado->id, old('consolidados', (array) request('consolidados', []))))>
-                            {{ $consolidado->nombre }}
-                        </label>
-                    @endforeach
-                </fieldset>
-            @endif
             <x-sistema.campos-nativos modulo="compras" />
 
             <div>
@@ -165,6 +153,36 @@
             </div>
         </div>
     </div>
+
+    @if($consolidados->isNotEmpty())
+        <div class="ui-panel p-4 sm:p-5">
+            <fieldset id="distribucion-compra" class="space-y-3">
+                <legend class="font-bold text-slate-900">Distribución por consolidado (opcional)</legend>
+                <p class="text-sm text-slate-600">Selecciona los consolidados e indica cuántas unidades de cada producto facturado recibe cada uno.</p>
+                @foreach($consolidados as $consolidado)
+                    <div class="rounded-xl border border-slate-200 p-3" data-destino>
+                        <label class="inline-flex items-center gap-2 text-sm font-semibold">
+                            <input type="checkbox" name="consolidados[]" value="{{ $consolidado->id }}"
+                                @checked(in_array($consolidado->id, old('consolidados', (array) request('consolidados', []))))>
+                            {{ $consolidado->nombre }}
+                        </label>
+                        <fieldset class="mt-2 space-y-2" data-reparto hidden disabled aria-label="Distribución para {{ $consolidado->nombre }}">
+                            <p data-reparto-aviso class="text-sm text-slate-600">Agrega a la factura un producto pendiente de este consolidado.</p>
+                            @foreach($pendientes->get($consolidado->id) as $linea)
+                                <label class="items-center justify-between gap-3 text-sm" data-reparto-producto="{{ $linea['codigo'] }}" hidden>
+                                    <span>{{ $linea['producto'] }} · {{ $linea['codigo'] }} · {{ $linea['pendiente'] }} pendientes</span>
+                                    <input type="number" min="0" max="{{ $linea['pendiente'] }}" class="w-24 rounded-xl border-slate-300" disabled
+                                        aria-label="Unidades de {{ $linea['codigo'] }} para {{ $consolidado->nombre }}"
+                                        name="distribucion[{{ $consolidado->id }}][{{ bin2hex($linea['codigo']) }}]"
+                                        value="{{ old('distribucion.'.$consolidado->id.'.'.bin2hex($linea['codigo'])) }}">
+                                </label>
+                            @endforeach
+                        </fieldset>
+                    </div>
+                @endforeach
+            </fieldset>
+        </div>
+    @endif
 
     <x-sistema.campos modulo="compras" />
 
@@ -280,6 +298,28 @@
         proveedorNuevo.querySelector('input').required = esNuevo;
     }
 
+    const destinos = document.querySelectorAll('#distribucion-compra [data-destino]');
+    function actualizarReparto() {
+        const codigos = new Set([...body.rows]
+            .filter(fila => fila.querySelector('.productoTipo').value === 'existente')
+            .map(fila => fila.querySelector('.productoCodigo').value));
+
+        for (const destino of destinos) {
+            const seleccionado = destino.querySelector('input[type=checkbox]').checked;
+            const reparto = destino.querySelector('[data-reparto]');
+            reparto.hidden = reparto.disabled = !seleccionado;
+            let coincide = false;
+            for (const etiqueta of reparto.querySelectorAll('[data-reparto-producto]')) {
+                const activo = seleccionado && codigos.has(etiqueta.dataset.repartoProducto);
+                etiqueta.hidden = !activo;
+                etiqueta.classList.toggle('flex', activo);
+                etiqueta.querySelector('input').disabled = !activo;
+                coincide ||= activo;
+            }
+            reparto.querySelector('[data-reparto-aviso]').hidden = coincide;
+        }
+    }
+
     function actualizarLineas() {
         const filas = [...body.rows];
         let suma = 0;
@@ -296,6 +336,7 @@
         });
         agregar.disabled = filas.length >= 100;
         total.textContent = (suma / 100).toFixed(2);
+        actualizarReparto();
     }
 
     function actualizarProducto(fila) {
@@ -351,6 +392,8 @@
     proveedorNuevo.classList.remove('hidden');
     tipoProveedor.addEventListener('change', actualizarProveedor);
     actualizarProveedor();
+    for (const destino of destinos) destino.querySelector('input[type=checkbox]').addEventListener('change', actualizarReparto);
+    body.addEventListener('change', actualizarReparto);
     agregar.addEventListener('click', () => agregarLinea());
     const cantidad = Math.min(100, Math.max(1, Array.isArray(anteriores.producto_tipo) ? anteriores.producto_tipo.length : 0));
     for (let indice = 0; indice < cantidad; indice++) agregarLinea(indice);

@@ -93,7 +93,7 @@ class CatalogoPermisos
         $traslados = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + [
             'aprobar' => 'aprobar', 'rechazar' => 'aprobar', 'archivo' => 'archivos', 'hoja' => 'exportar',
         ];
-        $compras = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + ['archivo' => 'archivos'];
+        $compras = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + ['archivo' => 'archivos', 'conciliar' => 'crear'];
         $colaboradores = array_diff_key($crud, array_flip(['show', 'destroy'])) + [
             'detalle' => 'consultar', 'estado' => 'modificar', 'ficha_tecnica' => 'exportar', 'fichas_tecnicas_masivas' => 'exportar',
         ];
