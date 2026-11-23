@@ -111,14 +111,11 @@
             @endforeach
         </ul>
     </x-sistema.panel>
-    @if($compras->isNotEmpty() || $constancias->isNotEmpty())
+    @if($seguimiento)
         <x-sistema.panel titulo="Trámite de compra">
             @php($prefijo = \App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo()))
-            @rutaDisponible($prefijo.'.compras.show')
-                @foreach($compras as $compra)
-                    <a class="block underline" href="{{ route($prefijo.'.compras.show', $compra->id) }}">Factura {{ $compra->no_factura }}</a>
-                @endforeach
-            @endrutaDisponible
+            <a class="ui-btn-secondary" href="{{ route('flujo.compras.index', ['estado' => $consolidado->estado, 'consolidados' => [$consolidado->id]]) }}">Ver seguimiento de compra</a>
+            @include('flujo.facturas-consolidado')
             @foreach($constancias as $constancia)
                 <p class="py-1 text-sm">Constancia de Gerencia · {{ $constancia->fecha->format('d/m/Y') }} · {{ $constancia->medio }}</p>
             @endforeach

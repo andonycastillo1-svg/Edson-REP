@@ -20,23 +20,113 @@ class PlanCompras
         return $filas;
     }
 
-    public function cantidades(Collection $consolidados, int $bodega): Collection
+    public function avance(Collection $consolidados, bool $bloquear = false): Collection
     {
-        $aprobadas = DB::table('consolidado_lineas')->whereIn('consolidado_id', $consolidados->modelKeys())
+        $lineas = DB::table('consolidado_lineas')->whereIn('consolidado_id', $consolidados->pluck('id'))
             ->join('productos', 'productos.codigo', '=', 'consolidado_lineas.producto_codigo')
-            ->select('producto_codigo', 'productos.nombre')->selectRaw('SUM(cantidad) AS aprobada')
-            ->groupBy('producto_codigo', 'productos.nombre')->orderBy('productos.nombre')->get();
-        $saldo = DB::table('inventarios')->where('bodega_id', $bodega)->whereIn('stock_tipo', ['nuevo', 'usado'])
-            ->whereIn('producto_codigo', $aprobadas->pluck('producto_codigo'))->groupBy('producto_codigo')
-            ->select('producto_codigo')->selectRaw('SUM(cantidad) AS disponible')->pluck('disponible', 'producto_codigo');
+            ->orderBy('consolidado_id')->orderBy('consolidado_lineas.id')
+            ->get(['consolidado_lineas.*', 'productos.nombre']);
+        $planes = DB::table('consolidado_planes_compra')->whereIn('consolidado_linea_id', $lineas->pluck('id'))
+            ->orderByDesc('constancia_id');
+        $recibidas = DB::table('compra_detalle_consolidado')->whereIn('consolidado_linea_id', $lineas->pluck('id'));
 
-        return $aprobadas->map(function ($fila) use ($saldo) {
-            $central = (int) $saldo->get($fila->producto_codigo, 0);
+        // Tras bloquear el consolidado, MySQL debe leer las distribuciones y los planes ya confirmados.
+        $planes = ($bloquear ? $planes->lockForUpdate() : $planes)->get()->unique('consolidado_linea_id')->keyBy('consolidado_linea_id');
+        $recibidas = ($bloquear ? $recibidas->lockForUpdate() : $recibidas)->get()->groupBy('consolidado_linea_id');
+
+        return $lineas->map(function ($fila) use ($planes, $recibidas) {
+            $plan = $planes->get($fila->id);
+            $comprada = (int) $recibidas->get($fila->id, collect())->sum('cantidad');
+            $decidida = $plan ? (int) $plan->cantidad_decidida : null;
+            $considerada = $plan ? (int) $plan->existencia_considerada : null;
 
             return [
-                'codigo' => $fila->producto_codigo, 'producto' => $fila->nombre, 'aprobada' => (int) $fila->aprobada,
-                'central' => $central, 'sugerida' => max(0, $fila->aprobada - $central),
+                'id' => $fila->id, 'consolidado_id' => $fila->consolidado_id,
+                'codigo' => $fila->producto_codigo, 'producto' => $fila->nombre, 'aprobada' => (int) $fila->cantidad,
+                'comprada' => $comprada, 'considerada' => $considerada, 'decidida' => $decidida,
+                'pendiente' => max(0, ($decidida ?? $fila->cantidad) - $comprada),
+                'sin_cobertura' => $plan ? max(0, $fila->cantidad - $considerada - $decidida) : 0,
             ];
         });
+    }
+
+    public function facturas(Collection $consolidados): Collection
+    {
+        return DB::table('compra_consolidado')->whereIn('consolidado_id', $consolidados->pluck('id'))
+            ->join('compras', 'compras.id', '=', 'compra_consolidado.compra_id')
+            ->join('proveedores', 'proveedores.id', '=', 'compras.proveedor_id')
+            ->orderByDesc('compras.fecha_compra')->orderByDesc('compras.id')
+            ->get(['compra_consolidado.consolidado_id', 'compras.id', 'compras.no_factura', 'compras.fecha_compra',
+                'compras.distribucion_confirmada_en', 'proveedores.nombre as proveedor'])->groupBy('consolidado_id');
+    }
+
+    public function conciliacionesPendientes(Collection $consolidados, bool $bloquear = false): bool
+    {
+        $consulta = DB::table('compra_consolidado')->whereIn('consolidado_id', $consolidados->pluck('id'))
+            ->join('compras', 'compras.id', '=', 'compra_consolidado.compra_id')
+            ->whereNull('compras.distribucion_confirmada_en');
+
+        return ($bloquear ? $consulta->lockForUpdate() : $consulta)->first(['compras.id']) !== null;
+    }
+
+    public function saldoCentral(Collection $lineas, int $bodega): Collection
+    {
+        return DB::table('inventarios')->where('bodega_id', $bodega)->whereIn('stock_tipo', ['nuevo', 'usado'])
+            ->whereIn('producto_codigo', $lineas->pluck('codigo')->unique())->groupBy('producto_codigo')
+            ->select('producto_codigo')->selectRaw('SUM(cantidad) AS disponible')->pluck('disponible', 'producto_codigo');
+    }
+
+    public function sugerencias(Collection $seleccion, Collection $activas, Collection $saldo): Collection
+    {
+        $libre = $this->saldoParaPlan($activas, $saldo)->all();
+
+        return $seleccion->map(function ($fila) use ($saldo, &$libre) {
+            $codigo = $fila['codigo'];
+            $considerada = $fila['considerada'];
+            if ($considerada === null) {
+                $considerada = min($fila['pendiente'], $libre[$codigo] ?? 0);
+                $libre[$codigo] = ($libre[$codigo] ?? 0) - $considerada;
+            }
+
+            return $fila + [
+                'central' => (int) $saldo->get($codigo, 0),
+                'considerada_sugerida' => $considerada,
+                'sugerida' => $fila['decidida'] === null ? $fila['pendiente'] - $considerada : $fila['pendiente'],
+            ];
+        });
+    }
+
+    private function saldoParaPlan(Collection $activas, Collection $saldo): Collection
+    {
+        // El saldo agregado puede incluir recepciones ya atribuidas. El cálculo es conservador y no reserva inventario.
+        $cobertura = $activas->groupBy('codigo')->map(fn ($grupo) => $grupo->sum('comprada') + $grupo->sum('considerada'));
+
+        return $saldo->map(fn ($cantidad, $codigo) => max(0, $cantidad - $cobertura->get($codigo, 0)));
+    }
+
+    public function validarPlan(Collection $seleccion, Collection $activas, Collection $saldo, array $propuestas): Collection
+    {
+        if ($seleccion->isEmpty() || array_diff($seleccion->pluck('id')->all(), array_keys($propuestas))
+            || array_diff(array_keys($propuestas), $seleccion->pluck('id')->all())) {
+            throw ValidationException::withMessages(['propuestas' => 'Completa el plan de cada producto del consolidado vigente.']);
+        }
+
+        $filas = $seleccion->map(function ($fila) use ($propuestas) {
+            $considerada = (int) $propuestas[$fila['id']]['existencia'];
+            $decidida = (int) $propuestas[$fila['id']]['compra'];
+            if ($decidida < $fila['comprada'] || $considerada + $decidida > $fila['aprobada']) {
+                throw ValidationException::withMessages(['propuestas' => "Revisa {$fila['codigo']}. Conserva las unidades recibidas y no superes la cantidad aprobada."]);
+            }
+
+            return $fila + ['existencia' => $considerada, 'propuesta' => $decidida];
+        });
+        $libre = $this->saldoParaPlan($activas, $saldo);
+        foreach ($filas->groupBy('codigo') as $codigo => $grupo) {
+            if ($grupo->sum('existencia') - $grupo->sum('considerada') > $libre->get($codigo, 0)) {
+                throw ValidationException::withMessages(['propuestas' => "El saldo central de {$codigo} no alcanza para las nuevas unidades consideradas. Actualiza las necesidades."]);
+            }
+        }
+
+        return $filas;
     }
 }

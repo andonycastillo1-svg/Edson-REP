@@ -178,6 +178,8 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
             ->only(['index', 'create', 'store', 'show']);
         Route::get('compras/{compra}/archivos/{archivo}', [\App\Http\Controllers\Admin\CompraController::class, 'archivo'])
             ->name('compras.archivo');
+        Route::post('compras/{compra}/conciliar', [\App\Http\Controllers\Admin\CompraController::class, 'conciliar'])
+            ->whereNumber('compra')->name('compras.conciliar');
 
         /*
         |--------------------------------------------------------------------------
@@ -294,6 +296,8 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
             ->only(['index', 'create', 'store', 'show']);
         Route::get('compras/{compra}/archivos/{archivo}', [\App\Http\Controllers\Admin\CompraController::class, 'archivo'])
             ->name('compras.archivo');
+        Route::post('compras/{compra}/conciliar', [\App\Http\Controllers\Admin\CompraController::class, 'conciliar'])
+            ->whereNumber('compra')->name('compras.conciliar');
 
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
