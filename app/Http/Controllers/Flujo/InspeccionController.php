@@ -13,6 +13,7 @@ use App\Sistema\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class InspeccionController extends Controller
@@ -77,7 +78,7 @@ class InspeccionController extends Controller
         $datos = $request->validate([
             'solicitud_id' => ['required', 'uuid'], 'fecha' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'region_id' => ['required', 'integer', 'exists:regiones,id'], 'colaborador_codigo' => ['required', 'string', 'max:255'],
-            'cantidades' => ['nullable', 'array', 'max:1000'], 'cantidades.*' => ['nullable', 'integer', 'between:0,10000'],
+            'cantidades' => ['nullable', 'array', 'max:1000'], 'cantidades.*' => ['nullable', 'integer', 'min:0', Rule::anyOf(['integer:strict', 'string'])],
             'fotos' => ['nullable', 'array', 'max:8'], 'fotos.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
         $archivos = [];
@@ -104,8 +105,8 @@ class InspeccionController extends Controller
                 $lineas = [];
                 foreach ($cantidades as $id => $cantidad) {
                     $articulo = $catalogo->get($id);
-                    if (!$articulo || $cantidad > $articulo->maximo) {
-                        throw ValidationException::withMessages(['cantidades.'.$id => 'La cantidad supera el máximo o el artículo ya no está disponible.']);
+                    if (!$articulo) {
+                        throw ValidationException::withMessages(['cantidades.'.$id => 'El artículo ya no está disponible.']);
                     }
                     $lineas[] = ['producto_codigo' => $articulo->producto_codigo, 'etiqueta' => $articulo->etiqueta, 'cantidad' => $cantidad];
                 }

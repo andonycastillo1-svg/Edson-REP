@@ -67,9 +67,6 @@
                             <label class="text-sm">Descripción
                                 <input name="descripcion" value="{{ $articulo?->descripcion }}" class="ui-input mt-1" maxlength="500">
                             </label>
-                            <label class="text-sm">Máximo por inspección
-                                <input type="number" name="maximo" min="1" max="10000" value="{{ $articulo?->maximo ?? ($seccion->clave === 'reflectivos' ? 7 : 1) }}" class="ui-input mt-1" required>
-                            </label>
                             <label class="text-sm">Orden
                                 <input type="number" name="orden" min="0" max="65535" value="{{ $articulo?->orden ?? 0 }}" class="ui-input mt-1" required>
                             </label>

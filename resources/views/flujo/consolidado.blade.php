@@ -40,7 +40,7 @@
                             <td class="p-3">
                                 @if($editar)
                                     <input aria-label="Cantidad de {{ $linea->producto?->nombre }}" class="w-28 rounded-xl border-slate-300"
-                                           name="cantidades[{{ $linea->id }}]" form="ajustes-consolidado" type="number" min="0" max="2000000"
+                                           name="cantidades[{{ $linea->id }}]" form="ajustes-consolidado" type="number" min="0" step="1"
                                            value="{{ old('cantidades.'.$linea->id, $linea->cantidad) }}" required>
                                 @else
                                     {{ $linea->cantidad }}
@@ -65,7 +65,7 @@
                     </datalist>
                 </label>
                 <label class="text-sm">Cantidad del producto agregado
-                    <input type="number" min="1" max="2000000" name="cantidad_nueva" form="ajustes-consolidado" class="ui-input mt-1" value="{{ old('cantidad_nueva') }}">
+                    <input type="number" min="0" step="1" name="cantidad_nueva" form="ajustes-consolidado" class="ui-input mt-1" value="{{ old('cantidad_nueva') }}">
                 </label>
                 <label class="text-sm sm:col-span-2">Motivo de los ajustes
                     <textarea name="nota" form="ajustes-consolidado" rows="2" maxlength="4000" class="ui-input mt-1">{{ old('nota') }}</textarea>
