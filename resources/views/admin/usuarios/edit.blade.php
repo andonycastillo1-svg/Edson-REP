@@ -23,8 +23,8 @@
         <div>
             <h1 class="ui-page-title text-gray-800">Editar usuario</h1>
             @if($usuario->rolOperativo() === 5)
-                @rutaDisponible('admin.usuarios.regiones')
-                    <a class="ui-btn-secondary mt-2" href="{{ route('admin.usuarios.regiones', $usuario) }}">Administrar regiones</a>
+                @rutaDisponible($routePrefix.'.usuarios.regiones')
+                    <a class="ui-btn-secondary mt-2" href="{{ route($routePrefix.'.usuarios.regiones', $usuario) }}">Historial regional</a>
                 @endrutaDisponible
             @endif
             <p class="text-sm text-gray-500">Modifica la información del usuario</p>
@@ -163,6 +163,7 @@
         </div>
 
         <x-sistema.campos modulo="usuarios" :registro="$usuario->id" />
+        @include('admin.usuarios.campos-regiones', ['usuario' => $usuario])
         @if(app(\App\Sistema\Permisos::class)->esSuperadministrador(auth()->user()))
             <div id="confirmacion-rol" data-cuenta-protegida="{{ $usuario->role?->ambito() === 1 ? 1 : 0 }}" @if($ambitoSeleccionado !== 1 && $usuario->role?->ambito() !== 1) hidden @endif>
                 <p class="mb-2 text-sm">Para administrar un rol del ámbito Administrador, confirma con tu contraseña actual. Si estableces una contraseña nueva para la cuenta, usa 16 caracteres con mayúsculas, minúsculas, números y símbolos.</p>

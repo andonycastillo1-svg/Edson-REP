@@ -23,7 +23,7 @@
                     <label class="text-sm font-semibold">Módulo (obligatorio)
                         @if($campo)<input type="hidden" name="modulo" value="{{ $campo->modulo }}">@endif
                         <select aria-label="Módulo" data-modulo-campo name="{{ $campo ? '' : 'modulo' }}" @disabled($campo) required class="mt-1 w-full rounded-xl border-slate-300">
-                            @foreach(\App\Sistema\Modulos::DEFINICIONES as $key => $spec)<option value="{{ $key }}" @selected(old('modulo', $campo?->modulo ?? request('modulo')) === $key)>{{ $spec[0] }}</option>@endforeach
+                            @foreach(\App\Sistema\Modulos::visibles() as $key => $spec)<option value="{{ $key }}" @selected(old('modulo', $campo?->modulo ?? request('modulo')) === $key)>{{ $spec[0] }}</option>@endforeach
                         </select>
                     </label>
                     <label for="campo-etiqueta" class="text-sm font-semibold">Nombre del campo (obligatorio)

@@ -33,6 +33,16 @@ class Modulos
         'refacciones' => ['observaciones' => ['Observaciones', 2000]],
     ];
 
+    public static function habilitado(string $modulo): bool
+    {
+        return config('modulos.vehiculos') || !in_array($modulo, ['vehiculos', 'refacciones'], true);
+    }
+
+    public static function visibles(): array
+    {
+        return array_filter(self::DEFINICIONES, self::habilitado(...), ARRAY_FILTER_USE_KEY);
+    }
+
     public static function esenciales(string $modulo): array
     {
         [, , $id] = self::definicion($modulo);

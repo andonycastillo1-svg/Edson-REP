@@ -55,9 +55,9 @@ class ExportacionesOperativas
 
     public function usuarios($consulta)
     {
-        $filas = $consulta->with('regionesCoordinadas', 'coordinador')->orderBy('id')->lazy(200)->map(fn ($usuario) => [
+        $filas = $consulta->with('regionesCoordinadas', 'regionesOperativas', 'coordinador')->orderBy('id')->lazy(200)->map(fn ($usuario) => [
             $usuario->name, $usuario->email, $usuario->role?->nombre, $usuario->acceso_activo ? 'Activo' : 'Inactivo',
-            $usuario->regionesCoordinadas->pluck('nombre')->sort()->implode(', '), $usuario->bodega?->nombre,
+            $usuario->regionesCoordinadas->concat($usuario->regionesOperativas)->pluck('nombre')->sort()->implode(', '), $usuario->bodega?->nombre,
             $usuario->coordinador?->name, $usuario->supervisoresAsignados->pluck('name')->sort()->implode(', '),
             $usuario->almacenistasAsignados->pluck('name')->sort()->implode(', '),
         ]);
@@ -138,11 +138,11 @@ class ExportacionesOperativas
                 $fila->colaborador_codigo, $fila->colaborador?->nombre, $fila->producto_codigo, $fila->producto?->nombre,
                 $fila->bodega?->nombre, (int) ($fila->movimientoInicial?->cantidad ?? $fila->cantidad_asignada),
                 (int) $fila->cantidad_asignada, $fila->fecha, $fila->custodia_etiqueta, $fila->user?->name,
-                $fila->requerimiento_id, $fila->requerimiento?->participante?->consolidado_id,
+                $fila->requerimiento_id, $fila->requerimiento?->participante?->consolidado_id, $fila->medio_solicitud,
             ]);
 
         return $this->excel->descargar('asignaciones', ['Código de colaborador', 'Colaborador', 'Código de producto', 'Producto',
-            'Bodega', 'Cantidad de salida', 'Cantidad en custodia', 'Fecha', 'Estado', 'Responsable', 'Requerimiento', 'Consolidado'], $filas);
+            'Bodega', 'Cantidad de salida', 'Cantidad en custodia', 'Fecha', 'Estado', 'Responsable', 'Requerimiento', 'Consolidado', 'Medio de solicitud'], $filas);
     }
 
     public function devoluciones($consulta)

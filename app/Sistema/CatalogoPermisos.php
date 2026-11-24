@@ -83,7 +83,7 @@ class CatalogoPermisos
             'edit' => 'modificar', 'update' => 'modificar', 'destroy' => 'eliminar',
         ];
         $asignaciones = [
-            'index' => 'consultar', 'create' => 'crear', 'store' => 'crear',
+            'index' => 'consultar', 'create' => 'crear', 'store' => 'crear', 'contexto' => 'crear',
             'pdf' => 'exportar', 'hoja_devolucion' => 'exportar', 'upload_pdf_firmado' => 'evidencias',
             'upload_pdf_devolucion_firmado' => 'evidencias', 'ver_pdf_firmado' => 'archivos',
             'entrega' => 'consultar', 'documento_entrega' => 'evidencias', 'confirmar_recepcion' => 'crear',
@@ -97,11 +97,11 @@ class CatalogoPermisos
         $colaboradores = array_diff_key($crud, array_flip(['show', 'destroy'])) + [
             'detalle' => 'consultar', 'estado' => 'modificar', 'ficha_tecnica' => 'exportar', 'fichas_tecnicas_masivas' => 'exportar',
         ];
-        $usuarios = array_replace(array_diff_key($crud, ['show' => true]), ['destroy' => 'desactivar']);
+        $usuarios = array_replace(array_diff_key($crud, ['show' => true]), ['destroy' => 'desactivar', 'regiones' => 'modificar', 'regiones.update' => 'modificar']);
 
         $definiciones = match ($ambito) {
             1 => [
-                'usuarios' => ['usuarios', $usuarios + ['regiones' => 'modificar', 'regiones.update' => 'modificar']],
+                'usuarios' => ['usuarios', $usuarios],
                 'colaboradores' => ['colaboradores', $colaboradores],
                 'bodegas' => ['bodegas', $crud + ['inventario.export' => 'exportar']],
                 'compras' => ['compras', $compras],

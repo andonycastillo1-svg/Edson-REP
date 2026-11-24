@@ -121,38 +121,39 @@ $conciliar = function () use ($producto, $saldo, $porUnidad) {
 $conciliar();
 $resultados = ejecutarEnParalelo($colaborador, $peticiones);
 comprobar(array_column($resultados, 'estado') === [302, 302], 'Ambas salidas independientes deben registrarse. Resultados: '.json_encode($resultados));
-$primera = (clone $asignaciones)->whereNotNull('sustituida_por_id')->sole();
-$vigente = (clone $asignaciones)->custodiaActiva()->sole();
-comprobar($vigente->asignacion_anterior_id === $primera->id, 'Las salidas deben quedar enlazadas, con una única custodia ordinaria.');
-comprobar($primera->estado === 'Activa' && $primera->cantidad_asignada === 1, 'Debe conservarse la custodia anterior.');
+$vigente = (clone $asignaciones)->latest('id')->firstOrFail();
+comprobar((clone $asignaciones)->custodiaActiva()->count() === 2, 'Las salidas adicionales deben conservar ambas custodias ordinarias.');
+comprobar($vigente->asignacion_anterior_id === null && $vigente->tipo_entrega === 'adicional', 'Las salidas independientes no implican sustitución.');
 comprobar($saldo('nuevo') === 2 && $saldo('usado') === 0, 'Las dos salidas no deben incorporar inventario ficticio.');
 $conciliar();
 
 $peticion = collect($peticiones)->firstWhere('usuario', $vigente->user_id);
 $peticion['datos']['solicitud_id'] = (string) Str::uuid();
 $peticion['datos']['items'][0]['producto_codigo'] = strtolower($producto->codigo);
+$peticion['datos']['items'][0] += ['sustituir_asignacion_id' => $vigente->id, 'motivo_asignacion' => 'robo'];
 $resultados = ejecutarEnParalelo($colaborador, [$peticion, $peticion]);
 $estados = array_column($resultados, 'estado');
 sort($estados);
 comprobar($estados === [302, 422], 'El reintento de la misma salida debe aplicarse una sola vez. Resultados: '.json_encode($resultados));
 comprobar(collect($resultados)->firstWhere('estado', 422)['errores'] === ['solicitud_id'], 'Debe rechazarse por su identificador.');
-$nueva = (clone $asignaciones)->custodiaActiva()->sole();
+$nueva = (clone $asignaciones)->latest('id')->firstOrFail();
+comprobar($nueva->asignacion_anterior_id === $vigente->id && $vigente->fresh()->sustituida_por_id === $nueva->id, 'Solo se vincula la sustitución explícita.');
 comprobar($nueva->producto_codigo === $producto->codigo, 'La custodia debe usar el código canónico.');
 comprobar($saldo('nuevo') === 1 && $saldo('usado') === 0, 'La salida debe descontar una unidad.');
 comprobar((clone $asignaciones)->custodiaAbierta()->count() === 3, 'Las tres custodias deben conservar sus saldos.');
-comprobar(DB::table('alertas_reemplazos_rrhh')->where('producto_codigo', $producto->codigo)->count() === 2, 'Deben quedar dos reemplazos potenciales.');
+comprobar(DB::table('alertas_reemplazos_rrhh')->where('producto_codigo', $producto->codigo)->count() === 1, 'Solo el reemplazo declarado genera revisión.');
 $conciliar();
 
 $devolucion = [
-    'usuario' => $primera->user_id, 'ruta' => '/operador/asignaciones/'.$primera->id.'/devolver',
+    'usuario' => $vigente->user_id, 'ruta' => '/operador/asignaciones/'.$vigente->id.'/devolver',
     'datos' => ['solicitud_id' => (string) Str::uuid(), 'estado_devolucion' => 'buen_estado', 'cantidad_devuelta' => 1],
 ];
 $resultados = ejecutarEnParalelo($colaborador, [$devolucion, $devolucion]);
 $estados = array_column($resultados, 'estado');
 sort($estados);
 comprobar($estados === [302, 422], 'El mismo retorno físico solo debe aplicarse una vez. Resultados: '.json_encode($resultados));
-comprobar($primera->fresh()->estado === 'Devuelta' && $saldo('usado') === 1 && $saldo('nuevo') === 1, 'El retorno real debe sumar un usado.');
-comprobar($primera->movimientos()->where('tipo', 'Reemplazo')->count() === 1, 'Debe existir un único movimiento de retorno.');
+comprobar($vigente->fresh()->estado === 'Devuelta' && $saldo('usado') === 1 && $saldo('nuevo') === 1, 'El retorno real debe sumar un usado.');
+comprobar($vigente->movimientos()->where('tipo', 'Reemplazo')->count() === 1, 'Debe existir un único movimiento de retorno.');
 $conciliar();
 
 echo 'MySQL: salidas concurrentes, reintentos, retorno real y conciliación verificados por '.($porUnidad ? 'unidad' : 'lotes').".\n";

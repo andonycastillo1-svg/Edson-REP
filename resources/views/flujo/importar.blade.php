@@ -11,13 +11,17 @@
                 <x-flujo.consolidado-origen :consolidados="$consolidadosOrigen" />
                 <label class="block ui-carga text-sm font-semibold">Archivo de asignaciones
                     <input name="excel" type="file" accept=".xlsx" required class="mt-2 block w-full" aria-describedby="excel-formato">
-                    <span id="excel-formato" class="mt-2 block font-normal text-slate-600">Formato XLSX de hasta 4 MB. Máximo 500 filas.</span>
+                    <span id="excel-formato" class="mt-2 block font-normal text-slate-600">Formato XLSX de hasta 4 MB. Cada importación admite hasta 500 filas y 500 unidades.</span>
                 </label>
                 <button class="ui-btn-primary w-full sm:w-auto">Revisar archivo</button>
             </form>
         </x-sistema.panel>
         <x-sistema.panel titulo="Plantilla de asignaciones">
-            <p class="mb-3 text-sm">Completa la hoja Asignaciones con el código del colaborador y del producto. Usa la misma fecha para los productos del mismo colaborador.</p>
+            <p class="mb-3 text-sm">Para un consolidado, selecciona el requerimiento y descarga sus pendientes. Puedes reducir cantidades o quitar filas. Conserva los códigos y usa la misma fecha para cada colaborador.</p>
+            @if($consolidadosOrigen->isNotEmpty())
+                <a class="ui-btn-primary mb-3" id="descargar-pendientes" hidden href="{{ route('flujo.importar.pendientes') }}">Descargar Excel con entregas pendientes</a>
+                <p class="mb-3 text-sm" id="pendientes-ayuda" role="status">Selecciona un consolidado para descargar sus pendientes.</p>
+            @endif
             <a class="ui-btn-secondary" href="{{ route('flujo.importar.plantilla') }}">Descargar plantilla Excel</a>
         </x-sistema.panel>
     </div>
@@ -34,4 +38,22 @@
         </ul>
         {{ $importaciones->links() }}
     </x-sistema.panel>
+    @if($consolidadosOrigen->isNotEmpty())
+        <script>
+            (() => {
+                const enlace = document.getElementById('descargar-pendientes');
+                const consolidado = document.querySelector('[name=consolidado_id]');
+                const ayuda = document.getElementById('pendientes-ayuda');
+                const actualizar = () => {
+                    const url = new URL(@js(route('flujo.importar.pendientes')), location.href);
+                    url.searchParams.set('consolidado_id', consolidado.value);
+                    enlace.href = url;
+                    enlace.hidden = !consolidado.value;
+                    ayuda.hidden = !!consolidado.value;
+                };
+                consolidado.addEventListener('change', actualizar);
+                actualizar();
+            })();
+        </script>
+    @endif
 </x-sistema.pagina>

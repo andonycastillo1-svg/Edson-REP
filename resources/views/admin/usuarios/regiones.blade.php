@@ -1,24 +1,13 @@
-<x-sistema.pagina :titulo="'Regiones de '.$usuario->name" :volver="route('admin.usuarios.edit', $usuario)">
+<x-sistema.pagina :titulo="'Regiones de '.$usuario->name" :volver="route(auth()->user()->rolOperativo() === 4 ? 'rrhh.usuarios.edit' : 'admin.usuarios.edit', $usuario)">
     <x-sistema.panel titulo="Responsabilidad actual">
-        <p class="mb-3 text-sm">Selecciona las regiones que atenderá este coordinador. Los consolidados enviados conservan su responsable hasta una reasignación explícita.</p>
-        <form method="POST" class="space-y-4">
-            @csrf
-            @method('PUT')
-            <input type="hidden" name="formulario_regiones" value="1">
-            <fieldset class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                <legend class="sr-only">Regiones</legend>
-                @foreach($regiones as $region)
-                    <label class="flujo-eleccion">
-                        <input class="mt-1" name="regiones[]" type="checkbox" value="{{ $region->id }}"
-                            @checked(old('formulario_regiones') ? in_array($region->id, old('regiones', [])) : $region->coordinador_id == $usuario->id)
-                            @disabled(!$region->activa)>
-                        <span><strong class="block">{{ $region->nombre }}</strong>{{ $region->coordinador?->name ?? 'Sin responsable' }}{{ $region->activa ? '' : ' · Inactiva' }}</span>
-                    </label>
-                @endforeach
-            </fieldset>
-            <label class="ui-check"><input type="checkbox" name="reasignar" value="1"> Confirmo el cambio de responsable para las regiones ya asignadas</label>
-            <div><button class="ui-btn-primary">Guardar regiones</button></div>
-        </form>
+        <p class="mb-3 text-sm">Edita el usuario para cambiar sus regiones. Los consolidados enviados conservan su responsable hasta una reasignación explícita.</p>
+        <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            @forelse($regiones->where('coordinador_id', $usuario->id) as $region)
+                <li class="flujo-card">{{ $region->nombre }} · {{ $region->activa ? 'Activa' : 'Inactiva' }}</li>
+            @empty
+                <li class="text-sm">Este coordinador no tiene regiones asignadas.</li>
+            @endforelse
+        </ul>
     </x-sistema.panel>
     <x-sistema.panel titulo="Historial de responsables">
         <ul class="divide-y text-sm">

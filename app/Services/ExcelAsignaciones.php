@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Models\AsignacionInventario;
 use App\Models\Bodega;
 use App\Models\Colaborador;
+use App\Models\Consolidado;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
 use App\Models\MotivoAsignacion;
 use App\Models\Producto;
 use App\Models\User;
@@ -35,21 +38,26 @@ class ExcelAsignaciones
         'medio_solicitud' => 'Medio de solicitud', 'motivo_asignacion' => 'Código de motivo', 'observaciones' => 'Observaciones',
     ];
 
-    public function plantilla(): Xlsx
+    private const SUSTITUCION = 'Sustituir asignación (ID)';
+
+    private const REFERENCIAS = ['Colaborador', 'Producto', 'Pendiente al descargar', 'Consolidado', 'Verificación'];
+
+    public function plantilla(?Consolidado $consolidado = null, ?Collection $pendientes = null): Xlsx
     {
         $libro = new Spreadsheet();
         $hoja = $libro->getActiveSheet();
         $hoja->setTitle('Asignaciones');
-        $hoja->fromArray([array_values(self::COLUMNAS)]);
+        $encabezados = [...array_values(self::COLUMNAS), self::SUSTITUCION];
+        $hoja->fromArray([$consolidado ? [...$encabezados, ...self::REFERENCIAS] : $encabezados]);
         $hoja->freezePane('A2');
-        foreach (range('A', 'H') as $columna) {
+        foreach (range('A', $consolidado ? 'N' : 'I') as $columna) {
             $hoja->getColumnDimension($columna)->setWidth(26);
         }
-        $hoja->getStyle('A1:H1')->getFont()->setBold(true);
+        $hoja->getStyle($consolidado ? 'A1:N1' : 'A1:I1')->getFont()->setBold(true);
         $hoja->getStyle('A2:B501')->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
         $libro->createSheet()->setTitle('Ejemplo')->fromArray([
             array_values(self::COLUMNAS),
-            ['COL-001', 'P-001', 1, today()->toDateString(), 'Gerencia', 'Correo', 'desgaste', 'Ejemplo ficticio'],
+            ['COL-001', 'P-001', 1, today()->toDateString(), 'Gerencia', 'Correo', '', 'Ejemplo ficticio'],
             ['COL-001', 'P-002', 1, today()->toDateString(), 'Gerencia', 'Correo', '', 'Misma entrega'],
         ]);
         $motivos = $libro->createSheet()->setTitle('Motivos');
@@ -67,6 +75,34 @@ class ExcelAsignaciones
                 ->setShowErrorMessage(true)->setErrorTitle('Motivo no válido')->setError('Selecciona un código de motivo vigente.')
                 ->setFormula1('CodigosMotivo')->setSqref('G2:G501');
         }
+        $medios = $libro->createSheet()->setTitle('Medios');
+        $medios->fromArray([['Medio de solicitud'], ['Correo'], ['WhatsApp'], [RegistrarAsignaciones::MEDIO_INTERNO]]);
+        $libro->addNamedRange(new NamedRange('MediosSolicitud', $medios, '$A$2:$A$4'));
+        $hoja->getCell('F2')->getDataValidation()->setType(DataValidation::TYPE_LIST)->setAllowBlank(true)
+            ->setShowDropDown(true)->setShowErrorMessage(true)->setError('Escoge un medio de solicitud disponible.')
+            ->setFormula1('MediosSolicitud')->setSqref('F2:F501');
+        if ($consolidado) {
+            $origen = $libro->createSheet()->setTitle('Origen');
+            $origen->setCellValueExplicit('A1', Crypt::encryptString('edson-asignaciones:'.$consolidado->id), DataType::TYPE_STRING);
+            $origen->setSheetState('hidden');
+            $hoja->getColumnDimension('N')->setVisible(false);
+            foreach ($pendientes->values() as $i => $detalle) {
+                $fila = $i + 2;
+                $persona = $detalle->participante;
+                $pendiente = $detalle->cantidad - $detalle->asignaciones_count;
+                $hoja->fromArray([[min(RegistrarAsignaciones::MAX_UNIDADES, $pendiente), today()->toDateString(),
+                    null, RegistrarAsignaciones::MEDIO_INTERNO]], startCell: 'C'.$fila);
+                foreach ([
+                    'A' => $persona->colaborador_codigo, 'B' => $detalle->producto_codigo,
+                    'J' => $persona->colaborador?->nombre ?? '', 'K' => $detalle->producto?->nombre ?? '',
+                    'M' => '#'.$consolidado->id.' · '.$consolidado->nombre,
+                    'N' => $this->firmaFila($consolidado->id, $persona->colaborador_codigo, $detalle->producto_codigo),
+                ] as $columna => $valor) {
+                    $hoja->setCellValueExplicit($columna.$fila, $valor, DataType::TYPE_STRING);
+                }
+                $hoja->setCellValue('L'.$fila, $pendiente);
+            }
+        }
         $libro->setActiveSheetIndex(0);
 
         return new Xlsx($libro);
@@ -77,33 +113,52 @@ class ExcelAsignaciones
         $this->validarArchivo($archivo);
         $lector = new LectorXlsx();
         $lector->setReadDataOnly(true);
-        $lector->setLoadSheetsOnly('Asignaciones');
+        $lector->setLoadSheetsOnly(['Asignaciones', 'Origen']);
         $lector->setReadFilter(new class implements IReadFilter {
             public function readCell($columnAddress, $row, $worksheetName = ''): bool
             {
-                return $row <= 502 && in_array($columnAddress, range('A', 'I'), true);
+                return $row <= 502 && in_array($columnAddress, range('A', 'N'), true);
             }
         });
         try {
             $info = collect($lector->listWorksheetInfo($archivo))->firstWhere('worksheetName', 'Asignaciones');
-            if ($info === null || $info['totalRows'] > self::MAX_FILAS + 1 || $info['totalColumns'] > count(self::COLUMNAS)) {
+            if ($info === null || $info['totalRows'] > self::MAX_FILAS + 1 || $info['totalColumns'] > 14) {
                 throw new \RuntimeException('Dimensiones de hoja fuera del formato.');
             }
             $libro = $lector->load($archivo);
         } catch (\Throwable) {
-            throw ValidationException::withMessages(['excel' => 'Usa la hoja Asignaciones de la plantilla con hasta 500 filas y ocho columnas.']);
+            throw ValidationException::withMessages(['excel' => 'Usa la hoja Asignaciones de la plantilla con hasta 500 filas.']);
         }
 
         try {
             $hoja = $libro->getSheetByName('Asignaciones');
-            if (!$hoja || $hoja->rangeToArray('A1:H1', null, false, false)[0] !== array_values(self::COLUMNAS)) {
-                throw ValidationException::withMessages(['excel' => 'Conserva los encabezados de la plantilla.']);
+            $origen = $libro->getSheetByName('Origen');
+            $id = null;
+            if ($origen) {
+                try {
+                    $clave = Crypt::decryptString((string) $origen->getCell('A1')->getValue());
+                } catch (DecryptException) {
+                    $clave = '';
+                }
+                if (!preg_match('/^edson-asignaciones:([1-9][0-9]*)$/D', $clave, $partes)) {
+                    throw ValidationException::withMessages(['excel' => 'Descarga nuevamente el archivo de pendientes para recuperar su origen.']);
+                }
+                $id = (int) $partes[1];
+            }
+            $columnas = self::COLUMNAS;
+            if ($info['totalColumns'] > 8) {
+                $columnas['sustituir_asignacion_id'] = self::SUSTITUCION;
+            }
+            $encabezados = [...array_values($columnas), ...($origen ? self::REFERENCIAS : [])];
+            if (!$hoja || $info['totalColumns'] !== count($encabezados)
+                || $hoja->rangeToArray('A1:'.chr(64 + count($encabezados)).'1', null, false, false)[0] !== $encabezados) {
+                throw ValidationException::withMessages(['excel' => 'Conserva los encabezados y la hoja de origen de la plantilla.']);
             }
             $filas = [];
             $errores = [];
             for ($numero = 2; $numero <= $hoja->getHighestDataRow(); $numero++) {
                 $fila = [];
-                foreach (array_keys(self::COLUMNAS) as $i => $clave) {
+                foreach (array_keys($columnas) as $i => $clave) {
                     $celda = $hoja->getCell(chr(65 + $i).$numero);
                     $valor = $celda->getValue();
                     if ($celda->getDataType() === DataType::TYPE_FORMULA || (is_object($valor) && !$valor instanceof \Stringable)) {
@@ -113,6 +168,10 @@ class ExcelAsignaciones
                     $fila[$clave] = is_numeric($valor) && !is_string($valor) ? $valor : trim((string) $valor);
                 }
                 if (collect($fila)->contains(fn ($valor) => $valor !== '') || isset($errores[$numero])) {
+                    if ($id && !hash_equals($this->firmaFila($id, (string) $fila['colaborador_codigo'], (string) $fila['producto_codigo']),
+                        (string) $hoja->getCell('N'.$numero)->getValue())) {
+                        $errores[$numero][] = 'Conserva los códigos de la fila descargada. Puedes cambiar la cantidad o eliminar la fila.';
+                    }
                     $filas[$numero] = $fila;
                 }
             }
@@ -120,10 +179,24 @@ class ExcelAsignaciones
                 throw ValidationException::withMessages(['excel' => 'Agrega al menos una fila en la hoja Asignaciones.']);
             }
 
-            return [$filas, $errores];
+            return [$filas, $errores, $id];
         } finally {
             $libro->disconnectWorksheets();
         }
+    }
+
+    private function firmaFila(int $id, string $colaborador, string $producto): string
+    {
+        return hash_hmac('sha256', json_encode([$id, $colaborador, $producto], JSON_THROW_ON_ERROR), config('app.key'));
+    }
+
+    public function huellaOperativa(int $bodega, array $filas): string
+    {
+        $salidas = collect($filas)->sortBy(['colaborador_codigo', 'producto_codigo'])->map(fn ($fila) => [
+            (string) $fila['colaborador_codigo'], (string) $fila['producto_codigo'], (int) $fila['cantidad'], $fila['fecha'],
+        ])->values();
+
+        return hash('sha256', $bodega.'|'.$salidas->toJson());
     }
 
     private function validarArchivo(string $archivo): void
@@ -145,7 +218,7 @@ class ExcelAsignaciones
         }
     }
 
-    public function validar(array $filas, Bodega $bodega, User $usuario, array $errores = []): array
+    public function validar(array $filas, Bodega $bodega, User $usuario, array $errores = [], ?Consolidado $consolidado = null): array
     {
         $nativas = app(Presentacion::class)->nativos('asignaciones');
         $motivos = MotivoAsignacion::where('activo', true)->pluck('codigo')->all();
@@ -168,8 +241,22 @@ class ExcelAsignaciones
             if (!$producto) {
                 $errores[$numero][] = 'Código de producto inexistente.';
             }
-            if (!in_array($fila['cantidad'], [1, 1.0, '1'], true)) {
-                $errores[$numero][] = 'La cantidad debe ser 1 por colaborador y código.';
+            $cantidad = filter_var($fila['cantidad'], FILTER_VALIDATE_INT);
+            if ($cantidad < 1 || $cantidad > ($consolidado ? RegistrarAsignaciones::MAX_UNIDADES : 1)) {
+                $errores[$numero][] = $consolidado
+                    ? 'La cantidad debe ser un entero de 1 a '.RegistrarAsignaciones::MAX_UNIDADES.'.'
+                    : 'La cantidad debe ser 1 por colaborador y código.';
+            }
+            if (filled($fila['sustituir_asignacion_id'] ?? null)) {
+                $anterior = filter_var($fila['sustituir_asignacion_id'], FILTER_VALIDATE_INT);
+                if ($anterior < 1 || $cantidad !== 1 || blank($fila['motivo_asignacion'])) {
+                    $errores[$numero][] = 'Para un reemplazo indica el ID de la asignación vigente, una unidad y un motivo.';
+                }
+                $fila['sustituir_asignacion_id'] = $anterior;
+            } elseif (filled($fila['motivo_asignacion'])) {
+                $errores[$numero][] = 'Selecciona la asignación vigente que sustituirás para usar este motivo.';
+            } else {
+                unset($fila['sustituir_asignacion_id']);
             }
             $fecha = $this->fecha($fila['fecha']);
             if ($fecha === null || $fecha->isFuture()) {
@@ -182,8 +269,13 @@ class ExcelAsignaciones
                 || (($nativas['observaciones']['obligatorio'] ?? false) && blank($fila['observaciones']))) {
                 $errores[$numero][] = 'Revisa Aprobado por y Observaciones según el formulario configurado.';
             }
-            if (filled($fila['medio_solicitud']) && !in_array($fila['medio_solicitud'], ['Correo', 'WhatsApp'], true)) {
-                $errores[$numero][] = 'El medio debe ser Correo o WhatsApp.';
+            if (filled($fila['medio_solicitud']) && !in_array($fila['medio_solicitud'], ['Correo', 'WhatsApp', RegistrarAsignaciones::MEDIO_INTERNO], true)) {
+                $errores[$numero][] = 'Selecciona un medio de solicitud válido.';
+            }
+            if ($consolidado) {
+                $fila['medio_solicitud'] = RegistrarAsignaciones::MEDIO_INTERNO;
+            } elseif ($fila['medio_solicitud'] === RegistrarAsignaciones::MEDIO_INTERNO) {
+                $errores[$numero][] = 'El medio Requerimiento interno requiere un consolidado.';
             }
             if (filled($fila['motivo_asignacion']) && !in_array($fila['motivo_asignacion'], $motivos, true)) {
                 $errores[$numero][] = 'El código de motivo no está vigente. Consulta la hoja Motivos.';
@@ -216,20 +308,38 @@ class ExcelAsignaciones
         $vigentes = AsignacionInventario::custodiaActiva()->with('entrega')->whereIn('colaborador_codigo', array_keys($pares))
             ->whereIn('producto_codigo', collect($filas)->pluck('producto_codigo'))->get()->groupBy('colaborador_codigo');
         [$saldos, $inconsistentes] = $this->saldos($bodega->id, collect($filas)->pluck('producto_codigo')->unique()->all());
-        $pedidos = collect($filas)->groupBy('producto_codigo')->map->count();
+        $pedidos = collect($filas)->groupBy('producto_codigo')->map(fn ($grupo) => $grupo->sum('cantidad'));
+        if ($pedidos->sum() > RegistrarAsignaciones::MAX_UNIDADES) {
+            $errores[1][] = 'Divide la operación en archivos de hasta '.RegistrarAsignaciones::MAX_UNIDADES.' unidades.';
+        }
+        $pendientes = $consolidado ? app(RequerimientosAsignacion::class)->pendientes($consolidado)
+            ->groupBy(fn ($fila) => $fila->participante->colaborador_codigo) : collect();
 
         foreach ($filas as $numero => $fila) {
             if (isset($errores[$numero])) {
                 continue;
             }
             $codigo = $fila['producto_codigo'];
+            if ($consolidado) {
+                $necesidad = $pendientes->get($fila['colaborador_codigo'], collect())->firstWhere('producto_codigo', $codigo);
+                if (!$necesidad || $fila['cantidad'] > $necesidad->cantidad - $necesidad->asignaciones_count) {
+                    $errores[$numero][] = 'La cantidad supera el pendiente aprobado de este producto para el colaborador.';
+                }
+            }
             if (isset($inconsistentes[$codigo])) {
                 $errores[$numero][] = 'El saldo de este código requiere conciliación en bodega central.';
             } elseif (($saldos[$codigo] ?? 0) < $pedidos->get($codigo)) {
                 $errores[$numero][] = 'El inventario de la bodega central no cubre las filas de este código.';
             }
             $salida = $this->salida($fila['fecha']);
-            if ($vigentes->get($fila['colaborador_codigo'], collect())->contains(fn ($previa) =>
+            $custodias = $vigentes->get($fila['colaborador_codigo'], collect());
+            if (isset($fila['sustituir_asignacion_id'])) {
+                $anterior = $custodias->firstWhere('id', $fila['sustituir_asignacion_id']);
+                if (!$anterior || $anterior->producto_codigo !== $codigo || !app(AccesoCustodia::class)->puedeVer($usuario, $anterior)) {
+                    $errores[$numero][] = 'El ID debe corresponder a una asignación vigente y autorizada del mismo colaborador y producto.';
+                }
+            }
+            if ($custodias->contains(fn ($previa) =>
                 $previa->producto_codigo === $codigo && $salida->lt($previa->entrega?->salida_en ?? $previa->fecha))) {
                 $errores[$numero][] = 'La fecha es anterior a la última custodia ordinaria del código.';
             }

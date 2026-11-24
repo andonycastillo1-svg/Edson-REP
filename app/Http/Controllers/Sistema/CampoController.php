@@ -21,8 +21,9 @@ class CampoController extends Controller
     public function index(Request $request)
     {
         $modulo = $request->string('modulo')->toString();
+        abort_unless(Modulos::habilitado($modulo), 403);
         $q = $request->string('q')->trim()->limit(100)->toString();
-        $campos = Campo::query()->when(array_key_exists($modulo, Modulos::DEFINICIONES), fn ($consulta) => $consulta->where('modulo', $modulo))
+        $campos = Campo::query()->whereIn('modulo', array_keys(Modulos::visibles()))->when(array_key_exists($modulo, Modulos::visibles()), fn ($consulta) => $consulta->where('modulo', $modulo))
             ->when($q !== '', fn ($consulta) => $consulta->where('etiqueta', 'like', '%'.$q.'%'))
             ->orderBy('modulo')->orderBy('orden')->orderBy('id')->paginate(20)->withQueryString();
 
@@ -31,6 +32,7 @@ class CampoController extends Controller
 
     public function formulario(?Campo $campo = null)
     {
+        abort_unless(Modulos::habilitado($campo?->modulo ?? request()->string('modulo')->toString()), 403);
         $permisos = collect(array_keys(CatalogoPermisos::AMBITOS))->flatMap(fn ($ambito) => CatalogoPermisos::disponibles($ambito))->unique()->sort();
 
         $gruposPermisos = $permisos->groupBy(fn ($permiso) => strstr($permiso, '.', true))->map(
@@ -45,6 +47,7 @@ class CampoController extends Controller
 
     public function guardar(Request $request, ValoresCampos $valores, Auditoria $auditoria, Seguridad $seguridad, ?Campo $campo = null)
     {
+        abort_unless(Modulos::habilitado($campo?->modulo ?? $request->string('modulo')->toString()), 403);
         if ($request->input('seleccion_predeterminada') === [null]) {
             $request->merge(['seleccion_predeterminada' => []]);
         }
@@ -55,7 +58,7 @@ class CampoController extends Controller
         }
         $catalogo = collect(array_keys(CatalogoPermisos::AMBITOS))->flatMap(fn ($ambito) => CatalogoPermisos::disponibles($ambito))->unique()->all();
         $data = $request->validate([
-            'modulo' => ['required', 'string', Rule::in(array_keys(Modulos::DEFINICIONES))],
+            'modulo' => ['required', 'string', Rule::in(array_keys(Modulos::visibles()))],
             'clave' => ['bail', 'required', 'string', 'regex:/^[a-z][a-z0-9_]{1,59}$/', Rule::unique('sistema_campos', 'clave')->where('modulo', $request->string('modulo')->toString())->ignore($campo?->id)],
             'etiqueta' => ['required', 'string', 'max:100'],
             'ayuda' => ['nullable', 'string', 'max:500'],
@@ -165,6 +168,7 @@ class CampoController extends Controller
 
     public function archivar(Campo $campo, Auditoria $auditoria)
     {
+        abort_unless(Modulos::habilitado($campo->modulo), 403);
         DB::transaction(function () use ($campo, $auditoria) {
             $actual = Campo::whereKey($campo->id)->lockForUpdate()->firstOrFail();
             abort_if($actual->archivado_en, 409);

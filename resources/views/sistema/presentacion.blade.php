@@ -15,7 +15,7 @@
                  :configuracion="!$desdeDatos">
     @if($desdeDatos)<x-sistema.nav-datos :modulo="$modulo" configurar />@endif
     <x-sistema.panel>
-        <x-sistema.elegir-modulo :modulos="\App\Sistema\Modulos::DEFINICIONES" :seleccionado="$modulo"
+        <x-sistema.elegir-modulo :modulos="\App\Sistema\Modulos::visibles()" :seleccionado="$modulo"
                                  :accion="route('sistema.presentacion')" texto="Cambiar módulo" :origen="$desdeDatos ? 'datos' : null" />
     </x-sistema.panel>
 

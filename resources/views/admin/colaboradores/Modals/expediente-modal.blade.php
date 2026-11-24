@@ -58,13 +58,15 @@
           <span class="ml-1 rounded-full bg-white/30 px-2 py-0.5" x-text="asignaciones.length"></span>
         </button>
 
-        <button type="button"
+        @if(config('modulos.vehiculos'))
+<button type="button"
                 class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold"
                 :class="expedienteTab === 'vehiculo' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
                 @click="expedienteTab = 'vehiculo'">
           Vehículo
           <span class="ml-1 rounded-full bg-white/30 px-2 py-0.5" x-text="productosVehiculo.length"></span>
         </button>
+@endif
 
         <button type="button"
                 class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold"
@@ -100,7 +102,8 @@
               </div>
             </button>
 
-            <button type="button"
+            @if(config('modulos.vehiculos'))
+<button type="button"
                     @click="expedienteTab = 'vehiculo'"
                     class="text-left rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 hover:bg-blue-100">
               <div class="text-xs font-semibold text-blue-700">Vehículo asignado</div>
@@ -109,8 +112,10 @@
                 Monto artículos: Q <span class="font-semibold" x-text="money(totalProductosVehiculo)"></span>
               </div>
             </button>
+@endif
 
-            <button type="button"
+            @if(config('modulos.vehiculos'))
+<button type="button"
                     @click="expedienteTab = 'vehiculo'; vehiculoDetalleOpen = true"
                     class="text-left rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 hover:bg-indigo-100">
               <div class="text-xs font-semibold text-indigo-700">Artículos en vehículo</div>
@@ -119,6 +124,7 @@
                 Q <span class="font-semibold" x-text="money(totalProductosVehiculo)"></span>
               </div>
             </button>
+@endif
 
             <button type="button"
                     @click="expedienteTab = 'incidencias'"
@@ -255,6 +261,7 @@
           </div>
         </div>
 
+        @if(config('modulos.vehiculos'))
         {{-- TAB VEHÍCULO --}}
         <div x-show="expedienteTab === 'vehiculo'">
           <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
@@ -438,6 +445,8 @@
             </template>
           </div>
         </div>
+
+        @endif
 
         <section x-show="expedienteTab === 'incidencias'" class="rounded-xl border border-slate-200 bg-white p-4">
           <h3 class="font-bold text-slate-900">Incidencias registradas</h3>

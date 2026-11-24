@@ -228,6 +228,7 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         | Asignaciones de inventario
         |--------------------------------------------------------------------------
         */
+        Route::get('asignaciones/contexto', [AsignacionInventarioController::class, 'contexto'])->name('asignaciones.contexto');
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
@@ -301,6 +302,7 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
         Route::post('compras/{compra}/conciliar', [\App\Http\Controllers\Admin\CompraController::class, 'conciliar'])
             ->whereNumber('compra')->name('compras.conciliar');
 
+        Route::get('asignaciones/contexto', [AsignacionInventarioController::class, 'contexto'])->name('asignaciones.contexto');
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
@@ -436,6 +438,8 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
             ->name('alertas.finalizar');
 
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class)->except('show');
+        Route::get('usuarios/{usuario}/regiones', [\App\Http\Controllers\Admin\CoordinadorRegionController::class, 'edit'])->name('usuarios.regiones');
+        Route::put('usuarios/{usuario}/regiones', [\App\Http\Controllers\Admin\CoordinadorRegionController::class, 'update'])->name('usuarios.regiones.update');
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');

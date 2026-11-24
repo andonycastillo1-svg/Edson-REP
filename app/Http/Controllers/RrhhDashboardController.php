@@ -24,7 +24,7 @@ class RrhhDashboardController extends Controller
     public function index()
     {
         $totalAlertas = auth()->user() && app(Permisos::class)->permite(auth()->user(), 'alertas.consultar')
-            ? AlertaReemplazo::whereIn('estado', [AlertaReemplazo::ESTADO_PENDIENTE, AlertaReemplazo::ESTADO_EN_REVISION])->count()
+            ? $this->alertasVisibles()->whereIn('estado', [AlertaReemplazo::ESTADO_PENDIENTE, AlertaReemplazo::ESTADO_EN_REVISION])->count()
             : 0;
 
         return view('rrhh.dashboard', compact('totalAlertas'));
@@ -40,10 +40,11 @@ class RrhhDashboardController extends Controller
 
     public function show(AlertaReemplazo $alerta)
     {
+        $this->autorizarAlertaActiva($alerta);
         $alerta->load([...AlertaReemplazo::RELACIONES_LISTADO, 'actuaciones.usuario', 'incidencia.archivoSubidoPor', 'incidencia.registrador',
             'asignacionAnterior.entrega', 'asignacionNueva.bodega']);
         $documentos = $this->documentosAsignacion($alerta);
-        $refacciones = $alerta->refaccion?->archivosFirmados()->get() ?? collect();
+        $refacciones = config('modulos.vehiculos') ? ($alerta->refaccion?->archivosFirmados()->get() ?? collect()) : collect();
 
         $historial = AsignacionInventario::where('colaborador_codigo', $alerta->colaborador_codigo)
             ->where('producto_codigo', $alerta->producto_codigo)->with('entrega', 'bodega', 'movimientos')->latest('id')->get();
@@ -53,6 +54,7 @@ class RrhhDashboardController extends Controller
 
     public function evidencia(AlertaReemplazo $alerta)
     {
+        $this->autorizarAlertaActiva($alerta);
         $incidencia = $alerta->incidencia;
         abort_unless($incidencia?->archivo, 404);
 
@@ -61,6 +63,7 @@ class RrhhDashboardController extends Controller
 
     public function documento(AlertaReemplazo $alerta, AsignacionInventarioArchivo $archivo)
     {
+        $this->autorizarAlertaActiva($alerta);
         abort_unless($this->documentosAsignacion($alerta)->contains('id', $archivo->id), 404);
 
         return DocumentoPrivado::responder($archivo->ruta, $archivo->nombre_original);
@@ -101,6 +104,7 @@ class RrhhDashboardController extends Controller
 
     private function registrar(Request $request, AlertaReemplazo $alerta, string $estado, string $accion)
     {
+        $this->autorizarAlertaActiva($alerta);
         $nota = $request->validate(['nota' => ['required', 'string', 'max:4000']])['nota'];
 
         DB::transaction(function () use ($request, $alerta, $estado, $nota, $accion) {
@@ -144,6 +148,17 @@ class RrhhDashboardController extends Controller
             'incidencias_rrhh_'.now()->format('Y-m-d_Hi').'.xlsx');
     }
 
+    private function alertasVisibles(): Builder
+    {
+        return AlertaReemplazo::query()->when(!config('modulos.vehiculos'),
+            fn (Builder $q) => $q->whereNull('vehiculo_producto_asignacion_id')->whereNull('vehiculo_vin'));
+    }
+
+    private function autorizarAlertaActiva(AlertaReemplazo $alerta): void
+    {
+        abort_unless(config('modulos.vehiculos') || (!$alerta->vehiculo_producto_asignacion_id && !$alerta->vehiculo_vin), 403);
+    }
+
     private function consulta(Request $request): array
     {
         $datos = $request->validate([
@@ -152,7 +167,7 @@ class RrhhDashboardController extends Controller
             'desde' => ['nullable', 'date_format:Y-m-d'],
             'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],
         ]);
-        $consulta = AlertaReemplazo::with(AlertaReemplazo::RELACIONES_LISTADO);
+        $consulta = $this->alertasVisibles()->with(AlertaReemplazo::RELACIONES_LISTADO);
         $filtros = [];
         if (!empty($datos['q'])) {
             $filtros['Búsqueda'] = $datos['q'];

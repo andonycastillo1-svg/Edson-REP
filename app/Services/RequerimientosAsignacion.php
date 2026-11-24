@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AsignacionInventario;
 use App\Models\Consolidado;
 use App\Models\ConsolidadoNecesidad;
+use App\Models\Inventario;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -29,17 +30,35 @@ class RequerimientosAsignacion
             ?? throw ValidationException::withMessages(['consolidado_id' => 'Selecciona un consolidado aprobado con necesidades verificadas por colaborador.']);
     }
 
-    public function vincular(User $usuario, int $id, string $colaborador, Collection $items): Collection
+    public function pendientes(Consolidado $consolidado, ?string $colaborador = null): Collection
     {
-        $consolidado = $this->verificar($usuario, $id, bloquear: true);
+        return ConsolidadoNecesidad::query()->with('participante.colaborador', 'producto')->withCount('asignaciones')
+            ->whereHas('participante', fn ($q) => $q->where('consolidado_id', $consolidado->id)
+                ->when($colaborador !== null, fn ($q) => $q->where('colaborador_codigo', $colaborador))
+                ->whereHas('colaborador', fn ($q) => $q->where('estado', 'Activo')))
+            ->where('cantidad', '>', 0)->orderBy('consolidado_colaborador_id')->orderBy('producto_codigo')->get()
+            ->filter(fn ($fila) => $fila->cantidad > $fila->asignaciones_count);
+    }
+
+    public function cantidadesDisponibles(array $bodegas, array $codigos): Collection
+    {
+        return Inventario::query()->whereIn('bodega_id', $bodegas)->whereIn('producto_codigo', $codigos)
+            ->whereIn('stock_tipo', ['nuevo', 'usado'])->select('bodega_id', 'producto_codigo')->selectRaw('SUM(cantidad) AS total')
+            ->groupBy('bodega_id', 'producto_codigo')->get()->groupBy('producto_codigo');
+    }
+
+    public function vincular(User $usuario, int $id, string $colaborador, Collection $items, bool $bloquear = true): Collection
+    {
+        $consolidado = $this->verificar($usuario, $id, $bloquear);
         $persona = $consolidado->participantes()->where('colaborador_codigo', $colaborador)->first();
         $necesidades = $persona ? $persona->necesidades()->whereIn('producto_codigo', $items->pluck('producto_codigo'))
-            ->orderBy('id')->lockForUpdate()->get()->keyBy('producto_codigo') : collect();
+            ->orderBy('id')->when($bloquear, fn ($q) => $q->lockForUpdate())->get()->keyBy('producto_codigo') : collect();
         // Cada fila vinculada representa una unidad entregada, aunque después se devuelva.
         $entregadas = AsignacionInventario::whereIn('requerimiento_id', $necesidades->pluck('id'))
-            ->orderBy('id')->lockForUpdate()->pluck('requerimiento_id')->countBy();
+            ->orderBy('id')->when($bloquear, fn ($q) => $q->lockForUpdate())->pluck('requerimiento_id')->countBy();
 
-        foreach ($items->countBy('producto_codigo') as $codigo => $cantidad) {
+        foreach ($items->groupBy('producto_codigo') as $codigo => $lineas) {
+            $cantidad = $lineas->sum(fn ($fila) => (int) ($fila['cantidad_asignada'] ?? $fila['cantidad'] ?? 1));
             /** @var ConsolidadoNecesidad|null $necesidad */
             $necesidad = $necesidades->get($codigo);
             if (!$necesidad || $entregadas->get($necesidad->id, 0) + $cantidad > $necesidad->cantidad) {

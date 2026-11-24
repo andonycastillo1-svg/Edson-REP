@@ -51,6 +51,7 @@ class SistemaAutogestionTest extends TestCase
 
     public function test_catalogo_preserva_las_rutas_legacy_y_deniega_las_desconocidas(): void
     {
+        config(['modulos.vehiculos' => true]);
         $permisos = app(Permisos::class);
         $supervisor = User::factory()->create(['role_id' => 3]);
         $rrhh = User::factory()->create(['role_id' => 4]);
@@ -487,6 +488,7 @@ class SistemaAutogestionTest extends TestCase
 
     public function test_campos_se_integran_en_altas_operativas_y_saldos_automaticos(): void
     {
+        config(['modulos.vehiculos' => true]);
         Notification::fake();
         $this->superadministrador();
         foreach (['usuarios','colaboradores','productos','compras','inventario','asignaciones','traslados','vehiculos','refacciones'] as $modulo) {

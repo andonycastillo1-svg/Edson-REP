@@ -47,7 +47,7 @@ class InspeccionController extends Controller
             return app(ExportacionesOperativas::class)->inspecciones($consulta);
         }
         $supervisores = $this->acceso->inspecciones($usuario)->distinct()->pluck('supervisor_id');
-        $regiones = Region::query()->when($usuario->rolOperativo() === 5, fn ($q) => $q->whereIn('id', $this->acceso->regiones($usuario)))
+        $regiones = Region::query()->when(in_array($usuario->rolOperativo(), [3, 5], true), fn ($q) => $q->whereIn('id', $this->acceso->regiones($usuario)))
             ->orderBy('nombre')->get();
         $coordinadores = User::deAmbito(5)->whereKey($regiones->where('activa', true)->pluck('coordinador_id')->filter()->unique()->all())->pluck('id');
         $personas = User::whereKey($supervisores->merge($coordinadores)->unique()->all())->get()->keyBy('id');
@@ -59,7 +59,7 @@ class InspeccionController extends Controller
     public function create(Request $request)
     {
         $this->acceso->autorizar($request->user(), 'capturar');
-        $regiones = Region::where('activa', true)->orderBy('nombre')->get();
+        $regiones = Region::whereIn('id', $this->acceso->regiones($request->user()))->orderBy('nombre')->get();
         $secciones = DB::table('inspeccion_secciones')->orderBy('orden')->get();
         $articulos = DB::table('inspeccion_articulos')->where('activo', true)->whereNotNull('producto_codigo')
             ->orderBy('orden')->orderBy('id')->get()->groupBy('seccion');
@@ -74,7 +74,7 @@ class InspeccionController extends Controller
     public function colaboradores(Request $request, Region $region)
     {
         $this->acceso->autorizar($request->user(), 'capturar');
-        abort_unless($region->activa, 404);
+        abort_unless($this->acceso->regiones($request->user())->whereKey($region->id)->exists(), 404);
 
         return response()->json(Colaborador::where('region_id', $region->id)->where('estado', 'Activo')
             ->orderBy('nombre')->get(['codigo', 'nombre', 'puesto']))->header('Cache-Control', 'private, no-store');
@@ -97,7 +97,7 @@ class InspeccionController extends Controller
             }
             $inspeccion = DB::transaction(function () use ($datos, $request, $archivos) {
                 $usuario = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
-                $region = Region::where('activa', true)->find($datos['region_id']);
+                $region = $this->acceso->regiones($usuario)->whereKey($datos['region_id'])->first();
                 $colaborador = Colaborador::whereKey($datos['colaborador_codigo'])->lockForUpdate()->first();
                 if (!$colaborador || $colaborador->estado !== 'Activo' || (int) $colaborador->region_id !== (int) $datos['region_id']
                     || blank($colaborador->puesto) || !$region) {

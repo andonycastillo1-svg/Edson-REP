@@ -64,6 +64,7 @@ class FlujoOperativoTest extends TestCase
         $this->sur = Region::create(['nombre' => 'Sur', 'activa' => true]);
         $this->norte->coordinador()->associate($this->coordinador)->save();
         $this->sur->coordinador()->associate($this->ajeno)->save();
+        $this->supervisor->regionesOperativas()->attach([$this->norte->id, $this->sur->id]);
         Colaborador::create(['codigo' => 'COL-001', 'nombre' => 'Técnica norte', 'puesto' => 'Instalación', 'estado' => 'Activo', 'region_id' => $this->norte->id]);
         Colaborador::create(['codigo' => 'COL-002', 'nombre' => 'Técnico sur', 'puesto' => 'Mantenimiento', 'estado' => 'Activo', 'region_id' => $this->sur->id]);
         Producto::create(['codigo' => 'P-001', 'nombre' => 'Arnés QA', 'vida_util_meses' => 2]);
@@ -556,7 +557,7 @@ class FlujoOperativoTest extends TestCase
         }
         $dia = today()->toDateString();
         $filas = [
-            ['COL-001', 'P-001', 1, $dia, 'Gerencia', 'Correo', 'desgaste', ''],
+            ['COL-001', 'P-001', 1, $dia, 'Gerencia', 'Correo', '', ''],
             ['COL-001', 'P-002', 1, $dia, 'Gerencia', 'WhatsApp', '', ''],
             ['COL-002', 'P-001', 1, $dia, 'Gerencia', 'Correo', '', ''],
         ];
@@ -642,7 +643,7 @@ class FlujoOperativoTest extends TestCase
         $this->actingAs($this->central)->post($ruta, $base + ['solicitud_id' => (string) Str::uuid(),
             'fecha' => now()->subDays(30)->toDateTimeString(), 'items' => [$item]])->assertSessionHasNoErrors();
         $this->post($ruta, $base + ['solicitud_id' => (string) Str::uuid(),
-            'items' => [$item + ['motivo_asignacion' => $codigo]]])->assertSessionHasNoErrors();
+            'items' => [$item + ['motivo_asignacion' => $codigo, 'sustituir_asignacion_id' => AsignacionInventario::sole()->id]]])->assertSessionHasNoErrors();
         $this->assertSame(0, $this->saldo('P-001'));
         $this->assertCount(1, AsignacionInventario::custodiaActiva()->get());
         $this->assertDatabaseCount('asignacion_movimientos', 2);
@@ -656,19 +657,17 @@ class FlujoOperativoTest extends TestCase
         $this->travelBack();
     }
 
-    public function test_robo_injustificado_sin_custodia_anterior_genera_revision_sin_importe(): void
+    public function test_primera_entrega_rechaza_motivo_sin_reemplazo_explicito(): void
     {
         $this->stock('P-001', 1);
-        $this->actingAs($this->central)->post(route('operador.asignaciones.store'), [
+        $this->actingAs($this->central)->postJson(route('operador.asignaciones.store'), [
             'solicitud_id' => (string) Str::uuid(), 'colaborador_codigo' => 'COL-001',
             'items' => [['producto_codigo' => 'P-001', 'bodega_id' => $this->bodega->id,
                 'motivo_asignacion' => 'robo_injustificado']],
-        ])->assertSessionHasNoErrors();
-        $alerta = AlertaReemplazo::sole();
-        $this->assertNull($alerta->asignacion_anterior_id);
-        $this->assertNull($alerta->fecha_asignacion_anterior);
-        $this->assertNull($alerta->referencia_proporcional);
-        $this->assertSame('Robo injustificado', $alerta->motivo_etiqueta);
+        ])->assertUnprocessable()->assertJsonValidationErrors('motivo_asignacion');
+        $this->assertDatabaseCount('asignaciones_inventarios', 0);
+        $this->assertDatabaseCount('alertas_reemplazos_rrhh', 0);
+        $this->assertSame(1, $this->saldo('P-001'));
     }
 
     public static function motivos(): array
@@ -923,6 +922,241 @@ class FlujoOperativoTest extends TestCase
         } finally {
             unlink($ruta);
         }
+    }
+
+    public function test_plantilla_firmada_importa_entregas_parciales_para_varios_colaboradores_con_origen_interno(): void
+    {
+        $consolidado = $this->operacionAprobada(3, 2);
+        $this->stock('P-001', 10);
+        $this->actingAs($this->central);
+        $manual = route('operador.asignaciones.store');
+        $this->post($manual, ['solicitud_id' => (string) Str::uuid(), 'consolidado_id' => $consolidado->id,
+            'colaborador_codigo' => 'COL-001', 'items' => [['producto_codigo' => 'P-001', 'bodega_id' => $this->bodega->id]]])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $url = route('flujo.importar.pendientes', ['consolidado_id' => $consolidado->id]);
+        $descarga = $this->get($url)->assertOk()->assertDownload("entregas-pendientes-{$consolidado->id}-1.xlsx");
+        $contenido = $descarga->streamedContent();
+        $libro = $this->libroDescargado($contenido);
+        $hoja = $libro->getSheetByName('Asignaciones');
+        $this->assertSame('COL-001', $hoja->getCell('A2')->getValue());
+        $this->assertEquals(2, $hoja->getCell('C2')->getValue());
+        $this->assertEquals(2, $hoja->getCell('C3')->getValue());
+        $this->assertSame('COL-002', $hoja->getCell('A3')->getValue());
+        $this->assertSame('Requerimiento interno', $hoja->getCell('F2')->getValue());
+        $vistaPrevia = route('flujo.importar.preview');
+        $segundo = $this->aprobado('Origen diferente', 1);
+        $this->postJson($vistaPrevia, ['consolidado_id' => $segundo->id, 'excel' => $this->subirLibro($libro)])
+            ->assertUnprocessable()->assertJsonValidationErrors('consolidado_id');
+        $hoja->setCellValue('B2', 'P-002');
+        $this->post($vistaPrevia, ['excel' => $this->subirLibro($libro)])->assertUnprocessable()->assertSee('Conserva los códigos');
+        $this->assertDatabaseCount('importaciones_asignacion', 0);
+
+        $libro = $this->libroDescargado($contenido);
+        $libro->getSheetByName('Asignaciones')->setCellValue('C2', 1);
+        $this->post($vistaPrevia, ['excel' => $this->subirLibro($libro)])->assertRedirect()->assertSessionHasNoErrors();
+        $lote = ImportacionAsignacion::sole();
+        $this->assertSame($consolidado->id, $lote->consolidado_id);
+        $this->get(route('flujo.importar.show', $lote))->assertOk()->assertSee('Requerimiento interno')->assertSee('Dotación de prueba');
+        $confirmar = route('flujo.importar.confirmar', $lote);
+        $this->post($confirmar)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($confirmar)->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('asignacion_movimientos', 4);
+        $this->assertDatabaseCount('asignaciones_inventarios', 4);
+        $this->assertSame(6, $this->saldo('P-001'));
+        $this->assertDatabaseCount('alertas_reemplazos_rrhh', 0);
+        foreach (['COL-001', 'COL-002'] as $codigo) {
+            $necesidad = $consolidado->participantes()->where('colaborador_codigo', $codigo)->sole()->necesidades()->sole();
+            $this->assertSame(2, $necesidad->asignaciones()->where('medio_solicitud', 'Requerimiento interno')->count());
+        }
+        $entrega = collect($lote->fresh()->entregas)->first()['grupo'];
+        $this->get(route('operador.asignaciones.entrega', $entrega))->assertOk()->assertSee('Requerimiento #')->assertSee('Requerimiento interno');
+
+        $resto = $this->libroDescargado($this->get($url)->assertOk()->streamedContent())->getSheetByName('Asignaciones');
+        $this->assertSame('COL-001', $resto->getCell('A2')->getValue());
+        $this->assertEquals(1, $resto->getCell('C2')->getValue());
+        $this->assertNull($resto->getCell('A3')->getValue());
+    }
+
+    public function test_vista_previa_valida_producto_pendiente_y_confirmacion_revalida_disponibilidad(): void
+    {
+        $consolidado = $this->operacionAprobada(3, 0);
+        $this->stock('P-001', 2);
+        $this->stock('P-002', 5);
+        $this->actingAs($this->central);
+        $dia = today()->toDateString();
+        $url = route('flujo.importar.preview');
+        foreach ([['COL-001', 'P-002', 1, $dia], ['COL-001', 'P-001', 4, $dia], ['COL-002', 'P-001', 1, $dia]] as $fila) {
+            $this->post($url, ['excel' => $this->xlsx([$fila]), 'consolidado_id' => $consolidado->id])
+                ->assertUnprocessable()->assertSee('pendiente aprobado');
+        }
+        $this->post($url, ['excel' => $this->xlsx([['COL-001', 'P-001', 2, $dia]]), 'consolidado_id' => $consolidado->id])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $lote = ImportacionAsignacion::sole();
+        $this->post(route('operador.asignaciones.store'), ['solicitud_id' => (string) Str::uuid(), 'colaborador_codigo' => 'COL-002',
+            'items' => [['producto_codigo' => 'P-001', 'bodega_id' => $this->bodega->id]]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->postJson(route('flujo.importar.confirmar', $lote))->assertUnprocessable()->assertJsonValidationErrors('fila_2');
+        $this->assertNull($lote->fresh()->confirmada_en);
+        $this->assertDatabaseCount('asignaciones_inventarios', 1);
+        $this->assertSame(1, $this->saldo('P-001'));
+    }
+
+    public function test_conciliar_lote_registrado_con_evidencia_preserva_cantidades_y_no_repite_movimientos(): void
+    {
+        $consolidado = $this->operacionAprobada(4, 1);
+        $this->stock('P-001', 5);
+        $this->actingAs($this->central);
+        $fecha = today()->toDateString();
+        $filas = [['COL-001', 'P-001', 1, $fecha, null, 'Correo'], ['COL-002', 'P-001', 1, $fecha]];
+        $this->post(route('flujo.importar.preview'), ['excel' => $this->xlsx($filas)])->assertRedirect()->assertSessionHasNoErrors();
+        $lote = ImportacionAsignacion::sole();
+        $this->post(route('flujo.importar.confirmar', $lote))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertNull($lote->fresh()->consolidado_id);
+        $this->assertDatabaseCount('movimientos', 0);
+        $this->assertSame(3, $this->saldo('P-001'));
+        $this->get(route('flujo.importar.show', $lote))->assertOk()->assertSee('Conciliar entregas');
+        $ruta = route('flujo.importar.conciliar', $lote);
+        $datos = ['consolidado_id' => $consolidado->id, 'evidencia' => 'Verifiqué las hojas de ambas entregas y el requerimiento.'];
+        $this->postJson($ruta, ['consolidado_id' => $consolidado->id])->assertUnprocessable()->assertJsonValidationErrors('evidencia');
+        $fila = AsignacionInventario::where('colaborador_codigo', 'COL-001')->sole();
+        $movimiento = $fila->movimientoInicial;
+        $movimiento->update(['ocurrio_en' => now()->subDays(3)]);
+        $this->postJson($ruta, $datos)->assertUnprocessable()->assertJsonValidationErrors('conciliacion');
+        $this->assertNull($fila->fresh()->requerimiento_id);
+        $movimiento->update(['ocurrio_en' => now()]);
+        $this->post($ruta, $datos)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post($ruta, $datos)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame($consolidado->id, $lote->fresh()->consolidado_id);
+        $this->assertSame(2, AsignacionInventario::whereNotNull('requerimiento_id')->count());
+        $this->assertSame('Correo', $fila->fresh()->medio_solicitud);
+        $this->assertDatabaseHas('sistema_auditoria', ['accion' => 'conciliar_importacion', 'actor_id' => $this->central->id]);
+        $this->assertDatabaseCount('movimientos', 0);
+        $this->assertDatabaseCount('asignacion_movimientos', 2);
+        $this->assertSame(3, $this->saldo('P-001'));
+
+        $lote->forceFill(['huella_operativa' => null])->save();
+        $filas[0][5] = 'WhatsApp';
+        $this->post(route('flujo.importar.preview'), ['excel' => $this->xlsx(array_reverse($filas))])->assertRedirect()->assertSessionHasNoErrors();
+        $reintento = ImportacionAsignacion::whereNull('confirmada_en')->sole();
+        $this->postJson(route('flujo.importar.confirmar', $reintento))->assertUnprocessable()->assertJsonValidationErrors('excel');
+        $this->assertDatabaseCount('asignacion_movimientos', 2);
+        $this->assertSame(3, $this->saldo('P-001'));
+    }
+
+    public function test_asignacion_vinculada_limita_catalogo_y_expone_faltantes_sin_ampliar_permisos(): void
+    {
+        $consolidado = $this->operacionAprobada(4, 0);
+        $this->stock('P-001', 4);
+        $this->stock('P-002', 4);
+        $parametros = ['colaborador_codigo' => 'COL-001', 'consolidado_id' => $consolidado->id];
+        $url = route('operador.asignaciones.contexto', $parametros);
+        $this->actingAs($this->regional)->getJson($url)->assertForbidden();
+        $this->actingAs($this->central)->getJson($url)->assertOk()->assertJsonCount(1, 'productos')->assertJsonPath('productos.0.codigo', 'P-001')
+            ->assertJsonPath('productos.0.pendiente', 4)->assertJsonPath('productos.0.existencias.'.$this->bodega->id, 4);
+        $carga = [...$parametros, 'solicitud_id' => (string) Str::uuid(),
+            'items' => [['producto_codigo' => 'P-001', 'bodega_id' => $this->bodega->id, 'cantidad_asignada' => 2]]];
+        $this->post(route('operador.asignaciones.store'), $carga)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('entregas_inventario', 1);
+        $this->assertDatabaseCount('asignaciones_inventarios', 2);
+        $this->getJson($url)->assertOk()->assertJsonPath('productos.0.entregada', 2)->assertJsonPath('productos.0.pendiente', 2);
+        $this->assertSame(2, $this->saldo('P-001'));
+        $this->assertSame(4, $this->saldo('P-002'));
+        $this->assertDatabaseCount('alertas_reemplazos_rrhh', 0);
+    }
+
+    public function test_rrhh_gestiona_regiones_de_roles_operativos_y_preserva_el_ambito_de_bodega(): void
+    {
+        $rrhh = User::factory()->create(['role_id' => 4]);
+        $region = Region::create(['nombre' => 'Este QA', 'activa' => true]);
+        $adicional = Region::create(['nombre' => 'Oeste QA', 'activa' => true]);
+        $this->actingAs($rrhh)->get(route('rrhh.usuarios.create'))->assertOk()->assertSee('Regiones operativas');
+        $ruta = route('rrhh.usuarios.store');
+        $comun = ['name' => 'Cuenta de prueba', 'password' => 'passwordQA', 'password_confirmation' => 'passwordQA', 'configurar_regiones' => 1];
+        $this->postJson($ruta, $comun + ['email' => 'sin-admin@example.test', 'role_id' => 1])
+            ->assertUnprocessable()->assertJsonValidationErrors(['role_id']);
+        $datosCoord = $comun + ['email' => 'coord-regiones@example.test', 'role_id' => $this->coordinador->role_id];
+        $this->postJson($ruta, $datosCoord + ['regiones' => [$this->norte->id], 'reasignar_regiones' => 1])
+            ->assertUnprocessable()->assertJsonValidationErrors('regiones');
+        $this->assertDatabaseMissing('users', ['email' => $datosCoord['email']]);
+        $this->post($ruta, $datosCoord + ['regiones' => [$region->id, $adicional->id]])->assertRedirect()->assertSessionHasNoErrors();
+        $coord = User::where('email', $datosCoord['email'])->sole();
+        $this->assertSame($coord->id, $region->fresh()->coordinador_id);
+        $this->assertSame($coord->id, $adicional->fresh()->coordinador_id);
+        $this->get(route('rrhh.usuarios.regiones', $coord))->assertOk()->assertSee('Historial de responsables');
+
+        $this->post($ruta, $comun + ['email' => 'alm-regiones@example.test', 'role_id' => 2, 'bodega_id' => $this->regional->bodega_id,
+            'regiones' => [$region->id]])->assertRedirect()->assertSessionHasNoErrors();
+        $almacenista = User::where('email', 'alm-regiones@example.test')->sole();
+        $this->assertEquals([$region->id], $almacenista->regionesOperativas->modelKeys());
+        $this->assertFalse(app(\App\Services\BodegaAccessService::class)->canModifyStock($almacenista, $this->bodega->id));
+
+        $this->post($ruta, $comun + ['email' => 'super-regiones@example.test', 'role_id' => 3,
+            'almacenista_id' => $almacenista->id, 'regiones' => [$region->id]])->assertRedirect()->assertSessionHasNoErrors();
+        $supervisor = User::where('email', 'super-regiones@example.test')->sole();
+        $this->put(route('rrhh.usuarios.update', $supervisor), [
+            'name' => $supervisor->name, 'email' => $supervisor->email, 'role_id' => 3, 'almacenista_id' => $almacenista->id,
+            'configurar_regiones' => 1, 'regiones' => [$region->id, $adicional->id],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('sistema_auditoria', ['accion' => 'actualizar_regiones_operativas', 'actor_id' => $rrhh->id]);
+        $this->assertEqualsCanonicalizing([$region->id, $adicional->id], $supervisor->fresh()->regionesOperativas->modelKeys());
+
+        $this->actingAs($supervisor)->get(route('flujo.inspecciones.create'))->assertOk()->assertSee('Este QA')->assertDontSee('>Norte<', false);
+        $this->getJson(route('flujo.inspecciones.colaboradores', $this->norte))->assertNotFound();
+        $this->postJson(route('flujo.inspecciones.store'), $this->datosInspeccion())->assertUnprocessable()->assertJsonValidationErrors('colaborador_codigo');
+        Colaborador::findOrFail('COL-001')->update(['region_id' => $region->id]);
+        $this->post(route('flujo.inspecciones.store'), [...$this->datosInspeccion(), 'region_id' => $region->id])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame($coord->id, $this->consolidar(Inspeccion::pluck('id')->all(), 'Región asignada por RRHH')->coordinador_id);
+    }
+
+    public function test_vehiculos_se_oculta_y_puede_reactivarse_con_sus_datos(): void
+    {
+        $vehiculo = \App\Models\Vehiculo::create(['vin' => 'QA-VIN-01', 'placa' => 'QA01', 'marca' => 'Marca QA', 'estado' => 'Disponible']);
+        $ruta = route('admin.vehiculos.show', $vehiculo);
+        $this->actingAs($this->admin)->get(route('admin.dashboard'))->assertOk()->assertDontSee(route('admin.vehiculos.index'), false);
+        $this->get($ruta)->assertForbidden();
+        $this->get(route('admin.vehiculos.asignaciones.index'))->assertForbidden();
+        $this->get(route('admin.vehiculos.productos.index'))->assertForbidden();
+        $this->get(route('sistema.datos.lista', 'vehiculos'))->assertForbidden();
+        $this->actingAs($this->central)->get($ruta)->assertForbidden();
+        config(['modulos.vehiculos' => true]);
+        $this->actingAs($this->admin)->get(route('admin.vehiculos.index'))->assertOk()->assertSee('QA-VIN-01');
+        $this->assertDatabaseHas('vehiculos', ['vin' => $vehiculo->vin]);
+    }
+
+    private function operacionAprobada(int $cantidadNorte, int $cantidadSur): Consolidado
+    {
+        $this->sur->coordinador()->associate($this->coordinador)->save();
+        $this->actingAs($this->supervisor)->post(route('flujo.inspecciones.store'), $this->datosInspeccion($cantidadNorte))->assertRedirect();
+        if ($cantidadSur > 0) {
+            $this->post(route('flujo.inspecciones.store'), [...$this->datosInspeccion($cantidadSur),
+                'region_id' => $this->sur->id, 'colaborador_codigo' => 'COL-002'])->assertRedirect();
+        }
+        $consolidado = $this->consolidar(Inspeccion::pluck('id')->all(), 'Dotación de prueba');
+        $this->actingAs($this->coordinador);
+        $this->estado($consolidado, 'aprobar');
+
+        return $consolidado->fresh();
+    }
+
+    private function libroDescargado(string $contenido): \PhpOffice\PhpSpreadsheet\Spreadsheet
+    {
+        $ruta = tempnam(sys_get_temp_dir(), 'edson-pendientes-');
+        try {
+            file_put_contents($ruta, $contenido);
+
+            return IOFactory::createReader('Xlsx')->load($ruta);
+        } finally {
+            unlink($ruta);
+        }
+    }
+
+    private function subirLibro(\PhpOffice\PhpSpreadsheet\Spreadsheet $libro): UploadedFile
+    {
+        ob_start();
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save('php://output');
+
+        return UploadedFile::fake()->createWithContent('asignaciones.xlsx', ob_get_clean());
     }
 
     private function consolidar(array $ids, string $nombre): Consolidado

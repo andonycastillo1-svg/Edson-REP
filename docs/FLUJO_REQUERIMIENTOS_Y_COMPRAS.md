@@ -5,7 +5,7 @@ El supervisor registra los requerimientos de cada colaborador. Bodega central ag
 ## Configuración inicial
 
 1. En **Catálogos operativos → Regiones**, crea las regiones activas. En **Colaboradores**, asigna una región y verifica el puesto de cada persona. El formulario de inspección filtra por región y toma el puesto del registro seleccionado.
-2. En **Usuarios**, abre el perfil de Coordinador y selecciona **Administrar regiones**. Un coordinador puede atender varias regiones. Cada región activa puede tener un responsable. Confirma los cambios de responsable en el formulario. El historial muestra el cambio, el usuario que lo realizó y la fecha. Las relaciones del supervisor con coordinación y su almacenista conservan sus usos previos.
+2. En **Usuarios**, Administración o Recursos Humanos selecciona el rol y configura sus regiones al crear o editar la cuenta. Recursos Humanos administra las cuentas operativas de su ámbito. Cada región activa puede tener un coordinador. **Historial regional** registra el responsable anterior, el usuario que realizó el cambio y la fecha. Las regiones del supervisor limitan las nuevas capturas y las consultas regionales. Las del almacenista documentan su ámbito operativo y sus permisos de stock siguen ligados a la bodega.
 3. En **Catálogos operativos → Artículos del formulario**, vincula los artículos con códigos reales del catálogo y ordénalos. Puedes cambiar nombres y orden de secciones. Si falta un producto, usa **Dar de alta un producto**. El alta crea el código y las existencias se registran cuando se recibe el inventario.
 4. **Conos y reflectivos** incluye cuatro artículos iniciales. La migración vincula automáticamente una coincidencia inequívoca por nombre. Si falta el código, activa el artículo después de asociarlo. Carga desde el catálogo real los artículos de las demás secciones.
 5. En **Motivos de asignación**, administra las etiquetas y las opciones vigentes. Desgaste solo registra el motivo. Robo abre seguimiento sin importe. Robo injustificado abre seguimiento con una referencia proporcional cuando se conocen el costo histórico y la vida restante de la custodia anterior. RR. HH. registra su decisión en el seguimiento.
@@ -23,7 +23,7 @@ Los permisos operativos se combinan con las excepciones individuales y la bodega
 
 1. En **Necesidades de compra**, selecciona los consolidados aprobados y consulta **Resumen por producto**. Se suma el requerimiento aprobado y se muestra el saldo central actual una sola vez por código. El pendiente estima las unidades adicionales a comprar, y la compra total prevista suma lo ya recibido y el pendiente. Con un plan guardado, el pendiente se calcula sobre su cantidad decidida. El seguimiento por consolidado muestra sus cantidades y facturas.
 2. Si usarás existencias de central para cubrir parte de un requerimiento, puedes guardar esas cantidades en **Ajustar plan de compra**. Este control es opcional para registrar facturas y conserva la planificación separada del saldo actual. El stock del plan sirve como referencia para el cierre y no reserva unidades.
-3. Solicita la autorización de Gerencia fuera del sistema. Al registrar la factura, usa el campo **Autorizado por** y adjunta sus PDF. Distribuye las cantidades entre los consolidados que correspondan. Puedes agregar más facturas de otros proveedores o fechas. Cada factura conserva su consulta tradicional y las unidades no distribuidas ingresan a stock general.
+3. Desde **Necesidades de compra**, abre **Registrar compra**. El formulario muestra **Productos pendientes de compra**. **Agregar a factura** y **Agregar todos los pendientes** preparan las líneas y proponen un reparto. Ajusta cantidades y precios antes de guardar. Solicita la autorización de Gerencia fuera del sistema, anota **Autorizado por** y adjunta sus PDF. Puedes agregar más facturas de otros proveedores o fechas. Cada factura conserva su consulta tradicional y las unidades no distribuidas ingresan a stock general.
 4. **Cerrar compras** es una acción manual. Se habilita cuando se cubre lo aprobado con las compras recibidas y, cuando corresponde, el saldo considerado en el plan. Las facturas históricas se deben conciliar antes. El cierre conserva el estado técnico y su historial. Las asignaciones y las entregas continúan por su flujo habitual.
 5. Las constancias y sus documentos previos están disponibles en **Constancias históricas**. Para facturas históricas sin reparto, abre el detalle y confirma solo las cantidades respaldadas. El sistema conserva los vínculos y añade las unidades al seguimiento cuando se confirma el desglose.
 
@@ -31,20 +31,28 @@ Solo registrar la factura aplica la entrada de inventario. La planificación, la
 
 ## Importación desde Excel
 
-Descarga la plantilla de esta carpeta o desde **Bodega central → Importar asignaciones desde Excel**. La descarga en la aplicación muestra los motivos activos y el menú desplegable. La hoja **Ejemplo** tiene códigos ficticios. Captura tus datos en **Asignaciones**.
+Desde un consolidado aprobado, abre **Preparar asignaciones en Excel** y usa **Descargar Excel con entregas pendientes**. El archivo conserva el origen y los códigos del requerimiento. Edita cantidades o elimina filas de artículos que todavía no se entregarán. Cada operación admite hasta 500 filas y 500 unidades. Tras confirmar una parte, puedes descargar nuevamente los pendientes. Para asignaciones independientes, descarga una plantilla vacía y completa **Asignaciones**. La aplicación mantiene la lectura de las plantillas históricas de ocho columnas.
 
 | Campo | Cómo completarlo |
 | --- | --- |
 | Código de colaborador | Usa el código de una persona activa. |
 | Código de producto | Usa el código exacto que figura en el inventario. |
-| Cantidad | Registra una unidad por colaborador y código. |
+| Cantidad | Si vinculas un consolidado, registra las unidades entregadas hasta el pendiente aprobado. Usa una unidad por código en las asignaciones independientes. |
 | Fecha de asignación | Usa AAAA-MM-DD o una fecha de Excel. Usa la misma fecha en las líneas de un colaborador. |
-| Aprobado por, medio y observaciones | El medio puede ser Correo o WhatsApp. Respeta los campos obligatorios de la configuración. |
-| Código de motivo | Selecciona el código de un motivo activo o deja la celda vacía. |
+| Aprobado por, medio y observaciones | Para un consolidado el origen es **Requerimiento interno**. En asignaciones independientes puedes utilizar Correo o WhatsApp. |
+| Sustituir asignación y código de motivo | Si reemplazas una unidad que aún está bajo custodia, indica el ID de la asignación vigente y escoge un motivo activo. Deja los dos campos vacíos en entregas iniciales o adicionales. |
 
 La vista previa admite hasta 500 filas y presenta los errores por fila. Al confirmar se verifican nuevamente la bodega, los códigos, las custodias y el inventario. Cualquier error revierte todo el lote. El mismo contenido normalizado se registra una sola vez incluso si se cambia el orden de filas o lo confirma otra cuenta. Cada colaborador obtiene una sola hoja con sus productos.
 
-En una asignación manual o una importación masiva, bodega central puede seleccionar un consolidado aprobado o con compras cerradas que tenga un desglose verificado. Cada salida conserva el vínculo con el colaborador y producto aprobados. El cálculo cuenta las unidades entregadas desde el requerimiento, incluso cuando después se devuelven. Si la cantidad aprobada es insuficiente, el registro se revierte. El detalle por colaborador muestra las unidades asignadas y las facturas distribuidas al producto del consolidado. Las facturas documentan la compra para el requerimiento agrupado. La unidad física de un inventario compartido conserva la trazabilidad disponible en el módulo de bodega.
+En una asignación manual o una importación masiva, bodega central puede seleccionar un consolidado aprobado o con compras cerradas que tenga un desglose verificado. Cada salida conserva el vínculo con el colaborador y producto aprobados. El cálculo cuenta las unidades entregadas desde el requerimiento, incluso cuando después se devuelven. Si la cantidad aprobada es insuficiente, el registro se revierte. El detalle por colaborador muestra las unidades asignadas y las facturas distribuidas al producto del consolidado. En la asignación individual, seleccionar un requerimiento muestra las cantidades aprobadas, entregadas, pendientes y el stock por producto. Las primeras entregas y las entregas adicionales conservan la custodia anterior. Si corresponde reemplazar, selecciona explícitamente la asignación anterior y el motivo configurable. Las facturas documentan la compra para el requerimiento agrupado. La unidad física de un inventario compartido conserva la trazabilidad disponible en el módulo de bodega.
+
+### Conciliar un lote confirmado
+
+En **Importaciones registradas**, abre el lote con la cuenta que lo registró. Si contiene asignaciones sin requerimiento, usa **Conciliar entregas**. Selecciona el consolidado respaldado por las hojas de la operación y describe la evidencia revisada. El sistema contrasta el lote, las fechas, las cantidades de salida, el colaborador, el producto y el saldo aprobado. La conciliación deja el responsable y la fecha en la auditoría. Las entregas, movimientos, cantidades y existencias se conservan. Si la operación o su origen son ambiguos, conserva el caso para revisión manual.
+
+## Vehículos
+
+Vehículos y sus refacciones quedan suspendidos con `EDSON_VEHICULOS_HABILITADOS=false`. Para reactivarlos localmente, cambia el valor a `true` y actualiza la caché de configuración. Las autorizaciones, tablas y documentos se conservan.
 
 ## Exportaciones Excel
 
@@ -68,6 +76,8 @@ La migración `2026_11_24_000002_add_regional_requirement_tracking.php` agrega e
 
 Los consolidados históricos mantienen sus cantidades agregadas, documentos y responsables. Coordinación puede verificar el desglose de un pendiente cuando coincide con las inspecciones originales. Los históricos con diferencias sin respaldo individual quedan identificados como pendientes de verificación. Si un cambio regional divide un consolidado pendiente entre varios coordinadores, la reasignación queda bloqueada hasta que Administración resuelva la distribución.
 
+La migración `2026_11_24_000003_add_operational_regions_and_internal_request_origin.php` agrega regiones operativas para supervisores y almacenistas, admite **Requerimiento interno** en las asignaciones y registra la huella de nuevas importaciones para impedir repeticiones. Para actualizar localmente, descarga la rama y ejecuta `composer install`, `npm ci`, `npm run build` y `php artisan migrate`. Configura las regiones de supervisión antes de habilitar las inspecciones para esas cuentas. No hay dependencias nuevas.
+
 Prueba en un entorno aislado.
 
 1. Da de alta dos coordinadores, un supervisor y colaboradores de dos regiones. Busca y registra una inspección con foto. Verifica las restricciones desde el otro equipo.
@@ -85,6 +95,14 @@ La prueba `php tests/Integration/entregas_mysql.php` verifica además que dos sa
 ## Capturas
 
 Las pantallas se capturaron en Chromium con datos ficticios.
+
+- [Configuración de regiones en Recursos Humanos](capturas/simplificacion-operacion/01-regiones-rrhh.png)
+- [Productos pendientes en la factura](capturas/simplificacion-operacion/02-compra-pendientes.png)
+- [Registro de una compra parcial](capturas/simplificacion-operacion/03-compra-registrada.png)
+- [Asignación de productos aprobados en móvil](capturas/simplificacion-operacion/04-asignacion-movil.png)
+- [Descarga de entregas pendientes](capturas/simplificacion-operacion/05-descarga-pendientes.png)
+- [Vista previa de la importación vinculada](capturas/simplificacion-operacion/06-vista-previa-excel.png)
+- [Importación confirmada para dos colaboradores](capturas/simplificacion-operacion/07-importacion-confirmada.png)
 
 - [Administración de regiones por coordinador](capturas/flujo-regional/01-regiones.png)
 - [Inspecciones consecutivas en móvil](capturas/flujo-regional/02-inspeccion-movil.png)
