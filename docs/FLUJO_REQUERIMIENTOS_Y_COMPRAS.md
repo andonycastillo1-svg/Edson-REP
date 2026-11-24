@@ -1,6 +1,6 @@
 # Inspecciones, consolidados, compras y asignaciones masivas
 
-El supervisor registra los requerimientos de cada colaborador. Bodega central agrupa las inspecciones y envía el consolidado al responsable de las regiones seleccionadas. Coordinación revisa las necesidades por persona. Bodega central usa los totales aprobados para planificar compras y vincula las facturas y entregas que correspondan.
+El supervisor registra los requerimientos de cada colaborador. Bodega central prepara cortes cuando lo necesita y envía un consolidado por coordinador. Coordinación revisa las necesidades por persona. Bodega central usa los totales aprobados para planificar compras y vincula las facturas y entregas que correspondan.
 
 ## Configuración inicial
 
@@ -15,9 +15,19 @@ Los permisos operativos se combinan con las excepciones individuales y la bodega
 ## Inspección y consolidación
 
 - El supervisor selecciona fecha, región y colaborador. Registra cantidades enteras desde cero, observaciones y hasta ocho fotos privadas. **Guardar y continuar** conserva la fecha y región y prepara el formulario para otra persona. **Guardar y finalizar** vuelve al listado. El detalle también permite iniciar otra inspección.
-- Bodega central filtra por fechas, región, supervisor o coordinador. Al seleccionar los requerimientos, el formulario muestra el responsable calculado. El envío agrupa regiones con un único coordinador activo y vincula cada inspección una vez. Bodega central conserva la consulta de cantidades y el envío.
+- Bodega central puede consultar las inspecciones por fechas, región, supervisor o coordinador. Para agrupar requerimientos, usa **Nuevo corte**.
 - En **Por colaborador**, coordinación ajusta cantidades, agrega productos e incorpora colaboradores activos de sus regiones. Cada cambio requiere una justificación y guarda el responsable, el momento y las cantidades anterior y nueva. **Resumen general** totaliza esas filas para compras. Las inspecciones originales conservan sus cantidades, observaciones y fotos.
 - Coordinación puede aprobar o devolver el consolidado. Central puede reenviarlo para otra revisión. Administración puede reasignar un pendiente con justificación cuando todas sus regiones tienen el mismo nuevo responsable. Las aprobaciones conservan la identidad del coordinador. La reapertura requiere que la aprobación carezca de constancias, facturas y asignaciones vinculadas.
+
+### Cortes de requerimientos
+
+1. Abre **Inspecciones y requerimientos → Nuevo corte**. Ponle un nombre y elige la fecha inicial y final. El sistema usa la fecha registrada de la inspección, incluye ambos extremos y admite un período de un solo día.
+2. Marca las inspecciones que correspondan en **Inspecciones del período**. Abre **Inspecciones anteriores pendientes** para revisar solicitudes que quedaron de cortes previos y marca las que quieras incluir. Al cambiar de página se guardan las casillas en el borrador. Las inspecciones posteriores a la fecha final quedan disponibles para otro corte.
+3. Selecciona **Revisar selección**. Comprueba cuántas inspecciones, personas, regiones y coordinadores participarán. Las regiones de un mismo coordinador se agrupan. Si el colaborador tiene inspecciones de distintas regiones dentro del mismo grupo, elige una región para ese colaborador y conserva las demás inspecciones para otro corte.
+4. Selecciona **Confirmar y generar consolidados**. Se genera y envía un consolidado por coordinador. Si una región carece de responsable activo, una inspección ya se consolidó o la coordinación cambió desde la vista previa, revisa la selección antes de continuar. El sistema aplica el corte completo en una sola transacción.
+5. Abre **Historial de cortes** para consultar fechas, operador, estado, inspecciones seleccionadas y consolidados generados. Cada coordinador revisa su consolidado desde su bandeja habitual.
+
+El borrador puede cancelarse y conserva su selección en el historial. Las inspecciones que sigan pendientes se pueden elegir en otros cortes. En un consolidado enviado, la acción **Retirar para corrección** conserva los vínculos según el proceso habitual.
 
 ## Necesidades de compra
 
@@ -78,6 +88,8 @@ Los consolidados históricos mantienen sus cantidades agregadas, documentos y re
 
 La migración `2026_11_24_000003_add_operational_regions_and_internal_request_origin.php` agrega regiones operativas para supervisores y almacenistas, admite **Requerimiento interno** en las asignaciones y registra la huella de nuevas importaciones para impedir repeticiones. Para actualizar localmente, descarga la rama y ejecuta `composer install`, `npm ci`, `npm run build` y `php artisan migrate`. Configura las regiones de supervisión antes de habilitar las inspecciones para esas cuentas. No hay dependencias nuevas.
 
+La migración `2026_11_24_000004_create_requirement_cuts.php` agrega el historial y la selección de cortes junto con su vínculo opcional a consolidados. Ejecuta `php artisan migrate` y `npm run build` en tu instalación local de prueba. Los consolidados históricos conservan su acceso y pueden carecer de un corte de origen.
+
 Prueba en un entorno aislado.
 
 1. Da de alta dos coordinadores, un supervisor y colaboradores de dos regiones. Busca y registra una inspección con foto. Verifica las restricciones desde el otro equipo.
@@ -92,9 +104,17 @@ La prueba `php tests/Integration/compras_consolidadas_mysql.php` usa el mismo en
 
 La prueba `php tests/Integration/entregas_mysql.php` verifica además que dos salidas concurrentes de un requerimiento con una unidad aprobada registren una sola asignación y un único descuento.
 
+La prueba `php tests/Integration/cortes_mysql.php` verifica dos cortes simultáneos y la concurrencia con la ruta de consolidación directa. Usa una base MySQL local desechable `edson_*_qa` con `APP_ENV=testing`.
+
 ## Capturas
 
 Las pantallas se capturaron en Chromium con datos ficticios.
+
+- [Elección libre del período](capturas/cortes-dinamicos/01-nuevo-corte.png)
+- [Advertencia por una región sin coordinador](capturas/cortes-dinamicos/02-revision-sin-responsable.png)
+- [Selección de inspecciones anteriores en móvil](capturas/cortes-dinamicos/03-seleccion-movil.png)
+- [Vista previa por coordinador](capturas/cortes-dinamicos/04-vista-previa.png)
+- [Corte confirmado y consolidados generados](capturas/cortes-dinamicos/05-corte-confirmado.png)
 
 - [Configuración de regiones en Recursos Humanos](capturas/simplificacion-operacion/01-regiones-rrhh.png)
 - [Productos pendientes en la factura](capturas/simplificacion-operacion/02-compra-pendientes.png)

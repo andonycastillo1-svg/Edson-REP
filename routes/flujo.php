@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Flujo\CatalogosController;
 use App\Http\Controllers\Flujo\ConsolidadoController;
+use App\Http\Controllers\Flujo\CorteRequerimientoController;
 use App\Http\Controllers\Flujo\ImportarAsignacionController;
 use App\Http\Controllers\Flujo\InspeccionController;
 use App\Http\Controllers\Flujo\PlanComprasController;
@@ -24,6 +25,17 @@ Route::middleware(['auth', 'auto.logout'])->prefix('flujo')->name('flujo.')->gro
     Route::post('catalogos/secciones/{clave}', [CatalogosController::class, 'seccion'])->name('catalogos.seccion');
     Route::post('catalogos/articulos/{id?}', [CatalogosController::class, 'articulo'])->whereNumber('id')->name('catalogos.articulo');
     Route::post('catalogos/motivos/{id?}', [CatalogosController::class, 'motivo'])->whereNumber('id')->name('catalogos.motivo');
+
+    Route::prefix('cortes')->name('cortes.')->controller(CorteRequerimientoController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('nuevo', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+        Route::get('{corte}', 'show')->whereNumber('corte')->name('show');
+        Route::get('{corte}/seleccion', 'seleccion')->whereNumber('corte')->name('seleccion');
+        Route::put('{corte}/seleccion', 'guardarSeleccion')->whereNumber('corte')->name('seleccion.guardar');
+        Route::post('{corte}/confirmar', 'confirmar')->whereNumber('corte')->name('confirmar');
+        Route::post('{corte}/cancelar', 'cancelar')->whereNumber('corte')->name('cancelar');
+    });
 
     Route::get('consolidados', [ConsolidadoController::class, 'index'])->name('consolidados.index');
     Route::post('consolidados', [ConsolidadoController::class, 'store'])->name('consolidados.store');

@@ -21,6 +21,11 @@ class Consolidado extends Model
     public function aprobador() { return $this->belongsTo(User::class, 'aprobado_por'); }
     public function operador() { return $this->belongsTo(User::class); }
 
+    public function corte(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(CorteRequerimiento::class, 'corte_id');
+    }
+
     public function inspecciones()
     {
         return $this->belongsToMany(Inspeccion::class, 'consolidado_inspeccion');

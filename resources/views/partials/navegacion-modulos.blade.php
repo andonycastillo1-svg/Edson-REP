@@ -13,7 +13,7 @@
                 ["$prefijo.operaciones.traslados.index", "$prefijo.operaciones.traslados.*", 'Traslados', 'traslado', $permisos->ruta($usuario, "$prefijo.operaciones.traslados.index")],
             ],
             'Requerimientos y compras' => [
-                ['flujo.inspecciones.index', 'flujo.inspecciones.*', 'Inspecciones', 'lista', $flujo->puede($usuario, 'inspecciones')],
+                ['flujo.inspecciones.index', ['flujo.inspecciones.*', 'flujo.cortes.*'], 'Inspecciones', 'lista', $flujo->puede($usuario, 'inspecciones')],
                 ['flujo.consolidados.index', 'flujo.consolidados.*', 'Consolidados', 'capas', $flujo->puede($usuario, 'consolidados')],
                 ['flujo.compras.index', 'flujo.compras.*', 'Necesidades de compra', 'compra', $flujo->puede($usuario, 'compras')],
                 ['flujo.importar.index', 'flujo.importar.*', 'Asignaciones por Excel', 'archivo', $flujo->puede($usuario, 'importar') && $permisos->permite($usuario, 'asignaciones.crear')],

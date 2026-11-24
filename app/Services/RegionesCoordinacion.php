@@ -10,18 +10,32 @@ use Illuminate\Validation\ValidationException;
 
 class RegionesCoordinacion
 {
-    public function resolver(Collection $regiones, bool $bloquear = false): User
+    public function responsables(Collection $regiones, bool $bloquear = false): Collection
     {
-        $filas = Region::whereKey($regiones->unique()->all())->orderBy('id');
-        $filas = ($bloquear ? $filas->lockForUpdate() : $filas)->get();
+        $consulta = Region::whereKey($regiones->unique()->all())->orderBy('id');
+        $filas = ($bloquear ? $consulta->lockForUpdate() : $consulta)->get();
         $usuarios = User::deAmbito(5)->whereKey($filas->pluck('coordinador_id')->filter()->unique()->all())->orderBy('id');
         $activos = ($bloquear ? $usuarios->lockForUpdate() : $usuarios)->get()->keyBy('id');
-        $sinResponsable = $filas->filter(fn (Region $region) => !$region->activa || !$activos->has($region->coordinador_id));
-        if ($filas->isEmpty() || $sinResponsable->isNotEmpty()) {
-            throw ValidationException::withMessages(['inspecciones' => 'Configura un coordinador activo para cada región seleccionada. '.$sinResponsable->pluck('nombre')->implode(', ')]);
+
+        return $filas->mapWithKeys(fn (Region $region) => [
+            $region->id => $region->activa ? $activos->get($region->coordinador_id) : null,
+        ]);
+    }
+
+    public function resolver(Collection $regiones, bool $bloquear = false): User
+    {
+        $responsables = $this->responsables($regiones, $bloquear);
+        $sinResponsable = $regiones->unique()->filter(fn ($id) => $responsables->get($id) === null);
+        if ($responsables->isEmpty() || $sinResponsable->isNotEmpty()) {
+            $nombres = Region::whereKey($sinResponsable->all())->pluck('nombre')->implode(', ');
+            throw ValidationException::withMessages(['inspecciones' => 'Configura un coordinador activo para cada región seleccionada. '.$nombres]);
         }
+
+        $activos = $responsables->unique('id');
         if ($activos->count() !== 1) {
-            $grupos = $filas->groupBy('coordinador_id')->map(fn ($grupo, $id) => $activos->get($id)->name.' ('.$grupo->pluck('nombre')->implode(', ').')');
+            $nombres = Region::whereKey($responsables->keys()->all())->pluck('nombre', 'id');
+            $grupos = $responsables->groupBy('id', preserveKeys: true)->map(fn ($grupo) =>
+                $grupo->first()->name.' ('.$grupo->keys()->map(fn ($id) => $nombres->get($id))->implode(', ').')');
             throw ValidationException::withMessages(['inspecciones' => 'Separa los requerimientos de estos coordinadores. '.$grupos->implode(' · ')]);
         }
 
