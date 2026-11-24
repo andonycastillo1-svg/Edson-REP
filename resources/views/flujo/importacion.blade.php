@@ -4,8 +4,11 @@
         $errores = $errores ?? [];
         $prefijo = \App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo());
     @endphp
-    @if(isset($importacion) && $importacion->consolidado_id)
-        <p class="ui-alert ui-alert-info">Consolidado de origen {{ $importacion->consolidado?->nombre ?? '#'.$importacion->consolidado_id }}.</p>
+    @php($origen = $importacion->consolidado ?? $consolidado ?? null)
+    @if($origen)
+        <p class="ui-alert ui-alert-info">Requerimiento interno · {{ $origen->nombre }} · #{{ $origen->id }}</p>
+    @elseif(isset($importacion) && !$importacion->confirmada_en)
+        <p class="ui-alert-warning">Asignación independiente. Para aplicar estas entregas a un consolidado, vuelve a cargar el archivo con el requerimiento seleccionado.</p>
     @endif
     @if(isset($importacion) && $importacion->confirmada_en)
         <x-sistema.panel titulo="Hojas de asignación">
@@ -26,6 +29,28 @@
                 @endforeach
             </ul>
         </x-sistema.panel>
+        @if($consolidadosConciliacion->isNotEmpty())
+            <x-sistema.panel titulo="Conciliar entregas registradas">
+                <p class="mb-3 text-sm">Usa este paso si las hojas de la operación y el requerimiento confirman qué consolidado corresponde al lote. Verifica los códigos, productos y fechas antes de confirmar. El inventario conserva su saldo.</p>
+                <form class="space-y-3" method="POST" action="{{ route('flujo.importar.conciliar', $importacion) }}"
+                      data-confirmar="¿Vincular al consolidado las entregas verificadas de este lote?">
+                    @csrf
+                    <label class="ui-label">Consolidado verificado
+                        <select name="consolidado_id" class="ui-input mt-1" required>
+                            <option value="">Selecciona el consolidado</option>
+                            @foreach($consolidadosConciliacion as $destino)
+                                <option value="{{ $destino->id }}" @selected((int) old('consolidado_id', $importacion->consolidado_id) === $destino->id)>{{ $destino->nombre }} · #{{ $destino->id }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label class="ui-label">Evidencia revisada
+                        <textarea name="evidencia" class="ui-input mt-1" rows="2" minlength="10" maxlength="2000" required>{{ old('evidencia') }}</textarea>
+                    </label>
+                    @error('conciliacion')<p class="ui-alert-error" role="alert">{{ $message }}</p>@enderror
+                    <button class="ui-btn-secondary">Conciliar entregas</button>
+                </form>
+            </x-sistema.panel>
+        @endif
     @else
         <x-sistema.panel>
             <div class="flujo-cabecera-panel">
@@ -53,12 +78,12 @@
     <x-sistema.panel titulo="Filas de la hoja Asignaciones">
         <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Filas de asignación">
             <table class="ui-table min-w-[580px]">
-                <thead class="bg-slate-50"><tr><th class="p-3">Fila</th><th class="p-3">Colaborador</th><th class="p-3">Producto</th><th class="p-3">Cantidad</th><th class="p-3">Fecha</th><th class="p-3">Motivo</th>@if($errores)<th class="p-3">Corrección necesaria</th>@endif</tr></thead>
+                <thead class="bg-slate-50"><tr><th class="p-3">Fila</th><th class="p-3">Colaborador</th><th class="p-3">Producto</th><th class="p-3">Cantidad</th><th class="p-3">Fecha</th><th class="p-3">Medio de solicitud</th><th class="p-3">Motivo</th>@if($errores)<th class="p-3">Corrección necesaria</th>@endif</tr></thead>
                 <tbody class="divide-y divide-slate-200">
                     @foreach($filas as $numero => $fila)
                         <tr>
                             <td class="p-3">{{ $numero }}</td><td class="p-3">{{ $fila['colaborador_codigo'] }}</td><td class="p-3">{{ $fila['producto_codigo'] }}</td>
-                            <td class="p-3">{{ $fila['cantidad'] }}</td><td class="p-3">{{ $fila['fecha'] }}</td><td class="p-3">{{ $fila['motivo_asignacion'] }}</td>
+                            <td class="p-3">{{ $fila['cantidad'] }}</td><td class="p-3">{{ $fila['fecha'] }}</td><td class="p-3">{{ $fila['medio_solicitud'] ?? '—' }}</td><td class="p-3">{{ $fila['motivo_asignacion'] }}</td>
                             @if($errores)<td class="p-3 text-rose-800">{{ implode(' ', $errores[$numero] ?? []) }}</td>@endif
                         </tr>
                     @endforeach

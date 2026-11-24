@@ -12,7 +12,8 @@
             'codigo' => $fila->producto_codigo,
             'bodega' => $fila->bodega_id,
             'nombre' => ($fila->producto?->nombre ?? $fila->producto_codigo).' · '.$fila->producto_codigo,
-            'usado' => $filas->contains('stock_tipo', 'usado'),
+            'usado' => (int) $filas->where('stock_tipo', 'usado')->sum('cantidad'),
+            'nuevo' => (int) $filas->where('stock_tipo', 'nuevo')->sum('cantidad'),
         ];
     })->values();
 @endphp
@@ -34,10 +35,21 @@
                 @endforeach
             </select>
             <div class="mt-4"><x-flujo.consolidado-origen :consolidados="$consolidadosOrigen" /></div>
+            <label class="ui-label mt-4 block">Medio de solicitud
+                <select name="medio_solicitud" class="ui-input mt-1">
+                    <option value="">Sin especificar</option>
+                    @foreach(['Correo', 'WhatsApp'] as $medio)
+                        <option value="{{ $medio }}" @selected(old('medio_solicitud') === $medio)>{{ $medio }}</option>
+                    @endforeach
+                    <option value="{{ \App\Services\RegistrarAsignaciones::MEDIO_INTERNO }}" disabled>Requerimiento interno</option>
+                </select>
+            </label>
         </section>
 
         <section class="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
-            <h2 class="text-lg font-bold">Productos</h2>
+            <h2 class="text-lg font-bold" id="titulo-productos">Productos</h2>
+            <p class="text-sm" id="estado-productos" role="status"></p>
+            <ul class="grid gap-2 sm:grid-cols-2" id="productos-pendientes" hidden></ul>
             <div id="items-wrapper" class="space-y-3"></div>
             <button type="button" class="ui-btn-secondary" id="add-item">Agregar otro producto</button>
             <template id="item-template">
@@ -58,12 +70,17 @@
                     </label>
                     <p class="text-sm text-slate-600" data-surtido aria-live="polite"></p>
                     <div class="flex items-end justify-between gap-3">
-                        <span class="text-sm text-slate-600">Cantidad: 1 unidad</span>
+                        <label class="ui-label" data-cantidad>Unidades a entregar
+                            <input type="number" min="1" value="1" step="1" class="ui-input w-24 mt-1" data-campo="cantidad_asignada" required>
+                        </label>
                         <button type="button" class="ui-btn-secondary" data-quitar>Quitar</button>
                     </div>
-                    <label class="text-sm font-semibold">Motivo de asignación o reemplazo
-                        <select data-campo="motivo_asignacion" class="mt-1 w-full rounded-xl border-slate-300">
-                            <option value="">Sin motivo específico</option>
+                    <label class="ui-label" data-sustitucion hidden>Sustituye una asignación
+                        <select data-campo="sustituir_asignacion_id" class="ui-input mt-1" disabled></select>
+                    </label>
+                    <label class="ui-label" data-motivo-reemplazo hidden>Motivo del reemplazo
+                        <select data-campo="motivo_asignacion" class="ui-input mt-1" disabled>
+                            <option value="">Selecciona el motivo</option>
                             @foreach($motivos as $razon)
                                 <option value="{{ $razon->codigo }}">{{ $razon->nombre }}</option>
                             @endforeach
@@ -101,67 +118,190 @@
 </div>
 
 <script>
-    const disponibles = @json($disponibles);
+(() => {
+    const disponibles = @js($disponibles);
     const filas = document.getElementById('items-wrapper');
     const forma = filas.closest('form');
     const plantilla = document.getElementById('item-template');
-    const pintar = () => {
-        Array.from(filas.children).forEach((fila, indice) => {
-            fila.querySelectorAll('[data-campo]').forEach(campo => {
+    const origen = forma.elements.consolidado_id;
+    const medio = forma.elements.medio_solicitud;
+    const colaborador = forma.elements.colaborador_codigo;
+    const agregarOtro = document.getElementById('add-item');
+    const estado = document.getElementById('estado-productos');
+    const pendientes = document.getElementById('productos-pendientes');
+    const guardar = forma.querySelector('button[type=submit]');
+    let consulta;
+    let contexto = {productos: [], custodias: []};
+    let medioIndependiente = medio.value;
+
+    function actualizarMedio() {
+        medio.disabled = !!origen?.value;
+        medio.value = origen?.value ? @js(\App\Services\RegistrarAsignaciones::MEDIO_INTERNO) : medioIndependiente;
+    }
+
+    function pintar() {
+        const productos = [...filas.querySelectorAll('[data-campo="producto_codigo"]')].map(campo => campo.value);
+        [...filas.children].forEach((fila, indice) => {
+            for (const campo of fila.querySelectorAll('[data-campo]')) {
                 campo.name = `items[${indice}][${campo.dataset.campo}]`;
-            });
-            fila.querySelector('[data-quitar]').hidden = filas.children.length === 1;
+            }
+            const producto = fila.querySelector('[data-campo="producto_codigo"]');
+            const repetido = producto.value && productos.filter(codigo => codigo === producto.value).length > 1;
+            producto.setCustomValidity(repetido ? 'Selecciona cada código una sola vez.' : '');
         });
-        const productos = Array.from(filas.querySelectorAll('[data-campo="producto_codigo"]'));
-        for (const producto of productos) {
-            producto.setCustomValidity(
-                producto.value && productos.filter(p => p.value === producto.value).length > 1
-                    ? 'Selecciona cada código una sola vez.' : ''
-            );
+        guardar.disabled = !filas.children.length;
+        for (const boton of pendientes.querySelectorAll('button')) {
+            boton.disabled = boton.dataset.sinStock === '1' || productos.includes(boton.dataset.codigo) || filas.children.length >= 100;
         }
-    };
+        agregarOtro.disabled = filas.children.length >= 100;
+    }
+
     function agregar(datos = {}) {
         const fila = plantilla.content.firstElementChild.cloneNode(true);
-        const bodega = fila.querySelector('[data-campo="bodega_id"]');
-        const producto = fila.querySelector('[data-campo="producto_codigo"]');
-        const motivo = fila.querySelector('[data-campo="motivo_inventario_nuevo"]');
-        fila.querySelector('[data-campo="motivo_asignacion"]').value = datos.motivo_asignacion ?? '';
+        const campo = clave => fila.querySelector(`[data-campo="${clave}"]`);
+        const bodega = campo('bodega_id');
+        const producto = campo('producto_codigo');
+        const cantidad = campo('cantidad_asignada');
+        const reemplazo = campo('sustituir_asignacion_id');
+        const motivo = campo('motivo_asignacion');
+        const nuevo = campo('motivo_inventario_nuevo');
         if (datos.bodega_id) bodega.value = datos.bodega_id;
-        if (motivo && datos.motivo_inventario_nuevo) {
-            motivo.value = datos.motivo_inventario_nuevo;
-            motivo.closest('details').open = true;
+        if (nuevo && datos.motivo_inventario_nuevo) {
+            nuevo.value = datos.motivo_inventario_nuevo;
+            nuevo.closest('details').open = true;
         }
-        function mostrarSurtido() {
+        function actualizar(sugerir = false) {
             const ficha = disponibles.find(item => String(item.bodega) === bodega.value && item.codigo === producto.value);
+            const pendiente = contexto.productos.find(item => item.codigo === producto.value);
+            const stock = nuevo?.value.trim() ? ficha?.nuevo : (ficha?.nuevo ?? 0) + (ficha?.usado ?? 0);
+            cantidad.max = origen?.value ? Math.min(pendiente?.pendiente ?? 0, stock ?? 0, 500) : 1;
+            if (sugerir) cantidad.value = origen?.value ? Math.max(1, Number(cantidad.max)) : 1;
+            fila.querySelector('[data-cantidad]').hidden = !origen?.value;
             fila.querySelector('[data-surtido]').textContent = ficha
-                ? (ficha.usado && !motivo?.value.trim() ? 'Surtir de inventario usado.' : 'Surtir de inventario nuevo.')
-                : '';
+                ? `${stock ?? 0} disponible(s) · ${ficha.usado && !nuevo?.value.trim() ? 'Prioridad a inventario usado' : 'Inventario nuevo'}`
+                : (producto.value ? 'Sin existencias en esta bodega.' : '');
+
+            const custodias = contexto.custodias.filter(item => item.producto_codigo === producto.value);
+            const anterior = reemplazo.value || (sugerir ? '' : datos.sustituir_asignacion_id ?? '');
+            reemplazo.replaceChildren(new Option('Entrega sin sustitución', ''), ...custodias.map(item =>
+                new Option(`Asignación #${item.id} · ${item.fecha.slice(0, 10)} · ${item.cantidad_asignada} en custodia`, item.id)));
+            reemplazo.value = anterior;
+            reemplazo.closest('label').hidden = reemplazo.disabled = custodias.length === 0;
+            motivo.closest('label').hidden = motivo.disabled = !reemplazo.value;
+            motivo.required = !!reemplazo.value;
+            if (reemplazo.value) cantidad.max = Math.min(1, Number(cantidad.max));
+            pintar();
         }
         function cargar(seleccionado) {
             producto.replaceChildren(new Option('Selecciona un producto', ''), ...disponibles
-                .filter(ficha => String(ficha.bodega) === bodega.value)
-                .map(ficha => new Option(ficha.nombre, ficha.codigo)));
+                .filter(item => String(item.bodega) === bodega.value && (!origen?.value || contexto.productos.some(p => p.codigo === item.codigo)))
+                .map(item => new Option(item.nombre, item.codigo)));
             producto.value = seleccionado ?? '';
-            mostrarSurtido();
-            pintar();
+            actualizar();
         }
         bodega.addEventListener('change', () => cargar(producto.value));
         producto.addEventListener('change', () => {
-            mostrarSurtido();
-            pintar();
+            reemplazo.value = motivo.value = '';
+            actualizar(true);
         });
-        motivo?.addEventListener('input', mostrarSurtido);
+        reemplazo.addEventListener('change', () => {
+            if (reemplazo.value) cantidad.value = 1;
+            else motivo.value = '';
+            datos.sustituir_asignacion_id = '';
+            actualizar();
+        });
+        nuevo?.addEventListener('input', () => actualizar());
         fila.querySelector('[data-quitar]').addEventListener('click', () => {
             fila.remove();
             pintar();
         });
         filas.append(fila);
+        cantidad.value = datos.cantidad_asignada ?? 1;
+        motivo.value = datos.motivo_asignacion ?? '';
         cargar(datos.producto_codigo);
     }
-    const anteriores = Object.values(@json(old('items', [])));
-    if (anteriores.length) anteriores.forEach(agregar);
-    else agregar();
-    document.getElementById('add-item').addEventListener('click', () => agregar());
+
+    function mostrarPendientes() {
+        pendientes.replaceChildren();
+        pendientes.hidden = !origen?.value;
+        for (const producto of contexto.productos) {
+            const item = document.createElement('li');
+            item.className = 'flujo-card space-y-2';
+            const nombre = document.createElement('strong');
+            nombre.textContent = `${producto.nombre} · ${producto.codigo}`;
+            const saldo = document.createElement('p');
+            saldo.className = 'text-sm';
+            const bodegas = Object.entries(producto.existencias).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+            const stock = bodegas.reduce((total, [, n]) => total + n, 0);
+            saldo.textContent = `Aprobadas ${producto.aprobada} · Entregadas ${producto.entregada} · Pendientes ${producto.pendiente} · ${stock ? 'Existencias ' + stock : 'Sin existencias'}`;
+            const boton = document.createElement('button');
+            boton.className = 'ui-btn-secondary';
+            boton.type = 'button';
+            boton.textContent = 'Agregar';
+            boton.setAttribute('aria-label', 'Agregar ' + producto.nombre);
+            boton.dataset.codigo = producto.codigo;
+            boton.dataset.sinStock = stock ? '0' : '1';
+            boton.addEventListener('click', () => agregar({
+                producto_codigo: producto.codigo, bodega_id: bodegas[0][0],
+                cantidad_asignada: Math.min(500, producto.pendiente, bodegas[0][1]),
+            }));
+            item.append(nombre, saldo, boton);
+            pendientes.append(item);
+        }
+    }
+
+    async function cargarContexto(restaurar = []) {
+        consulta?.abort();
+        consulta = new AbortController();
+        const nuevaConsulta = consulta;
+        contexto = {productos: [], custodias: []};
+        filas.replaceChildren();
+        pendientes.replaceChildren();
+        agregarOtro.hidden = !!origen?.value;
+        document.getElementById('titulo-productos').textContent = origen?.value ? 'Productos aprobados pendientes' : 'Productos';
+        pintar();
+        estado.textContent = '';
+        if (colaborador.value) {
+            const url = new URL(@js(route($routePrefix.'.asignaciones.contexto')), location.href);
+            url.searchParams.set('colaborador_codigo', colaborador.value);
+            if (origen?.value) url.searchParams.set('consolidado_id', origen.value);
+            estado.textContent = 'Consultando productos…';
+            try {
+                const respuesta = await fetch(url, {signal: consulta.signal, headers: {Accept: 'application/json'}});
+                if (!respuesta.ok) throw new Error();
+                const datos = await respuesta.json();
+                if (nuevaConsulta.signal.aborted) return;
+                contexto = datos;
+                estado.textContent = origen?.value && !contexto.productos.length ? 'Este colaborador no tiene productos pendientes en el consolidado.' : '';
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                estado.textContent = 'No se pudo consultar el requerimiento. Cambia la selección para reintentar.';
+                return;
+            }
+        } else if (origen?.value) {
+            estado.textContent = 'Selecciona un colaborador para ver sus productos pendientes.';
+        }
+        mostrarPendientes();
+        restaurar.forEach(agregar);
+        if (!origen?.value && !restaurar.length) agregar();
+        pintar();
+    }
+    colaborador.addEventListener('change', () => {
+        const anteriores = origen?.value ? [] : [...filas.children].map(fila => Object.fromEntries(
+            [...fila.querySelectorAll('[data-campo]')]
+                .filter(campo => !['sustituir_asignacion_id', 'motivo_asignacion'].includes(campo.dataset.campo))
+                .map(campo => [campo.dataset.campo, campo.value])
+        ));
+        cargarContexto(anteriores);
+    });
+    medio.addEventListener('change', () => medioIndependiente = medio.value);
+    origen?.addEventListener('change', () => {
+        actualizarMedio();
+        cargarContexto();
+    });
+    agregarOtro.addEventListener('click', () => agregar());
+    actualizarMedio();
+    cargarContexto(Object.values(@js(old('items', []))));
     const tercero = forma.elements.modalidad;
     const datosTercero = forma.elements.tercero;
     function mostrarTercero() {
@@ -172,5 +312,6 @@
     }
     tercero.addEventListener('change', mostrarTercero);
     mostrarTercero();
+})();
 </script>
 @endsection

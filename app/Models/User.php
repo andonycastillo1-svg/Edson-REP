@@ -72,6 +72,11 @@ class User extends Authenticatable
         return $this->hasMany(Region::class, 'coordinador_id');
     }
 
+    public function regionesOperativas()
+    {
+        return $this->belongsToMany(Region::class, 'region_usuario_operativa');
+    }
+
     public function bodega()
     {
         return $this->belongsTo(Bodega::class, 'bodega_id');

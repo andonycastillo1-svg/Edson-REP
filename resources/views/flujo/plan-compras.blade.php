@@ -10,7 +10,7 @@
         <x-ui.exportar-excel />
         @if($estado === 'aprobado' && $bodega && $comprables)
             @rutaDisponible($prefijo.'.compras.create')
-                <a class="ui-btn-primary" href="{{ route($prefijo.'.compras.create', count($comprables) === 1 ? ['consolidados' => $comprables] : []) }}">Registrar compra</a>
+                <a class="ui-btn-primary" href="{{ route($prefijo.'.compras.create', ['consolidados' => $comprables]) }}">Registrar compra</a>
             @endrutaDisponible
         @endif
     </x-slot:acciones>

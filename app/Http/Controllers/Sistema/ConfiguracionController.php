@@ -204,6 +204,7 @@ class ConfiguracionController extends Controller
     public function presentacion(Request $request, Presentacion $catalogo)
     {
         $modulo = $request->string('modulo')->toString() ?: 'bodegas';
+        abort_unless(Modulos::habilitado($modulo), 403);
         $definicion = Modulos::definicion($modulo);
         $presentacion = $this->ajustes->leer('presentacion.'.$modulo, []);
         $columnas = $catalogo->tabla($modulo, $presentacion);
@@ -217,6 +218,7 @@ class ConfiguracionController extends Controller
 
     public function guardarPresentacion(Request $request, string $modulo, Seguridad $seguridad, Presentacion $presentacion)
     {
+        abort_unless(Modulos::habilitado($modulo), 403);
         [, , $id, $columnas] = Modulos::definicion($modulo);
         $datos = $request->validate([
             'restaurar' => ['nullable', 'boolean'],

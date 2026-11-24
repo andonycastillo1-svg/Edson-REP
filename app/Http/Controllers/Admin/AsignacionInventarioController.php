@@ -214,6 +214,31 @@ class AsignacionInventarioController extends Controller
         ));
     }
 
+    public function contexto(Request $request, RequerimientosAsignacion $requerimientos)
+    {
+        $datos = $request->validate([
+            'colaborador_codigo' => ['required', 'string', Rule::exists('colaboradores', 'codigo')->where('estado', 'Activo')],
+            'consolidado_id' => ['nullable', 'integer'],
+        ]);
+        $usuario = $request->user();
+        $bodegas = $usuario->rolOperativo() === 1 ? Bodega::pluck('id')->all() : [(int) $usuario->bodega_id];
+        $custodias = AsignacionInventario::custodiaActiva()->where('colaborador_codigo', $datos['colaborador_codigo'])
+            ->when($usuario->rolOperativo() !== 1, fn ($q) => $q->where('user_id', $usuario->id))->orderByDesc('id')
+            ->get(['id', 'producto_codigo', 'fecha', 'cantidad_asignada']);
+        $pendientes = isset($datos['consolidado_id'])
+            ? $requerimientos->pendientes($requerimientos->verificar($usuario, $datos['consolidado_id']), $datos['colaborador_codigo'])
+            : collect();
+        $stock = $pendientes->isEmpty() ? collect() : $requerimientos->cantidadesDisponibles(
+            $bodegas, $pendientes->pluck('producto_codigo')->all());
+        $productos = $pendientes->map(fn ($fila) => [
+            'codigo' => $fila->producto_codigo, 'nombre' => $fila->producto?->nombre ?? $fila->producto_codigo,
+            'aprobada' => $fila->cantidad, 'entregada' => $fila->asignaciones_count, 'pendiente' => $fila->cantidad - $fila->asignaciones_count,
+            'existencias' => $stock->get($fila->producto_codigo, collect())->mapWithKeys(fn ($saldo) => [$saldo->bodega_id => (int) $saldo->total]),
+        ])->values();
+
+        return response()->json(compact('custodias', 'productos'))->header('Cache-Control', 'private, no-store');
+    }
+
     public function store(Request $request, ValoresCampos $campos, RegistrarAsignaciones $registro)
     {
         $data = $request->validate([
@@ -230,16 +255,18 @@ class AsignacionInventarioController extends Controller
                 'nullable', Rule::in(array_keys(EntregaInventario::MEDIOS))],
             'costo_unitario' => ['nullable', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
             'aprobado_por' => ['nullable', 'string', 'max:255'],
-            'medio_solicitud' => ['nullable', 'in:WhatsApp,Correo'],
+            'medio_solicitud' => ['nullable', Rule::in(['WhatsApp', 'Correo', RegistrarAsignaciones::MEDIO_INTERNO])],
             'imagen' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'observaciones' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1', 'max:100'],
             'items.*' => ['required', 'array'],
             'items.*.producto_codigo' => ['required', 'string', 'distinct:ignore_case', 'exists:productos,codigo'],
             'items.*.bodega_id' => ['required', 'integer', 'exists:bodegas,id'],
-            'items.*.cantidad_asignada' => ['sometimes', 'required', 'integer', 'in:1'],
+            'items.*.cantidad_asignada' => ['sometimes', 'required', 'integer', 'min:1',
+                $request->filled('consolidado_id') ? 'max:'.RegistrarAsignaciones::MAX_UNIDADES : 'in:1'],
             'items.*.motivo_inventario_nuevo' => ['nullable', 'string', 'max:500'],
             'items.*.motivo_asignacion' => ['nullable', 'string', 'max:45'],
+            'items.*.sustituir_asignacion_id' => ['nullable', 'integer', 'min:1'],
             'items.*.resoluciones' => ['missing'],
         ], [
             'items.*.cantidad_asignada.in' => 'Solo se puede asignar una unidad por código al colaborador.',

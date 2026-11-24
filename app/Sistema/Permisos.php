@@ -24,6 +24,9 @@ class Permisos
 
     public function ruta(User $user, string $ruta): bool
     {
+        if (!config('modulos.vehiculos') && (str_starts_with($ruta, 'admin.vehiculos.') || $ruta === 'rrhh.alertas.documento_refaccion')) {
+            return false;
+        }
         $permiso = CatalogoPermisos::rutas($user->rolOperativo())[$ruta] ?? null;
 
         return $permiso !== null && $this->permite($user, $permiso);
@@ -37,6 +40,9 @@ class Permisos
     public function resultado(User $user, string $permiso): array
     {
         $ambito = $user->rolOperativo();
+        if (!Modulos::habilitado(explode('.', $permiso, 2)[0])) {
+            return ['permitido' => false, 'origen' => 'Módulo temporalmente deshabilitado'];
+        }
         if ($user->acceso_activo === false || !in_array($permiso, CatalogoPermisos::disponibles($ambito), true)) {
             return ['permitido' => false, 'origen' => 'Fuera del ámbito'];
         }

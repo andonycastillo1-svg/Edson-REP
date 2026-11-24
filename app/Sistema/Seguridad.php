@@ -74,12 +74,12 @@ class Seguridad
             return false;
         }
         if (!$this->permisos->instalado()) {
-            return $actor->rolOperativo() === 1 || in_array($rol->ambito(), [2, 3], true);
+            return $actor->rolOperativo() === 1 || in_array($rol->ambito(), $actor->rolOperativo() === 4 ? [2, 3, 5] : [2, 3], true);
         }
         if ($rol->ambito() === 1) {
             return $incluirAdministrativos && $this->rolAdministrativoPersonalizado($rol) && $this->permisos->esSuperadministrador($actor);
         }
-        if ($actor->rolOperativo() !== 1 && !in_array($rol->ambito(), [2, 3], true)) {
+        if ($actor->rolOperativo() !== 1 && !in_array($rol->ambito(), $actor->rolOperativo() === 4 ? [2, 3, 5] : [2, 3], true)) {
             return false;
         }
 
@@ -102,6 +102,7 @@ class Seguridad
     public function puedeGestionar(User $actor, User $usuario): bool
     {
         return ($actor->rolOperativo() === 1 || (int) $usuario->created_by === (int) $actor->id)
+            && ($actor->rolOperativo() !== 4 || in_array($usuario->role?->ambito(), [2, 3, 5], true))
             && (!$this->permisos->instalado() || !$this->tieneAccesoCritico($usuario));
     }
 

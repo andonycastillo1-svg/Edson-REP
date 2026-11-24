@@ -139,7 +139,9 @@ class InventarioFlujosTest extends TestCase
         $this->actingAs($this->operador);
         $this->agregarStock($this->regional, 3);
         $anterior = $this->custodiaHistorica($this->regional, 2);
-        $this->post(route('operador.asignaciones.store'), [...$this->asignacion($this->regional), 'fecha' => now()->toDateTimeString()])->assertSessionHasNoErrors();
+        $datos = $this->asignacion($this->regional);
+        $datos['items'][0] += ['sustituir_asignacion_id' => $anterior->id, 'motivo_asignacion' => 'robo'];
+        $this->post(route('operador.asignaciones.store'), [...$datos, 'fecha' => now()->toDateTimeString()])->assertSessionHasNoErrors();
         $nueva = AsignacionInventario::custodiaActiva()->sole();
 
         $this->assertDatabaseHas('asignaciones_inventarios', [
@@ -147,7 +149,7 @@ class InventarioFlujosTest extends TestCase
         ]);
         $this->assertDatabaseCount('asignacion_movimientos', 2);
         $this->assertDatabaseHas('alertas_reemplazos_rrhh', [
-            'asignacion_anterior_id' => $anterior->id, 'motivo_revision' => 'reemplazo_sin_datos',
+            'asignacion_anterior_id' => $anterior->id, 'motivo_revision' => 'motivo_asignacion',
         ]);
         $this->artisan('inventario:contrastar-saldos')->assertExitCode(0);
     }
@@ -218,6 +220,7 @@ class InventarioFlujosTest extends TestCase
 
     public function test_desasignar_vehiculo_rechaza_refacciones_ajenas_y_conserva_cierre_parcial(): void
     {
+        config(['modulos.vehiculos' => true]);
         $this->actingAs($this->admin);
         $this->agregarStock($this->principal, 3);
         Vehiculo::create(['vin' => 'VIN-1', 'placa' => 'P1']);

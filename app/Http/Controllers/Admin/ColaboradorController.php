@@ -241,7 +241,11 @@ class ColaboradorController extends Controller
                         + $incidencias->where('resultado_stock', 'sin_retorno')->sum('cantidad'))
                     : $a->cantidad_asignada,
                 'custodia' => $a->custodia_etiqueta,
-                'tipo_entrega' => $a->asignacion_anterior_id ? 'Nueva entrega del mismo código' : 'Asignación inicial',
+                'tipo_entrega' => match ($a->tipo_entrega) {
+                    'adicional' => 'Entrega adicional',
+                    'reposicion' => 'Reemplazo',
+                    default => 'Asignación inicial',
+                },
                 'motivo_registrado' => $a->motivo_registrado,
                 'condicion_salida' => $a->stock_tipo === 'usado' ? 'Reutilizado' : ($a->stock_tipo === 'nuevo' ? 'Nuevo' : 'No registrada'),
                 'retornos' => $retornos->map(fn ($movimiento) => [
@@ -266,7 +270,7 @@ class ColaboradorController extends Controller
             ];
         })->values();
 
-        $vehiculoAsignado = $this->obtenerVehiculoAsignado($colaborador);
+        $vehiculoAsignado = config('modulos.vehiculos') ? $this->obtenerVehiculoAsignado($colaborador) : null;
         $productosVehiculo = collect();
         $totalProductosVehiculo = 0;
 
@@ -278,7 +282,8 @@ class ColaboradorController extends Controller
         $incidencias = collect();
         if ($puedeRevisar || $usuario->rolOperativo() === 1) {
             $incidencias = AlertaReemplazo::with(AlertaReemplazo::RELACIONES_LISTADO)
-                ->where('colaborador_codigo', $colaborador->codigo)->latest()->get()
+                ->where('colaborador_codigo', $colaborador->codigo)
+                ->when(!config('modulos.vehiculos'), fn ($q) => $q->whereNull('vehiculo_producto_asignacion_id')->whereNull('vehiculo_vin'))->latest()->get()
                 ->map(fn (AlertaReemplazo $alerta) => [
                     'producto_codigo' => $alerta->producto_codigo,
                     'producto' => $alerta->producto?->nombre ?? $alerta->producto_codigo,

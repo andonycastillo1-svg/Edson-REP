@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Bodega;
 use App\Models\Consolidado;
 use App\Models\Inspeccion;
+use App\Models\Region;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Sistema\Permisos;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,7 +48,8 @@ class FlujoAcceso
         $this->autorizar($usuario, 'inspecciones');
 
         return Inspeccion::query()
-            ->when($usuario->rolOperativo() === 3, fn (Builder $q) => $q->where('supervisor_id', $usuario->id))
+            ->when($usuario->rolOperativo() === 3, fn (Builder $q) => $q->where('supervisor_id', $usuario->id)
+                ->whereIn('region_id', $this->regiones($usuario)))
             ->when($usuario->rolOperativo() === 5, fn (Builder $q) => $q->whereIn('region_id', $this->regiones($usuario)));
     }
 
@@ -63,6 +66,9 @@ class FlujoAcceso
 
     public function regiones(User $usuario): Builder
     {
-        return $usuario->regionesCoordinadas()->getQuery()->where('activa', true)->select('regiones.id');
+        return Region::query()->where('activa', true)->select('regiones.id')
+            ->when($usuario->rolOperativo() === 5,
+                fn ($q) => $q->where('coordinador_id', $usuario->id),
+                fn ($q) => $q->whereIn('regiones.id', DB::table('region_usuario_operativa')->where('user_id', $usuario->id)->select('region_id')));
     }
 }

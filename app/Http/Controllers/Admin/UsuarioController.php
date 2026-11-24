@@ -12,6 +12,8 @@ use App\Sistema\ConsultaCampos;
 use App\Sistema\Presentacion;
 use App\Models\Bodega;
 use App\Models\Role;
+use App\Models\Region;
+use App\Services\RegionesCoordinacion;
 use App\Models\User;
 use App\Services\NotificacionService;
 use Illuminate\Http\Request;
@@ -61,6 +63,7 @@ class UsuarioController extends Controller
         $roles = $this->rolesPermitidosParaGestion();
         $coordinadores = $this->coordinadores();
         $bodegas = Bodega::orderBy('nombre')->get();
+        $regionesOperativas = Region::with('coordinador')->orderBy('nombre')->get();
 
         $rolAlmacenistaId = $this->rolAlmacenistaId();
         $rolSupervisorId = $this->rolSupervisorId();
@@ -73,7 +76,7 @@ class UsuarioController extends Controller
         return view('admin.usuarios.create', compact(
             'roles',
             'bodegas',
-            'almacenistas', 'coordinadores',
+            'almacenistas', 'coordinadores', 'regionesOperativas',
             'rolAlmacenistaId',
             'rolSupervisorId'
         ));
@@ -108,7 +111,7 @@ class UsuarioController extends Controller
             ],
         ];
 
-        $data = $request->validate($rules);
+        $data = $request->validate($rules + $this->reglasRegionales($ambito));
 
         $campos = app(ValoresCampos::class);
         $seguridad = app(Seguridad::class);
@@ -140,6 +143,7 @@ class UsuarioController extends Controller
                 ]);
             }
 
+            app(RegionesCoordinacion::class)->guardarUsuario($request->user(), $usuario, $data);
             $campos->guardar('usuarios', $usuario->id, $valores);
             app(Auditoria::class)->registrar('seguridad', 'crear_usuario', $usuario->id, null, $usuario->only(['role_id', 'bodega_id', 'coordinador_id']));
             return $usuario;
@@ -173,6 +177,7 @@ class UsuarioController extends Controller
         $roles = $this->rolesPermitidosParaGestion();
         $coordinadores = $this->coordinadores();
         $bodegas = Bodega::orderBy('nombre')->get();
+        $regionesOperativas = Region::with('coordinador')->orderBy('nombre')->get();
 
         $rolAlmacenistaId = $this->rolAlmacenistaId();
         $rolSupervisorId = $this->rolSupervisorId();
@@ -183,13 +188,13 @@ class UsuarioController extends Controller
             ->orderBy('name')
             ->get();
 
-        $usuario->load('almacenistasAsignados');
+        $usuario->load('almacenistasAsignados', 'regionesOperativas', 'regionesCoordinadas');
 
         return view('admin.usuarios.edit', compact(
             'usuario',
             'roles',
             'bodegas',
-            'almacenistas', 'coordinadores',
+            'almacenistas', 'coordinadores', 'regionesOperativas',
             'rolAlmacenistaId',
             'rolSupervisorId'
         ));
@@ -229,7 +234,7 @@ class UsuarioController extends Controller
             ],
         ];
 
-        $data = $request->validate($rules);
+        $data = $request->validate($rules + $this->reglasRegionales($ambito));
         $seguridad = app(Seguridad::class);
         if (app(Permisos::class)->instalado() && ($ambito === 1 || $seguridad->rolAdministrativoPersonalizado($usuario->role))) {
             $seguridad->actualizarCuenta($request, $usuario, app(ValoresCampos::class), desdeUsuarios: true);
@@ -245,6 +250,7 @@ class UsuarioController extends Controller
             $rol = Role::findOrFail($data['role_id']);
             abort_unless($seguridad->puedeGestionar($request->user(), $usuario) && $seguridad->rolAsignable($request->user(), $rol), 403);
             abort_if($request->user()->is($usuario) && (int) $usuario->role_id !== (int) $rol->id, 403);
+            $ambitoAnterior = $usuario->rolOperativo();
             $antes = $usuario->only(['role_id', 'bodega_id', 'coordinador_id']);
             $valores = $campos->preparar($request, 'usuarios', false, (string) $usuario->id);
 
@@ -270,6 +276,8 @@ class UsuarioController extends Controller
                 }
             }
             $usuario->update($payload);
+            $usuario->setRelation('role', $rol);
+            app(RegionesCoordinacion::class)->guardarUsuario($request->user(), $usuario, $data, $ambitoAnterior);
 
             if ($rol->ambito() === $rolSupervisorId) {
                 $usuario->almacenistasAsignados()->sync([
@@ -333,6 +341,18 @@ class UsuarioController extends Controller
     {
         return app(Permisos::class)->permite(auth()->user(), 'flujo.configurar')
             ? User::deAmbito(5)->orderBy('name')->get(['users.id', 'users.name']) : collect();
+    }
+
+    private function reglasRegionales(?int $ambito): array
+    {
+        $admiteRegiones = in_array($ambito, [2, 3, 5], true);
+
+        return [
+            'configurar_regiones' => [$admiteRegiones ? 'sometimes' : 'prohibited', 'boolean'],
+            'regiones' => [$admiteRegiones ? 'nullable' : 'prohibited', 'array'],
+            'regiones.*' => ['required', 'integer', 'distinct', 'exists:regiones,id'],
+            'reasignar_regiones' => [$ambito === 5 ? 'nullable' : 'prohibited', 'boolean'],
+        ];
     }
 
     private function reglasCoordinador(?int $ambito): array

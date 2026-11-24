@@ -1,4 +1,8 @@
-@php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
+@php
+    $routePrefix = auth()->user()->rolOperativo() === 2 ? 'operador' : 'admin';
+    $origenCompra = collect((array) request('consolidados', []))->filter(fn ($id) => is_scalar($id))->map(fn ($id) => (int) $id);
+    $sugerencias = $pendientes->only($origenCompra->all())->collapse()->groupBy('codigo');
+@endphp
 
 <form data-confirmar="¿Registrar esta factura y aplicar la entrada en la bodega central?" action="{{ route($routePrefix . '.compras.store') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
 @csrf
@@ -104,6 +108,29 @@
         </div>
     </div>
 
+    @if($sugerencias->isNotEmpty())
+        <section class="ui-panel space-y-3 p-4 sm:p-5" aria-labelledby="titulo-pendientes-compra">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h2 class="font-bold" id="titulo-pendientes-compra">Productos pendientes de compra</h2>
+                <button type="button" class="ui-btn-secondary" id="agregar-pendientes">Agregar todos los pendientes</button>
+            </div>
+            <ul class="grid gap-2 md:grid-cols-2">
+                @foreach($sugerencias as $codigo => $destinos)
+                    <li class="flujo-card flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <strong>{{ $destinos->first()['producto'] }} · {{ $codigo }}</strong>
+                            <p class="text-sm">{{ $destinos->sum('pendiente') }} pendientes</p>
+                            <p class="text-sm">{{ $destinos->map(fn ($fila) => $consolidados->firstWhere('id', $fila['consolidado_id'])?->nombre)->implode(', ') }}</p>
+                        </div>
+                        <button type="button" class="ui-btn-secondary" data-agregar-pendiente="{{ $codigo }}"
+                            aria-label="Agregar a factura {{ $destinos->first()['producto'] }}">Agregar a factura</button>
+                    </li>
+                @endforeach
+            </ul>
+            <p class="text-sm" id="estado-pendientes-compra" role="status"></p>
+        </section>
+    @endif
+
     {{-- DETALLE DE PRODUCTOS --}}
     <div class="ui-panel p-4 sm:p-5">
         <div class="mb-4 flex flex-col gap-3 border-b border-slate-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
@@ -165,7 +192,7 @@
                     <div class="rounded-xl border border-slate-200 p-3" data-destino>
                         <label class="flex min-h-10 items-center gap-2 text-sm font-semibold">
                             <input type="checkbox" name="consolidados[]" value="{{ $consolidado->id }}"
-                                @checked(in_array($consolidado->id, old('consolidados', (array) request('consolidados', []))))>
+                                @checked(in_array($consolidado->id, old('consolidados', $origenCompra->count() === 1 ? $origenCompra->all() : [])))>
                             {{ $consolidado->nombre }}
                         </label>
                         <fieldset class="mt-2 space-y-2" data-reparto hidden disabled aria-label="Distribución para {{ $consolidado->nombre }}">
@@ -300,6 +327,11 @@
         proveedorNuevo.querySelector('input').required = esNuevo;
     }
 
+    const pendientes = @js($sugerencias);
+    const botonesPendientes = [...document.querySelectorAll('[data-agregar-pendiente]')];
+    const todos = document.getElementById('agregar-pendientes');
+    const estadoPendientes = document.getElementById('estado-pendientes-compra');
+    const repartoSugerido = new Set();
     const destinos = document.querySelectorAll('#distribucion-compra [data-destino]');
     const autorizo = tipoProveedor.form.elements.namedItem('autorizado_por');
     const autorizacionObligatoria = autorizo?.required ?? false;
@@ -343,6 +375,12 @@
         });
         agregar.disabled = filas.length >= 100;
         total.textContent = (suma / 100).toFixed(2);
+        const codigos = new Set(filas.filter(fila => fila.querySelector('.productoTipo').value === 'existente')
+            .map(fila => fila.querySelector('.productoCodigo').value));
+        for (const boton of botonesPendientes) {
+            boton.disabled = codigos.has(boton.dataset.agregarPendiente) || filas.length >= 100;
+        }
+        if (todos) todos.disabled = !botonesPendientes.some(boton => !boton.disabled);
         actualizarReparto();
     }
 
@@ -379,12 +417,19 @@
         }
     }
 
-    function agregarLinea(indice = null) {
+    function agregarLinea(indice = null, enfocar = true) {
         const fila = plantilla.content.firstElementChild.cloneNode(true);
         if (indice !== null) recuperar(fila, indice);
         fila.querySelector('.productoTipo').addEventListener('change', () => actualizarProducto(fila));
-        fila.addEventListener('input', actualizarLineas);
+        fila.addEventListener('input', event => {
+            if (event.target.matches('.cantidad') && repartoSugerido.has(fila)) repartir(fila);
+            actualizarLineas();
+        });
         fila.querySelector('.btnDel').addEventListener('click', () => {
+            if (repartoSugerido.delete(fila)) {
+                fila.querySelector('.cantidad').value = '';
+                repartir(fila);
+            }
             fila.remove();
             actualizarLineas();
             agregar.focus();
@@ -393,8 +438,62 @@
         actualizarProducto(fila);
         actualizarLineas();
         if (window.enhanceSearchableSelect) window.enhanceSearchableSelect(fila.querySelector('.productoCodigo'));
-        if (indice === null) fila.querySelector('.productoTipo').focus();
+        if (indice === null && enfocar) fila.querySelector('.productoTipo').focus();
+        return fila;
     }
+
+    function repartir(fila) {
+        const codigo = fila.querySelector('.productoCodigo').value;
+        let restante = Number(fila.querySelector('.cantidad').value);
+        const propuesta = pendientes[codigo] ?? [];
+        for (const destino of destinos) {
+            const casilla = destino.querySelector('input[type=checkbox]');
+            const objetivo = propuesta.find(item => String(item.consolidado_id) === casilla.value);
+            if (!objetivo) continue;
+            const etiqueta = [...destino.querySelectorAll('[data-reparto-producto]')].find(item => item.dataset.repartoProducto === codigo);
+            if (!etiqueta) continue;
+            const cantidad = Math.min(objetivo.pendiente, Math.max(0, Math.floor(restante) || 0));
+            etiqueta.querySelector('input').value = cantidad || '';
+            restante -= cantidad;
+            if ([...destino.querySelectorAll('[data-reparto] input')].some(input => Number(input.value) > 0)) {
+                if (!casilla.checked) casilla.dataset.sugerida = '1';
+                casilla.checked = true;
+            } else if (casilla.dataset.sugerida) {
+                casilla.checked = false;
+            }
+        }
+    }
+
+    function preparar(codigo, enfocar) {
+        if (body.rows.length >= 100) return false;
+        if ([...body.rows].some(fila => fila.querySelector('.productoTipo').value === 'existente' && fila.querySelector('.productoCodigo').value === codigo)) return false;
+        const vacia = [...body.rows].find(fila => fila.querySelector('.productoTipo').value === 'existente' && !fila.querySelector('.productoCodigo').value);
+        const fila = vacia ?? agregarLinea(null, false);
+        const producto = fila.querySelector('.productoCodigo');
+        producto.value = codigo;
+        producto.dispatchEvent(new Event('change', {bubbles: true}));
+        fila.querySelector('.cantidad').value = Math.min(10000, pendientes[codigo].reduce((total, item) => total + item.pendiente, 0));
+        repartoSugerido.add(fila);
+        repartir(fila);
+        actualizarLineas();
+        if (enfocar) fila.querySelector('.precio').focus();
+        return true;
+    }
+
+    botonesPendientes.forEach(boton => boton.addEventListener('click', () => {
+        if (preparar(boton.dataset.agregarPendiente, true)) estadoPendientes.textContent = 'Producto agregado. Revisa las unidades y el precio.';
+    }));
+    todos?.addEventListener('click', () => {
+        const cantidad = botonesPendientes.filter(boton => !boton.disabled).map(boton => boton.dataset.agregarPendiente)
+            .filter(codigo => preparar(codigo, false)).length;
+        estadoPendientes.textContent = `Productos agregados a la factura: ${cantidad}. Revisa las unidades y los precios.`;
+    });
+    document.getElementById('distribucion-compra')?.addEventListener('input', event => {
+        const codigo = event.target.closest('[data-reparto-producto]')?.dataset.repartoProducto;
+        if (codigo) for (const fila of repartoSugerido) {
+            if (fila.querySelector('.productoCodigo').value === codigo) repartoSugerido.delete(fila);
+        }
+    });
 
     proveedorNuevo.classList.remove('hidden');
     tipoProveedor.addEventListener('change', actualizarProveedor);

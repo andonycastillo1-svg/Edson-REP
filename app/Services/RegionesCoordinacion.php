@@ -28,6 +28,41 @@ class RegionesCoordinacion
         return $activos->first();
     }
 
+    public function guardarUsuario(User $actor, User $usuario, array $datos, ?int $ambitoAnterior = null): void
+    {
+        $ambito = $usuario->rolOperativo();
+        if ($ambitoAnterior === 5 && $ambito !== 5) {
+            foreach ($usuario->regionesCoordinadas()->orderBy('id')->lockForUpdate()->get() as $region) {
+                $this->cambiarResponsable($region, null, $actor);
+            }
+        }
+        if (!isset($datos['configurar_regiones']) && !array_key_exists('regiones', $datos) && $ambito === $ambitoAnterior) {
+            return;
+        }
+        $ids = array_map('intval', $datos['regiones'] ?? []);
+        if ($ambito === 5) {
+            if (isset($datos['configurar_regiones']) || array_key_exists('regiones', $datos)) {
+                $this->asignar($actor, $usuario, $ids, (bool) ($datos['reasignar_regiones'] ?? false));
+            }
+        }
+        if (!in_array($ambito, [2, 3], true)) {
+            $ids = [];
+        }
+        if (Region::whereKey($ids)->where('activa', false)->exists()) {
+            throw ValidationException::withMessages(['regiones' => 'Selecciona únicamente regiones activas.']);
+        }
+        $antes = $usuario->regionesOperativas()->orderBy('regiones.id')->pluck('regiones.id')->map(fn ($id) => (int) $id)->all();
+        if ($ambito === $ambitoAnterior) {
+            $ids = array_unique([...$ids, ...Region::whereKey($antes)->where('activa', false)->pluck('id')->map(fn ($id) => (int) $id)->all()]);
+        }
+        sort($ids);
+        if ($antes !== $ids) {
+            $usuario->regionesOperativas()->sync($ids);
+            app(\App\Sistema\Auditoria::class)->registrar('seguridad', 'actualizar_regiones_operativas', $usuario->id,
+                ['regiones' => $antes, 'ambito' => $ambitoAnterior], ['regiones' => $ids, 'ambito' => $ambito]);
+        }
+    }
+
     public function asignar(User $actor, User $coordinador, array $ids, bool $reasignar): void
     {
         DB::transaction(function () use ($actor, $coordinador, $ids, $reasignar) {
@@ -41,19 +76,30 @@ class RegionesCoordinacion
                 if ($elegida && !$region->activa) {
                     throw ValidationException::withMessages(['regiones' => 'Activa '.$region->nombre.' antes de asignarle un coordinador.']);
                 }
-                if ($elegida && $region->coordinador_id && (int) $region->coordinador_id !== (int) $coordinador->id && !$reasignar) {
-                    throw ValidationException::withMessages(['regiones' => $region->nombre.' ya tiene responsable. Confirma la reasignación.']);
+                if ($elegida && $region->coordinador_id && (int) $region->coordinador_id !== (int) $coordinador->id) {
+                    $seguridad = app(\App\Sistema\Seguridad::class);
+                    if ($actor->rolOperativo() === 4 && !$seguridad->puedeGestionar($actor, User::findOrFail($region->coordinador_id))) {
+                        throw ValidationException::withMessages(['regiones' => 'Administración debe autorizar el cambio de responsable de '.$region->nombre.'.']);
+                    }
+                    if (!$reasignar) {
+                        throw ValidationException::withMessages(['regiones' => $region->nombre.' ya tiene responsable. Confirma la reasignación.']);
+                    }
                 }
                 if (!$region->activa || $region->coordinador_id == $nuevo) {
                     continue;
                 }
-                DB::table('region_coordinador_historial')->insert([
-                    'region_id' => $region->id, 'anterior_id' => $region->coordinador_id, 'coordinador_id' => $nuevo,
-                    'user_id' => $actor->id, 'created_at' => now(),
-                ]);
-                $region->coordinador_id = $nuevo;
-                $region->save();
+                $this->cambiarResponsable($region, $nuevo, $actor);
             }
         }, 3);
+    }
+
+    private function cambiarResponsable(Region $region, ?int $nuevo, User $actor): void
+    {
+        DB::table('region_coordinador_historial')->insert([
+            'region_id' => $region->id, 'anterior_id' => $region->coordinador_id, 'coordinador_id' => $nuevo,
+            'user_id' => $actor->id, 'created_at' => now(),
+        ]);
+        $region->coordinador_id = $nuevo;
+        $region->save();
     }
 }

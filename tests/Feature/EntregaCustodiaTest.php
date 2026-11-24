@@ -76,15 +76,16 @@ class EntregaCustodiaTest extends TestCase
         $otraBodega = $this->datosSalida();
         $otraBodega['items'][0]['bodega_id'] = $this->central->id;
         $this->crearSalida($otraBodega);
-        $segunda = AsignacionInventario::custodiaActiva()->sole();
-        $this->assertEquals($segunda->id, $primera->refresh()->sustituida_por_id);
-        $this->assertEquals($primera->id, $segunda->asignacion_anterior_id);
+        $segunda = AsignacionInventario::latest('id')->firstOrFail();
+        $this->assertNull($primera->refresh()->sustituida_por_id);
+        $this->assertNull($segunda->asignacion_anterior_id);
+        $this->assertSame('adicional', $segunda->tipo_entrega);
         $this->assertDatabaseCount('asignaciones_inventarios', 2);
         $this->assertDatabaseCount('asignacion_movimientos', 2);
         $this->assertDatabaseHas('inventarios', ['bodega_id' => $this->central->id, 'cantidad' => 0]);
     }
 
-    public function test_reemplazo_automatico_y_retorno_ordinario_en_operaciones_independientes(): void
+    public function test_reemplazo_explicito_y_retorno_ordinario_en_operaciones_independientes(): void
     {
         $salida = now()->subDays(12);
         $recibida = now()->subDays(10);
@@ -96,7 +97,7 @@ class EntregaCustodiaTest extends TestCase
         $this->assertEquals($recibida->timestamp, $anterior->periodos()->sole()->inicio_uso_en->timestamp);
         $this->assertEquals($recibida->copy()->addDays(60)->timestamp, $anterior->fecha_vencimiento->timestamp);
 
-        $this->crearSalida($this->datosSalida());
+        $this->crearSalida($this->reemplazar($anterior, 'robo'));
         $nueva = AsignacionInventario::custodiaActiva()->sole();
         $this->assertEquals($anterior->id, $nueva->asignacion_anterior_id);
         $this->assertSame('Activa', $anterior->refresh()->estado);
@@ -105,12 +106,12 @@ class EntregaCustodiaTest extends TestCase
         $this->assertEquals(0, $this->saldo('usado'));
         $this->assertEquals(1, $this->saldo('nuevo'));
         $alerta = AlertaReemplazo::sole();
-        $this->assertSame('reemplazo_anticipado', $alerta->motivo_revision);
+        $this->assertSame('motivo_asignacion', $alerta->motivo_revision);
         $this->assertEquals($nueva->id, $alerta->asignacion_nueva_id);
         $this->assertNull($alerta->incidencia_inventario_id);
 
         $this->actingAs($this->rrhh)->get(route('rrhh.alertas.show', $alerta))->assertOk()
-            ->assertSee('Posible reemplazo anticipado')->assertSee('Historial del producto');
+            ->assertSee('Robo')->assertSee('Historial del producto');
         $this->post(route('rrhh.alertas.regularizacion', $alerta), ['nota' => 'Verificar el retorno de la unidad.'])->assertSessionHasNoErrors();
         $this->assertDatabaseHas('alerta_rrhh_actuaciones', ['accion' => 'solicitar_regularizacion', 'usuario_id' => $this->rrhh->id]);
         $this->assertEquals(0, $this->saldo('usado'));
@@ -441,7 +442,7 @@ class EntregaCustodiaTest extends TestCase
         $this->actingAs($this->almacenista->fresh());
         $this->crearSalida($datos);
         $this->assertDatabaseHas('asignaciones_inventarios', ['stock_tipo' => 'nuevo',
-            'motivo_inventario_nuevo' => 'Requisito del área de trabajo', 'asignacion_anterior_id' => $asignacion->id]);
+            'motivo_inventario_nuevo' => 'Requisito del área de trabajo', 'tipo_entrega' => 'adicional', 'asignacion_anterior_id' => null]);
         $this->assertEquals(1, $this->saldo('usado'));
         $this->assertDatabaseCount('alertas_reemplazos_rrhh', 0);
     }
@@ -450,7 +451,7 @@ class EntregaCustodiaTest extends TestCase
     public function test_reemplazo_distingue_vida_vencida_de_datos_insuficientes(string $modalidad, ?string $motivo): void
     {
         $this->crearSalida($this->datosSalida(['fecha' => now()->subDays(90)->toDateTimeString(), 'modalidad' => $modalidad]));
-        $this->crearSalida($this->datosSalida());
+        $this->crearSalida($this->reemplazar(AsignacionInventario::sole(), $motivo === null ? 'desgaste' : 'robo'));
         $this->assertDatabaseCount('incidencias_inventario', 0);
         $this->assertDatabaseCount('asignacion_movimientos', 2);
         $this->assertDatabaseCount('alertas_reemplazos_rrhh', $motivo === null ? 0 : 1);
@@ -464,7 +465,7 @@ class EntregaCustodiaTest extends TestCase
 
     public static function situacionesReemplazo(): array
     {
-        return ['vencida' => ['directa', null], 'desconocida' => ['tercero', 'reemplazo_sin_datos']];
+        return ['vencida' => ['directa', null], 'desconocida' => ['tercero', 'motivo_asignacion']];
     }
 
     public function test_expediente_muestra_custodias_incidencias_y_documentos_tras_el_reemplazo(): void
@@ -474,14 +475,14 @@ class EntregaCustodiaTest extends TestCase
         $this->post(route('operador.asignaciones.documento_entrega', $anterior->grupo_asignacion), [
             'pdf_firmado' => UploadedFile::fake()->create('respaldo.pdf', 10, 'application/pdf'),
         ])->assertSessionHasNoErrors();
-        $this->crearSalida($this->datosSalida());
+        $this->crearSalida($this->reemplazar($anterior, 'robo'));
         $admin = User::factory()->create(['role_id' => 1]);
         $url = route('admin.colaboradores.detalle', 'C01');
         $this->actingAs($admin)->getJson($url)->assertOk()
-            ->assertJsonPath('asignaciones.0.tipo_entrega', 'Nueva entrega del mismo código')
+            ->assertJsonPath('asignaciones.0.tipo_entrega', 'Reemplazo')
             ->assertJsonPath('asignaciones.1.custodia', 'Custodia anterior sin retorno confirmado')
             ->assertJsonPath('asignaciones.1.documentos.0.nombre', 'respaldo.pdf')
-            ->assertJsonPath('incidencias.0.motivo', 'Posible reemplazo anticipado');
+            ->assertJsonPath('incidencias.0.motivo', 'Robo');
         $this->actingAs($this->almacenista)->post(route('operador.asignaciones.devolver', $anterior), [
             'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'robado',
         ])->assertSessionHasNoErrors();
@@ -491,6 +492,14 @@ class EntregaCustodiaTest extends TestCase
             ->assertJsonCount(0, 'asignaciones.1.retornos');
         $this->assertDatabaseCount('alertas_reemplazos_rrhh', 1);
         $this->get(route('admin.colaboradores.ficha_tecnica', 'C01'))->assertOk();
+    }
+
+    private function reemplazar(AsignacionInventario $anterior, string $motivo): array
+    {
+        $datos = $this->datosSalida();
+        $datos['items'][0] += ['sustituir_asignacion_id' => $anterior->id, 'motivo_asignacion' => $motivo];
+
+        return $datos;
     }
 
     private function datosSalida(array $cambios = []): array

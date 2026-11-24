@@ -32,6 +32,7 @@
                                 · {{ $fila->stock_tipo === 'usado' ? 'Inventario usado' : 'Inventario nuevo' }}
                             @endif
                         </p>
+                        @if($fila->medio_solicitud)<p class="text-sm">Origen {{ $fila->medio_solicitud }}</p>@endif
                         @if($origen = $fila->requerimiento?->participante?->consolidado)
                             <p class="text-sm">Requerimiento #{{ $fila->requerimiento_id }} ·
                                 @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'consolidados') && auth()->user()->rolOperativo() !== 5)

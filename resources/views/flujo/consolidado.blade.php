@@ -1,5 +1,9 @@
 <x-sistema.pagina :titulo="$consolidado->nombre" :volver="route('flujo.consolidados.index')">
     <x-slot:acciones>
+        @if($seguimiento && $consolidado->detalle_individual && app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'importar')
+            && app(\App\Sistema\Permisos::class)->permite(auth()->user(), 'asignaciones.crear'))
+            <a class="ui-btn-secondary" href="{{ route('flujo.importar.index', ['consolidado_id' => $consolidado->id]) }}">Preparar asignaciones en Excel</a>
+        @endif
         <x-ui.exportar-excel :url="route('flujo.consolidados.index', ['xlsx' => 1, 'consolidado_id' => $consolidado->id])" />
     </x-slot:acciones>
     @php

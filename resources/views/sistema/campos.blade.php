@@ -6,7 +6,7 @@
                 <input type="search" name="q" value="{{ $q }}" aria-label="Buscar campo por etiqueta" placeholder="Buscar por etiqueta" maxlength="100">
                 <select name="modulo" aria-label="Filtrar por módulo" class="rounded-xl border-slate-300">
                     <option value="">Todos los módulos</option>
-                    @foreach(\App\Sistema\Modulos::DEFINICIONES as $key => $spec)<option value="{{ $key }}" @selected($modulo === $key)>{{ $spec[0] }}</option>@endforeach
+                    @foreach(\App\Sistema\Modulos::visibles() as $key => $spec)<option value="{{ $key }}" @selected($modulo === $key)>{{ $spec[0] }}</option>@endforeach
                 </select>
                 <button type="submit" class="ui-btn-secondary">Filtrar</button>
             </form>

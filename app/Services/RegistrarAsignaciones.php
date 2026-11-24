@@ -19,12 +19,17 @@ use Illuminate\Validation\ValidationException;
 
 class RegistrarAsignaciones
 {
+    public const MAX_UNIDADES = 500;
+
+    public const MEDIO_INTERNO = 'Requerimiento interno';
+
     public function __construct(
         private InventarioStockService $stock,
         private AsignacionVidaUtilService $vida,
         private DetectarReemplazos $reemplazos,
         private ValoresCampos $campos,
         private RequerimientosAsignacion $requerimientos,
+        private AccesoCustodia $custodias,
     ) {}
 
     public function registrar(User $usuario, array $data, Collection $items, array $valores, ?callable $adjuntarFoto = null): EntregaInventario
@@ -48,6 +53,18 @@ class RegistrarAsignaciones
         $requerimientos = isset($data['consolidado_id'])
             ? $this->requerimientos->vincular($usuario, (int) $data['consolidado_id'], $colaborador->codigo, $items) : collect();
 
+        $total = $items->sum(fn ($item) => (int) ($item['cantidad_asignada'] ?? $item['cantidad'] ?? 1));
+        if ($total < 1 || $total > self::MAX_UNIDADES) {
+            throw ValidationException::withMessages(['items' => 'Registra hasta '.self::MAX_UNIDADES.' unidades por operación.']);
+        }
+        $items = $items->flatMap(function ($item) {
+            $cantidad = (int) ($item['cantidad_asignada'] ?? $item['cantidad'] ?? 1);
+            if ($cantidad < 1 || $cantidad > self::MAX_UNIDADES || ($cantidad > 1 && filled($item['sustituir_asignacion_id'] ?? null))) {
+                throw ValidationException::withMessages(['items' => 'Usa una unidad al sustituir una asignación específica.']);
+            }
+
+            return array_fill(0, $cantidad, $item);
+        });
         $anteriores = AsignacionInventario::custodiaActiva()->where('colaborador_codigo', $colaborador->codigo)
             ->whereIn('producto_codigo', $items->pluck('producto_codigo'))
             ->orderBy('producto_codigo')->orderBy('id')->lockForUpdate()->get()->groupBy('producto_codigo');
@@ -68,17 +85,28 @@ class RegistrarAsignaciones
 
         $primera = null;
         $alertas = [];
+        $tiposEntrega = [];
         foreach ($items as $item) {
             $codigo = $item['producto_codigo'];
             $motivoNuevo = $item['motivo_inventario_nuevo'] ?? null;
             $tipo = $this->stock->tipoParaAsignar((int) $item['bodega_id'], $codigo, filled($motivoNuevo));
             $previas = $anteriores->get($codigo, collect());
-            $anterior = $previas->last() ?? AsignacionInventario::where('colaborador_codigo', $colaborador->codigo)
-                ->where('producto_codigo', $codigo)->latest('id')->lockForUpdate()->first();
-            $motivo = empty($item['motivo_asignacion']) ? null
-                : MotivoAsignacion::where('codigo', $item['motivo_asignacion'])->where('activo', true)->first();
-            if (filled($item['motivo_asignacion'] ?? null) && !$motivo) {
-                throw ValidationException::withMessages(['motivo_asignacion' => 'Selecciona un motivo de asignación vigente.']);
+            if ($previas->contains(fn ($previa) => $salida->lt($previa->entrega?->salida_en ?? $previa->fecha))) {
+                throw ValidationException::withMessages(['fecha' => 'La salida debe ser posterior o igual a la custodia vigente.']);
+            }
+            $anterior = $previas->firstWhere('id', $item['sustituir_asignacion_id'] ?? null);
+            if (filled($item['sustituir_asignacion_id'] ?? null) && (!$anterior || !$this->custodias->puedeVer($usuario, $anterior))) {
+                throw ValidationException::withMessages(['items' => 'La asignación anterior debe corresponder a una custodia vigente del colaborador que tengas permiso de consultar.']);
+            }
+            $motivo = $anterior ? MotivoAsignacion::where('codigo', $item['motivo_asignacion'] ?? '')->where('activo', true)->first() : null;
+            if (($anterior && !$motivo) || (!$anterior && filled($item['motivo_asignacion'] ?? null))) {
+                throw ValidationException::withMessages(['motivo_asignacion' => 'Selecciona un motivo vigente únicamente al sustituir una asignación.']);
+            }
+            $tipoEntrega = $tiposEntrega[$codigo] ??= ($anterior ? 'reposicion' : ($previas->isNotEmpty() || AsignacionInventario::where('colaborador_codigo', $colaborador->codigo)
+                ->where('producto_codigo', $codigo)->exists() ? 'adicional' : 'inicial'));
+            $medio = isset($data['consolidado_id']) ? self::MEDIO_INTERNO : ($item['medio_solicitud'] ?? $data['medio_solicitud'] ?? null);
+            if ($medio === self::MEDIO_INTERNO && !isset($data['consolidado_id'])) {
+                throw ValidationException::withMessages(['medio_solicitud' => 'Vincula un consolidado para registrar el origen interno.']);
             }
             $asignacion = AsignacionInventario::create([
                 'grupo_asignacion' => $grupo,
@@ -90,11 +118,11 @@ class RegistrarAsignaciones
                 'fecha' => $entrega->salida_en->toDateString(),
                 'costo_unitario' => $data['costo_unitario'] ?? null,
                 'aprobado_por' => $item['aprobado_por'] ?? $data['aprobado_por'] ?? null,
-                'medio_solicitud' => $item['medio_solicitud'] ?? $data['medio_solicitud'] ?? null,
+                'medio_solicitud' => $medio,
                 'observaciones' => $item['observaciones'] ?? $data['observaciones'] ?? null,
                 'estado' => 'Activa',
                 'stock_tipo' => $tipo,
-                'tipo_entrega' => $anterior === null ? 'inicial' : 'reposicion',
+                'tipo_entrega' => $tipoEntrega,
                 'asignacion_anterior_id' => $anterior?->id,
                 'motivo_inventario_nuevo' => $motivoNuevo,
                 'motivo_asignacion_id' => $motivo?->id,
@@ -119,7 +147,9 @@ class RegistrarAsignaciones
                     'motivo_inventario_nuevo' => $motivoNuevo, 'motivo_asignacion' => $motivo?->codigo,
                     'requerimiento_id' => $asignacion->requerimiento_id]);
 
-            $alertas = [...$alertas, ...$this->reemplazos->registrar($asignacion, $previas, $motivo)];
+            if ($anterior) {
+                $alertas = [...$alertas, ...$this->reemplazos->registrar($asignacion, collect([$anterior]), $motivo)];
+            }
         }
 
         if ($adjuntarFoto !== null) {

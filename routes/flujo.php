@@ -39,9 +39,11 @@ Route::middleware(['auth', 'auto.logout'])->prefix('flujo')->name('flujo.')->gro
     Route::get('constancias/{constancia}/documento', [PlanComprasController::class, 'documento'])->name('compras.documento');
 
     Route::get('asignaciones/importar', [ImportarAsignacionController::class, 'index'])->name('importar.index');
+    Route::get('asignaciones/pendientes', [ImportarAsignacionController::class, 'pendientes'])->name('importar.pendientes');
     Route::get('asignaciones/plantilla', [ImportarAsignacionController::class, 'plantilla'])->name('importar.plantilla');
     Route::post('asignaciones/importar', [ImportarAsignacionController::class, 'previsualizar'])->name('importar.preview');
     Route::get('asignaciones/importar/{importacion}', [ImportarAsignacionController::class, 'show'])->whereUuid('importacion')->name('importar.show');
     Route::get('asignaciones/importar/{importacion}/hojas', [ImportarAsignacionController::class, 'hojas'])->whereUuid('importacion')->name('importar.hojas');
+    Route::post('asignaciones/importar/{importacion}/conciliar', [ImportarAsignacionController::class, 'conciliar'])->whereUuid('importacion')->name('importar.conciliar');
     Route::post('asignaciones/importar/{importacion}', [ImportarAsignacionController::class, 'confirmar'])->whereUuid('importacion')->name('importar.confirmar');
 });
