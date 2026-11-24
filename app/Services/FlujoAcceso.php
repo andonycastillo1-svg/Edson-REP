@@ -36,6 +36,11 @@ class FlujoAcceso
         abort_unless($this->puede($usuario, $permiso), 403);
     }
 
+    public function puedeCortes(User $usuario): bool
+    {
+        return $this->puede($usuario, 'inspecciones') && $this->puede($usuario, 'consolidar');
+    }
+
     public function central(User $usuario): ?Bodega
     {
         $bodega = $this->bodegas->principal();

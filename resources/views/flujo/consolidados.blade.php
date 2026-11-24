@@ -2,8 +2,8 @@
 <x-sistema.pagina titulo="Consolidados" :descripcion="$acceso->puede(auth()->user(), 'revisar') ? 'Revisa las cantidades del equipo y aprueba los requerimientos listos.' : 'Consulta el avance de cada período, desde el borrador hasta el cierre de compras.'" :volver="route('dashboard')">
     <x-slot:acciones>
         <x-ui.exportar-excel />
-        @if($acceso->puede(auth()->user(), 'consolidar') && $acceso->puede(auth()->user(), 'inspecciones'))
-            <a class="ui-btn-primary" href="{{ route('flujo.inspecciones.index') }}">Preparar consolidado</a>
+        @if($acceso->puedeCortes(auth()->user()))
+            <a class="ui-btn-primary" href="{{ route('flujo.cortes.create') }}">Nuevo corte</a>
         @endif
     </x-slot:acciones>
     @include('flujo.accesos')

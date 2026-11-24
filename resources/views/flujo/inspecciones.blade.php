@@ -1,9 +1,13 @@
 @php
     $acceso = app(\App\Services\FlujoAcceso::class);
-    $puedeConsolidar = $acceso->puede(auth()->user(), 'consolidar');
+    $puedeConsolidar = $acceso->puedeCortes(auth()->user());
 @endphp
-<x-sistema.pagina titulo="Inspecciones y requerimientos" :descripcion="$puedeConsolidar ? 'Selecciona requerimientos de regiones a cargo del mismo coordinador.' : 'Registra las necesidades de cada colaborador y consulta su avance.'" :volver="route('dashboard')">
+<x-sistema.pagina titulo="Inspecciones y requerimientos" :descripcion="$puedeConsolidar ? 'Consulta los requerimientos recibidos y prepara un corte cuando lo necesites.' : 'Registra las necesidades de cada colaborador y consulta su avance.'" :volver="route('dashboard')">
     <x-slot:acciones>
+        @if($puedeConsolidar)
+            <a class="ui-btn-primary" href="{{ route('flujo.cortes.create') }}">Nuevo corte</a>
+            <a class="ui-btn-secondary" href="{{ route('flujo.cortes.index') }}">Historial de cortes</a>
+        @endif
         <x-ui.exportar-excel />
         @if($acceso->puede(auth()->user(), 'capturar'))
             <a href="{{ route('flujo.inspecciones.create') }}" class="ui-btn-primary">Nueva inspección</a>
@@ -52,14 +56,6 @@
                 @php($responsable = $coordinadores->contains($fila->region?->coordinador_id) && $fila->region?->activa ? $fila->region?->coordinador : null)
                 <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 py-3 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] sm:items-center">
                     <div class="flex min-w-0 items-start gap-3">
-                        @if($puedeConsolidar && !$consolidado)
-                            <label class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50">
-                                <input type="checkbox" name="inspecciones[]" form="consolidar" value="{{ $fila->id }}" data-fecha="{{ $fila->fecha->toDateString() }}"
-                                    data-coordinador="{{ $responsable?->name }}" data-responsable="{{ $responsable?->id }}" data-region="{{ $fila->region?->nombre }}"
-                                    aria-label="Incluir requerimiento de {{ $fila->colaborador?->nombre }} del {{ $fila->fecha->format('d/m/Y') }}"
-                                    @checked(in_array($fila->id, old('inspecciones', [])))>
-                            </label>
-                        @endif
                         <div class="min-w-0">
                             <a class="flujo-enlace" href="{{ route('flujo.inspecciones.show', $fila) }}">{{ $fila->colaborador?->nombre }}</a>
                             <p class="mt-1 text-sm">{{ $fila->fecha->format('d/m/Y') }} · {{ $fila->region?->nombre }}</p>
@@ -77,51 +73,6 @@
                 <li class="py-2 text-sm">No hay requerimientos con estos filtros.</li>
             @endforelse
         </ul>
-        @if($puedeConsolidar && $inspecciones->contains(fn ($fila) => $fila->consolidados->isEmpty()))
-            <form method="POST" action="{{ route('flujo.consolidados.store') }}" id="consolidar" class="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
-                @csrf
-                <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                    <h3 class="font-bold">Preparar consolidado</h3>
-                    <p id="inspecciones-seleccionadas" role="status" class="text-sm"></p>
-                </div>
-                <div class="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <label class="ui-label">Nombre del período<input name="nombre" maxlength="160" class="ui-input mt-1" value="{{ old('nombre') }}" required></label>
-                    <label class="ui-label">Desde<input name="desde" type="date" class="ui-input mt-1" value="{{ old('desde', request('desde')) }}" required></label>
-                    <label class="ui-label">Hasta<input name="hasta" type="date" class="ui-input mt-1" value="{{ old('hasta', request('hasta')) }}" required></label>
-                    <button class="ui-btn-primary" data-confirmar="¿Enviar el consolidado al coordinador indicado?">Enviar a coordinación</button>
-                </div>
-            </form>
-            <script>
-                (() => {
-                    const formulario = document.getElementById('consolidar');
-                    const casillas = [...formulario.elements].filter(campo => campo.name === 'inspecciones[]');
-                    const total = document.getElementById('inspecciones-seleccionadas');
-                    const periodo = [formulario.elements.desde, formulario.elements.hasta];
-                    periodo.filter(campo => campo.value).forEach(campo => campo.dataset.manual = '1');
-                    function actualizar() {
-                        const seleccion = casillas.filter(casilla => casilla.checked).map(casilla => casilla.dataset);
-                        const fechas = seleccion.map(fila => fila.fecha).sort();
-                        const pendientes = new Set(seleccion.filter(fila => !fila.responsable).map(fila => fila.region));
-                        const responsables = new Map(seleccion.filter(fila => fila.responsable).map(fila => [fila.responsable, fila.coordinador]));
-                        const valido = !pendientes.size && responsables.size === 1;
-                        if (pendientes.size) {
-                            total.textContent = `Configura un coordinador para ${[...pendientes].join(', ')}.`;
-                        } else if (responsables.size > 1) {
-                            total.textContent = `Separa los requerimientos por coordinador. ${[...new Set(seleccion.map(fila => `${fila.region} · ${fila.coordinador}`))].join('; ')}`;
-                        } else {
-                            total.textContent = valido ? `${fechas.length} seleccionado(s) · Coordina ${[...responsables.values()][0]}` : 'Selecciona los requerimientos de la lista.';
-                        }
-                        formulario.querySelector('button').disabled = !valido;
-                        periodo.forEach((campo, i) => {
-                            if (!campo.dataset.manual) campo.value = (i ? fechas.at(-1) : fechas[0]) ?? '';
-                        });
-                    }
-                    periodo.forEach(campo => campo.addEventListener('change', () => campo.dataset.manual = '1'));
-                    casillas.forEach(casilla => casilla.addEventListener('change', actualizar));
-                    actualizar();
-                })();
-            </script>
-        @endif
         <div class="mt-4">{{ $inspecciones->links() }}</div>
     </x-sistema.panel>
 </x-sistema.pagina>

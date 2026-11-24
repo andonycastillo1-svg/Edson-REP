@@ -22,6 +22,9 @@
         <div><dt>Estado</dt><dd>@include('flujo.estado', ['estado' => $consolidado->estado])</dd></div>
         <div><dt>Período</dt><dd>{{ $consolidado->desde->format('d/m/Y') }} – {{ $consolidado->hasta->format('d/m/Y') }}</dd></div>
         <div><dt>Coordinador responsable</dt><dd>{{ $consolidado->coordinador?->name }}</dd></div>
+        @if($consolidado->corte && app(\App\Services\FlujoAcceso::class)->puedeCortes(auth()->user()))
+            <div><dt>Corte de origen</dt><dd><a class="flujo-enlace" href="{{ route('flujo.cortes.show', $consolidado->corte) }}">#{{ $consolidado->corte->id }} · {{ $consolidado->corte->nombre }}</a></dd></div>
+        @endif
         @if($consolidado->aprobado_en)
             <div><dt>Aprobó</dt><dd>{{ $consolidado->aprobador?->name }}<span class="block text-xs">{{ $consolidado->aprobado_en->format('d/m/Y H:i') }}</span></dd></div>
         @endif

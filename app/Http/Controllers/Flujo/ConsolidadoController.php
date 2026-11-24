@@ -6,14 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Services\ExportacionesOperativas;
 use App\Models\Colaborador;
 use App\Models\Consolidado;
-use App\Models\Inspeccion;
 use App\Models\Producto;
 use App\Models\User;
+use App\Services\ConsolidacionInspecciones;
 use App\Services\DetalleConsolidado;
 use App\Services\FlujoAcceso;
 use App\Services\PlanCompras;
 use App\Services\RegionesCoordinacion;
-use App\Sistema\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -36,7 +35,7 @@ class ConsolidadoController extends Controller
 
     public function __construct(
         private FlujoAcceso $acceso,
-        private Auditoria $auditoria,
+        private ConsolidacionInspecciones $consolidacion,
         private PlanCompras $plan,
         private RegionesCoordinacion $regiones,
         private DetalleConsolidado $detalle,
@@ -73,26 +72,12 @@ class ConsolidadoController extends Controller
         ]);
 
         $consolidado = DB::transaction(function () use ($usuario, $datos) {
-            $inspecciones = Inspeccion::whereKey($datos['inspecciones'])->orderBy('id')->lockForUpdate()->get();
-            if ($inspecciones->count() !== count($datos['inspecciones']) ||
-                DB::table('consolidado_inspeccion')->whereIn('inspeccion_id', $inspecciones->modelKeys())->exists()) {
-                throw ValidationException::withMessages(['inspecciones' => 'Alguna inspección ya pertenece a otro consolidado o no existe.']);
-            }
+            $inspecciones = $this->consolidacion->bloquearDisponibles($datos['inspecciones']);
             if ($inspecciones->contains(fn ($fila) => $fila->fecha->toDateString() < $datos['desde'] || $fila->fecha->toDateString() > $datos['hasta'])) {
                 throw ValidationException::withMessages(['inspecciones' => 'Selecciona inspecciones dentro del período indicado.']);
             }
             $coordinador = $this->regiones->resolver($inspecciones->pluck('region_id'), bloquear: true);
-            $fila = Consolidado::create([
-                'nombre' => $datos['nombre'], 'desde' => $datos['desde'], 'hasta' => $datos['hasta'],
-                'estado' => 'enviado', 'coordinador_id' => $coordinador->id, 'operador_id' => $usuario->id,
-            ]);
-            $fila->inspecciones()->attach($inspecciones->modelKeys());
-            $this->detalle->inicializar($fila);
-            $fila->save();
-            $this->evento($fila, $usuario, 'crear', null, ['inspecciones' => $inspecciones->modelKeys()]);
-            $this->evento($fila, $usuario, 'enviar', null, ['coordinador' => $coordinador->id]);
-
-            return $fila;
+            return $this->consolidacion->generar($usuario, $coordinador, $inspecciones, $datos['nombre'], $datos['desde'], $datos['hasta']);
         }, 3);
 
         return redirect()->route('flujo.consolidados.show', $consolidado)->with('success', 'Consolidado enviado a coordinación.');
@@ -101,7 +86,7 @@ class ConsolidadoController extends Controller
     public function show(Request $request, int $consolidado)
     {
         $usuario = $request->user();
-        $consolidado = $this->acceso->consolidados($usuario)->with(['coordinador', 'aprobador', 'inspecciones.supervisor',
+        $consolidado = $this->acceso->consolidados($usuario)->with(['corte', 'coordinador', 'aprobador', 'inspecciones.supervisor',
             'inspecciones.colaborador', 'inspecciones.region', 'inspecciones.lineas', 'participantes.colaborador', 'participantes.region',
             'participantes.necesidades' => fn ($q) => $q->with('producto')->withCount('asignaciones'),
             'lineas.producto', 'eventos.user'])->findOrFail($consolidado);
@@ -213,15 +198,9 @@ class ConsolidadoController extends Controller
                 $fila->plan_compra = null;
             }
             $fila->save();
-            $this->evento($fila, $usuario, $accion, $datos['nota'] ?? null, $cambios);
+            $this->consolidacion->evento($fila, $usuario, $accion, $datos['nota'] ?? null, $cambios);
         }, 3);
 
         return back()->with('success', $accion === 'cerrar' ? 'Compras cerradas. Las entregas se registran por separado.' : 'Consolidado actualizado.');
-    }
-
-    private function evento(Consolidado $fila, User $usuario, string $accion, ?string $nota, array $cambios): void
-    {
-        $evento = $fila->eventos()->create(['user_id' => $usuario->id, 'accion' => $accion, 'nota' => $nota, 'cambios' => $cambios]);
-        $this->auditoria->registrar('flujo', $accion.'_consolidado', $fila->id, null, ['evento' => $evento->id] + $cambios);
     }
 }
