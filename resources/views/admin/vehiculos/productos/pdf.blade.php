@@ -18,10 +18,10 @@
     <style>
         @page { margin: 28px; }
         body { font-family: DejaVu Sans, Arial, sans-serif; color: #111827; font-size: 12px; line-height: 1.45; }
-        .top { display: flex; justify-content: space-between; gap: 18px; border-bottom: 3px solid #1d4ed8; padding-bottom: 14px; margin-bottom: 18px; }
-        .title { font-size: 22px; font-weight: 800; color: #0f172a; margin: 0 0 6px; }
+        .top { display: flex; justify-content: space-between; gap: 18px; border-bottom: 3px solid #174f95; padding-bottom: 14px; margin-bottom: 18px; }
+        .title { font-size: 22px; font-weight: 800; color: #182c42; margin: 0 0 6px; }
         .subtitle { color: #64748b; font-size: 12px; }
-        .badge { display: inline-block; border-radius: 999px; padding: 6px 10px; background: #dbeafe; color: #1d4ed8; font-weight: 800; font-size: 11px; text-transform: uppercase; }
+        .badge { display: inline-block; border-radius: 999px; padding: 6px 10px; background: #dbeafe; color: #174f95; font-weight: 800; font-size: 11px; text-transform: uppercase; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
         .box { border: 1px solid #dbe3ef; border-radius: 12px; padding: 12px; background: #fff; }
         .box h2 { font-size: 13px; margin: 0 0 8px; color: #1e3a8a; text-transform: uppercase; letter-spacing: .04em; }
@@ -36,7 +36,7 @@
         .signature { text-align: center; padding-top: 36px; border-top: 1px solid #111827; font-weight: 800; }
         .signature small { display: block; color: #64748b; font-weight: 600; margin-top: 4px; }
         .actions { position: fixed; top: 12px; right: 12px; }
-        .print-btn { background: #2563eb; color: #fff; border: 0; border-radius: 8px; padding: 8px 12px; font-weight: 800; cursor: pointer; }
+        .print-btn { background: #174f95; color: #fff; border: 0; border-radius: 8px; padding: 8px 12px; font-weight: 800; cursor: pointer; }
         @media print { .actions { display: none; } body { font-size: 11px; } }
     </style>
 </head>

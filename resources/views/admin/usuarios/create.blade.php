@@ -13,12 +13,12 @@
     $mostrarAlmacenista = $ambitoSeleccionado === (int) $rolSupervisorId;
 @endphp
 
-<div class="w-full max-w-3xl bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8">
+<div class="w-full max-w-3xl bg-white/95 backdrop-blur rounded-xl shadow-lg p-6 md:p-8">
     <x-internal-navigation :back-url="route($routePrefix . '.usuarios.index')" />
 
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h1 class="text-2xl font-semibold text-gray-800">Crear usuario</h1>
+            <h1 class="ui-page-title text-gray-800">Crear usuario</h1>
             <p class="text-sm text-gray-500">Registra un nuevo usuario para el sistema</p>
         </div>
     </div>

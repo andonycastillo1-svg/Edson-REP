@@ -4,11 +4,11 @@
 <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
     <x-internal-navigation :back-url="route('dashboard')" />
 
-    <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
-        <div class="flex flex-col gap-4 border-b border-slate-200 bg-gradient-to-r from-white to-blue-50 px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+        <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-7 bg-slate-50">
             <div>
-                <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-600">Centro de avisos</p>
-                <h1 class="mt-1 text-2xl font-extrabold text-slate-950">Notificaciones</h1>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Centro de avisos</p>
+                <h1 class="ui-page-title mt-1   text-slate-950">Notificaciones</h1>
                 <p class="mt-1 text-sm text-slate-500">Consulta y administra los avisos asociados a tu usuario.</p>
             </div>
 
@@ -91,7 +91,7 @@
                 </article>
             @empty
                 <div class="px-6 py-16 text-center">
-                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl">🔔</div>
+                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl" aria-hidden="true"><x-ui.icono nombre="alerta" /></div>
                     <p class="mt-4 font-semibold text-slate-700">No tienes notificaciones.</p>
                 </div>
             @endforelse

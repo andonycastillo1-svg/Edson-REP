@@ -251,9 +251,9 @@
         }
 
         .btn {
-            border: 1px solid #cbd5e1;
+            border: 1px solid #d5dfeb;
             background: #ffffff;
-            color: #0f172a;
+            color: #182c42;
             border-radius: 8px;
             padding: 8px 12px;
             font-size: 12px;
@@ -262,9 +262,9 @@
         }
 
         .btn-primary {
-            background: #0f172a;
+            background: #182c42;
             color: #ffffff;
-            border-color: #0f172a;
+            border-color: #182c42;
         }
 
         .text-muted {

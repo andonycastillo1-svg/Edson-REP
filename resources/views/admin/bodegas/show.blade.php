@@ -16,7 +16,7 @@
         background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(240,249,255,.96));
         border: 1px solid #bfdbfe;
         border-radius: 26px;
-        box-shadow: 0 22px 45px rgba(15, 23, 42, .08);
+        box-shadow: var(--ui-shadow-sm);
         overflow: hidden;
     }
 
@@ -24,7 +24,7 @@
         padding: 26px 28px 22px;
         background:
             radial-gradient(circle at top right, rgba(59,130,246,.14), transparent 35%),
-            linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            linear-gradient(135deg, #ffffff 0%, var(--ui-tint) 100%);
         border-bottom: 1px solid #dbeafe;
     }
 
@@ -49,16 +49,16 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #2563eb, #0ea5e9);
+        background: linear-gradient(135deg, var(--ui-primary), #0ea5e9);
         color: #fff;
         font-size: 22px;
-        box-shadow: 0 12px 24px rgba(37, 99, 235, .22);
+        box-shadow: var(--ui-shadow-sm);
         flex-shrink: 0;
     }
 
     .inv-title {
         margin: 0;
-        color: #0f172a;
+        color: var(--ui-text);
         font-size: 27px;
         font-weight: 900;
         letter-spacing: -0.035em;
@@ -101,14 +101,14 @@
     }
 
     .inv-btn-blue {
-        background: #2563eb;
+        background: var(--ui-primary);
         color: #fff;
-        border-color: #2563eb;
-        box-shadow: 0 8px 18px rgba(37, 99, 235, .18);
+        border-color: var(--ui-primary);
+        box-shadow: var(--ui-shadow-sm);
     }
 
     .inv-btn-blue:hover {
-        background: #1d4ed8;
+        background: var(--ui-primary);
         color: #fff;
     }
 
@@ -116,7 +116,7 @@
         background: #0ea5e9;
         color: #fff;
         border-color: #0ea5e9;
-        box-shadow: 0 8px 18px rgba(14, 165, 233, .16);
+        box-shadow: var(--ui-shadow-sm);
     }
 
     .inv-btn-sky:hover {
@@ -128,7 +128,7 @@
         background: #4f46e5;
         color: #fff;
         border-color: #4f46e5;
-        box-shadow: 0 8px 18px rgba(79, 70, 229, .18);
+        box-shadow: var(--ui-shadow-sm);
     }
 
     .inv-btn-purple:hover {
@@ -143,8 +143,8 @@
     }
 
     .inv-btn-light:hover {
-        background: #f8fafc;
-        color: #0f172a;
+        background: var(--ui-bg);
+        color: var(--ui-text);
     }
 
     .inv-body {
@@ -188,7 +188,7 @@
     }
 
     .inv-stat-value {
-        color: #0f172a;
+        color: var(--ui-text);
         font-size: 27px;
         font-weight: 950;
         line-height: 1;
@@ -241,7 +241,7 @@
         padding: 0 14px;
         background: #eff6ff;
         border: 1px solid #bfdbfe;
-        color: #1d4ed8;
+        color: var(--ui-primary);
         font-size: 12px;
         font-weight: 900;
         white-space: nowrap;
@@ -267,8 +267,8 @@
     }
 
     .inv-table thead {
-        background: linear-gradient(90deg, #f8fafc, #eff6ff);
-        color: #475569;
+        background: linear-gradient(90deg, var(--ui-bg), #eff6ff);
+        color: var(--ui-muted);
         text-transform: uppercase;
         letter-spacing: .04em;
         font-size: 11px;
@@ -285,23 +285,23 @@
     .inv-table td {
         padding: 14px;
         border-bottom: 1px solid #eef2f7;
-        color: #0f172a;
+        color: var(--ui-text);
         vertical-align: middle;
     }
 
     .inv-table tbody tr:hover {
-        background: #f0f9ff;
+        background: var(--ui-tint);
     }
 
     .inv-code {
         font-weight: 950;
-        color: #0f172a;
+        color: var(--ui-text);
         white-space: nowrap;
     }
 
     .inv-product {
         font-weight: 950;
-        color: #0f172a;
+        color: var(--ui-text);
         margin-bottom: 4px;
     }
 
@@ -326,13 +326,13 @@
         padding: 5px 11px;
         border-radius: 999px;
         background: #f1f5f9;
-        color: #0f172a;
+        color: var(--ui-text);
         font-weight: 950;
     }
 
     .inv-money {
         font-weight: 950;
-        color: #0f172a;
+        color: var(--ui-text);
         white-space: nowrap;
     }
 
@@ -349,7 +349,7 @@
     }
 
     .inv-empty-title {
-        color: #0f172a;
+        color: var(--ui-text);
         font-weight: 950;
         margin-bottom: 4px;
     }
@@ -370,7 +370,7 @@
     }
 
     .inv-pagination-text strong {
-        color: #0f172a;
+        color: var(--ui-text);
     }
 
     .inv-bottom-actions {
@@ -445,10 +445,10 @@
         <div class="inv-top">
             <div class="inv-header">
                 <div class="inv-title-group">
-                    <div class="inv-icon">📦</div>
+                    <div class="ui-module-icon"><x-ui.icono nombre="caja" /></div>
 
                     <div>
-                        <h1 class="inv-title">
+                        <h1 class="ui-page-title inv-title">
                             Inventario — {{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}
                         </h1>
 
@@ -535,7 +535,7 @@
 
             <div class="inv-table-card">
                 <div class="inv-table-scroll">
-                    <table class="inv-table" id="inventarioTable">
+                    <table class="ui-table inv-table" id="inventarioTable">
                         <thead>
                             <tr>
                                 <th>Código</th>

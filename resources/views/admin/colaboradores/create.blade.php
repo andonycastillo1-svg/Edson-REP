@@ -9,13 +9,13 @@
 
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-semibold text-slate-900">Nuevo colaborador</h1>
+        <h1 class="ui-page-title text-slate-900">Nuevo colaborador</h1>
         <p class="text-sm text-slate-600">Registra un nuevo colaborador.</p>
       </div>
     </div>
 
     <form enctype="multipart/form-data" method="POST" action="{{ route($routePrefix . '.colaboradores.store') }}"
-          class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          class="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       @csrf
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

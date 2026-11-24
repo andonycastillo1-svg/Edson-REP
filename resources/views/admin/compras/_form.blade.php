@@ -149,7 +149,7 @@
         </div>
 
         <div class="mt-4 flex justify-end">
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-right">
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-right">
                 <div class="text-sm font-medium text-slate-500">Total factura</div>
                 <div class="text-xl font-bold text-slate-900" id="totalFactura">0.00</div>
             </div>

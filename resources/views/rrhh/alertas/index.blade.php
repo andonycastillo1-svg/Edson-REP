@@ -4,7 +4,7 @@
 <div class="mx-auto max-w-6xl space-y-4 px-4 py-6">
     <x-internal-navigation :back-url="route('dashboard')" />
     <section class="rounded-xl border border-slate-200 bg-white p-5">
-        <h1 class="text-2xl font-bold text-slate-900">Incidencias para revisión de RR. HH.</h1>
+        <h1 class="ui-page-title text-slate-900">Incidencias para revisión de RR. HH.</h1>
         <form method="GET" class="mt-4 flex flex-wrap items-end gap-3">
             <label class="text-sm font-semibold">Colaborador o producto
                 <input type="search" name="q" value="{{ request('q') }}" class="mt-1 block rounded-xl border-slate-300">
@@ -30,7 +30,7 @@
         </form>
     </section>
     <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table class="w-full text-left text-sm">
+        <table class="ui-table w-full text-left text-sm">
             <thead class="bg-slate-50"><tr>
                 <th class="p-3">Colaborador y producto</th><th class="p-3">Motivo</th>
                 <th class="p-3">Fecha del incidente</th><th class="p-3">Vida útil al ocurrir</th><th class="p-3">Estado</th><th class="p-3">Acción</th>

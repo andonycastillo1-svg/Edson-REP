@@ -8,7 +8,7 @@
     <div class="mb-6 flex items-center justify-between gap-4">
         <div>
             <p class="text-xs font-bold uppercase tracking-[0.22em] text-sky-600">Flota</p>
-            <h1 class="mt-1 text-2xl font-bold text-slate-900">Editar vehículo</h1>
+            <h1 class="ui-page-title mt-1   text-slate-900">Editar vehículo</h1>
         </div>
     </div>
 

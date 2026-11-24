@@ -14,7 +14,7 @@
 <style>
   .asg-page {
     min-height: 100vh;
-    background: #f8fafc;
+    background: var(--ui-bg);
     padding: 28px 16px;
   }
 
@@ -35,7 +35,7 @@
     margin: 0;
     font-size: 22px;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .asg-subtitle {
@@ -64,22 +64,22 @@
   }
 
   .asg-btn-primary {
-    background: #2563eb;
+    background: var(--ui-primary);
     color: #fff;
   }
 
   .asg-btn-primary:hover {
-    background: #1d4ed8;
+    background: var(--ui-primary);
   }
 
   .asg-btn-secondary {
     background: #fff;
     color: #334155;
-    border-color: #dbe3ea;
+    border-color: var(--ui-border);
   }
 
   .asg-btn-secondary:hover {
-    background: #f8fafc;
+    background: var(--ui-bg);
   }
 
   .asg-alert {
@@ -103,7 +103,7 @@
 
   .asg-panel {
     background: #fff;
-    border: 1px solid #dbe3ea;
+    border: 1px solid var(--ui-border);
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
@@ -111,11 +111,11 @@
 
   .asg-panel-title {
     padding: 12px 16px;
-    background: #f8fafc;
-    border-bottom: 1px solid #dbe3ea;
+    background: var(--ui-bg);
+    border-bottom: 1px solid var(--ui-border);
     font-size: 14px;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .asg-collab {
@@ -146,7 +146,7 @@
   }
 
   .asg-row:hover {
-    background: #f8fafc;
+    background: var(--ui-bg);
   }
 
   .asg-left {
@@ -172,7 +172,7 @@
     height: 32px;
     border-radius: 8px;
     background: #eff6ff;
-    color: #1d4ed8;
+    color: var(--ui-primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -185,7 +185,7 @@
     margin: 0;
     font-size: 14px;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ui-text);
     line-height: 1.2;
   }
 
@@ -216,7 +216,7 @@
     margin-top: 4px;
     font-size: 13px;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .asg-pill {
@@ -225,13 +225,13 @@
     padding: 2px 9px;
     border-radius: 999px;
     background: #eff6ff;
-    color: #1d4ed8;
+    color: var(--ui-primary);
     font-size: 12px;
     font-weight: 700;
   }
 
   .asg-detail-btn {
-    border: 1px solid #dbe3ea;
+    border: 1px solid var(--ui-border);
     background: #fff;
     color: #334155;
     border-radius: 7px;
@@ -241,20 +241,20 @@
   }
 
   .asg-collab[open] .asg-detail-btn {
-    background: #0f172a;
+    background: var(--ui-text);
     color: #fff;
-    border-color: #0f172a;
+    border-color: var(--ui-text);
   }
 
   .asg-detail {
-    background: #f8fafc;
-    border-top: 1px solid #dbe3ea;
+    background: var(--ui-bg);
+    border-top: 1px solid var(--ui-border);
     padding: 14px;
   }
 
   .asg-mini-card {
     background: #fff;
-    border: 1px solid #dbe3ea;
+    border: 1px solid var(--ui-border);
     border-radius: 10px;
     padding: 12px;
     margin-bottom: 12px;
@@ -271,7 +271,7 @@
     margin: 0;
     font-size: 13px;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .asg-mini-text {
@@ -313,7 +313,7 @@
 
   .asg-table-wrap {
     background: #fff;
-    border: 1px solid #dbe3ea;
+    border: 1px solid var(--ui-border);
     border-radius: 10px;
     overflow: hidden;
   }
@@ -330,7 +330,7 @@
   }
 
   .asg-table thead {
-    background: #f8fafc;
+    background: var(--ui-bg);
     color: #64748b;
     text-transform: uppercase;
     font-size: 11px;
@@ -350,7 +350,7 @@
 
   .asg-product {
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .asg-product-code {
@@ -384,7 +384,7 @@
 
   .asg-status-gray {
     background: #f1f5f9;
-    color: #475569;
+    color: var(--ui-muted);
   }
 
   .asg-small-input {
@@ -403,7 +403,7 @@
     height: 28px;
     padding: 0 10px;
     border-radius: 7px;
-    background: #2563eb;
+    background: var(--ui-primary);
     color: #fff;
     text-decoration: none;
     font-size: 11px;
@@ -411,7 +411,7 @@
   }
 
   .asg-pdf-btn:hover {
-    background: #1d4ed8;
+    background: var(--ui-primary);
   }
 
   .asg-upload-form {
@@ -444,8 +444,8 @@
 
   .asg-footer-actions {
     padding: 10px 12px;
-    background: #f8fafc;
-    border-top: 1px solid #dbe3ea;
+    background: var(--ui-bg);
+    border-top: 1px solid var(--ui-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -456,7 +456,7 @@
     margin: 0;
     font-size: 12px;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .asg-footer-text {
@@ -509,7 +509,7 @@
 
     <div class="asg-header">
       <div>
-        <h1 class="asg-title">Mis asignaciones</h1>
+        <h1 class="ui-page-title asg-title">Mis asignaciones</h1>
         <p class="asg-subtitle">Control de equipos asignados, documentos firmados y devoluciones.</p>
       </div>
 
@@ -554,7 +554,8 @@
           @endphp
 
           @if($puedeSeleccionar)
-            <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}">
+            <form id="{{ $bulkFormId }}" method="POST" action="{{ route($routePrefix . '.asignaciones.devolver_lote') }}"
+                  data-confirmar="¿Registrar la resolución de los productos seleccionados?">
               @csrf
               <input type="hidden" name="solicitud_id" value="{{ \Illuminate\Support\Str::uuid() }}">
             </form>
@@ -619,7 +620,7 @@
 
               <div class="asg-table-wrap">
                 <div class="asg-table-scroll" tabindex="0" role="region" aria-label="Asignaciones de {{ $grupo['colaborador_nombre'] }}">
-                  <table class="asg-table">
+                  <table class="ui-table asg-table">
                     <thead>
                       <tr>
                         @if($puedeSeleccionar)<th>Resolver</th>@endif
@@ -842,7 +843,7 @@
       </div>
 
       <div class="asg-table-scroll">
-        <table class="asg-table">
+        <table class="ui-table asg-table">
           <thead>
             <tr>
               <th>Fecha</th>

@@ -6,7 +6,7 @@
                 <form action="{{ route('flujo.catalogos.region', $region?->id) }}" method="POST" class="space-y-2 rounded-xl border border-slate-200 p-3">
                     @csrf
                     <label class="text-sm font-semibold">{{ $region ? 'Nombre de región' : 'Nueva región' }}
-                        <input name="nombre" value="{{ $region?->nombre }}" class="mt-1 block w-full rounded-xl border-slate-300" maxlength="120" required>
+                        <input name="nombre" value="{{ $region?->nombre }}" class="ui-input mt-1" maxlength="120" required>
                     </label>
                     <div class="flex flex-wrap items-center gap-3">
                         <input type="hidden" name="activa" value="0">
@@ -21,12 +21,12 @@
         <summary class="cursor-pointer font-semibold">Dar de alta un producto</summary>
         <form method="POST" enctype="multipart/form-data" action="{{ route('flujo.catalogos.producto') }}" class="mt-3 grid gap-3 sm:grid-cols-2">
             @csrf
-            <label class="text-sm">Código<input name="codigo" maxlength="50" required class="mt-1 block w-full rounded-xl border-slate-300"></label>
-            <label class="text-sm">Nombre<input name="nombre" maxlength="150" required class="mt-1 block w-full rounded-xl border-slate-300"></label>
-            <label class="text-sm">Categoría<input name="categoria" maxlength="50" class="mt-1 block w-full rounded-xl border-slate-300"></label>
-            <label class="text-sm">Unidad de medida<input name="unidad_medida" maxlength="50" class="mt-1 block w-full rounded-xl border-slate-300"></label>
-            <label class="text-sm">Vida útil en meses<input type="number" min="1" max="1200" name="vida_util_meses" class="mt-1 block w-full rounded-xl border-slate-300"></label>
-            <label class="text-sm">Descripción<textarea name="descripcion" rows="2" maxlength="10000" class="mt-1 block w-full rounded-xl border-slate-300"></textarea></label>
+            <label class="text-sm">Código<input name="codigo" maxlength="50" required class="ui-input mt-1"></label>
+            <label class="text-sm">Nombre<input name="nombre" maxlength="150" required class="ui-input mt-1"></label>
+            <label class="text-sm">Categoría<input name="categoria" maxlength="50" class="ui-input mt-1"></label>
+            <label class="text-sm">Unidad de medida<input name="unidad_medida" maxlength="50" class="ui-input mt-1"></label>
+            <label class="text-sm">Vida útil en meses<input type="number" min="1" max="1200" name="vida_util_meses" class="ui-input mt-1"></label>
+            <label class="text-sm">Descripción<textarea name="descripcion" rows="2" maxlength="10000" class="ui-input mt-1"></textarea></label>
             <div class="sm:col-span-2">
                 <x-sistema.campos modulo="productos" />
                 <button class="ui-btn-primary mt-3">Crear producto</button>
@@ -52,26 +52,26 @@
                         <form action="{{ route('flujo.catalogos.articulo', $articulo?->id) }}" method="POST" class="grid items-end gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-2">
                             @csrf
                             <label class="text-sm">Etiqueta
-                                <input name="etiqueta" value="{{ $articulo?->etiqueta }}" class="mt-1 block w-full rounded-xl border-slate-300" maxlength="160" required>
+                                <input name="etiqueta" value="{{ $articulo?->etiqueta }}" class="ui-input mt-1" maxlength="160" required>
                             </label>
                             <label class="text-sm">Código de inventario
-                                <input name="producto_codigo" value="{{ $articulo?->producto_codigo }}" list="productos-inspeccion" class="mt-1 block w-full rounded-xl border-slate-300">
+                                <input name="producto_codigo" value="{{ $articulo?->producto_codigo }}" list="productos-inspeccion" class="ui-input mt-1">
                             </label>
                             <label class="text-sm">Sección
-                                <select name="seccion" class="mt-1 block w-full rounded-xl border-slate-300" required>
+                                <select name="seccion" class="ui-input mt-1" required>
                                     @foreach($secciones as $opcion)
                                         <option value="{{ $opcion->clave }}" @selected($opcion->clave === $seccion->clave)>{{ $opcion->nombre }}</option>
                                     @endforeach
                                 </select>
                             </label>
                             <label class="text-sm">Descripción
-                                <input name="descripcion" value="{{ $articulo?->descripcion }}" class="mt-1 block w-full rounded-xl border-slate-300" maxlength="500">
+                                <input name="descripcion" value="{{ $articulo?->descripcion }}" class="ui-input mt-1" maxlength="500">
                             </label>
                             <label class="text-sm">Máximo por inspección
-                                <input type="number" name="maximo" min="1" max="10000" value="{{ $articulo?->maximo ?? ($seccion->clave === 'reflectivos' ? 7 : 1) }}" class="mt-1 block w-full rounded-xl border-slate-300" required>
+                                <input type="number" name="maximo" min="1" max="10000" value="{{ $articulo?->maximo ?? ($seccion->clave === 'reflectivos' ? 7 : 1) }}" class="ui-input mt-1" required>
                             </label>
                             <label class="text-sm">Orden
-                                <input type="number" name="orden" min="0" max="65535" value="{{ $articulo?->orden ?? 0 }}" class="mt-1 block w-full rounded-xl border-slate-300" required>
+                                <input type="number" name="orden" min="0" max="65535" value="{{ $articulo?->orden ?? 0 }}" class="ui-input mt-1" required>
                             </label>
                             <div class="flex flex-wrap items-center gap-3 sm:col-span-2">
                                 <input type="hidden" name="activo" value="0">
@@ -89,10 +89,10 @@
             @foreach($motivos->concat([null]) as $motivo)
                 <form action="{{ route('flujo.catalogos.motivo', $motivo?->id) }}" method="POST" class="grid gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-2">
                     @csrf
-                    <label class="text-sm">Código de motivo<input name="codigo" maxlength="45" value="{{ $motivo?->codigo }}" class="mt-1 block w-full rounded-xl border-slate-300" required></label>
-                    <label class="text-sm">Etiqueta<input name="nombre" maxlength="120" value="{{ $motivo?->nombre }}" class="mt-1 block w-full rounded-xl border-slate-300" required></label>
+                    <label class="text-sm">Código de motivo<input name="codigo" maxlength="45" value="{{ $motivo?->codigo }}" class="ui-input mt-1" required></label>
+                    <label class="text-sm">Etiqueta<input name="nombre" maxlength="120" value="{{ $motivo?->nombre }}" class="ui-input mt-1" required></label>
                     <label class="text-sm sm:col-span-2">Tratamiento
-                        <select name="politica" required class="mt-1 block w-full rounded-xl border-slate-300">
+                        <select name="politica" required class="ui-input mt-1">
                             @foreach(\App\Models\MotivoAsignacion::POLITICAS as $clave => $etiqueta)
                                 <option value="{{ $clave }}" @selected($clave === $motivo?->politica)>{{ $etiqueta }}</option>
                             @endforeach

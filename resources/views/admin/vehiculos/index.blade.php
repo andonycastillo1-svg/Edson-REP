@@ -21,7 +21,7 @@
     .veh-kicker {
         font-size: 13px;
         font-weight: 700;
-        color: #2563eb;
+        color: var(--ui-primary);
         text-transform: uppercase;
         letter-spacing: .08em;
         margin-bottom: 4px;
@@ -72,13 +72,13 @@
     }
 
     .veh-btn-primary {
-        background: #2563eb;
+        background: var(--ui-primary);
         color: #ffffff;
-        border-color: #2563eb;
+        border-color: var(--ui-primary);
     }
 
     .veh-btn-primary:hover {
-        background: #1d4ed8;
+        background: var(--ui-primary);
     }
 
     .veh-btn-success {
@@ -96,7 +96,7 @@
         border: 1px solid #e5e7eb;
         border-radius: 18px;
         overflow: hidden;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+        box-shadow: var(--ui-shadow-sm);
     }
 
     .veh-table-wrap {
@@ -110,7 +110,7 @@
     }
 
     .veh-table thead {
-        background: #f8fafc;
+        background: var(--ui-bg);
     }
 
     .veh-table th {
@@ -129,7 +129,7 @@
     }
 
     .veh-table tr:hover {
-        background: #f8fafc;
+        background: var(--ui-bg);
     }
 
     .veh-main {
@@ -147,7 +147,7 @@
         display: inline-flex;
         align-items: center;
         border: 1px solid #cbd5e1;
-        background: #f8fafc;
+        background: var(--ui-bg);
         color: #111827;
         border-radius: 10px;
         padding: 7px 11px;
@@ -167,7 +167,7 @@
 
     .veh-badge-uso {
         background: #dbeafe;
-        color: #1d4ed8;
+        color: var(--ui-primary);
     }
 
     .veh-badge-disponible {
@@ -195,7 +195,7 @@
     .veh-btn-edit {
         border: 1px solid #bfdbfe;
         background: #eff6ff;
-        color: #1d4ed8;
+        color: var(--ui-primary);
         border-radius: 10px;
         padding: 8px 11px;
         font-size: 13px;
@@ -253,7 +253,7 @@
         <div class="veh-header">
             <div>
                 <div class="veh-kicker">Flota</div>
-                <h1 class="veh-title">Vehículos</h1>
+                <h1 class="ui-page-title veh-title">Vehículos</h1>
                 <p class="veh-subtitle">
                     Control visual de vehículos disponibles, en uso o en mantenimiento.
                 </p>
@@ -276,7 +276,7 @@
 
         <div class="veh-card">
             <div class="veh-table-wrap">
-                <table class="veh-table">
+                <table class="ui-table veh-table">
                     <thead>
                         <tr>
                             <th>Vehículo</th>

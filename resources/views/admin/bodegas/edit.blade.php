@@ -3,10 +3,10 @@
 @section('title', 'Editar Bodega')
 
 @section('content')
-<div class="w-full max-w-xl bg-white/90 rounded-2xl shadow-2xl p-8">
+<div class="w-full max-w-xl bg-white/90 rounded-xl shadow-lg p-8">
     <x-internal-navigation :back-url="route('admin.bodegas.index')" />
 
-    <h1 class="text-2xl font-bold text-slate-800 mb-1">Editar bodega</h1>
+    <h1 class="ui-page-title text-slate-800 mb-1">Editar bodega</h1>
     <p class="text-slate-500 text-sm mb-6">Actualiza la información de la bodega.</p>
 
     <form enctype="multipart/form-data" method="POST" action="{{ route('admin.bodegas.update', $bodega->id) }}" class="space-y-4">

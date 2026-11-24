@@ -1,11 +1,12 @@
 {{-- MODAL EXPEDIENTE ADMINISTRATIVO --}}
-<div x-show="modalOpen"
+<div x-show="modalOpen" role="dialog" aria-modal="true" aria-label="Expediente del colaborador" data-ui-dialogo
+     x-on:keydown.escape.window="modalOpen && closeModal()"
      x-cloak
      class="fixed inset-0 z-50 flex items-start justify-center p-2">
 
   <div class="absolute inset-0 bg-black/40" @click="closeModal()"></div>
 
-  <div class="relative w-[98vw] max-w-none rounded-2xl bg-white shadow-xl max-h-[96vh] overflow-hidden">
+  <div class="ui-modal relative w-[98vw] max-w-6xl max-h-[96vh] overflow-hidden">
 
     {{-- HEADER --}}
     <div class="border-b border-slate-200 bg-white">
@@ -168,7 +169,7 @@
             <template x-if="asignaciones.length > 0">
               <div>
                 <div class="overflow-x-auto">
-                  <table class="w-full text-xs">
+                  <table class="ui-table w-full text-xs">
                     <thead class="bg-slate-100 text-slate-600">
                       <tr>
                         <th class="px-3 py-2 text-left font-semibold">Artículo</th>
@@ -281,7 +282,7 @@
             <template x-if="vehiculoAsignado">
               <div>
                 <div class="overflow-x-auto">
-                  <table class="w-full text-xs">
+                  <table class="ui-table w-full text-xs">
                     <thead class="bg-slate-100 text-slate-600">
                       <tr>
                         <th class="px-3 py-2 text-left font-semibold">Vehículo</th>
@@ -358,7 +359,7 @@
                     <template x-if="productosVehiculo.length > 0">
                       <div>
                         <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                          <table class="w-full text-xs">
+                          <table class="ui-table w-full text-xs">
                             <thead class="bg-white text-slate-600">
                               <tr>
                                 <th class="px-3 py-2 text-left font-semibold">Artículo</th>

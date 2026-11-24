@@ -5,7 +5,7 @@
     <x-internal-navigation :back-url="route('rrhh.alertas.index')" />
     <section class="rounded-xl border border-slate-200 bg-white p-5">
         <p class="text-sm font-semibold text-blue-800">{{ $alerta->estado_etiqueta }}</p>
-        <h1 class="text-2xl font-bold">{{ $alerta->motivo_etiqueta }} · {{ $alerta->producto?->nombre ?? $alerta->producto_codigo }}</h1>
+        <h1 class="ui-page-title ">{{ $alerta->motivo_etiqueta }} · {{ $alerta->producto?->nombre ?? $alerta->producto_codigo }}</h1>
         <dl class="my-4 grid gap-3 text-sm sm:grid-cols-2">
             <div><dt class="font-bold">Colaborador</dt><dd>{{ $alerta->colaborador?->nombre ?? $alerta->colaborador_codigo }}</dd></div>
             <div><dt class="font-bold">Cantidad</dt><dd>{{ $alerta->cantidad ?? '—' }}</dd></div>

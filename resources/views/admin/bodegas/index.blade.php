@@ -19,7 +19,7 @@
     .bodega-page {
         width: 100%;
         min-height: calc(100vh - 64px);
-        background: #f8fafc;
+        background: var(--ui-bg);
         padding: 18px 14px;
     }
 
@@ -31,7 +31,7 @@
 
     .bodega-header {
         background: #ffffff;
-        border: 1px solid #dbe3ea;
+        border: 1px solid var(--ui-border);
         border-radius: 14px;
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         padding: 14px 16px;
@@ -48,7 +48,7 @@
         font-size: 22px;
         line-height: 1.1;
         font-weight: 800;
-        color: #0f172a;
+        color: var(--ui-text);
     }
 
     .bodega-subtitle {
@@ -73,8 +73,8 @@
         border-radius: 8px;
         font-size: 12px;
         font-weight: 700;
-        border: 1px solid #dbe3ea;
-        background: #f8fafc;
+        border: 1px solid var(--ui-border);
+        background: var(--ui-bg);
         color: #334155;
     }
 
@@ -87,7 +87,7 @@
     .metric-blue {
         border-color: #bfdbfe;
         background: #eff6ff;
-        color: #1d4ed8;
+        color: var(--ui-primary);
     }
 
     .btn-new {
@@ -97,16 +97,16 @@
         height: 30px;
         padding: 0 12px;
         border-radius: 8px;
-        background: #2563eb !important;
+        background: var(--ui-primary) !important;
         color: #ffffff !important;
         font-size: 12px;
         font-weight: 800;
         text-decoration: none !important;
-        border: 1px solid #2563eb;
+        border: 1px solid var(--ui-primary);
     }
 
     .btn-new:hover {
-        background: #1d4ed8 !important;
+        background: var(--ui-primary) !important;
     }
 
     .bodega-grid {
@@ -117,7 +117,7 @@
 
     .bodega-card {
         background: #ffffff;
-        border: 1px solid #dbe3ea;
+        border: 1px solid var(--ui-border);
         border-radius: 12px;
         overflow: hidden;
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -141,7 +141,7 @@
         height: 28px;
         border-radius: 7px;
         background: #f1f5f9;
-        color: #0f172a;
+        color: var(--ui-text);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -154,7 +154,7 @@
         margin: 0;
         font-size: 13px;
         font-weight: 800;
-        color: #0f172a;
+        color: var(--ui-text);
         line-height: 1.15;
     }
 
@@ -167,7 +167,7 @@
     .bodega-id {
         margin-top: 3px;
         font-size: 12px;
-        color: #0f172a;
+        color: var(--ui-text);
     }
 
     .bodega-badge {
@@ -188,7 +188,7 @@
 
     .badge-regional {
         background: #eff6ff;
-        color: #1d4ed8;
+        color: var(--ui-primary);
     }
 
     .access-label {
@@ -213,7 +213,7 @@
 
     .bodega-card-actions {
         border-top: 1px solid #e2e8f0;
-        background: #f8fafc;
+        background: var(--ui-bg);
         padding: 8px 14px;
         display: flex;
         align-items: center;
@@ -237,9 +237,9 @@
     }
 
     .btn-inventario {
-        background: #0f172a !important;
+        background: var(--ui-text) !important;
         color: #ffffff !important;
-        border-color: #0f172a !important;
+        border-color: var(--ui-text) !important;
     }
 
     .btn-trasladar {
@@ -321,7 +321,7 @@
 
         <div class="bodega-header">
             <div>
-                <h1 class="bodega-title">Bodegas</h1>
+                <h1 class="ui-page-title bodega-title">Bodegas</h1>
                 <div class="bodega-subtitle">
                     Consulta inventario, traslados y administración de bodegas.
                 </div>

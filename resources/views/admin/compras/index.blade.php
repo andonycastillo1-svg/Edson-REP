@@ -12,19 +12,19 @@
     <x-sistema.enlace-datos modulo="productos" />
 
 
-    <div class="overflow-hidden rounded-3xl border border-sky-200 bg-white shadow-xl shadow-sky-100/70">
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 
         {{-- HEADER --}}
-        <div class="border-b border-sky-100 bg-gradient-to-r from-white via-sky-50 to-blue-50 px-6 py-5">
+        <div class="border-b border-slate-200 px-6 py-5 bg-slate-50">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
                 <div class="flex items-start gap-4">
-                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-sky-200 bg-white shadow-sm">
-                        <span class="text-xl text-blue-700">🧾</span>
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+                        <x-ui.icono nombre="compra" class="text-blue-800" />
                     </div>
 
                     <div>
-                        <h1 class="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
+                        <h1 class="ui-page-title tracking-tight text-slate-900 md:">
                             Compras <span class="font-bold text-blue-700">(Facturas)</span>
                         </h1>
                         <p class="mt-1 text-sm text-slate-500">
@@ -41,10 +41,10 @@
 
         {{-- BARRA DE HERRAMIENTAS --}}
         <div class="px-4 py-4 sm:px-6">
-            <div class="rounded-3xl border border-sky-200 bg-sky-50/70 px-5 py-4 shadow-sm">
+            <div class="rounded-xl border border-slate-200 bg-sky-50/70 px-5 py-4 shadow-sm">
 
                 <div>
-                    <h2 class="text-base font-black text-slate-900">
+                    <h2 class="text-base font-bold text-slate-900">
                         Listado de compras
                     </h2>
                     <p class="mt-0.5 text-sm text-slate-500">
@@ -55,14 +55,16 @@
 
                         <input
                             id="buscarCompra"
+                            aria-label="Buscar por factura, proveedor o fecha"
                             type="text"
                             placeholder="Buscar compra..."
-                            class="w-full rounded-2xl border border-sky-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 lg:w-[360px]"
+                            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 lg:w-[360px]"
                         >
 
                         <select
                             id="filasPorPagina"
-                            class="w-full rounded-2xl border border-sky-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 lg:w-36"
+                            aria-label="Filas por página"
+                            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 lg:w-36"
                         >
                             <option value="10">10 filas</option>
                             <option value="15">15 filas</option>
@@ -71,10 +73,10 @@
                         </select>
 
                         <button onclick="abrirModal()"
-                            type="button"
-                            class="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-700 px-7 py-3 text-sm font-black text-white shadow-md shadow-blue-200 transition hover:bg-blue-800 active:scale-[0.98] lg:w-auto">
+                            type="button" aria-controls="modalCompra" aria-haspopup="dialog"
+                            class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-7 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 lg:w-auto">
                             <span class="text-lg leading-none">+</span>
-                            Nueva compra
+                            Compra rápida
                         </button>
 
                     </div>
@@ -85,11 +87,11 @@
 
         {{-- TABLA --}}
         <div class="px-6 pb-6">
-            <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm" id="tablaCompras">
-                        <thead class="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-sky-50">
-                            <tr class="text-left text-xs font-black uppercase tracking-wide text-slate-600">
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Facturas registradas">
+                    <table class="ui-table min-w-full text-sm" id="tablaCompras">
+                        <thead class="border-b border-slate-200 bg-slate-50">
+                            <tr class="text-left text-xs font-bold uppercase tracking-wide text-slate-600">
                                 <th class="px-4 py-3 whitespace-nowrap">ID</th>
                                 <th class="px-4 py-3 whitespace-nowrap">Fecha de compra</th>
                                 <th class="px-4 py-3 whitespace-nowrap">No. Factura</th>
@@ -107,7 +109,7 @@
                                     data-search="{{ strtolower($c->id . ' ' . $c->fecha_compra . ' ' . $c->no_factura . ' ' . $c->proveedor_nombre . ' ' . ($c->proyecto ?? '') . ' ' . number_format($c->total_factura, 2)) }}">
 
                                     <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="inline-flex items-center rounded-xl bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                                        <span class="inline-flex items-center rounded-xl bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
                                             #{{ $c->id }}
                                         </span>
                                     </td>
@@ -117,7 +119,7 @@
                                     </td>
 
                                     <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="font-black text-slate-900">
+                                        <span class="font-bold text-slate-900">
                                             {{ $c->no_factura }}
                                         </span>
                                     </td>
@@ -141,7 +143,7 @@
                                     </td>
 
                                     <td class="px-4 py-3 text-right whitespace-nowrap">
-                                        <span class="font-black text-slate-950">
+                                        <span class="font-bold text-slate-950">
                                             {{ number_format($c->total_factura, 2) }}
                                         </span>
                                     </td>
@@ -158,8 +160,8 @@
                                 <tr id="sinRegistrosOriginal">
                                     <td colspan="{{ 7 + $tablaCampos['campos']->count() }}" class="px-4 py-12 text-center">
                                         <div class="flex flex-col items-center">
-                                            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-2xl">
-                                                🧾
+                                            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-sky-50 text-2xl">
+                                                <x-ui.icono nombre="compra" />
                                             </div>
                                             <p class="text-base font-bold text-slate-800">
                                                 No hay compras registradas
@@ -175,8 +177,8 @@
                             <tr id="sinResultados" class="hidden">
                                 <td colspan="{{ 7 + $tablaCampos['campos']->count() }}" class="px-4 py-12 text-center">
                                     <div class="flex flex-col items-center">
-                                        <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-2xl">
-                                            🔍
+                                        <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-sky-50 text-2xl">
+                                            <x-ui.icono nombre="lista" />
                                         </div>
                                         <p class="text-base font-bold text-slate-800">
                                             No se encontraron resultados
@@ -209,7 +211,7 @@
                             Anterior
                         </button>
 
-                        <div id="numerosPagina" class="flex items-center gap-1"></div>
+                        <div id="numerosPagina" class="flex flex-wrap items-center gap-1" aria-label="Páginas de compras"></div>
 
                         <button type="button" id="btnSiguiente"
                             class="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">
@@ -225,16 +227,16 @@
 
 
 {{-- -------- MODAL NUEVA COMPRA -------- --}}
-<div id="modalCompra" class="fixed inset-0 z-50 hidden">
+<div id="modalCompra" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-compra" data-ui-dialogo>
 
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="cerrarModal()"></div>
 
     <div class="relative mx-auto mt-6 w-[95%] max-w-5xl">
-        <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+        <div class="ui-modal overflow-hidden">
 
             <div class="flex items-center justify-between border-b border-slate-200 bg-sky-50 px-6 py-4">
                 <div>
-                    <h2 class="text-lg font-black text-slate-900">
+                    <h2 id="titulo-modal-compra" class="text-lg font-bold text-slate-900">
                         Registrar compra
                     </h2>
                     <p class="text-sm text-slate-500">
@@ -243,8 +245,8 @@
                 </div>
 
                 <button onclick="cerrarModal()"
-                    type="button"
-                    class="h-10 w-10 rounded-2xl border border-slate-200 bg-white text-2xl leading-none text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">
+                    type="button" aria-label="Cerrar compra rápida" data-foco-dialogo
+                    class="h-10 w-10 rounded-xl border border-slate-200 bg-white text-2xl leading-none text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">
                     &times;
                 </button>
             </div>

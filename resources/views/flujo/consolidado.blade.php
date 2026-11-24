@@ -57,7 +57,7 @@
         @if($editar)
             <div class="mt-4 grid gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 sm:grid-cols-2">
                 <label class="text-sm">Agregar un producto del catálogo
-                    <input name="producto_codigo" list="productos-consolidado" form="ajustes-consolidado" class="mt-1 block w-full rounded-xl border-slate-300" value="{{ old('producto_codigo') }}">
+                    <input name="producto_codigo" list="productos-consolidado" form="ajustes-consolidado" class="ui-input mt-1" value="{{ old('producto_codigo') }}">
                     <datalist id="productos-consolidado">
                         @foreach($productos as $producto)
                             <option value="{{ $producto->codigo }}">{{ $producto->nombre }}</option>
@@ -65,10 +65,10 @@
                     </datalist>
                 </label>
                 <label class="text-sm">Cantidad del producto agregado
-                    <input type="number" min="1" max="2000000" name="cantidad_nueva" form="ajustes-consolidado" class="mt-1 block w-full rounded-xl border-slate-300" value="{{ old('cantidad_nueva') }}">
+                    <input type="number" min="1" max="2000000" name="cantidad_nueva" form="ajustes-consolidado" class="ui-input mt-1" value="{{ old('cantidad_nueva') }}">
                 </label>
                 <label class="text-sm sm:col-span-2">Motivo de los ajustes
-                    <textarea name="nota" form="ajustes-consolidado" rows="2" maxlength="4000" class="mt-1 block w-full rounded-xl border-slate-300">{{ old('nota') }}</textarea>
+                    <textarea name="nota" form="ajustes-consolidado" rows="2" maxlength="4000" class="ui-input mt-1">{{ old('nota') }}</textarea>
                 </label>
                 <div class="flex flex-wrap gap-3 sm:col-span-2">
                     <button form="ajustes-consolidado" class="ui-btn-secondary">{{ $etiquetas[$editar] }}</button>
@@ -90,7 +90,7 @@
                         <input type="hidden" name="version" value="{{ $version }}">
                         @if(in_array($accion, ['devolver', 'retirar', 'reabrir'], true))
                             <label class="block text-sm">Motivo
-                                <textarea name="nota" required maxlength="4000" rows="2" class="mt-1 block w-full rounded-xl border-slate-300"></textarea>
+                                <textarea name="nota" required maxlength="4000" rows="2" class="ui-input mt-1"></textarea>
                             </label>
                         @endif
                         <button class="ui-btn-secondary mt-2">{{ $etiquetas[$accion] }}</button>

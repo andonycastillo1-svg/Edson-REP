@@ -5,23 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Hoja de Traslado #{{ $operacion->id }}</title>
   <link rel="stylesheet" href="{{ asset('css/admin-theme.css') }}">
+  @include('partials.documentos.estilos-ficha')
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; color: #111; }
+    body { font-family: Arial, sans-serif; margin: 24px; color: #182c42; }
     .row { display:flex; justify-content:space-between; gap:16px; }
-    .box { border:1px solid #ddd; border-radius:10px; padding:14px; }
+    .box { border:1px solid #d5dfeb; border-radius:10px; padding:14px; }
     table { width:100%; border-collapse: collapse; margin-top: 14px; }
-    th, td { border:1px solid #ddd; padding:10px; font-size: 13px; }
-    th { background:#f5f5f5; text-align:left; }
-    .muted { color:#666; font-size: 12px; }
-    .title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-    .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid #ddd; }
+    th, td { border:1px solid #d5dfeb; padding:10px; font-size: 13px; }
+    th { background:#f3f6fa; text-align:left; }
+    .muted { color:#475b72; font-size: 12px; }
+    .title { font-size: 18px; font-weight: 700; margin: 0 0 4px; }
+    .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid #d5dfeb; }
     @media print { button { display:none; } }
   </style>
 </head>
 <body>
   <div class="row">
     <div>
-      <div class="title">Hoja de traslado</div>
+      <h1 class="title">Hoja de traslado</h1>
       <div class="muted">Solicitud #{{ $operacion->id }} • {{ $operacion->created_at->format('d/m/Y H:i') }}</div>
     </div>
     <div class="badge">{{ $operacion->estado }}</div>

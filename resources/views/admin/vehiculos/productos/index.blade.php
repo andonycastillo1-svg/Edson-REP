@@ -24,7 +24,7 @@
     .vp-kicker {
         font-size: 13px;
         font-weight: 800;
-        color: #2563eb;
+        color: var(--ui-primary);
         text-transform: uppercase;
         letter-spacing: .08em;
         margin-bottom: 4px;
@@ -76,13 +76,13 @@
     }
 
     .vp-btn-primary {
-        background: #2563eb;
+        background: var(--ui-primary);
         color: #fff;
-        border-color: #2563eb;
+        border-color: var(--ui-primary);
     }
 
     .vp-btn-primary:hover {
-        background: #1d4ed8;
+        background: var(--ui-primary);
     }
 
     .vp-btn-danger {
@@ -121,7 +121,7 @@
         border-radius: 18px;
         padding: 18px;
         margin-bottom: 18px;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, .05);
+        box-shadow: var(--ui-shadow-sm);
     }
 
     .vp-card-header {
@@ -242,7 +242,7 @@
     }
 
     .vp-item-summary:hover {
-        background: #f8fafc;
+        background: var(--ui-bg);
     }
 
     .vp-main-text {
@@ -318,7 +318,7 @@
         display: none;
         border-top: 1px solid #f1f5f9;
         padding: 14px;
-        background: #f8fafc;
+        background: var(--ui-bg);
     }
 
     .vp-details.open {
@@ -390,7 +390,7 @@
         border: 1px solid #e5e7eb;
         border-radius: 14px;
         padding: 12px;
-        background: #f8fafc;
+        background: var(--ui-bg);
         display: grid;
         gap: 10px;
     }
@@ -493,7 +493,7 @@
         <div class="vp-header">
             <div>
                 <div class="vp-kicker">Flota</div>
-                <h1 class="vp-title">Productos/refacciones del vehículo</h1>
+                <h1 class="ui-page-title vp-title">Productos/refacciones del vehículo</h1>
 
                 @if($vehiculo)
                     <p class="vp-subtitle">

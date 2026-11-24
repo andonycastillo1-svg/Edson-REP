@@ -172,10 +172,10 @@
                                     <tr>
                                         <th scope="row">{{ $fila['producto'] }} · {{ $fila['codigo'] }}<span class="block text-xs text-slate-600">{{ $nombre }}</span></th>
                                         <td>{{ $fila['aprobada'] }}</td><td>{{ $fila['comprada'] }}</td>
-                                        <td><input type="number" min="0" max="{{ $fila['aprobada'] - $fila['comprada'] }}" required class="w-24"
+                                        <td><input type="number" min="0" max="{{ $fila['aprobada'] - $fila['comprada'] }}" required class="ui-input w-24"
                                             aria-label="Stock a usar para {{ $fila['codigo'] }} en {{ $nombre }}" name="propuestas[{{ $fila['id'] }}][existencia]"
                                             value="{{ old('propuestas.'.$fila['id'].'.existencia', $fila['considerada_sugerida']) }}"></td>
-                                        <td><input type="number" min="{{ $fila['comprada'] }}" max="{{ $fila['aprobada'] }}" required class="w-24"
+                                        <td><input type="number" min="{{ $fila['comprada'] }}" max="{{ $fila['aprobada'] }}" required class="ui-input w-24"
                                             aria-label="Compra total para {{ $fila['codigo'] }} en {{ $nombre }}" name="propuestas[{{ $fila['id'] }}][compra]"
                                             value="{{ old('propuestas.'.$fila['id'].'.compra', $fila['comprada'] + $fila['sugerida']) }}"></td>
                                     </tr>

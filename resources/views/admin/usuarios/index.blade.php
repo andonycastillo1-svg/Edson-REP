@@ -13,14 +13,14 @@
     <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['q', 'role_id']" />
 
 
-    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 
         {{-- Encabezado --}}
         <div class="border-b border-slate-200 px-6 py-4">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <div class="flex items-center gap-3">
-                        <h1 class="text-2xl font-bold tracking-tight text-slate-900">
+                        <h1 class="ui-page-title tracking-tight text-slate-900">
                             Usuarios
                         </h1>
 
@@ -115,7 +115,7 @@
 
         {{-- Tabla --}}
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-100">
+            <table class="ui-table min-w-full divide-y divide-slate-100">
                 <thead class="bg-white">
                     <tr>
                         <th class="w-20 px-6 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
