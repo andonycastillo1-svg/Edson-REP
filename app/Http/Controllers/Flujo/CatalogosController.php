@@ -93,7 +93,6 @@ class CatalogosController extends Controller
             'descripcion' => ['nullable', 'string', 'max:500'],
             'producto_codigo' => [Rule::requiredIf(fn () => $request->boolean('activo')), 'nullable', 'string',
                 'exists:productos,codigo', Rule::unique('inspeccion_articulos')->ignore($id)],
-            'maximo' => ['required', 'integer', 'between:1,10000'],
             'orden' => ['required', 'integer', 'between:0,65535'],
             'activo' => ['required', 'boolean'],
         ]);
@@ -101,7 +100,8 @@ class CatalogosController extends Controller
             $datos['producto_codigo'] = Producto::findOrFail($datos['producto_codigo'])->codigo;
         }
 
-        return $this->guardar('inspeccion_articulos', $id, $datos);
+        // La columna histórica sigue siendo obligatoria al crear un artículo.
+        return $this->guardar('inspeccion_articulos', $id, $datos, ['maximo' => 0]);
     }
 
     public function motivo(Request $request, ?int $id = null)

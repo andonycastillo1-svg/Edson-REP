@@ -12,6 +12,7 @@ use App\Services\PlanCompras;
 use App\Sistema\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ConsolidadoController extends Controller
@@ -71,10 +72,19 @@ class ConsolidadoController extends Controller
                 'estado' => 'borrador', 'coordinador_id' => $coordinador, 'operador_id' => $usuario->id,
             ]);
             $fila->inspecciones()->attach($inspecciones->modelKeys());
-            $totales = DB::table('inspeccion_lineas')->whereIn('inspeccion_id', $inspecciones->modelKeys())
-                ->select('producto_codigo')->selectRaw('SUM(cantidad) AS total')->groupBy('producto_codigo')->get();
-            foreach ($totales as $total) {
-                $fila->lineas()->create(['producto_codigo' => $total->producto_codigo, 'original' => $total->total, 'cantidad' => $total->total]);
+            $lineas = DB::table('inspeccion_lineas')->whereIn('inspeccion_id', $inspecciones->modelKeys())
+                ->select('id', 'producto_codigo', 'cantidad')->lazyById();
+            $totales = [];
+            foreach ($lineas as $linea) {
+                $codigo = $linea->producto_codigo;
+                $acumulado = $totales[$codigo] ?? 0;
+                if ($linea->cantidad > PHP_INT_MAX - $acumulado) {
+                    throw ValidationException::withMessages(['inspecciones' => "El total de {$codigo} supera la capacidad de almacenamiento. Selecciona menos inspecciones."]);
+                }
+                $totales[$codigo] = $acumulado + $linea->cantidad;
+            }
+            foreach ($totales as $codigo => $total) {
+                $fila->lineas()->create(['producto_codigo' => (string) $codigo, 'original' => $total, 'cantidad' => $total]);
             }
             $this->evento($fila, $usuario, 'crear', null, ['inspecciones' => $inspecciones->modelKeys()]);
 
@@ -108,12 +118,13 @@ class ConsolidadoController extends Controller
         [$permiso, $estados, $destino] = self::TRANSICIONES[$accion] ?? abort(404);
         $usuario = $request->user();
         $this->acceso->autorizar($usuario, $permiso);
+        $cantidadEntera = ['integer', 'min:0', Rule::anyOf(['integer:strict', 'string'])];
         $datos = $request->validate([
             'nota' => [in_array($accion, ['devolver', 'retirar', 'reabrir'], true) ? 'required' : 'nullable', 'string', 'max:4000'],
             'cantidades' => ['nullable', 'array', 'max:1000'],
-            'cantidades.*' => ['required', 'integer', 'between:0,2000000'],
+            'cantidades.*' => ['required', ...$cantidadEntera],
             'producto_codigo' => ['nullable', 'string', 'exists:productos,codigo', 'required_with:cantidad_nueva'],
-            'cantidad_nueva' => ['nullable', 'integer', 'between:1,2000000', 'required_with:producto_codigo'],
+            'cantidad_nueva' => ['nullable', 'required_with:producto_codigo', ...$cantidadEntera],
             'version' => ['required', 'integer', 'min:1'],
         ]);
 

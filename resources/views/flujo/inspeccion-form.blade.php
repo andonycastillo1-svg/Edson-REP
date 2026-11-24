@@ -41,16 +41,8 @@
                                         <span><strong>{{ $articulo->etiqueta }}</strong>
                                             @if($articulo->descripcion)<span class="block text-slate-600">{{ $articulo->descripcion }}</span>@endif
                                         </span>
-                                        @if($seccion->clave === 'reflectivos' && $articulo->maximo <= 20)
-                                            <select name="cantidades[{{ $articulo->id }}]" class="rounded-xl border-slate-300" aria-label="Cantidad de {{ $articulo->etiqueta }}">
-                                                @for($i = 0; $i <= $articulo->maximo; $i++)
-                                                    <option value="{{ $i }}" @selected((int) old('cantidades.'.$articulo->id, 0) === $i)>{{ $i }}</option>
-                                                @endfor
-                                            </select>
-                                        @else
-                                            <input type="number" name="cantidades[{{ $articulo->id }}]" min="0" max="{{ $articulo->maximo }}"
-                                                   aria-label="Cantidad de {{ $articulo->etiqueta }}" value="{{ old('cantidades.'.$articulo->id, 0) }}" class="w-20 rounded-xl border-slate-300">
-                                        @endif
+                                        <input type="number" name="cantidades[{{ $articulo->id }}]" min="0" step="1"
+                                               aria-label="Cantidad de {{ $articulo->etiqueta }}" value="{{ old('cantidades.'.$articulo->id, 0) }}" class="w-24 rounded-xl border-slate-300">
                                     </label>
                                 @endforeach
                             </div>

@@ -73,16 +73,20 @@ class FlujoOperativoTest extends TestCase
 
     public function test_catalogos_y_usuarios_asocian_coordinacion_sin_cambiar_almacenista(): void
     {
-        $this->actingAs($this->admin)->get(route('flujo.catalogos'))->assertOk()->assertSee('Cinta reflectiva')->assertSee('Robo injustificado');
+        $this->actingAs($this->admin)->get(route('flujo.catalogos'))->assertOk()->assertSee('Cinta reflectiva')->assertSee('Robo injustificado')->assertDontSee('Máximo por inspección');
         $this->post(route('flujo.catalogos.producto'), ['codigo' => 'P-NUEVO', 'nombre' => 'Equipo de inspección'])
             ->assertSessionHasNoErrors();
         $this->assertDatabaseHas('productos', ['codigo' => 'P-NUEVO']);
         $this->assertDatabaseCount('inventarios', 0);
         $this->post(route('flujo.catalogos.region'), ['nombre' => 'Centro', 'activa' => 1])->assertSessionHasNoErrors();
         $this->post(route('flujo.catalogos.articulo'), [
-            'seccion' => 'comun', 'producto_codigo' => 'P-002', 'etiqueta' => 'Casco', 'descripcion' => 'De seguridad', 'maximo' => 12, 'orden' => 1, 'activo' => 1,
+            'seccion' => 'comun', 'producto_codigo' => 'P-002', 'etiqueta' => 'Casco', 'descripcion' => 'De seguridad', 'orden' => 1, 'activo' => 1,
         ])->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('inspeccion_articulos', ['producto_codigo' => 'P-002', 'maximo' => 12]);
+        $this->assertDatabaseHas('inspeccion_articulos', ['producto_codigo' => 'P-002', 'etiqueta' => 'Casco', 'maximo' => 0]);
+        $this->post(route('flujo.catalogos.articulo', $this->articulo), [
+            'seccion' => 'rescate', 'producto_codigo' => 'P-001', 'etiqueta' => 'Arnés actualizado', 'orden' => 1, 'activo' => 1,
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('inspeccion_articulos', ['id' => $this->articulo, 'etiqueta' => 'Arnés actualizado', 'maximo' => 20]);
         $this->get(route('admin.usuarios.edit', $this->supervisor))->assertOk()->assertSee('Coordinador de requerimientos');
         $data = [
             'name' => $this->supervisor->name, 'email' => $this->supervisor->email, 'role_id' => 3,
@@ -107,7 +111,7 @@ class FlujoOperativoTest extends TestCase
             ->assertJsonValidationErrors(['fecha', 'region_id', 'colaborador_codigo']);
         $this->postJson(route('flujo.inspecciones.store'), [...$this->datosInspeccion(), 'region_id' => $this->sur->id])
             ->assertUnprocessable()->assertJsonValidationErrors('colaborador_codigo');
-        $this->postJson(route('flujo.inspecciones.store'), [...$this->datosInspeccion(), 'cantidades' => [$this->articulo => 21]])
+        $this->postJson(route('flujo.inspecciones.store'), [...$this->datosInspeccion(), 'cantidades' => [$this->articulo => -1]])
             ->assertUnprocessable()->assertJsonValidationErrors('cantidades.'.$this->articulo);
         $request = $this->datosInspeccion(12);
         $this->post(route('flujo.inspecciones.store'), [...$request, 'supervisor_id' => $this->ajeno->id,
@@ -127,6 +131,80 @@ class FlujoOperativoTest extends TestCase
         $this->actingAs($otro)->get(route('flujo.inspecciones.show', $fila))->assertNotFound();
         $this->actingAs($this->regional)->get(route('flujo.inspecciones.index'))->assertForbidden();
         $this->assertDatabaseCount('inventarios', 0);
+    }
+
+    public function test_inspeccion_acepta_cantidades_enteras_desde_cero_sin_usar_el_maximo_historico(): void
+    {
+        DB::table('inspeccion_articulos')->where('id', $this->articulo)->update(['seccion' => 'reflectivos', 'maximo' => 7]);
+        $this->actingAs($this->supervisor)->get(route('flujo.inspecciones.create'))->assertOk()
+            ->assertSee('type="number" name="cantidades['.$this->articulo.']" min="0" step="1"', false)
+            ->assertDontSee('max="7"', false);
+        $url = route('flujo.inspecciones.store');
+        $this->postJson($url, $this->datosInspeccion(0))->assertRedirect();
+        $this->assertDatabaseCount('inspeccion_lineas', 0);
+
+        foreach ([10, 50, 100, 65536] as $cantidad) {
+            $this->post($url, $this->datosInspeccion($cantidad))->assertSessionHasNoErrors();
+            $this->assertDatabaseHas('inspeccion_lineas', ['producto_codigo' => 'P-001', 'cantidad' => $cantidad]);
+        }
+        foreach ([-1, '1.5', true] as $invalida) {
+            $this->postJson($url, [...$this->datosInspeccion(), 'cantidades' => [$this->articulo => $invalida]])
+                ->assertUnprocessable()->assertJsonValidationErrors('cantidades.'.$this->articulo);
+        }
+        $this->assertDatabaseCount('inspecciones', 5);
+        $this->assertDatabaseCount('inspeccion_lineas', 4);
+        $this->assertDatabaseCount('inventarios', 0);
+        $this->assertDatabaseCount('movimientos', 0);
+    }
+
+    public function test_coordinador_edita_y_agrega_cantidades_sin_el_tope_anterior(): void
+    {
+        $this->stock('P-001', 3);
+        $this->actingAs($this->supervisor);
+        foreach ([4294967296, 50] as $cantidad) {
+            $this->post(route('flujo.inspecciones.store'), $this->datosInspeccion($cantidad))->assertSessionHasNoErrors();
+        }
+        $datos = ['nombre' => 'Equipos de campo', 'desde' => today()->toDateString(), 'hasta' => today()->toDateString(),
+            'inspecciones' => Inspeccion::pluck('id')->all()];
+        $this->actingAs($this->central)->post(route('flujo.consolidados.store'), $datos)->assertSessionHasNoErrors();
+        $consolidado = Consolidado::sole();
+        $linea = $consolidado->lineas()->sole();
+        $this->assertEquals(4294967346, $linea->original);
+        $this->estado($consolidado, 'enviar');
+
+        $this->actingAs($this->coordinador)->get(route('flujo.consolidados.show', $consolidado))->assertOk()
+            ->assertSee('name="cantidad_nueva"', false)->assertDontSee('max="2000000"', false);
+        $url = route('flujo.consolidados.transicion', [$consolidado, 'ajustar']);
+        $version = $consolidado->eventos()->max('id');
+        $this->postJson($url, ['version' => $version, 'nota' => 'Ajuste de cantidades',
+            'cantidades' => [$linea->id => -1], 'producto_codigo' => 'P-002', 'cantidad_nueva' => '1.5'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['cantidades.'.$linea->id, 'cantidad_nueva']);
+        $this->estado($consolidado, 'ajustar', ['cantidades' => [$linea->id => 0], 'producto_codigo' => 'P-002',
+            'cantidad_nueva' => 4294967296, 'nota' => 'Redistribución por producto']);
+        $this->assertEquals(0, $linea->fresh()->cantidad);
+        $this->assertDatabaseHas('consolidado_lineas', ['consolidado_id' => $consolidado->id, 'producto_codigo' => 'P-002',
+            'original' => 0, 'cantidad' => 4294967296]);
+        $this->estado($consolidado, 'aprobar', ['cantidades' => [$linea->id => 4294967300], 'nota' => 'Cantidad definitiva']);
+        $this->assertDatabaseHas('consolidado_lineas', ['id' => $linea->id, 'original' => 4294967346, 'cantidad' => 4294967300]);
+        $this->assertEquals(4294967346, DB::table('inspeccion_lineas')->sum('cantidad'));
+        $this->assertSame(3, $this->saldo('P-001'));
+        $this->assertDatabaseCount('movimientos', 0);
+    }
+
+    public function test_consolidar_conserva_las_inspecciones_si_la_suma_no_cabe_en_el_almacenamiento(): void
+    {
+        $this->actingAs($this->supervisor);
+        foreach ([PHP_INT_MAX, 1] as $cantidad) {
+            $this->postJson(route('flujo.inspecciones.store'), $this->datosInspeccion($cantidad))->assertRedirect();
+        }
+        $this->actingAs($this->central)->postJson(route('flujo.consolidados.store'), [
+            'nombre' => 'Equipos de campo', 'desde' => today()->toDateString(), 'hasta' => today()->toDateString(),
+            'inspecciones' => Inspeccion::pluck('id')->all(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('inspecciones');
+        $this->assertDatabaseCount('consolidados', 0);
+        $this->assertDatabaseCount('consolidado_inspeccion', 0);
+        $this->assertDatabaseHas('inspeccion_lineas', ['producto_codigo' => 'P-001', 'cantidad' => PHP_INT_MAX]);
+        $this->assertDatabaseCount('inspeccion_lineas', 2);
     }
 
     public function test_consolidado_suma_ajusta_aprueba_y_conserva_inspecciones_e_historial(): void

@@ -6,15 +6,15 @@ El supervisor registra un requerimiento. Bodega central reúne las inspecciones 
 
 1. En **Catálogos operativos → Regiones**, crea las regiones activas. En **Colaboradores**, asigna una región y verifica el puesto de cada persona. El formulario de inspección filtra por región y toma el puesto del registro seleccionado.
 2. En **Usuarios**, da de alta a cada coordinador con el ámbito **Coordinador**. Edita cada cuenta de supervisor para asignarle su coordinador. La relación con el almacenista se conserva de forma independiente.
-3. En **Catálogos operativos → Artículos del formulario**, vincula los artículos con códigos reales del catálogo, ajusta sus máximos y ordénalos. Puedes cambiar nombres y orden de secciones. Si falta un producto, usa **Dar de alta un producto**. El alta crea el código y las existencias se registran cuando se recibe el inventario.
-4. **Conos y reflectivos** incluye cuatro artículos iniciales con cantidades de 0 a 7. La migración vincula automáticamente una coincidencia inequívoca por nombre. Si falta el código, activa el artículo después de asociarlo. Carga desde el catálogo real los artículos de las demás secciones.
+3. En **Catálogos operativos → Artículos del formulario**, vincula los artículos con códigos reales del catálogo y ordénalos. Puedes cambiar nombres y orden de secciones. Si falta un producto, usa **Dar de alta un producto**. El alta crea el código y las existencias se registran cuando se recibe el inventario.
+4. **Conos y reflectivos** incluye cuatro artículos iniciales. La migración vincula automáticamente una coincidencia inequívoca por nombre. Si falta el código, activa el artículo después de asociarlo. Carga desde el catálogo real los artículos de las demás secciones.
 5. En **Motivos de asignación**, administra las etiquetas y las opciones vigentes. Desgaste solo registra el motivo. Robo abre seguimiento sin importe. Robo injustificado abre seguimiento con una referencia proporcional cuando se conocen el costo histórico y la vida restante de la custodia anterior. RR. HH. registra su decisión en el seguimiento.
 
 Los permisos operativos aplican junto con las excepciones individuales y la bodega asignada. Un operador de bodega secundaria conserva sus asignaciones manuales y traslados. El ámbito de Coordinador solo consulta inspecciones y consolidados de su equipo. Administración puede consultar, configurar y reabrir según sus permisos.
 
 ## Inspección y consolidación
 
-- El supervisor selecciona fecha, región y colaborador, registra las cantidades solicitadas y puede adjuntar hasta ocho fotos privadas. Cero significa que el artículo no se solicita. El supervisor y el puesto provienen de registros autorizados.
+- El supervisor selecciona fecha, región y colaborador, registra las cantidades solicitadas y puede adjuntar hasta ocho fotos privadas. Las cantidades son enteras desde cero y no tienen un máximo definido por artículo. Cero significa que el artículo no se solicita. El supervisor y el puesto provienen de registros autorizados.
 - Bodega central filtra las inspecciones por fechas, supervisor, coordinador o región. Selecciona requerimientos del mismo equipo y crea un borrador con nombre y rango de fechas. Cada inspección se vincula una vez para evitar contarla dos veces.
 - Tras el envío, el coordinador puede iniciar la revisión, ajustar cantidades, agregar códigos del catálogo o devolver el consolidado. El sistema conserva las líneas originales y registra cantidades anteriores y nuevas, motivo, fecha y usuario. **Aprobar consolidado** aplica el conjunto y bloquea las ediciones posteriores.
 - La devolución habilita correcciones y reenvío. Bodega central puede retirar un envío para corregirlo. Administración puede reabrir una aprobación con motivo mientras el consolidado no tenga constancias o compras vinculadas.
@@ -53,6 +53,8 @@ La migración `2026_11_20_000002_create_flujo_operativo.php` agrega regiones, co
 La migración aditiva `2026_11_23_000001_track_consolidated_purchases.php` agrega el historial de planes por línea, la distribución por línea de factura y la fecha de confirmación. Las vinculaciones previas quedan disponibles para conciliación.
 
 La migración `2026_11_23_000002_add_internal_purchase_plan_to_consolidados.php` agrega la planificación opcional. Conserva las constancias, las compras y las relaciones anteriores.
+
+La migración `2026_11_24_000001_widen_requirement_quantities.php` amplía las cantidades de inspecciones y consolidados a enteros de 64 bits. La columna histórica `inspeccion_articulos.maximo` conserva sus valores y deja de intervenir en la captura.
 
 Prueba en un entorno aislado.
 
