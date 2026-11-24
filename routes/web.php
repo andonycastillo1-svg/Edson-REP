@@ -82,6 +82,8 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::view('/dashboard', 'admin.dashboard')->name('dashboard');
 
         Route::resource('usuarios', \App\Http\Controllers\Admin\UsuarioController::class)->except('show');
+        Route::get('usuarios/{usuario}/regiones', [\App\Http\Controllers\Admin\CoordinadorRegionController::class, 'edit'])->name('usuarios.regiones');
+        Route::put('usuarios/{usuario}/regiones', [\App\Http\Controllers\Admin\CoordinadorRegionController::class, 'update'])->name('usuarios.regiones.update');
         Route::resource('bodegas', \App\Http\Controllers\Admin\BodegaController::class);
 
         Route::get('bodegas/{bodega}/inventario-export', [\App\Http\Controllers\Admin\BodegaController::class, 'exportInventario'])

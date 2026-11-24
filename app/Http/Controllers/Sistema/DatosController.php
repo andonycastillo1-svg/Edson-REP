@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sistema;
 
 use App\Http\Controllers\Controller;
+use App\Services\ExportacionesOperativas;
 use App\Models\AsignacionInventario;
 use App\Services\DocumentoPrivado;
 use App\Sistema\Ajustes;
@@ -174,24 +175,34 @@ class DatosController extends Controller
 
         $distribucion = $this->distribucion($columnas, $campos, $config);
 
-        return response()->streamDownload(function () use ($id, $distribucion, $campos, $q, $modulo) {
+        $titulos = array_column($distribucion, 'etiqueta');
+        $filas = $this->filasExportacion($q, $id, $distribucion, $campos, $modulo);
+        if ($request->boolean('xlsx')) {
+            return app(ExportacionesOperativas::class)->datos($request->user(), $modulo, $titulos, $filas);
+        }
+
+        return response()->streamDownload(function () use ($titulos, $filas) {
             $salida = fopen('php://output', 'w');
-            fputcsv($salida, array_map($this->celda(...), array_column($distribucion, 'etiqueta')), escape: '');
-            foreach ($q->lazy(250)->chunk(250) as $grupo) {
-                $registros = $grupo->collect();
-                $todos = $this->valores->cargar($campos, $registros->pluck($id));
-                foreach ($registros as $registro) {
-                    $valores = $todos->get((string) $registro->{$id}) ?? collect();
-                    $lista = [];
-                    foreach ($distribucion as $columna) {
-                        $clave = $columna['clave'];
-                        $lista[] = $this->celda($columna['campo'] ? $this->valores->mostrar($columna['campo'], $valores->get($clave)) : (string) Modulos::valorNativo($modulo, $registro, $clave));
-                    }
-                    fputcsv($salida, $lista, escape: '');
-                }
+            fputcsv($salida, array_map($this->celda(...), $titulos), escape: '');
+            foreach ($filas as [, $lista]) {
+                fputcsv($salida, array_map(fn ($valor) => $this->celda((string) $valor), $lista), escape: '');
             }
             fclose($salida);
         }, $modulo.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'private, no-store']);
+    }
+
+    private function filasExportacion(Builder $consulta, string $id, array $distribucion, Collection $campos, string $modulo): \Generator
+    {
+        foreach ($consulta->lazy(250)->chunk(250) as $grupo) {
+            $registros = $grupo->collect();
+            $todos = $this->valores->cargar($campos, $registros->pluck($id));
+            foreach ($registros as $registro) {
+                $valores = $todos->get((string) $registro->{$id}) ?? collect();
+                yield [$registro, array_map(fn ($columna) => $columna['campo']
+                    ? $this->valores->mostrar($columna['campo'], $valores->get($columna['clave']))
+                    : Modulos::valorNativo($modulo, $registro, $columna['clave']), $distribucion)];
+            }
+        }
     }
 
     private function columnasLectura(string $modulo, array $nativas): array

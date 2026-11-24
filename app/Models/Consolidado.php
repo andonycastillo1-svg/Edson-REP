@@ -15,7 +15,7 @@ class Consolidado extends Model
 
     protected $fillable = ['coordinador_id', 'operador_id', 'nombre', 'desde', 'hasta', 'estado', 'aprobado_por', 'aprobado_en'];
 
-    protected $casts = ['desde' => 'date', 'hasta' => 'date', 'aprobado_en' => 'datetime', 'plan_compra' => 'array'];
+    protected $casts = ['desde' => 'date', 'hasta' => 'date', 'aprobado_en' => 'datetime', 'plan_compra' => 'array', 'detalle_individual' => 'boolean'];
 
     public function coordinador() { return $this->belongsTo(User::class); }
     public function aprobador() { return $this->belongsTo(User::class, 'aprobado_por'); }
@@ -29,6 +29,11 @@ class Consolidado extends Model
     public function lineas()
     {
         return $this->hasMany(ConsolidadoLinea::class);
+    }
+
+    public function participantes()
+    {
+        return $this->hasMany(ConsolidadoColaborador::class);
     }
 
     public function eventos()

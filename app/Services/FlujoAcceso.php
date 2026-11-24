@@ -47,7 +47,7 @@ class FlujoAcceso
 
         return Inspeccion::query()
             ->when($usuario->rolOperativo() === 3, fn (Builder $q) => $q->where('supervisor_id', $usuario->id))
-            ->when($usuario->rolOperativo() === 5, fn (Builder $q) => $q->whereIn('supervisor_id', $this->supervisores($usuario)));
+            ->when($usuario->rolOperativo() === 5, fn (Builder $q) => $q->whereIn('region_id', $this->regiones($usuario)));
     }
 
     public function consolidados(User $usuario): Builder
@@ -56,12 +56,13 @@ class FlujoAcceso
 
         return Consolidado::query()->when($usuario->rolOperativo() === 5, fn (Builder $q) => $q
             ->where('coordinador_id', $usuario->id)->where('estado', '!=', 'borrador')
-            ->whereDoesntHave('inspecciones', fn (Builder $inspecciones) => $inspecciones
-                ->whereNotIn('supervisor_id', $this->supervisores($usuario))));
+            ->whereDoesntHave('inspecciones', fn (Builder $i) => $i->whereNotIn('inspecciones.region_id', $this->regiones($usuario)))
+            ->whereDoesntHave('participantes', fn (Builder $p) => $p->whereNotIn('region_id', $this->regiones($usuario)))
+            ->where(fn (Builder $q) => $q->has('inspecciones')->orHas('participantes')));
     }
 
-    private function supervisores(User $usuario): Builder
+    public function regiones(User $usuario): Builder
     {
-        return User::deAmbito(3)->where('coordinador_id', $usuario->id)->select('users.id');
+        return $usuario->regionesCoordinadas()->getQuery()->where('activa', true)->select('regiones.id');
     }
 }

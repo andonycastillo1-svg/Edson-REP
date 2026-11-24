@@ -22,6 +22,11 @@
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="ui-page-title text-gray-800">Editar usuario</h1>
+            @if($usuario->rolOperativo() === 5)
+                @rutaDisponible('admin.usuarios.regiones')
+                    <a class="ui-btn-secondary mt-2" href="{{ route('admin.usuarios.regiones', $usuario) }}">Administrar regiones</a>
+                @endrutaDisponible
+            @endif
             <p class="text-sm text-gray-500">Modifica la información del usuario</p>
         </div>
     </div>

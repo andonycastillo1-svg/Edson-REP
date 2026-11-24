@@ -7,6 +7,8 @@ use App\Sistema\Presentacion;
 use Illuminate\Support\Facades\DB;
 
 use App\Http\Controllers\Controller;
+use App\Services\ExportarExcel;
+use App\Services\ExportacionesOperativas;
 use App\Sistema\ConsultaCampos;
 use Illuminate\Http\Request;
 use App\Models\Vehiculo;
@@ -18,6 +20,14 @@ class VehiculoController extends Controller
     {
         $consulta = Vehiculo::orderBy('marca');
         app(ConsultaCampos::class)->filtrar($consulta, $request, 'vehiculos');
+        if ($request->boolean('xlsx')) {
+            app(ExportacionesOperativas::class)->autorizar($request, 'vehiculos');
+            $filas = $consulta->orderBy('vin')->lazy(250)->map(fn ($vehiculo) => [
+                $vehiculo->vin, $vehiculo->placa, $vehiculo->marca, $vehiculo->modelo, $vehiculo->estado,
+            ]);
+
+            return app(ExportarExcel::class)->descargar('vehiculos', ['VIN', 'Placa', 'Marca', 'Modelo', 'Estado'], $filas);
+        }
         $vehiculos = $consulta->paginate(10)->withQueryString();
         $tablaCampos = app(Presentacion::class)->operativa('vehiculos', $request->user(), $vehiculos->pluck('vin'));
 

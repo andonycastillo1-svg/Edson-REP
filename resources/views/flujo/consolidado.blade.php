@@ -1,99 +1,111 @@
 <x-sistema.pagina :titulo="$consolidado->nombre" :volver="route('flujo.consolidados.index')">
-    @include('flujo.accesos')
+    <x-slot:acciones>
+        <x-ui.exportar-excel :url="route('flujo.consolidados.index', ['xlsx' => 1, 'consolidado_id' => $consolidado->id])" />
+    </x-slot:acciones>
     @php
         $version = $consolidado->eventos->max('id');
-        $editar = $acciones->first(fn ($accion) => in_array($accion, ['ajustar', 'corregir'], true));
+        $originales = $consolidado->inspecciones->groupBy('colaborador_codigo');
         $etiquetas = [
-            'enviar' => 'Enviar a coordinación', 'ajustar' => 'Guardar ajustes', 'corregir' => 'Guardar correcciones',
-            'revisar' => 'Iniciar revisión', 'aprobar' => 'Aprobar consolidado', 'devolver' => 'Devolver para corrección',
+            'crear' => 'Crear consolidado', 'enviar' => 'Enviar a coordinación', 'revisar' => 'Iniciar revisión',
+            'preparar_detalle' => 'Verificar desglose histórico', 'ajustar' => 'Ajustar por colaborador',
+            'corregir' => 'Corrección histórica', 'aprobar' => 'Aprobar consolidado', 'devolver' => 'Devolver para corrección',
             'retirar' => 'Retirar para corrección', 'reabrir' => 'Reabrir aprobación', 'cerrar' => 'Cerrar compras',
-            'plan_compra' => 'Plan de compra actualizado',
+            'plan_compra' => 'Actualizar plan de compra', 'reasignar' => 'Reasignar responsable regional',
         ];
     @endphp
+    @include('flujo.accesos')
     <dl class="flujo-dato">
         <div><dt>Estado</dt><dd>@include('flujo.estado', ['estado' => $consolidado->estado])</dd></div>
         <div><dt>Período</dt><dd>{{ $consolidado->desde->format('d/m/Y') }} – {{ $consolidado->hasta->format('d/m/Y') }}</dd></div>
-        <div><dt>Coordinador</dt><dd>{{ $consolidado->coordinador?->name }}</dd></div>
+        <div><dt>Coordinador responsable</dt><dd>{{ $consolidado->coordinador?->name }}</dd></div>
         @if($consolidado->aprobado_en)
-            <div><dt>Aprobó</dt><dd>{{ $consolidado->aprobador?->name }} <span class="block text-xs text-slate-600">{{ $consolidado->aprobado_en->format('d/m/Y H:i') }}</span></dd></div>
+            <div><dt>Aprobó</dt><dd>{{ $consolidado->aprobador?->name }}<span class="block text-xs">{{ $consolidado->aprobado_en->format('d/m/Y H:i') }}</span></dd></div>
         @endif
     </dl>
     @if($consolidado->estado === 'cerrado')
         <p class="ui-alert ui-alert-info">La gestión de compras está cerrada. Consulta las asignaciones para conocer el avance de las entregas.</p>
     @endif
-    <x-sistema.panel titulo="Cantidades del consolidado">
-        @if($editar)
-            <p class="mb-3 text-sm">Compara la solicitud original con la cantidad vigente. Si haces cambios, indica el motivo antes de guardar o aprobar.</p>
-            <form id="ajustes-consolidado" action="{{ route('flujo.consolidados.transicion', [$consolidado, $editar]) }}" method="POST">
-                @csrf
-                <input type="hidden" name="version" value="{{ $version }}">
-            </form>
-        @endif
-        <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Cantidades del consolidado">
-            <table class="ui-table min-w-[480px]">
-                <thead class="bg-slate-50"><tr><th class="p-3">Producto</th><th class="p-3">Original</th><th class="p-3">{{ $editar ? 'Cantidad a aprobar' : 'Cantidad vigente' }}</th><th class="p-3">Diferencia con la original</th></tr></thead>
-                <tbody class="divide-y divide-slate-200">
-                    @forelse($consolidado->lineas as $linea)
-                        <tr>
-                            <td class="p-3">{{ $linea->producto?->nombre }} · {{ $linea->producto_codigo }}</td>
-                            <td class="p-3">{{ $linea->original }}</td>
-                            <td class="p-3">
-                                @if($editar)
-                                    <input aria-label="Cantidad de {{ $linea->producto?->nombre }}" class="w-28 rounded-xl border-slate-300"
-                                           name="cantidades[{{ $linea->id }}]" form="ajustes-consolidado" type="number" min="0" step="1"
-                                           value="{{ old('cantidades.'.$linea->id, $linea->cantidad) }}" required>
-                                @else
-                                    {{ $linea->cantidad }}
-                                @endif
-                            </td>
-                            <td class="p-3">{{ $linea->cantidad - $linea->original }}</td>
-                        </tr>
-                    @empty
-                        <tr><td class="p-3" colspan="4">Las inspecciones no registraron cantidades solicitadas.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        @if($editar)
-            <div class="mt-4 grid gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 sm:grid-cols-2">
-                <label class="text-sm">Agregar un producto del catálogo
-                    <input name="producto_codigo" list="productos-consolidado" form="ajustes-consolidado" class="ui-input mt-1" value="{{ old('producto_codigo') }}">
-                    <datalist id="productos-consolidado">
-                        @foreach($productos as $producto)
-                            <option value="{{ $producto->codigo }}">{{ $producto->nombre }}</option>
-                        @endforeach
-                    </datalist>
-                </label>
-                <label class="text-sm">Cantidad del producto agregado
-                    <input type="number" min="0" step="1" name="cantidad_nueva" form="ajustes-consolidado" class="ui-input mt-1" value="{{ old('cantidad_nueva') }}">
-                </label>
-                <label class="text-sm sm:col-span-2">Motivo de los ajustes
-                    <textarea name="nota" form="ajustes-consolidado" rows="2" maxlength="4000" class="ui-input mt-1">{{ old('nota') }}</textarea>
-                </label>
-                <div class="flex flex-wrap gap-3 sm:col-span-2">
-                    <button form="ajustes-consolidado" class="ui-btn-secondary">{{ $etiquetas[$editar] }}</button>
-                    @if($acciones->contains('aprobar'))
-                        <button form="ajustes-consolidado" class="ui-btn-primary"
-                                data-confirmar="¿Aprobar las cantidades vigentes y enviarlas a bodega central para compras?"
-                                formaction="{{ route('flujo.consolidados.transicion', [$consolidado, 'aprobar']) }}">{{ $etiquetas['aprobar'] }}</button>
-                    @endif
-                </div>
+    <nav class="sistema-pestanas" aria-label="Vista del consolidado">
+        @foreach(['colaborador' => 'Por colaborador', 'resumen' => 'Resumen general'] as $clave => $titulo)
+            <a href="{{ route('flujo.consolidados.show', [$consolidado, 'vista' => $clave]) }}" @if($vista === $clave) aria-current="page" @endif>{{ $titulo }}</a>
+        @endforeach
+    </nav>
+
+    @unless($consolidado->detalle_individual)
+        <p class="ui-alert-warning">El desglose histórico está pendiente de verificación. Las cantidades aprobadas constan en el resumen.</p>
+    @endunless
+    @if($vista === 'resumen')
+        <x-sistema.panel titulo="Totales por producto">
+            <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Totales por producto">
+                <table class="ui-table min-w-[440px]">
+                    <thead><tr><th>Producto</th><th>Original</th><th>{{ $consolidado->aprobado_en ? 'Aprobado' : 'Propuesto' }}</th><th>Diferencia</th></tr></thead>
+                    <tbody>
+                        @forelse($consolidado->lineas as $linea)
+                            <tr><th scope="row">{{ $linea->producto?->nombre }} <small>{{ $linea->producto_codigo }}</small></th><td>{{ $linea->original }}</td>
+                                <td>{{ $linea->cantidad }}</td><td>{{ sprintf('%+d', $linea->cantidad - $linea->original) }}</td></tr>
+                        @empty
+                            <tr><td colspan="4">Sin productos registrados.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
+        </x-sistema.panel>
+    @elseif($consolidado->detalle_individual)
+        <x-sistema.panel titulo="Necesidades por colaborador">
+            <div class="space-y-3">
+                @forelse($consolidado->participantes->sortBy('colaborador.nombre') as $persona)
+                    @include('flujo.consolidado-participante', ['inspecciones' => $originales->get($persona->colaborador_codigo, collect())])
+                @empty
+                    <p class="text-sm">Sin colaboradores registrados.</p>
+                @endforelse
+            </div>
+        </x-sistema.panel>
+        @if($editar)
+            <details class="flujo-lectura" @if(old('busqueda_colaborador') || old('colaborador_codigo')) open @endif>
+                <summary>Agregar colaborador</summary>
+                <form method="POST" action="{{ route('flujo.consolidados.transicion', [$consolidado, 'ajustar']) }}" class="grid gap-3 p-4 sm:grid-cols-2" data-buscar-colaborador="{{ route('flujo.consolidados.colaboradores', $consolidado) }}">
+                    @csrf
+                    <input type="hidden" name="version" value="{{ $version }}">
+                    <label class="ui-label">Buscar por nombre o código
+                        <input class="ui-input mt-1" type="search" name="busqueda_colaborador" autocomplete="off" maxlength="100" value="{{ old('busqueda_colaborador') }}">
+                    </label>
+                    <label class="ui-label">Colaborador
+                        <select name="colaborador_codigo" data-colaborador-anterior="{{ old('colaborador_codigo') }}" class="ui-select mt-1" required>
+                            <option value="">Escribe al menos dos caracteres</option>
+                        </select>
+                    </label>
+                    <p class="text-sm sm:col-span-2" role="status" data-colaborador-estado></p>
+                    @include('flujo.consolidado-producto', ['obligatorio' => true, 'recuperar' => filled(old('colaborador_codigo'))])
+                    <label class="ui-label sm:col-span-2">Justificación
+                        <textarea name="nota" class="ui-input mt-1" required rows="2" maxlength="4000">{{ old('colaborador_codigo') ? old('nota') : '' }}</textarea>
+                    </label>
+                    <div class="sm:col-span-2"><button class="ui-btn-primary">Guardar incorporación</button></div>
+                </form>
+            </details>
+            <datalist id="catalogo-productos">
+                @foreach($productos as $producto)<option value="{{ $producto->codigo }}">{{ $producto->nombre }}</option>@endforeach
+            </datalist>
         @endif
-    </x-sistema.panel>
-    @if($acciones->diff(['ajustar', 'corregir', 'aprobar', 'cerrar'])->isNotEmpty())
+    @endif
+
+    @if($acciones->diff(['ajustar'])->isNotEmpty())
         <x-sistema.panel titulo="Acciones del consolidado">
             <div class="grid gap-3 sm:grid-cols-2">
-                @foreach($acciones->diff(['ajustar', 'corregir', 'aprobar', 'cerrar']) as $accion)
-                    <form @if($accion !== 'revisar') data-confirmar="¿{{ $etiquetas[$accion] }}?" @endif action="{{ route('flujo.consolidados.transicion', [$consolidado, $accion]) }}" method="POST" class="rounded-xl border border-slate-200 p-3">
+                @foreach($acciones->diff(['ajustar']) as $accion)
+                    @continue($accion === 'preparar_detalle' && $consolidado->detalle_individual)
+                    <form action="{{ route('flujo.consolidados.transicion', [$consolidado, $accion]) }}" method="POST"
+                        class="flujo-card" @if(in_array($accion, ['aprobar', 'reasignar', 'cerrar', 'enviar'])) data-confirmar="¿{{ $etiquetas[$accion] }}?" @endif>
                         @csrf
                         <input type="hidden" name="version" value="{{ $version }}">
-                        @if(in_array($accion, ['devolver', 'retirar', 'reabrir'], true))
-                            <label class="block text-sm">Motivo
+                        @if(in_array($accion, ['devolver', 'retirar', 'reabrir', 'reasignar']))
+                            <label class="ui-label">Motivo
                                 <textarea name="nota" required maxlength="4000" rows="2" class="ui-input mt-1"></textarea>
                             </label>
                         @endif
-                        <button class="ui-btn-secondary mt-2">{{ $etiquetas[$accion] }}</button>
+                        @if($accion === 'cerrar')
+                            <p class="mb-2 text-sm">{{ $puedeCerrarCompra ? 'La cobertura está completa. Las entregas se registran por separado.' : 'Completa la cobertura y concilia las facturas para cerrar las compras.' }}</p>
+                        @endif
+                        <button class="{{ $accion === 'aprobar' ? 'ui-btn-primary' : 'ui-btn-secondary' }}" @disabled($accion === 'cerrar' && !$puedeCerrarCompra)>{{ $etiquetas[$accion] }}</button>
                     </form>
                 @endforeach
             </div>
@@ -109,48 +121,37 @@
             @endforeach
         </x-sistema.panel>
     @endif
-    @if($acciones->contains('cerrar'))
-        <x-sistema.panel titulo="Cierre de compras">
-            @if($puedeCerrarCompra)
-                <p class="mb-3 text-sm">La cobertura está completa. El cierre finaliza el seguimiento de compras. Las asignaciones y entregas se registran por separado.</p>
-                <form method="POST" action="{{ route('flujo.consolidados.transicion', [$consolidado, 'cerrar']) }}"
-                      data-confirmar="¿Cerrar la gestión de compras de este consolidado? Las entregas se registran por separado.">
-                    @csrf
-                    <input type="hidden" name="version" value="{{ $version }}">
-                    <button class="ui-btn-primary">Cerrar compras</button>
-                </form>
-            @else
-                <p class="text-sm">Completa la cobertura aprobada y concilia las facturas históricas antes de cerrar. Si cubrirás cantidades con existencias, guarda el plan de compra.</p>
-            @endif
-        </x-sistema.panel>
-    @endif
-    <details class="flujo-lectura">
+    <details class="flujo-lectura" @unless($consolidado->detalle_individual) open @endunless>
         <summary>Solicitudes originales</summary>
-        <div class="p-4">
-            <ul class="divide-y divide-slate-200 text-sm">
-                @foreach($consolidado->inspecciones as $inspeccion)
-                    <li class="py-2">
-                        <a class="flujo-enlace" href="{{ route('flujo.inspecciones.show', $inspeccion) }}">{{ $inspeccion->colaborador?->nombre }}</a>
-                        · {{ $inspeccion->supervisor?->name }} · {{ $inspeccion->region?->nombre }} · {{ $inspeccion->fecha->format('d/m/Y') }}
-                    </li>
-                @endforeach
-            </ul>
-        </div>
+        <ul class="divide-y divide-slate-200 p-4 text-sm">
+            @foreach($consolidado->inspecciones as $inspeccion)
+                <li class="py-2">
+                    <a class="flujo-enlace" href="{{ route('flujo.inspecciones.show', $inspeccion) }}">{{ $inspeccion->colaborador?->nombre }}</a>
+                    · {{ $inspeccion->supervisor?->name }} · {{ $inspeccion->region?->nombre }} · {{ $inspeccion->fecha->format('d/m/Y') }}
+                    @foreach($inspeccion->lineas as $linea)<p>{{ $linea->etiqueta }} · {{ $linea->cantidad }}</p>@endforeach
+                </li>
+            @endforeach
+        </ul>
     </details>
     <details class="flujo-lectura">
         <summary>Historial</summary>
-        <div class="p-4">
-            <ul class="divide-y divide-slate-200 text-sm">
-                @foreach($consolidado->eventos->sortByDesc('id') as $evento)
-                    <li class="py-3">
-                        <p class="font-semibold">{{ $etiquetas[$evento->accion] ?? 'Crear borrador' }} · {{ $evento->user?->name }} · {{ $evento->created_at->format('d/m/Y H:i:s') }}</p>
-                        @if($evento->nota)<p class="whitespace-pre-wrap">{{ $evento->nota }}</p>@endif
-                        @foreach($evento->cambios['productos'] ?? [] as $cambio)
-                            <p>{{ $cambio['producto'] }} · {{ $cambio['antes'] }} → {{ $cambio['nuevo'] }}</p>
-                        @endforeach
-                    </li>
-                @endforeach
-            </ul>
-        </div>
+        <ul class="divide-y divide-slate-200 p-4 text-sm">
+            @foreach($consolidado->eventos->sortByDesc('id') as $evento)
+                <li class="py-3">
+                    <p class="font-semibold">{{ $etiquetas[$evento->accion] ?? $evento->accion }} · {{ $evento->user?->name }} · {{ $evento->created_at->format('d/m/Y H:i:s') }}</p>
+                    @if($evento->nota)<p class="whitespace-pre-wrap break-words">{{ $evento->nota }}</p>@endif
+                    @foreach($evento->cambios['productos'] ?? [] as $cambio)
+                        @if(isset($cambio['incorporado']))
+                            <p>Colaborador incorporado · {{ $cambio['colaborador'] }}</p>
+                        @else
+                            <p>{{ $cambio['colaborador'] ?? '' }} · {{ $cambio['producto'] }} · {{ $cambio['antes'] }} → {{ $cambio['nuevo'] }}</p>
+                        @endif
+                    @endforeach
+                    @if(is_array($evento->cambios['coordinador'] ?? null))
+                        <p>Responsable {{ $evento->cambios['coordinador']['antes'] }} → {{ $evento->cambios['coordinador']['nuevo'] }}</p>
+                    @endif
+                </li>
+            @endforeach
+        </ul>
     </details>
 </x-sistema.pagina>

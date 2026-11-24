@@ -6,6 +6,7 @@ use App\Sistema\ValoresCampos;
 use App\Sistema\Auditoria;
 use App\Sistema\Presentacion;
 use App\Http\Controllers\Controller;
+use App\Services\ExportacionesOperativas;
 use App\Sistema\ConsultaCampos;
 use App\Models\Bodega;
 use App\Models\Inventario;
@@ -67,6 +68,12 @@ class OperacionTrasladoController extends Controller
             ->orderByDesc('created_at');
 
         app(ConsultaCampos::class)->filtrar($q, $request, 'traslados');
+        if ($request->boolean('xlsx')) {
+            $exportar = app(ExportacionesOperativas::class);
+            $exportar->autorizar($request, 'traslados');
+
+            return $exportar->traslados($q);
+        }
         $operaciones = $q->paginate(20)->withQueryString();
         $tablaCampos = app(Presentacion::class)->operativa('traslados', $request->user(), $operaciones->pluck('id'));
         $bodegas = Bodega::orderBy('nombre')->get();

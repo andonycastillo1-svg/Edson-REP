@@ -16,6 +16,7 @@
                 <x-sistema.elegir-modulo :modulos="$modulos" :seleccionado="$modulo" :accion="route('sistema.datos')" texto="Cambiar módulo" />
             @endunless
             @if($puedeExportar)
+                <x-ui.exportar-excel :url="route('sistema.datos.exportar', ['modulo' => $modulo, 'xlsx' => 1, ...$criterios])" />
                 <a href="{{ route('sistema.datos.exportar', ['modulo' => $modulo, ...$criterios]) }}"
                    class="ui-btn-secondary">Exportar resultados (CSV)</a>
             @endif

@@ -1,23 +1,23 @@
 # Inspecciones, consolidados, compras y asignaciones masivas
 
-El supervisor registra un requerimiento. Bodega central reúne las inspecciones de un equipo y envía un consolidado. El coordinador revisa los ajustes y aprueba el conjunto. Bodega central calcula los faltantes y registra quién autorizó cada factura al distribuir sus cantidades. Las asignaciones se registran cuando ocurre la salida real.
+El supervisor registra los requerimientos de cada colaborador. Bodega central agrupa las inspecciones y envía el consolidado al responsable de las regiones seleccionadas. Coordinación revisa las necesidades por persona. Bodega central usa los totales aprobados para planificar compras y vincula las facturas y entregas que correspondan.
 
 ## Configuración inicial
 
 1. En **Catálogos operativos → Regiones**, crea las regiones activas. En **Colaboradores**, asigna una región y verifica el puesto de cada persona. El formulario de inspección filtra por región y toma el puesto del registro seleccionado.
-2. En **Usuarios**, da de alta a cada coordinador con el ámbito **Coordinador**. Edita cada cuenta de supervisor para asignarle su coordinador. La relación con el almacenista se conserva de forma independiente.
+2. En **Usuarios**, abre el perfil de Coordinador y selecciona **Administrar regiones**. Un coordinador puede atender varias regiones. Cada región activa puede tener un responsable. Confirma los cambios de responsable en el formulario. El historial muestra el cambio, el usuario que lo realizó y la fecha. Las relaciones del supervisor con coordinación y su almacenista conservan sus usos previos.
 3. En **Catálogos operativos → Artículos del formulario**, vincula los artículos con códigos reales del catálogo y ordénalos. Puedes cambiar nombres y orden de secciones. Si falta un producto, usa **Dar de alta un producto**. El alta crea el código y las existencias se registran cuando se recibe el inventario.
 4. **Conos y reflectivos** incluye cuatro artículos iniciales. La migración vincula automáticamente una coincidencia inequívoca por nombre. Si falta el código, activa el artículo después de asociarlo. Carga desde el catálogo real los artículos de las demás secciones.
 5. En **Motivos de asignación**, administra las etiquetas y las opciones vigentes. Desgaste solo registra el motivo. Robo abre seguimiento sin importe. Robo injustificado abre seguimiento con una referencia proporcional cuando se conocen el costo histórico y la vida restante de la custodia anterior. RR. HH. registra su decisión en el seguimiento.
 
-Los permisos operativos aplican junto con las excepciones individuales y la bodega asignada. Un operador de bodega secundaria conserva sus asignaciones manuales y traslados. El ámbito de Coordinador solo consulta inspecciones y consolidados de su equipo. Administración puede consultar, configurar y reabrir según sus permisos.
+Los permisos operativos se combinan con las excepciones individuales y la bodega asignada. Un operador de bodega secundaria conserva sus asignaciones manuales y traslados. Coordinación consulta inspecciones de sus regiones activas y consolidados bajo su responsabilidad. Administración puede consultar, configurar y reabrir según sus permisos.
 
 ## Inspección y consolidación
 
-- El supervisor selecciona fecha, región y colaborador, registra las cantidades solicitadas y puede adjuntar hasta ocho fotos privadas. Las cantidades son enteras desde cero y no tienen un máximo definido por artículo. Cero significa que el artículo no se solicita. El supervisor y el puesto provienen de registros autorizados.
-- Bodega central filtra las inspecciones por fechas, supervisor, coordinador o región. Selecciona requerimientos del mismo equipo y crea un borrador con nombre y rango de fechas. Cada inspección se vincula una vez para evitar contarla dos veces.
-- Tras el envío, el coordinador puede iniciar la revisión, ajustar cantidades, agregar códigos del catálogo o devolver el consolidado. El sistema conserva las líneas originales y registra cantidades anteriores y nuevas, motivo, fecha y usuario. **Aprobar consolidado** aplica el conjunto y bloquea las ediciones posteriores.
-- La devolución habilita correcciones y reenvío. Bodega central puede retirar un envío para corregirlo. Administración puede reabrir una aprobación con motivo mientras el consolidado no tenga constancias o compras vinculadas.
+- El supervisor selecciona fecha, región y colaborador. Registra cantidades enteras desde cero, observaciones y hasta ocho fotos privadas. **Guardar y continuar** conserva la fecha y región y prepara el formulario para otra persona. **Guardar y finalizar** vuelve al listado. El detalle también permite iniciar otra inspección.
+- Bodega central filtra por fechas, región, supervisor o coordinador. Al seleccionar los requerimientos, el formulario muestra el responsable calculado. El envío agrupa regiones con un único coordinador activo y vincula cada inspección una vez. Bodega central conserva la consulta de cantidades y el envío.
+- En **Por colaborador**, coordinación ajusta cantidades, agrega productos e incorpora colaboradores activos de sus regiones. Cada cambio requiere una justificación y guarda el responsable, el momento y las cantidades anterior y nueva. **Resumen general** totaliza esas filas para compras. Las inspecciones originales conservan sus cantidades, observaciones y fotos.
+- Coordinación puede aprobar o devolver el consolidado. Central puede reenviarlo para otra revisión. Administración puede reasignar un pendiente con justificación cuando todas sus regiones tienen el mismo nuevo responsable. Las aprobaciones conservan la identidad del coordinador. La reapertura requiere que la aprobación carezca de constancias, facturas y asignaciones vinculadas.
 
 ## Necesidades de compra
 
@@ -44,6 +44,14 @@ Descarga la plantilla de esta carpeta o desde **Bodega central → Importar asig
 
 La vista previa admite hasta 500 filas y presenta los errores por fila. Al confirmar se verifican nuevamente la bodega, los códigos, las custodias y el inventario. Cualquier error revierte todo el lote. El mismo contenido normalizado se registra una sola vez incluso si se cambia el orden de filas o lo confirma otra cuenta. Cada colaborador obtiene una sola hoja con sus productos.
 
+En una asignación manual o una importación masiva, bodega central puede seleccionar un consolidado aprobado o con compras cerradas que tenga un desglose verificado. Cada salida conserva el vínculo con el colaborador y producto aprobados. El cálculo cuenta las unidades entregadas desde el requerimiento, incluso cuando después se devuelven. Si la cantidad aprobada es insuficiente, el registro se revierte. El detalle por colaborador muestra las unidades asignadas y las facturas distribuidas al producto del consolidado. Las facturas documentan la compra para el requerimiento agrupado. La unidad física de un inventario compartido conserva la trazabilidad disponible en el módulo de bodega.
+
+## Exportaciones Excel
+
+**Exportar Excel** descarga un `.xlsx` con todos los resultados del filtro activo. Las consultas de usuarios, colaboradores, compras, bodegas, asignaciones, devoluciones, traslados y vehículos verifican los permisos de exportación configurados. Las consultas de inspecciones, consolidados, necesidades y regiones conservan los permisos operativos de cada pantalla. El Centro de datos mantiene CSV y ofrece Excel con los campos autorizados. Para incluir existencias por bodega en el catálogo de productos, la cuenta requiere el permiso de exportación de inventario.
+
+Los archivos de los listados nuevos se escriben por lotes y fijan los encabezados y filtros. Los textos se almacenan como texto en Excel, incluso si empiezan con un símbolo de fórmula. Usuarios exporta identificación, rol y relaciones operativas autorizadas. Los archivos privados y las credenciales quedan fuera de los listados.
+
 Abre cada hoja para imprimirla o guardarla como PDF desde el navegador. También puedes descargar todas juntas en un ZIP de hojas HTML imprimibles. Conserva junto a ellas el archivo de logotipo del ZIP. Los PDFs firmados y las fotos se adjuntan después desde el detalle de cada entrega. Los campos personalizados obligatorios que se usan en la importación requieren un valor predeterminado.
 
 ## Migración y validación
@@ -55,6 +63,10 @@ La migración aditiva `2026_11_23_000001_track_consolidated_purchases.php` agreg
 La migración `2026_11_23_000002_add_internal_purchase_plan_to_consolidados.php` agrega la planificación opcional. Conserva las constancias, las compras y las relaciones anteriores.
 
 La migración `2026_11_24_000001_widen_requirement_quantities.php` amplía las cantidades de inspecciones y consolidados a enteros de 64 bits. La columna histórica `inspeccion_articulos.maximo` conserva sus valores y deja de intervenir en la captura.
+
+La migración `2026_11_24_000002_add_regional_requirement_tracking.php` agrega el coordinador actual y el historial de regiones, las observaciones de inspección, el detalle del consolidado por persona y las referencias de entregas e importaciones. Para actualizar una instalación local, descarga la rama, ejecuta `composer install`, `npm ci`, `npm run build` y `php artisan migrate`. Luego configura los responsables de las regiones desde Administración de usuarios. La actualización aprovecha Laravel, PhpSpreadsheet y las extensiones PHP que ya requiere el proyecto.
+
+Los consolidados históricos mantienen sus cantidades agregadas, documentos y responsables. Coordinación puede verificar el desglose de un pendiente cuando coincide con las inspecciones originales. Los históricos con diferencias sin respaldo individual quedan identificados como pendientes de verificación. Si un cambio regional divide un consolidado pendiente entre varios coordinadores, la reasignación queda bloqueada hasta que Administración resuelva la distribución.
 
 Prueba en un entorno aislado.
 
@@ -68,10 +80,18 @@ La prueba concurrente `php tests/Integration/flujo_mysql.php` usa MySQL local y 
 
 La prueba `php tests/Integration/compras_consolidadas_mysql.php` usa el mismo entorno local desechable. Envía dos facturas en paralelo para el mismo pendiente y repite una factura de manera concurrente. Comprueba las distribuciones, los movimientos y el saldo.
 
+La prueba `php tests/Integration/entregas_mysql.php` verifica además que dos salidas concurrentes de un requerimiento con una unidad aprobada registren una sola asignación y un único descuento.
+
 ## Capturas
 
 Las pantallas se capturaron en Chromium con datos ficticios.
 
+- [Administración de regiones por coordinador](capturas/flujo-regional/01-regiones.png)
+- [Inspecciones consecutivas en móvil](capturas/flujo-regional/02-inspeccion-movil.png)
+- [Envío del consolidado al responsable regional](capturas/flujo-regional/03-envio-coordinacion.png)
+- [Revisión de necesidades por colaborador](capturas/flujo-regional/04-revision-colaborador.png)
+- [Resumen general de cantidades](capturas/flujo-regional/05-resumen-general.png)
+- [Asignación vinculada a un requerimiento aprobado](capturas/flujo-regional/06-asignacion-vinculada.png)
 - [Inspección del supervisor en móvil](capturas/flujo-operativo/01-inspeccion-movil.png)
 - [Revisión y ajustes del coordinador](capturas/flujo-operativo/02-revision-coordinacion.png)
 - [Registro de factura y reparto entre consolidados](capturas/flujo-operativo/03-registro-compra.png)

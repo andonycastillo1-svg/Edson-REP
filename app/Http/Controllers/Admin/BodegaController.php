@@ -6,6 +6,7 @@ use App\Sistema\ValoresCampos;
 use App\Sistema\Presentacion;
 use App\Exports\InventarioBodegaExport;
 use App\Http\Controllers\Controller;
+use App\Services\ExportacionesOperativas;
 use App\Sistema\ConsultaCampos;
 use App\Sistema\Permisos;
 use App\Models\Bodega;
@@ -31,6 +32,12 @@ class BodegaController extends Controller
                 ? $query->whereRaw('1 = 0')
                 : $query->whereIn('id', $visibleBodegaIds));
         app(ConsultaCampos::class)->filtrar($consulta, $request, 'bodegas');
+        if ($request->boolean('xlsx')) {
+            $exportar = app(ExportacionesOperativas::class);
+            $exportar->autorizar($request, 'bodegas');
+
+            return $exportar->existencias($consulta);
+        }
         $bodegas = $consulta->orderByRaw("CASE WHEN tipo = 'Principal' THEN 0 ELSE 1 END")
             ->orderBy('nombre')
             ->get();

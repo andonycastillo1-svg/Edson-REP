@@ -15,6 +15,8 @@ use App\Models\VehiculoProductoAsignacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\DocumentoPrivado;
+use App\Services\ExportarExcel;
+use App\Services\ExportacionesOperativas;
 use App\Services\InventarioStockService;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -22,8 +24,28 @@ use Throwable;
 
 class AsignacionVehiculoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->boolean('xlsx')) {
+            app(ExportacionesOperativas::class)->autorizar($request, 'vehiculos');
+            $datos = $request->validate(['buscar' => ['nullable', 'string', 'max:190'], 'estado' => ['nullable', 'in:todos,activa,cerrada']]);
+            $estado = $datos['estado'] ?? 'todos';
+            $buscar = strtolower(trim($datos['buscar'] ?? ''));
+            $filas = AsignacionVehiculo::with('vehiculo', 'colaborador')
+                ->when($estado !== 'todos', fn ($q) => $q->where('activa', $estado === 'activa'))
+                ->latest('fecha_inicio')->latest('id')->lazy(250)->filter(fn ($fila) => str_contains(strtolower(implode(' ', [
+                    $fila->vehiculo?->marca, $fila->vehiculo?->modelo, $fila->vehiculo?->placa, $fila->vehiculo_vin,
+                    $fila->colaborador?->nombre, $fila->colaborador_codigo,
+                ])), $buscar))->map(fn ($fila) => [
+                    $fila->vehiculo_vin, $fila->vehiculo?->placa, $fila->colaborador_codigo, $fila->colaborador?->nombre,
+                    $fila->fecha_inicio, $fila->fecha_fin, $fila->activa ? 'Activa' : 'Cerrada',
+                    $fila->estado_inicial_vehiculo, $fila->estado_final_vehiculo,
+                ]);
+
+            return app(ExportarExcel::class)->descargar('asignaciones-de-vehiculos', [
+                'VIN', 'Placa', 'Código de colaborador', 'Colaborador', 'Desde', 'Hasta', 'Estado', 'Condición de salida', 'Condición de devolución',
+            ], $filas);
+        }
         $asignaciones = AsignacionVehiculo::with([
                 'vehiculo',
                 'colaborador',

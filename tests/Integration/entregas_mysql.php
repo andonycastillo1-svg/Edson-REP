@@ -3,7 +3,10 @@
 use App\Models\AsignacionInventario;
 use App\Models\Bodega;
 use App\Models\Colaborador;
+use App\Models\Consolidado;
 use App\Models\Producto;
+use App\Models\Region;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\InventarioStockService;
 use Illuminate\Contracts\Console\Kernel;
@@ -153,3 +156,32 @@ comprobar($primera->movimientos()->where('tipo', 'Reemplazo')->count() === 1, 'D
 $conciliar();
 
 echo 'MySQL: salidas concurrentes, reintentos, retorno real y conciliación verificados por '.($porUnidad ? 'unidad' : 'lotes').".\n";
+
+$central = app(\App\Services\BodegaAccessService::class)->principal()
+    ?? Bodega::create(['nombre' => 'Central QA '.$identificador, 'tipo' => 'Principal']);
+$coordinador = User::factory()->create(['role_id' => Role::where('ambito_operativo', 5)->sole()->id]);
+$region = Region::create(['nombre' => 'Coordinación QA '.$identificador, 'activa' => true]);
+$region->coordinador()->associate($coordinador)->save();
+$colaborador->update(['region_id' => $region->id]);
+$operadores = User::factory()->count(2)->create(['role_id' => 2, 'bodega_id' => $central->id]);
+$consolidado = Consolidado::create(['nombre' => 'Entrega trazable QA '.$identificador, 'coordinador_id' => $coordinador->id,
+    'operador_id' => $operadores->first()->id, 'desde' => today(), 'hasta' => today(), 'estado' => 'aprobado',
+    'aprobado_por' => $coordinador->id, 'aprobado_en' => now()]);
+$consolidado->forceFill(['detalle_individual' => true])->save();
+$persona = $consolidado->participantes()->create(['colaborador_codigo' => $colaborador->codigo, 'region_id' => $region->id]);
+$necesidad = $persona->necesidades()->create(['producto_codigo' => $producto->codigo, 'original' => 1, 'cantidad' => 1]);
+DB::transaction(fn () => app(InventarioStockService::class)->incrementar($central->id, $producto->codigo, 2));
+$solicitudes = $operadores->map(fn (User $usuario) => [
+    'usuario' => $usuario->id,
+    'datos' => ['solicitud_id' => (string) Str::uuid(), 'colaborador_codigo' => $colaborador->codigo,
+        'consolidado_id' => $consolidado->id, 'items' => [['producto_codigo' => $producto->codigo, 'bodega_id' => $central->id]]],
+])->all();
+$resultados = ejecutarEnParalelo($colaborador, $solicitudes);
+$estados = array_column($resultados, 'estado');
+sort($estados);
+comprobar($estados === [302, 422], 'Solo se debe aplicar la unidad aprobada. Resultados: '.json_encode($resultados));
+comprobar(collect($resultados)->firstWhere('estado', 422)['errores'] === ['consolidado_id'], 'Debe rechazar el exceso sobre el consolidado.');
+comprobar($necesidad->asignaciones()->count() === 1, 'Debe quedar una salida vinculada al requerimiento.');
+comprobar((int) DB::table('inventarios')->where('producto_codigo', $producto->codigo)->where('bodega_id', $central->id)->sum('cantidad') === 1,
+    'La segunda solicitud no descuenta stock.');
+echo "MySQL: dos salidas concurrentes para un requerimiento aplicaron solo la unidad aprobada.\n";

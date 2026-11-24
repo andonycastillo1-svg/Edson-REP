@@ -8,7 +8,7 @@ class Inspeccion extends Model
 {
     protected $table = 'inspecciones';
 
-    protected $fillable = ['supervisor_id', 'coordinador_id', 'region_id', 'colaborador_codigo', 'puesto', 'fecha', 'solicitud_id'];
+    protected $fillable = ['supervisor_id', 'coordinador_id', 'region_id', 'colaborador_codigo', 'puesto', 'fecha', 'solicitud_id', 'observaciones', 'captura_regional'];
 
     protected $casts = ['fecha' => 'date'];
 

@@ -254,6 +254,7 @@
             <div>
                 <div class="veh-kicker">Flota</div>
                 <h1 class="ui-page-title veh-title">Vehículos</h1>
+                <x-ui.exportar-excel modulo="vehiculos" />
                 <p class="veh-subtitle">
                     Control visual de vehículos disponibles, en uso o en mantenimiento.
                 </p>

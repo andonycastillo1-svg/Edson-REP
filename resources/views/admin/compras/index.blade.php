@@ -54,13 +54,14 @@
                     <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
 
                         <input
-                            id="buscarCompra"
+                            id="buscarCompra" maxlength="190"
                             aria-label="Buscar por factura, proveedor o fecha"
                             type="text"
                             placeholder="Buscar compra..."
                             class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 lg:w-[360px]"
                         >
 
+                        <x-ui.exportar-excel modulo="compras" :campos="['buscar' => 'buscarCompra']" />
                         <select
                             id="filasPorPagina"
                             aria-label="Filas por página"

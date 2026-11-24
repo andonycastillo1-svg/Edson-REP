@@ -1,20 +1,17 @@
 <x-sistema.pagina titulo="Nueva inspección" descripcion="Selecciona al colaborador y registra únicamente los productos que necesita." :volver="route('flujo.inspecciones.index')">
     @include('flujo.accesos')
-    @if(!$tieneCoordinador)
-        <p class="ui-alert-warning">Pide a Administración que asigne un coordinador a tu cuenta para registrar inspecciones.</p>
-    @else
         <form action="{{ route('flujo.inspecciones.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
             @csrf
             <input type="hidden" name="solicitud_id" value="{{ old('solicitud_id', (string) \Illuminate\Support\Str::uuid()) }}">
             <x-sistema.panel titulo="Datos de la inspección">
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <p class="text-sm"><strong>Supervisor</strong><br>{{ auth()->user()->name }}</p>
-                    <label class="text-sm font-semibold">Fecha<input class="ui-input mt-1" type="date" name="fecha" value="{{ old('fecha', today()->toDateString()) }}" required></label>
+                    <label class="text-sm font-semibold">Fecha<input class="ui-input mt-1" type="date" name="fecha" value="{{ old('fecha', $preferencias['fecha'] ?? today()->toDateString()) }}" required></label>
                     <label class="text-sm font-semibold">Región
                         <select id="inspeccion-region" name="region_id" class="ui-input mt-1" required>
                             <option value="">Selecciona una región</option>
                             @foreach($regiones as $region)
-                                <option value="{{ $region->id }}" data-url="{{ route('flujo.inspecciones.colaboradores', $region) }}" @selected((int) old('region_id') === $region->id)>{{ $region->nombre }}</option>
+                                <option value="{{ $region->id }}" data-url="{{ route('flujo.inspecciones.colaboradores', $region) }}" @selected((int) old('region_id', $preferencias['region'] ?? 0) === $region->id)>{{ $region->nombre }}</option>
                             @endforeach
                         </select>
                     </label>
@@ -52,13 +49,19 @@
                     @endforelse
                 </div>
             </x-sistema.panel>
-            <x-sistema.panel titulo="Fotografías">
+            <x-sistema.panel titulo="Observaciones y fotografías">
+                <label class="ui-label">Observaciones
+                    <textarea name="observaciones" rows="3" maxlength="4000" class="ui-input mt-1">{{ old('observaciones') }}</textarea>
+                </label>
                 <label class="block text-sm font-semibold">Adjuntar imágenes (opcional)
                     <input class="mt-2 block w-full" type="file" name="fotos[]" accept="image/jpeg,image/png,image/webp" multiple>
                 </label>
                 <p class="mt-1 text-xs text-slate-600">Hasta 8 imágenes JPG, PNG o WebP, de 5 MB cada una.</p>
             </x-sistema.panel>
-            <div class="flex justify-end"><button class="ui-btn-primary w-full sm:w-auto">Registrar inspección</button></div>
+            <div class="ui-action-bar">
+                <button type="submit" name="destino" value="continuar" class="ui-btn-primary">Guardar y continuar</button>
+                <button type="submit" name="destino" value="finalizar" class="ui-btn-secondary">Guardar y finalizar</button>
+            </div>
         </form>
         <script>
             const region = document.getElementById('inspeccion-region');
@@ -94,19 +97,21 @@
                     mostrarPuesto();
                     persona.disabled = personas.length === 0;
                     estado.textContent = persona.disabled ? 'La región no tiene colaboradores activos.' : '';
+                    if (!persona.disabled && !elegido && @json(request()->boolean('continuar') && !$errors->any())) persona.focus();
                 } catch (error) {
                     if (error.name !== 'AbortError') estado.textContent = 'No se pudo consultar esta región. Vuelve a seleccionarla.';
                 }
             }
             region.addEventListener('change', () => cargar());
             persona.addEventListener('change', mostrarPuesto);
+            let enviada = false;
             region.form.addEventListener('submit', event => {
-                if (persona.disabled) { event.preventDefault(); return; }
+                if (persona.disabled || enviada) { event.preventDefault(); return; }
+                enviada = true;
                 for (const campo of region.form.querySelectorAll('[name^="cantidades["]')) {
                     if (Number(campo.value) === 0) campo.disabled = true;
                 }
             });
             cargar(@json(old('colaborador_codigo', '')));
         </script>
-    @endif
 </x-sistema.pagina>

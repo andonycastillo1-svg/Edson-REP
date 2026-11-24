@@ -7,6 +7,7 @@ use App\Models\MotivoAsignacion;
 use App\Models\Producto;
 use App\Models\Region;
 use App\Services\FlujoAcceso;
+use App\Services\ExportarExcel;
 use App\Sistema\Auditoria;
 use App\Sistema\ValoresCampos;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -22,6 +23,13 @@ class CatalogosController extends Controller
     public function index(Request $request)
     {
         $this->acceso->autorizar($request->user(), 'configurar');
+        if ($request->boolean('xlsx')) {
+            $filas = Region::with('coordinador')->orderBy('nombre')->orderBy('id')->lazy(250)->map(fn ($region) => [
+                $region->nombre, $region->activa ? 'Activa' : 'Inactiva', $region->coordinador?->name,
+            ]);
+
+            return app(ExportarExcel::class)->descargar('regiones', ['Región', 'Estado', 'Coordinador configurado'], $filas);
+        }
         $regiones = Region::orderBy('nombre')->get();
         $secciones = DB::table('inspeccion_secciones')->orderBy('orden')->get();
         $articulos = DB::table('inspeccion_articulos')->orderBy('orden')->orderBy('id')->get()->groupBy('seccion');

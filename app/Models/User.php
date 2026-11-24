@@ -67,6 +67,11 @@ class User extends Authenticatable
         return $this->belongsTo(self::class, 'coordinador_id');
     }
 
+    public function regionesCoordinadas()
+    {
+        return $this->hasMany(Region::class, 'coordinador_id');
+    }
+
     public function bodega()
     {
         return $this->belongsTo(Bodega::class, 'bodega_id');

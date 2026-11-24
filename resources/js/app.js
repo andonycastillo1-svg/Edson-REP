@@ -454,7 +454,60 @@ function conectarDialogo(dialogo) {
     comprobarVisibilidad();
 }
 
+function conectarBusquedaColaborador(formulario) {
+    const campo = formulario.elements.busqueda_colaborador;
+    const destino = formulario.elements.colaborador_codigo;
+    const estado = formulario.querySelector('[data-colaborador-estado]');
+    let consulta;
+    let espera;
+    function programar() {
+        clearTimeout(espera);
+        consulta?.abort();
+        const anterior = destino.value || destino.dataset.colaboradorAnterior;
+        const texto = campo.value.trim();
+        destino.replaceChildren(new Option('Selecciona un colaborador', ''));
+        estado.textContent = texto.length < 2 ? 'Escribe al menos dos caracteres.' : 'Buscando colaboradores…';
+        if (texto.length < 2) return;
+        espera = setTimeout(async () => {
+            consulta = new AbortController();
+            const url = new URL(formulario.dataset.buscarColaborador, window.location.href);
+            url.searchParams.set('q', texto);
+            try {
+                const respuesta = await fetch(url, { signal: consulta.signal, headers: { Accept: 'application/json' } });
+                if (!respuesta.ok) throw new Error();
+                const personas = await respuesta.json();
+                personas.forEach(persona => destino.add(new Option(`${persona.nombre} · ${persona.codigo} · ${persona.region}`, persona.codigo)));
+                if (personas.some(persona => persona.codigo === anterior)) destino.value = anterior;
+                estado.textContent = personas.length ? `${personas.length} coincidencia(s).` : 'Sin coincidencias en tus regiones.';
+            } catch (error) {
+                if (error.name !== 'AbortError') estado.textContent = 'No se pudo consultar el directorio. Intenta de nuevo.';
+            }
+        }, 250);
+    }
+    campo.addEventListener('input', programar);
+    if (campo.value) programar();
+}
+
+function conectarFiltrosExcel(enlace) {
+    const campos = Object.entries(JSON.parse(enlace.dataset.excelCampos));
+    const actualizar = () => {
+        const url = new URL(enlace.href);
+        campos.forEach(([parametro, id]) => {
+            const valor = document.getElementById(id)?.value.trim();
+            if (valor) url.searchParams.set(parametro, valor);
+            else url.searchParams.delete(parametro);
+        });
+        enlace.href = url;
+    };
+    campos.forEach(([, id]) => {
+        document.getElementById(id)?.addEventListener('input', actualizar);
+    });
+    actualizar();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-buscar-colaborador]').forEach(conectarBusquedaColaborador);
+    document.querySelectorAll('[data-excel-campos]').forEach(conectarFiltrosExcel);
     document.querySelectorAll('select[data-searchable="true"]').forEach(enhanceSearchableSelect);
     document.querySelectorAll('[data-formulario-campo]').forEach(configurarCampo);
     document.querySelectorAll('[data-buscador-permisos]').forEach(configurarBuscadorPermisos);

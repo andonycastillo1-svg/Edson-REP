@@ -510,6 +510,12 @@
     <div class="asg-header">
       <div>
         <h1 class="ui-page-title asg-title">Mis asignaciones</h1>
+        <div class="mt-2 flex flex-wrap gap-2">
+            <x-ui.exportar-excel modulo="asignaciones" />
+            @if($puedeVerMovimientos)
+                <x-ui.exportar-excel modulo="asignaciones" :filtros="['devoluciones' => 1]" texto="Exportar devoluciones" />
+            @endif
+        </div>
         <p class="asg-subtitle">Control de equipos asignados, documentos firmados y devoluciones.</p>
       </div>
 

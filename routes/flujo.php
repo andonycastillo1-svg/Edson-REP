@@ -28,6 +28,8 @@ Route::middleware(['auth', 'auto.logout'])->prefix('flujo')->name('flujo.')->gro
     Route::get('consolidados', [ConsolidadoController::class, 'index'])->name('consolidados.index');
     Route::post('consolidados', [ConsolidadoController::class, 'store'])->name('consolidados.store');
     Route::get('consolidados/{consolidado}', [ConsolidadoController::class, 'show'])->whereNumber('consolidado')->name('consolidados.show');
+    Route::get('consolidados/{consolidado}/colaboradores', [ConsolidadoController::class, 'colaboradores'])
+        ->whereNumber('consolidado')->name('consolidados.colaboradores');
     Route::post('consolidados/{consolidado}/{accion}', [ConsolidadoController::class, 'transicion'])
         ->whereNumber('consolidado')->name('consolidados.transicion');
 

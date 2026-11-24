@@ -101,6 +101,8 @@
               </button>
             </div>
 
+            <x-ui.exportar-excel modulo="colaboradores" :filtros="['estado' => 'Activo']" x-show="tab === 'activos'" />
+            <x-ui.exportar-excel modulo="colaboradores" :filtros="['estado' => 'Inactivo']" x-show="tab === 'inactivos'" x-cloak />
             @rutaDisponible($routePrefix . '.colaboradores.create')
             <a href="{{ route($routePrefix . '.colaboradores.create') }}"
                class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">

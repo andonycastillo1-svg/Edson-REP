@@ -28,11 +28,12 @@
                     class="w-full rounded-xl border-slate-300" required>
                 <option value="">Selecciona al colaborador</option>
                 @foreach($colaboradores as $colaborador)
-                    <option value="{{ $colaborador->codigo }}" @selected(old('colaborador_codigo') === $colaborador->codigo)>
+                    <option value="{{ $colaborador->codigo }}" @selected(old('colaborador_codigo', request('colaborador_codigo')) === $colaborador->codigo)>
                         {{ $colaborador->nombre }} · {{ $colaborador->codigo }}
                     </option>
                 @endforeach
             </select>
+            <div class="mt-4"><x-flujo.consolidado-origen :consolidados="$consolidadosOrigen" /></div>
         </section>
 
         <section class="space-y-4 rounded-xl border border-slate-200 bg-white p-5">

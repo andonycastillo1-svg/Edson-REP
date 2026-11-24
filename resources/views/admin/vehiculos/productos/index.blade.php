@@ -494,6 +494,7 @@
             <div>
                 <div class="vp-kicker">Flota</div>
                 <h1 class="ui-page-title vp-title">Productos/refacciones del vehículo</h1>
+                <x-ui.exportar-excel modulo="refacciones" />
 
                 @if($vehiculo)
                     <p class="vp-subtitle">

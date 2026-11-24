@@ -32,6 +32,15 @@
                                 · {{ $fila->stock_tipo === 'usado' ? 'Inventario usado' : 'Inventario nuevo' }}
                             @endif
                         </p>
+                        @if($origen = $fila->requerimiento?->participante?->consolidado)
+                            <p class="text-sm">Requerimiento #{{ $fila->requerimiento_id }} ·
+                                @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'consolidados') && auth()->user()->rolOperativo() !== 5)
+                                    <a class="flujo-enlace" href="{{ route('flujo.consolidados.show', $origen) }}">{{ $origen->nombre }}</a>
+                                @else
+                                    Consolidado #{{ $origen->id }}
+                                @endif
+                            </p>
+                        @endif
                         @foreach($fila->incidencias as $incidencia)
                             @rutaDisponible($routePrefix.'.asignaciones.incidencia')
                                 <a class="block text-sm underline" href="{{ route($routePrefix.'.asignaciones.incidencia', $incidencia) }}">{{ $incidencia->motivo_etiqueta }}</a>

@@ -322,6 +322,7 @@
         <div class="bodega-header">
             <div>
                 <h1 class="ui-page-title bodega-title">Bodegas</h1>
+                <x-ui.exportar-excel modulo="bodegas" />
                 <div class="bodega-subtitle">
                     Consulta inventario, traslados y administración de bodegas.
                 </div>
