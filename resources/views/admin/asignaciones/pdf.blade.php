@@ -26,7 +26,7 @@
         }
 
         .btn-print {
-            background: #0f172a;
+            background: #182c42;
             color: #ffffff;
             border: none;
             padding: 9px 16px;
@@ -45,7 +45,7 @@
 
         .top-bar {
             width: 100%;
-            border-bottom: 3px solid #0f172a;
+            border-bottom: 3px solid #182c42;
             padding-bottom: 14px;
             margin-bottom: 20px;
         }
@@ -80,7 +80,7 @@
             font-size: 18px;
             text-transform: uppercase;
             letter-spacing: .6px;
-            color: #0f172a;
+            color: #182c42;
             line-height: 1.25;
         }
 
@@ -106,8 +106,8 @@
 
         .badge {
             display: inline-block;
-            border: 1px solid #cbd5e1;
-            background: #f8fafc;
+            border: 1px solid #d5dfeb;
+            background: #f3f6fa;
             padding: 5px 8px;
             border-radius: 5px;
             font-weight: bold;
@@ -143,7 +143,7 @@
         }
 
         .section-title {
-            background: #0f172a;
+            background: #182c42;
             color: #ffffff;
             font-size: 12px;
             font-weight: bold;
@@ -158,20 +158,20 @@
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 18px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid #d5dfeb;
         }
 
         .items-table th {
             background: #e5e7eb;
             color: #111827;
-            border: 1px solid #cbd5e1;
+            border: 1px solid #d5dfeb;
             padding: 8px 6px;
             font-size: 11px;
             text-align: center;
         }
 
         .items-table td {
-            border: 1px solid #cbd5e1;
+            border: 1px solid #d5dfeb;
             padding: 8px 6px;
             font-size: 11px;
             text-align: center;
@@ -182,7 +182,7 @@
         }
 
         .responsibility-box {
-            border: 1px solid #cbd5e1;
+            border: 1px solid #d5dfeb;
             border-top: none;
             padding: 13px 15px;
             text-align: justify;
@@ -225,7 +225,7 @@
 
         .signature-box {
             width: 92%;
-            border: 1px solid #cbd5e1;
+            border: 1px solid #d5dfeb;
             border-radius: 6px;
             padding: 13px 14px 10px 14px;
         }
@@ -238,7 +238,7 @@
             text-align: center;
             font-weight: bold;
             font-size: 12px;
-            color: #0f172a;
+            color: #182c42;
             margin-bottom: 18px;
             text-transform: uppercase;
         }
@@ -473,7 +473,7 @@
 @endphp
 
 <div class="no-print">
-    <button type="button" class="btn-print" onclick="window.print()">🖨 Imprimir ficha</button>
+    <button type="button" class="btn-print" onclick="window.print()">Imprimir ficha</button>
 </div>
 
 <div class="sheet">

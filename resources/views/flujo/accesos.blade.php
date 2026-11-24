@@ -8,7 +8,7 @@
         'configurar' => ['flujo.catalogos', 'flujo.catalogos*', 'Catálogos operativos'],
     ];
 @endphp
-<nav class="flujo-nav" aria-label="Flujo operativo">
+<nav class="flujo-nav lg:hidden" aria-label="Flujo operativo">
     @foreach($enlaces as $permiso => [$ruta, $patron, $etiqueta])
         @if($acceso->puede(auth()->user(), $permiso) && ($permiso !== 'importar' || app(\App\Sistema\Permisos::class)->permite(auth()->user(), 'asignaciones.crear')))
             <a class="flujo-tab" href="{{ route($ruta) }}" @if(request()->routeIs($patron)) aria-current="page" @endif>{{ $etiqueta }}</a>

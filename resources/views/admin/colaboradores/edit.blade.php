@@ -9,13 +9,13 @@
 
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-semibold text-slate-900">Editar colaborador</h1>
+        <h1 class="ui-page-title text-slate-900">Editar colaborador</h1>
         <p class="text-sm text-slate-600">Actualiza datos y estado.</p>
       </div>
     </div>
 
     <form enctype="multipart/form-data" method="POST" action="{{ route($routePrefix . '.colaboradores.update', $colaborador) }}"
-          class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          class="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       @csrf
       @method('PUT')
 

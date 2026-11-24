@@ -263,11 +263,17 @@ function conectarValidacion(resumen) {
         if (!campo.id) campo.id = `campo-validacion-${indice}`;
         enlace.href = `#${campo.id}`;
         enlace.textContent = error.textContent;
-        enlace.className = 'underline decoration-rose-400 underline-offset-2';
+        enlace.className = 'ui-error-link';
         enlace.addEventListener('click', event => {
             event.preventDefault();
             campo.closest('[data-panel-pestana]')?.dispatchEvent(new Event('mostrar:pestana', { bubbles: true }));
             for (let grupo = campo.closest('details'); grupo; grupo = grupo.parentElement.closest('details')) grupo.open = true;
+            const dialogo = campo.closest('[data-ui-dialogo][id]');
+            if (dialogo && !campo.getClientRects().length) {
+                document.querySelector('[aria-controls="' + CSS.escape(dialogo.id) + '"][aria-haspopup="dialog"]')?.click();
+                requestAnimationFrame(() => campo.focus());
+                return;
+            }
             campo.focus();
         });
         error.replaceChildren(enlace);
@@ -377,6 +383,77 @@ function conectarDestinatarios(form) {
     });
 }
 
+function conectarMenuModulos(boton) {
+    const menu = document.getElementById(boton.getAttribute('aria-controls'));
+    const escritorio = window.matchMedia('(min-width: 1024px)');
+
+    function cerrar(devolverFoco = false) {
+        menu.removeAttribute('data-abierto');
+        boton.setAttribute('aria-expanded', 'false');
+        if (devolverFoco) boton.focus();
+    }
+
+    boton.addEventListener('click', () => {
+        if (menu.hasAttribute('data-abierto')) {
+            cerrar(true);
+            return;
+        }
+
+        menu.setAttribute('data-abierto', '');
+        boton.setAttribute('aria-expanded', 'true');
+        const enlace = menu.querySelector('[aria-current="page"], a');
+        enlace?.focus();
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && menu.hasAttribute('data-abierto')) cerrar(true);
+    });
+    document.addEventListener('pointerdown', event => {
+        if (!boton.contains(event.target) && !menu.contains(event.target)) cerrar();
+    });
+    document.addEventListener('focusin', event => {
+        if (!boton.contains(event.target) && !menu.contains(event.target)) cerrar();
+    });
+    escritorio.addEventListener('change', () => cerrar());
+}
+
+function conectarDialogo(dialogo) {
+    let abierto = false;
+    let origen;
+
+    const enfocados = () => [...dialogo.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]')]
+        .filter(elemento => !elemento.disabled && elemento.tabIndex >= 0 && elemento.getClientRects().length > 0);
+
+    function comprobarVisibilidad() {
+        const visible = dialogo.getClientRects().length > 0;
+        if (visible === abierto) return;
+
+        abierto = visible;
+        if (abierto) {
+            origen = document.activeElement;
+            const inicial = dialogo.querySelector('[data-foco-dialogo]') ?? enfocados()[0];
+            inicial?.focus();
+        } else if (origen?.isConnected && (document.activeElement === document.body || dialogo.contains(document.activeElement))) {
+            origen.focus();
+        }
+    }
+
+    const observador = new MutationObserver(comprobarVisibilidad);
+    observador.observe(dialogo, { attributes: true, attributeFilter: ['class', 'style', 'hidden', 'x-cloak'] });
+    dialogo.addEventListener('keydown', event => {
+        if (event.key !== 'Tab') return;
+
+        const elementos = enfocados();
+        const destino = event.shiftKey ? elementos.at(-1) : elementos[0];
+        const limite = event.shiftKey ? elementos[0] : elementos.at(-1);
+        if (destino && document.activeElement === limite) {
+            event.preventDefault();
+            destino.focus();
+        }
+    });
+    comprobarVisibilidad();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('select[data-searchable="true"]').forEach(enhanceSearchableSelect);
     document.querySelectorAll('[data-formulario-campo]').forEach(configurarCampo);
@@ -387,6 +464,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-datos-cuenta]').forEach(conectarDatosCuenta);
     document.querySelectorAll('[data-destinatarios]').forEach(conectarDestinatarios);
     document.querySelectorAll('[data-resumen-validacion]').forEach(conectarValidacion);
+    document.querySelectorAll('[data-abrir-modulos]').forEach(conectarMenuModulos);
+    document.querySelectorAll('[data-ui-dialogo]').forEach(conectarDialogo);
 });
 
 document.addEventListener('submit', event => {

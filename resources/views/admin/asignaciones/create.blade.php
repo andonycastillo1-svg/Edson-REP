@@ -21,8 +21,8 @@
     <form action="{{ route($routePrefix.'.asignaciones.store') }}" method="POST" class="ui-form space-y-4">
         @csrf
         <input type="hidden" name="solicitud_id" value="{{ old('solicitud_id', (string) \Illuminate\Support\Str::uuid()) }}">
-        <section class="rounded-2xl border border-slate-200 bg-white p-5">
-            <h1 class="text-2xl font-extrabold text-slate-900">Nueva asignación</h1>
+        <section class="rounded-xl border border-slate-200 bg-white p-5">
+            <h1 class="ui-page-title text-slate-900">Nueva asignación</h1>
             <label for="colaborador-codigo" class="mb-1 mt-4 block text-sm font-bold">Colaborador</label>
             <select id="colaborador-codigo" name="colaborador_codigo" data-searchable="true" data-search-placeholder="Buscar colaborador"
                     class="w-full rounded-xl border-slate-300" required>
@@ -35,7 +35,7 @@
             </select>
         </section>
 
-        <section class="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+        <section class="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
             <h2 class="text-lg font-bold">Productos</h2>
             <div id="items-wrapper" class="space-y-3"></div>
             <button type="button" class="ui-btn-secondary" id="add-item">Agregar otro producto</button>
@@ -80,7 +80,7 @@
             </template>
         </section>
 
-        <details class="rounded-2xl border border-slate-200 bg-white p-5" @if(old('modalidad') === 'tercero') open @endif>
+        <details class="rounded-xl border border-slate-200 bg-white p-5" @if(old('modalidad') === 'tercero') open @endif>
             <summary class="cursor-pointer font-bold">Salida por medio de un tercero</summary>
             <label class="mt-3 block text-sm font-semibold">
                 <input type="checkbox" name="modalidad" value="tercero" @checked(old('modalidad') === 'tercero')}>

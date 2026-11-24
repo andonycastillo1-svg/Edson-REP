@@ -4,11 +4,11 @@
 
 @section('content')
 @php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
-<div class="w-full max-w-6xl bg-white/90 rounded-2xl shadow-2xl p-8">
+<div class="w-full max-w-6xl bg-white/90 rounded-xl shadow-lg p-8">
     <x-internal-navigation :back-url="route($routePrefix . '.compras.index')" />
     <div class="flex items-start justify-between gap-4 mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-slate-800">Compra #{{ $compra->id }}</h1>
+            <h1 class="ui-page-title text-slate-800">Compra #{{ $compra->id }}</h1>
             <p class="text-slate-500 text-sm">
                 Proveedor: <span class="font-semibold text-slate-700">{{ $compra->proveedor_nombre }}</span> ·
                 Factura: <span class="font-semibold text-slate-700">{{ $compra->no_factura }}</span> ·
@@ -18,29 +18,29 @@
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="p-4 rounded-2xl bg-white border border-slate-200">
+        <div class="p-4 rounded-xl bg-white border border-slate-200">
             <div class="text-slate-500 text-sm">Proyecto</div>
             <div class="font-semibold text-slate-800">{{ $compra->proyecto ?? '—' }}</div>
         </div>
-        <div class="p-4 rounded-2xl bg-white border border-slate-200">
+        <div class="p-4 rounded-xl bg-white border border-slate-200">
             <div class="text-slate-500 text-sm">Forma de pago</div>
             <div class="font-semibold text-slate-800">{{ $compra->forma_pago ?? '—' }}</div>
         </div>
         @php($autorizacion = app(\App\Sistema\Presentacion::class)->nativos('compras')['autorizado_por'])
         @if($autorizacion['visible'])
-            <div class="p-4 rounded-2xl bg-white border border-slate-200">
+            <div class="p-4 rounded-xl bg-white border border-slate-200">
                 <div class="text-slate-500 text-sm">{{ $autorizacion['etiqueta'] }}</div>
                 <div class="font-semibold text-slate-800">{{ $compra->autorizado_por ?? 'Sin registrar' }}</div>
             </div>
         @endif
-        <div class="p-4 rounded-2xl bg-white border border-slate-200">
+        <div class="p-4 rounded-xl bg-white border border-slate-200">
             <div class="text-slate-500 text-sm">Total factura</div>
             <div class="text-2xl font-bold text-slate-800">{{ number_format($compra->total_factura, 2) }}</div>
         </div>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white overflow-x-auto mb-6">
-        <table class="min-w-full text-sm">
+    <div class="rounded-xl border border-slate-200 bg-white overflow-x-auto mb-6">
+        <table class="ui-table min-w-full text-sm">
             <thead class="bg-slate-50 text-slate-600">
                 <tr>
                     <th class="px-4 py-3">Código</th>
@@ -125,7 +125,7 @@
     @endif
 
     @rutaDisponible(\App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo()).'.compras.archivo')
-    <div class="rounded-2xl border border-slate-200 bg-white p-4">
+    <div class="rounded-xl border border-slate-200 bg-white p-4">
         <h2 class="font-bold text-slate-800 mb-2">Archivos (PDF)</h2>
 
         @if($archivos->isEmpty())

@@ -3,8 +3,8 @@
 @section('content')
 <div class="mx-auto max-w-5xl space-y-5 px-4 py-8">
     <x-internal-navigation :back-url="route($routePrefix.'.asignaciones.index')" />
-    <header class="rounded-2xl border border-slate-200 bg-white p-6">
-        <h1 class="text-2xl font-extrabold text-slate-900">Entrega a {{ $asignaciones->first()->colaborador?->nombre ?? $asignaciones->first()->colaborador_codigo }}</h1>
+    <header class="rounded-xl border border-slate-200 bg-white p-6">
+        <h1 class="ui-page-title text-slate-900">Entrega a {{ $asignaciones->first()->colaborador?->nombre ?? $asignaciones->first()->colaborador_codigo }}</h1>
         @if($entrega)
             <p class="mt-1 text-slate-600">Salida del {{ $entrega->salida_en->format('d/m/Y H:i') }} · {{ $entrega->modalidad === 'tercero' ? ($entrega->tercero ? 'Transporta '.$entrega->tercero : 'Salida por tercero') : 'Entrega directa' }}</p>
         @endif
@@ -20,7 +20,7 @@
         </div>
     </header>
 
-    <section class="rounded-2xl border border-slate-200 bg-white p-6">
+    <section class="rounded-xl border border-slate-200 bg-white p-6">
         <h2 class="mb-3 text-lg font-bold">Custodia de los productos</h2>
         <ul class="divide-y divide-slate-200">
             @foreach($asignaciones as $fila)
@@ -51,7 +51,7 @@
         </ul>
     </section>
 
-    <section class="rounded-2xl border border-slate-200 bg-white p-6">
+    <section class="rounded-xl border border-slate-200 bg-white p-6">
         <h2 class="text-lg font-bold">Recepción</h2>
         @if($entrega?->confirmada_en)
             <p>Confirmada por {{ $entrega->confirmador?->name ?? 'Usuario histórico' }} el {{ $entrega->confirmada_en->format('d/m/Y H:i') }} · {{ \App\Models\EntregaInventario::MEDIOS[$entrega->medio_confirmacion] ?? $entrega->medio_confirmacion }}</p>
@@ -87,7 +87,7 @@
         @endif
     </section>
 
-    <section class="rounded-2xl border border-slate-200 bg-white p-6">
+    <section class="rounded-xl border border-slate-200 bg-white p-6">
         <h2 class="text-lg font-bold">Documentación</h2>
         <p>{{ $archivos->contains('tipo_documento', 'asignacion_firmada') ? 'Hoja firmada cargada' : 'Hoja firmada faltante' }}</p>
         @if($entrega)

@@ -4,7 +4,7 @@
 
 @section('content')
     <x-panel-operativo titulo="Panel de supervisión" :accesos="[
-        'supervisor.asignaciones.index' => ['Asignaciones relacionadas', 'Custodia, hojas firmadas de los almacenistas asignados', '📦'],
+        'supervisor.asignaciones.index' => ['Asignaciones relacionadas', 'Custodia, hojas firmadas de los almacenistas asignados', 'caja'],
     ]" />
     @rutaDisponible('supervisor.asignaciones.index')
         <nav class="mx-auto mt-4 flex max-w-6xl flex-wrap gap-3" aria-label="Seguimiento de entregas">

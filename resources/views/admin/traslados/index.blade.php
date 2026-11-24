@@ -11,7 +11,7 @@
   .tras-page {
     width: 100%;
     min-height: calc(100vh - 64px);
-    background: #f8fafc;
+    background: var(--ui-bg);
     padding: 18px 14px;
   }
 
@@ -23,7 +23,7 @@
 
   .tras-header {
     background: #ffffff;
-    border: 1px solid #dbe3ea;
+    border: 1px solid var(--ui-border);
     border-radius: 14px;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     padding: 14px 16px;
@@ -40,7 +40,7 @@
     font-size: 22px;
     line-height: 1.1;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .tras-subtitle {
@@ -76,13 +76,13 @@
   }
 
   .btn-primary {
-    background: #2563eb !important;
+    background: var(--ui-primary) !important;
     color: #ffffff !important;
-    border-color: #2563eb !important;
+    border-color: var(--ui-primary) !important;
   }
 
   .btn-primary:hover {
-    background: #1d4ed8 !important;
+    background: var(--ui-primary) !important;
   }
 
   .btn-secondary {
@@ -92,24 +92,24 @@
   }
 
   .btn-secondary:hover {
-    background: #f8fafc !important;
+    background: var(--ui-bg) !important;
   }
 
   .btn-filter {
-    background: #0f172a !important;
+    background: var(--ui-text) !important;
     color: #ffffff !important;
-    border-color: #0f172a !important;
+    border-color: var(--ui-text) !important;
   }
 
   .btn-view {
-    background: #2563eb !important;
+    background: var(--ui-primary) !important;
     color: #ffffff !important;
-    border-color: #2563eb !important;
+    border-color: var(--ui-primary) !important;
   }
 
   .btn-clear {
     background: #eff6ff !important;
-    color: #1d4ed8 !important;
+    color: var(--ui-primary) !important;
     border-color: #bfdbfe !important;
   }
 
@@ -135,7 +135,7 @@
 
   .filter-card {
     background: #ffffff;
-    border: 1px solid #dbe3ea;
+    border: 1px solid var(--ui-border);
     border-radius: 14px;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     padding: 12px 14px;
@@ -153,7 +153,7 @@
     display: block;
     font-size: 11px;
     font-weight: 800;
-    color: #475569;
+    color: var(--ui-muted);
     margin-bottom: 4px;
   }
 
@@ -175,7 +175,7 @@
 
   .tras-card {
     background: #ffffff;
-    border: 1px solid #dbe3ea;
+    border: 1px solid var(--ui-border);
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -184,7 +184,7 @@
   .tras-card-head {
     padding: 10px 14px;
     border-bottom: 1px solid #e2e8f0;
-    background: #f8fafc;
+    background: var(--ui-bg);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -194,7 +194,7 @@
   .tras-card-title {
     font-size: 13px;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .tras-table-wrap {
@@ -231,12 +231,12 @@
   }
 
   .tras-table tbody tr:hover {
-    background: #f8fafc;
+    background: var(--ui-bg);
   }
 
   .tras-id {
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .badge {
@@ -266,12 +266,12 @@
 
   .badge-default {
     background: #f1f5f9;
-    color: #475569;
+    color: var(--ui-muted);
   }
 
   .route-text {
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .route-arrow {
@@ -281,7 +281,7 @@
 
   .date-main {
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .date-sub {
@@ -324,7 +324,7 @@
 
     <div class="tras-header">
       <div>
-        <h1 class="tras-title">Solicitudes de traslado</h1>
+        <h1 class="ui-page-title tras-title">Solicitudes de traslado</h1>
         <div class="tras-subtitle">
           @if($user->isEncargado())
             Bandeja de solicitudes para tu bodega de destino.
@@ -405,7 +405,7 @@
       </div>
 
       <div class="tras-table-wrap">
-        <table class="tras-table">
+        <table class="ui-table tras-table">
           <thead>
             <tr>
               <th style="width: 80px;">#</th>

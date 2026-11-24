@@ -12,14 +12,14 @@
     .veh-field { display:flex; flex-direction:column; gap:6px; }
     .veh-field label { font-weight:600; color:#111827; font-size:14px; }
     .veh-field input, .veh-field select, .veh-field textarea { width:100%; border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px; min-height:42px; background:#fff; color:#111827; outline:none; }
-    .veh-field input:focus, .veh-field select:focus, .veh-field textarea:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+    .veh-field input:focus, .veh-field select:focus, .veh-field textarea:focus { border-color:var(--ui-primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
     .veh-field textarea { min-height:90px; resize:vertical; }
     .veh-help { font-size:12px; color:#6b7280; }
     .veh-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:18px; }
     .veh-btn-secondary { border:1px solid #cbd5e1; border-radius:10px; padding:10px 14px; background:#fff; cursor:pointer; color:#111827; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
     .veh-btn-secondary:hover { background:#f1f5f9; }
     .veh-error { border:1px solid #fecaca; background:#fef2f2; color:#991b1b; padding:12px 14px; border-radius:10px; margin-bottom:16px; }
-    .veh-info-note { border:1px solid #bfdbfe; background:#eff6ff; color:#1e40af; padding:12px 14px; border-radius:10px; margin-bottom:16px; font-size:14px; }
+    .veh-info-note { border:1px solid #bfdbfe; background:#eff6ff; color:var(--ui-primary-dark); padding:12px 14px; border-radius:10px; margin-bottom:16px; font-size:14px; }
     @media (max-width: 768px) { .veh-header { flex-direction:column; align-items:flex-start; } .veh-grid-2 { grid-template-columns:1fr; } }
 </style>
 
@@ -27,7 +27,7 @@
     <x-internal-navigation :back-url="route('admin.vehiculos.asignaciones.index')" />
     <div class="veh-form-wrap">
         <div class="veh-header">
-            <h1 class="veh-title">Nueva asignación de vehículo</h1>
+            <h1 class="ui-page-title veh-title">Nueva asignación de vehículo</h1>
         </div>
 
         <div class="veh-info-note">

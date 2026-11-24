@@ -21,7 +21,7 @@
   .show-page {
     width: 100%;
     min-height: calc(100vh - 64px);
-    background: #f8fafc;
+    background: var(--ui-bg);
     padding: 18px 14px;
   }
 
@@ -33,7 +33,7 @@
 
   .show-header {
     background: #ffffff;
-    border: 1px solid #dbe3ea;
+    border: 1px solid var(--ui-border);
     border-radius: 14px;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     padding: 14px 16px;
@@ -50,7 +50,7 @@
     font-size: 22px;
     line-height: 1.1;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .show-subtitle {
@@ -82,15 +82,15 @@
   }
 
   .btn-dark {
-    background: #0f172a !important;
+    background: var(--ui-text) !important;
     color: #ffffff !important;
-    border-color: #0f172a !important;
+    border-color: var(--ui-text) !important;
   }
 
   .btn-blue {
-    background: #2563eb !important;
+    background: var(--ui-primary) !important;
     color: #ffffff !important;
-    border-color: #2563eb !important;
+    border-color: var(--ui-primary) !important;
   }
 
   .btn-white {
@@ -133,7 +133,7 @@
 
   .main-card {
     background: #ffffff;
-    border: 1px solid #dbe3ea;
+    border: 1px solid var(--ui-border);
     border-radius: 14px;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     overflow: hidden;
@@ -158,7 +158,7 @@
   }
 
   .route-line strong {
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .route-arrow {
@@ -203,13 +203,13 @@
 
   .badge-default {
     background: #f1f5f9;
-    color: #475569;
+    color: var(--ui-muted);
   }
 
   .note-box {
     margin-top: 12px;
-    border: 1px solid #dbe3ea;
-    background: #f8fafc;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-bg);
     border-radius: 10px;
     padding: 10px 12px;
     font-size: 13px;
@@ -228,11 +228,11 @@
 
   .section-title {
     padding: 12px 16px;
-    background: #f8fafc;
+    background: var(--ui-bg);
     border-bottom: 1px solid #e2e8f0;
     font-size: 13px;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ui-text);
     display: flex;
     justify-content: space-between;
     gap: 10px;
@@ -273,7 +273,7 @@
 
   .product-code {
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .product-name {
@@ -286,7 +286,7 @@
     text-align: right;
     font-size: 14px;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ui-text);
   }
 
   .empty-products {
@@ -297,7 +297,7 @@
 
   .decision-box {
     padding: 14px 16px;
-    background: #f8fafc;
+    background: var(--ui-bg);
     border-top: 1px solid #e2e8f0;
   }
 
@@ -364,7 +364,7 @@
 
     <div class="show-header">
       <div>
-        <h1 class="show-title">Solicitud #{{ $operacion->id }}</h1>
+        <h1 class="ui-page-title show-title">Solicitud #{{ $operacion->id }}</h1>
         <div class="show-subtitle">
           Tipo: {{ $operacion->tipo }} · Creada el {{ $operacion->created_at->format('d/m/Y H:i') }}
         </div>
@@ -373,7 +373,7 @@
       <div class="show-actions">
         @rutaDisponible($routePrefix . '.operaciones.traslados.hoja')
         <a href="{{ route($routePrefix . '.operaciones.traslados.hoja', $operacion) }}" class="btn btn-blue">
-          🧾 Hoja
+          Hoja de traslado
         </a>
         @endrutaDisponible
 
@@ -381,7 +381,7 @@
         @if($operacion->archivo_excel_path)
           @rutaDisponible($routePrefix . '.operaciones.traslados.archivo')
           <a href="{{ route($routePrefix . '.operaciones.traslados.archivo', $operacion) }}" target="_blank" rel="noopener" class="btn btn-white">
-            📎 Ver Excel adjunto
+            Ver Excel adjunto
           </a>
           @endrutaDisponible
         @endif
@@ -430,7 +430,7 @@
       </div>
 
       <div class="table-wrap">
-        <table class="items-table">
+        <table class="ui-table items-table">
           <thead>
             <tr>
               <th>Producto</th>

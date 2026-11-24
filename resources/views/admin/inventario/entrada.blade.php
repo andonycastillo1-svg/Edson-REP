@@ -18,7 +18,7 @@
     <div class="mb-6 flex flex-col gap-4 border-b border-slate-100 pb-5 md:flex-row md:items-center md:justify-between">
         <div>
             <span class="ui-kicker">Entrada manual</span>
-            <h1 class="mt-1 text-2xl font-bold text-slate-900">Agregar al inventario</h1>
+            <h1 class="ui-page-title mt-1   text-slate-900">Agregar al inventario</h1>
             <p class="mt-1 text-sm text-slate-500">{{ $bodega->nombre }} · {{ $bodega->ubicacion ?? 'Sin ubicación' }}</p>
         </div>
     </div>

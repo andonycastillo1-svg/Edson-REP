@@ -12,13 +12,13 @@
       <x-internal-navigation :back-url="route($routePrefix . '.operaciones.traslados.index')" :back-route="$routePrefix.'.operaciones.traslados.index'" />
 
       <div class="mb-6">
-        <h1 class="text-3xl font-bold text-slate-900 mt-2">Nueva solicitud de traslado</h1>
+        <h1 class="ui-page-title text-slate-900 mt-2">Nueva solicitud de traslado</h1>
         <p class="text-sm text-slate-600">La persona encargada de la bodega de destino debe aprobar o rechazar la solicitud.</p>
       </div>
 
       <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.store') }}"
             enctype="multipart/form-data"
-            class="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
+            class="rounded-xl bg-white shadow-sm border border-slate-200 overflow-hidden">
         @csrf
             <input type="hidden" name="solicitud_id" value="{{ old('solicitud_id', (string) \Illuminate\Support\Str::uuid()) }}">
 
@@ -84,7 +84,7 @@
 
         <div class="p-6">
           <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="ui-table w-full text-sm">
               <thead class="bg-slate-50 text-slate-600">
                 <tr>
                   <th class="text-left px-3 py-2 font-semibold">Producto</th>

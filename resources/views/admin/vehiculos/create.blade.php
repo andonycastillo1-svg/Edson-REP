@@ -7,7 +7,7 @@
     <x-internal-navigation :back-url="route('admin.vehiculos.index')" />
 
     <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-slate-800">Nuevo Vehículo</h1>
+        <h1 class="ui-page-title text-slate-800">Nuevo Vehículo</h1>
     </div>
 
     <form enctype="multipart/form-data" action="{{ route('admin.vehiculos.store') }}" method="POST" class="ui-form space-y-6">

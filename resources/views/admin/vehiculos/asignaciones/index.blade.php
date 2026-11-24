@@ -20,7 +20,7 @@
     .veh-kicker {
         font-size: 13px;
         font-weight: 800;
-        color: #2563eb;
+        color: var(--ui-primary);
         text-transform: uppercase;
         letter-spacing: .08em;
         margin-bottom: 4px;
@@ -70,13 +70,13 @@
     }
 
     .veh-btn-primary {
-        background: #2563eb;
+        background: var(--ui-primary);
         color: #fff;
-        border-color: #2563eb;
+        border-color: var(--ui-primary);
     }
 
     .veh-btn-primary:hover {
-        background: #1d4ed8;
+        background: var(--ui-primary);
     }
 
     .veh-alert-success {
@@ -108,7 +108,7 @@
         border-radius: 16px;
         padding: 14px;
         margin-bottom: 14px;
-        box-shadow: 0 8px 22px rgba(15, 23, 42, .04);
+        box-shadow: var(--ui-shadow-sm);
     }
 
     .filters-card input,
@@ -124,7 +124,7 @@
         background: #fff;
         border: 1px solid #e5e7eb;
         border-radius: 18px;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, .05);
+        box-shadow: var(--ui-shadow-sm);
         overflow: hidden;
     }
 
@@ -145,7 +145,7 @@
     }
 
     .compact-summary:hover {
-        background: #f8fafc;
+        background: var(--ui-bg);
     }
 
     .info-main {
@@ -213,7 +213,7 @@
     .blue-btn {
         border-color: #bfdbfe;
         background: #eff6ff;
-        color: #1d4ed8;
+        color: var(--ui-primary);
     }
 
     .blue-btn:hover {
@@ -253,7 +253,7 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 14px;
-        background: #f8fafc;
+        background: var(--ui-bg);
         border: 1px solid #e5e7eb;
         border-radius: 14px;
         padding: 14px;
@@ -390,7 +390,7 @@
     }
 
     .quick-info-item {
-        background: #f8fafc;
+        background: var(--ui-bg);
         border: 1px solid #e5e7eb;
         border-radius: 12px;
         padding: 10px;
@@ -463,7 +463,7 @@
         <div class="veh-header">
             <div>
                 <div class="veh-kicker">Flota</div>
-                <h1 class="veh-title">Asignaciones de vehículos</h1>
+                <h1 class="ui-page-title veh-title">Asignaciones de vehículos</h1>
                 <p class="veh-subtitle">
                     Busca por vehículo, placa, VIN o colaborador y gestiona documentos firmados.
                 </p>

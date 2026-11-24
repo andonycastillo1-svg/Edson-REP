@@ -19,7 +19,7 @@
     @php($formularioError = request()->routeIs('sistema.usuario') ? old('formulario_cuenta') : null)
     <section role="alert" tabindex="-1" aria-labelledby="titulo-errores" class="ui-alert-error" data-resumen-validacion
              @if(is_string($formularioError)) data-validacion-origen="{{ $formularioError }}" @endif>
-        <h2 id="titulo-errores" class="text-base font-bold text-rose-900">Revisa los datos indicados</h2>
+        <h2 id="titulo-errores" class="text-base font-bold text-rose-900">Revisa estos datos y vuelve a intentarlo</h2>
         <ul class="mt-1 list-disc space-y-1 pl-5">
             @foreach($errors->getMessages() as $campo => $mensajes)
                 @foreach(array_unique($mensajes) as $mensaje)

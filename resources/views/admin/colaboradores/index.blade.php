@@ -14,14 +14,14 @@
 
 
     {{-- ENCABEZADO --}}
-    <div class="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div class="px-6 py-5 border-b border-slate-200">
         <div>
           <div class="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
             Recursos Humanos
           </div>
 
-          <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-950">
+          <h1 class="ui-page-title mt-1   tracking-tight text-slate-950">
             Colaboradores
           </h1>
 
@@ -63,7 +63,7 @@
     </div>
 
     {{-- DIRECTORIO --}}
-    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 
       {{-- CABECERA DIRECTORIO --}}
       <div class="border-b border-slate-200 bg-white px-6 py-5">
@@ -116,7 +116,7 @@
       <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white shadow-sm">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold text-white shadow-sm">
               <span x-text="selectedCount()"></span>
             </div>
 
@@ -177,7 +177,7 @@
       {{-- TABLA ACTIVOS --}}
       <div x-show="tab==='activos'">
         <div class="overflow-x-auto">
-          <table class="w-full text-sm">
+          <table class="ui-table w-full text-sm">
             <thead>
               <tr class="border-b border-slate-200 bg-white text-xs uppercase tracking-wide text-slate-500">
                 <th class="px-5 py-3 text-left font-bold w-12">Sel.</th>
@@ -285,7 +285,7 @@
       {{-- TABLA INACTIVOS --}}
       <div x-show="tab==='inactivos'" x-cloak>
         <div class="overflow-x-auto">
-          <table class="w-full text-sm">
+          <table class="ui-table w-full text-sm">
             <thead>
               <tr class="border-b border-slate-200 bg-white text-xs uppercase tracking-wide text-slate-500">
                 <th class="px-5 py-3 text-left font-bold w-12">Sel.</th>

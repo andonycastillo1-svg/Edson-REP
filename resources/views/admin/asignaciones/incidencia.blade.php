@@ -3,8 +3,8 @@
 @section('content')
 <div class="mx-auto max-w-4xl space-y-4 px-4 py-8">
     <x-internal-navigation :back-url="route($routePrefix.'.asignaciones.index')" />
-    <section class="rounded-2xl border border-slate-200 bg-white p-6">
-        <h1 class="text-2xl font-bold">{{ $incidencia->motivo_etiqueta }} · {{ $incidencia->asignacion->producto?->nombre ?? $incidencia->asignacion->producto_codigo }}</h1>
+    <section class="rounded-xl border border-slate-200 bg-white p-6">
+        <h1 class="ui-page-title ">{{ $incidencia->motivo_etiqueta }} · {{ $incidencia->asignacion->producto?->nombre ?? $incidencia->asignacion->producto_codigo }}</h1>
         <dl class="my-4 grid gap-3 sm:grid-cols-2">
             <div><dt class="font-bold">Colaborador</dt><dd>{{ $incidencia->asignacion->colaborador?->nombre }}</dd></div>
             <div><dt class="font-bold">Bodega de salida</dt><dd>{{ $incidencia->asignacion->bodega?->nombre }}</dd></div>
