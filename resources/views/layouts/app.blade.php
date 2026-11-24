@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Edson-REP') · {{ config('app.empresa') ?: 'Grupo NetSolutions' }}</title>
+    <title>@yield('title', 'Sistema de Inventario') · {{ config('app.empresa') ?: 'Grupo NetSolutions' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="ui-shell">

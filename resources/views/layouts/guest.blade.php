@@ -12,7 +12,7 @@
         <div class="ui-acceso-identidad">
             <x-logo-image class="ui-acceso-logo" alt="" />
             <div>
-                <p class="ui-acceso-producto">Edson-REP</p>
+                <p class="ui-acceso-producto">Sistema de Inventario</p>
                 <p class="ui-acceso-empresa">{{ config('app.empresa') ?: 'Grupo NetSolutions' }}</p>
             </div>
         </div>
