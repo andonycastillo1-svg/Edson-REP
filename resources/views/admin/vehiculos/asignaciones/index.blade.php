@@ -479,7 +479,7 @@
         <div class="filters-card">
             <input
                 type="text"
-                id="buscarAsignacion"
+                id="buscarAsignacion" maxlength="190"
                 placeholder="Buscar por vehículo, placa, VIN o colaborador..."
                 onkeyup="filtrarAsignaciones()"
             >
@@ -489,6 +489,7 @@
                 <option value="activa">Activas</option>
                 <option value="cerrada">Cerradas</option>
             </select>
+            <x-ui.exportar-excel modulo="vehiculos" :campos="['buscar' => 'buscarAsignacion', 'estado' => 'filtroEstado']" />
         </div>
 
         <div class="compact-list">

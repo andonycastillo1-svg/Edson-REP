@@ -101,7 +101,7 @@ class CatalogoPermisos
 
         $definiciones = match ($ambito) {
             1 => [
-                'usuarios' => ['usuarios', $usuarios],
+                'usuarios' => ['usuarios', $usuarios + ['regiones' => 'modificar', 'regiones.update' => 'modificar']],
                 'colaboradores' => ['colaboradores', $colaboradores],
                 'bodegas' => ['bodegas', $crud + ['inventario.export' => 'exportar']],
                 'compras' => ['compras', $compras],

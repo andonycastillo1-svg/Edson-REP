@@ -7,6 +7,7 @@ use App\Sistema\Auditoria;
 use App\Sistema\Presentacion;
 use App\Sistema\Permisos;
 use App\Http\Controllers\Controller;
+use App\Services\ExportacionesOperativas;
 use App\Sistema\ConsultaCampos;
 use App\Models\Bodega;
 use App\Models\Consolidado;
@@ -40,6 +41,13 @@ class CompraController extends Controller
             ->join('proveedores as p', 'p.id', '=', 'c.proveedor_id')
             ->select('c.*', 'p.nombre as proveedor_nombre');
         app(ConsultaCampos::class)->filtrar($consulta, $request, 'compras', 'c.id');
+        if ($request->boolean('xlsx')) {
+            $exportar = app(ExportacionesOperativas::class);
+            $exportar->autorizar($request, 'compras');
+
+            return $exportar->compras($consulta,
+                $request->validate(['buscar' => ['nullable', 'string', 'max:190']])['buscar'] ?? null);
+        }
         $compras = $consulta->orderByDesc('c.id')->get();
         $tablaCampos = app(Presentacion::class)->operativa('compras', $request->user(), $compras->pluck('id'));
 

@@ -7,6 +7,7 @@
 @endphp
 <x-sistema.pagina titulo="Necesidades de compra" descripcion="Compara lo aprobado con el saldo central y las facturas recibidas." :volver="route('dashboard')">
     <x-slot:acciones>
+        <x-ui.exportar-excel />
         @if($estado === 'aprobado' && $bodega && $comprables)
             @rutaDisponible($prefijo.'.compras.create')
                 <a class="ui-btn-primary" href="{{ route($prefijo.'.compras.create', count($comprables) === 1 ? ['consolidados' => $comprables] : []) }}">Registrar compra</a>

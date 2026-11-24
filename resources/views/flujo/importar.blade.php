@@ -8,6 +8,7 @@
             </div>
             <form method="POST" enctype="multipart/form-data" action="{{ route('flujo.importar.preview') }}" class="space-y-3">
                 @csrf
+                <x-flujo.consolidado-origen :consolidados="$consolidadosOrigen" />
                 <label class="block ui-carga text-sm font-semibold">Archivo de asignaciones
                     <input name="excel" type="file" accept=".xlsx" required class="mt-2 block w-full" aria-describedby="excel-formato">
                     <span id="excel-formato" class="mt-2 block font-normal text-slate-600">Formato XLSX de hasta 4 MB. Máximo 500 filas.</span>

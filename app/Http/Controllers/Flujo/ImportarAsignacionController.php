@@ -12,6 +12,7 @@ use App\Services\FlujoAcceso;
 use App\Services\HojaAsignacion;
 use ZipArchive;
 use App\Services\RegistrarAsignaciones;
+use App\Services\RequerimientosAsignacion;
 use App\Sistema\Ajustes;
 use App\Sistema\Auditoria;
 use App\Sistema\Permisos;
@@ -26,13 +27,15 @@ class ImportarAsignacionController extends Controller
 {
     public function __construct(private FlujoAcceso $acceso, private ExcelAsignaciones $excel) {}
 
-    public function index(Request $request)
+    public function index(Request $request, RequerimientosAsignacion $requerimientos)
     {
         $bodega = $this->bodega($request);
         $importaciones = ImportacionAsignacion::where('user_id', $request->user()->id)->whereNotNull('confirmada_en')
             ->latest('confirmada_en')->paginate(15);
 
-        return view('flujo.importar', compact('bodega', 'importaciones'));
+        $consolidadosOrigen = $requerimientos->disponibles($request->user())->latest('id')->get(['id', 'nombre']);
+
+        return view('flujo.importar', compact('bodega', 'importaciones', 'consolidadosOrigen'));
     }
 
     public function plantilla(Request $request)
@@ -43,10 +46,12 @@ class ImportarAsignacionController extends Controller
             'plantilla-asignaciones.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 
-    public function previsualizar(Request $request)
+    public function previsualizar(Request $request, RequerimientosAsignacion $requerimientos)
     {
         $bodega = $this->bodega($request);
-        $archivo = $request->validate(['excel' => ['required', 'file', 'mimes:xlsx', 'max:4096']])['excel'];
+        $datos = $request->validate(['excel' => ['required', 'file', 'mimes:xlsx', 'max:4096'], 'consolidado_id' => ['nullable', 'integer']]);
+        $archivo = $datos['excel'];
+        $consolidado = isset($datos['consolidado_id']) ? $requerimientos->verificar($request->user(), (int) $datos['consolidado_id']) : null;
         [$filas, $errores] = $this->excel->leer($archivo->getRealPath());
         [$filas, $errores] = $this->excel->validar($filas, $bodega, $request->user(), $errores);
         if ($errores !== []) {
@@ -55,6 +60,7 @@ class ImportarAsignacionController extends Controller
 
         $importacion = ImportacionAsignacion::create([
             'id' => (string) Str::uuid(), 'user_id' => $request->user()->id, 'bodega_id' => $bodega->id, 'filas' => $filas,
+            'consolidado_id' => $consolidado?->id,
         ]);
 
         return redirect()->route('flujo.importar.show', $importacion);
@@ -63,7 +69,7 @@ class ImportarAsignacionController extends Controller
     public function show(Request $request, string $importacion)
     {
         $bodega = $this->bodega($request);
-        $importacion = ImportacionAsignacion::where('user_id', $request->user()->id)->findOrFail($importacion);
+        $importacion = ImportacionAsignacion::with('consolidado')->where('user_id', $request->user()->id)->findOrFail($importacion);
         $filas = $importacion->filas;
 
         return view('flujo.importacion', compact('importacion', 'filas', 'bodega'));
@@ -99,7 +105,7 @@ class ImportarAsignacionController extends Controller
                 $entregas = [];
                 foreach ($ordenadas->groupBy('colaborador_codigo') as $codigo => $grupo) {
                     $fecha = $this->excel->salida($grupo->first()['fecha']);
-                    $datos = ['colaborador_codigo' => (string) $codigo, 'fecha' => $fecha->toDateTimeString()];
+                    $datos = ['colaborador_codigo' => (string) $codigo, 'fecha' => $fecha->toDateTimeString(), 'consolidado_id' => $lote->consolidado_id];
                     $items = $grupo->map(fn ($item) => $item + ['bodega_id' => $bodega->id]);
                     $entrega = $registro->registrar($usuario, $datos, $items, $valores);
                     $entregas[] = ['codigo' => (string) $codigo, 'grupo' => $entrega->id, 'productos' => $grupo->count()];

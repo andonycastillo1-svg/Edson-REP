@@ -25,6 +25,7 @@ class AsignacionInventario extends Model
         'bodega_id',
         'user_id',
         'cantidad_asignada',
+        'requerimiento_id',
         'fecha',
         'costo_unitario',
         'aprobado_por',
@@ -72,6 +73,11 @@ class AsignacionInventario extends Model
     public function entrega()
     {
         return $this->belongsTo(EntregaInventario::class, 'grupo_asignacion');
+    }
+
+    public function requerimiento()
+    {
+        return $this->belongsTo(ConsolidadoNecesidad::class, 'requerimiento_id');
     }
 
     public function incidencias()

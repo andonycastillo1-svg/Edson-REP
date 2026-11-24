@@ -24,6 +24,7 @@ class RegistrarAsignaciones
         private AsignacionVidaUtilService $vida,
         private DetectarReemplazos $reemplazos,
         private ValoresCampos $campos,
+        private RequerimientosAsignacion $requerimientos,
     ) {}
 
     public function registrar(User $usuario, array $data, Collection $items, array $valores, ?callable $adjuntarFoto = null): EntregaInventario
@@ -44,6 +45,8 @@ class RegistrarAsignaciones
         if ($colaborador->estado !== 'Activo') {
             throw ValidationException::withMessages(['colaborador_codigo' => 'El colaborador no está activo.']);
         }
+        $requerimientos = isset($data['consolidado_id'])
+            ? $this->requerimientos->vincular($usuario, (int) $data['consolidado_id'], $colaborador->codigo, $items) : collect();
 
         $anteriores = AsignacionInventario::custodiaActiva()->where('colaborador_codigo', $colaborador->codigo)
             ->whereIn('producto_codigo', $items->pluck('producto_codigo'))
@@ -80,6 +83,7 @@ class RegistrarAsignaciones
             $asignacion = AsignacionInventario::create([
                 'grupo_asignacion' => $grupo,
                 'colaborador_codigo' => $colaborador->codigo,
+                'requerimiento_id' => $requerimientos->get($codigo),
                 'producto_codigo' => $codigo,
                 'bodega_id' => $item['bodega_id'],
                 'cantidad_asignada' => 1,
@@ -112,7 +116,8 @@ class RegistrarAsignaciones
             $this->vida->registrarEstado($asignacion, 'activo', 'Salida de bodega registrada.');
             app(Auditoria::class)->registrar('asignaciones', 'registrar', $asignacion->id, null,
                 ['bodega_id' => $asignacion->bodega_id, 'cantidad' => 1, 'stock_tipo' => $tipo,
-                    'motivo_inventario_nuevo' => $motivoNuevo, 'motivo_asignacion' => $motivo?->codigo]);
+                    'motivo_inventario_nuevo' => $motivoNuevo, 'motivo_asignacion' => $motivo?->codigo,
+                    'requerimiento_id' => $asignacion->requerimiento_id]);
 
             $alertas = [...$alertas, ...$this->reemplazos->registrar($asignacion, $previas, $motivo)];
         }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Flujo;
 
 use App\Http\Controllers\Controller;
+use App\Services\ExportacionesOperativas;
 use App\Models\Consolidado;
 use App\Models\ConstanciaGerencia;
 use App\Services\DocumentoPrivado;
@@ -31,12 +32,15 @@ class PlanComprasController extends Controller
             : ($request->boolean('seleccion_manual') ? $disponibles->take(0) : $disponibles->take(200));
         $lineas = $this->plan->avance($seleccion);
         $saldo = $bodega ? $this->plan->saldoCentral($lineas, $bodega->id) : null;
+        $facturas = $this->plan->facturas($seleccion);
+        if ($request->boolean('xlsx')) {
+            return app(ExportacionesOperativas::class)->necesidades($lineas, $seleccion, $facturas, $saldo);
+        }
         $lineas = $this->plan->sugerencias(
             $lineas, $estado === 'aprobado' && $bodega
                 ? $this->plan->avance(Consolidado::where('estado', 'aprobado')->get(['id', 'plan_compra'])) : collect(),
             $saldo ?? collect(), estimarStock: $estado === 'aprobado'
         );
-        $facturas = $this->plan->facturas($seleccion);
         $planificables = $seleccion->reject(fn ($fila) => $facturas->get($fila->id, collect())->contains('distribucion_confirmada_en', null));
         $resumen = $this->plan->resumen($lineas, $facturas, $saldo);
         $constancias = ConstanciaGerencia::with('consolidados')->latest('id')->paginate(15)->withQueryString();

@@ -325,6 +325,7 @@
     <div class="tras-header">
       <div>
         <h1 class="ui-page-title tras-title">Solicitudes de traslado</h1>
+        <x-ui.exportar-excel modulo="traslados" />
         <div class="tras-subtitle">
           @if($user->isEncargado())
             Bandeja de solicitudes para tu bodega de destino.

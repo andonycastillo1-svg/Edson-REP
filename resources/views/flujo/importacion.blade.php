@@ -4,6 +4,9 @@
         $errores = $errores ?? [];
         $prefijo = \App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo());
     @endphp
+    @if(isset($importacion) && $importacion->consolidado_id)
+        <p class="ui-alert ui-alert-info">Consolidado de origen {{ $importacion->consolidado?->nombre ?? '#'.$importacion->consolidado_id }}.</p>
+    @endif
     @if(isset($importacion) && $importacion->confirmada_en)
         <x-sistema.panel titulo="Hojas de asignación">
             @rutaDisponible($prefijo.'.asignaciones.pdf')

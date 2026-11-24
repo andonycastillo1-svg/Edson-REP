@@ -8,6 +8,7 @@ use App\Sistema\ConsultaCampos;
 use App\Sistema\Permisos;
 use App\Sistema\Presentacion;
 use App\Http\Controllers\Controller;
+use App\Services\ExportacionesOperativas;
 use App\Models\AsignacionInventario;
 use App\Models\Inventario;
 use App\Models\Producto;
@@ -27,6 +28,7 @@ use Illuminate\Support\Str;
 use App\Services\AccesoCustodia;
 use App\Services\AsignacionVidaUtilService;
 use App\Services\RegistrarAsignaciones;
+use App\Services\RequerimientosAsignacion;
 use App\Models\MotivoAsignacion;
 use App\Services\NotificacionService;
 use Carbon\Carbon;
@@ -97,6 +99,17 @@ class AsignacionInventarioController extends Controller
         }
         app(ConsultaCampos::class)->filtrar($query, $request, 'asignaciones');
         $puedeDevolverTodo = $puedeDevolverTodo && !$seguimiento && !collect($request->input('campo'))->contains(fn ($valor) => filled($valor));
+        if ($request->boolean('xlsx')) {
+            $exportar = app(ExportacionesOperativas::class);
+            $exportar->autorizar($request, 'asignaciones');
+            if ($request->boolean('devoluciones')) {
+                abort_unless($puedeVerMovimientos, 403);
+
+                return $exportar->devoluciones($query);
+            }
+
+            return $exportar->asignaciones($query);
+        }
         $asignaciones = $query->get();
         $tablaCampos = app(Presentacion::class)->operativa('asignaciones', $usuario, $asignaciones->pluck('id'));
         $vida = app(AsignacionVidaUtilService::class);
@@ -176,7 +189,7 @@ class AsignacionInventarioController extends Controller
         ));
     }
 
-    public function create()
+    public function create(Request $request, RequerimientosAsignacion $requerimientos)
     {
         $inventariosQuery = Inventario::with('producto', 'bodega')
             ->whereIn('stock_tipo', ['nuevo', 'usado'])->where('cantidad', '>', 0);
@@ -192,11 +205,12 @@ class AsignacionInventarioController extends Controller
         $colaboradores = Colaborador::where('estado', 'Activo')->get();
         $bodegas = $bodegasQuery->get();
         $motivos = MotivoAsignacion::where('activo', true)->orderBy('id')->get();
+        $consolidadosOrigen = $requerimientos->disponibles($request->user())->latest('id')->get(['id', 'nombre']);
 
         return view('admin.asignaciones.create', compact(
             'inventarios',
             'colaboradores',
-            'bodegas', 'motivos'
+            'bodegas', 'motivos', 'consolidadosOrigen'
         ));
     }
 
@@ -204,6 +218,7 @@ class AsignacionInventarioController extends Controller
     {
         $data = $request->validate([
             'solicitud_id' => ['required', 'uuid'],
+            'consolidado_id' => ['nullable', 'integer'],
             'colaborador_codigo' => ['required', 'string', Rule::exists('colaboradores', 'codigo')->where('estado', 'Activo')],
             'fecha' => ['nullable', 'date', 'before_or_equal:now'],
             'modalidad' => ['nullable', 'in:directa,tercero'],
@@ -280,7 +295,7 @@ class AsignacionInventarioController extends Controller
     public function entrega(string $grupo)
     {
         $asignaciones = $this->filasDelGrupo($grupo)->load('producto', 'colaborador', 'bodega', 'incidencias',
-            'evidencias.subidoPor', 'entrega');
+            'evidencias.subidoPor', 'entrega', 'requerimiento.participante.consolidado');
         if (config('inventario.seguimiento_unidades')) {
             $asignaciones->load('periodosActivos');
         }

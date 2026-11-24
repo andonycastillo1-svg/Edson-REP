@@ -7,6 +7,7 @@ use App\Sistema\Permisos;
 use App\Sistema\Seguridad;
 use App\Sistema\ValoresCampos;
 use App\Http\Controllers\Controller;
+use App\Services\ExportacionesOperativas;
 use App\Sistema\ConsultaCampos;
 use App\Sistema\Presentacion;
 use App\Models\Bodega;
@@ -36,6 +37,12 @@ class UsuarioController extends Controller
             })
             ->when($roleId, fn ($query) => $query->where('role_id', $roleId));
         app(ConsultaCampos::class)->filtrar($consulta, $request, 'usuarios');
+        if ($request->boolean('xlsx')) {
+            $exportar = app(ExportacionesOperativas::class);
+            $exportar->autorizar($request, 'usuarios');
+
+            return $exportar->usuarios($consulta);
+        }
         $usuarios = $consulta->orderBy('name')
             ->paginate(15)
             ->appends($request->query());

@@ -62,6 +62,8 @@ class FlujoOperativoTest extends TestCase
         $this->supervisor->almacenistasAsignados()->attach($this->regional);
         $this->norte = Region::create(['nombre' => 'Norte', 'activa' => true]);
         $this->sur = Region::create(['nombre' => 'Sur', 'activa' => true]);
+        $this->norte->coordinador()->associate($this->coordinador)->save();
+        $this->sur->coordinador()->associate($this->ajeno)->save();
         Colaborador::create(['codigo' => 'COL-001', 'nombre' => 'Técnica norte', 'puesto' => 'Instalación', 'estado' => 'Activo', 'region_id' => $this->norte->id]);
         Colaborador::create(['codigo' => 'COL-002', 'nombre' => 'Técnico sur', 'puesto' => 'Mantenimiento', 'estado' => 'Activo', 'region_id' => $this->sur->id]);
         Producto::create(['codigo' => 'P-001', 'nombre' => 'Arnés QA', 'vida_util_meses' => 2]);
@@ -104,7 +106,7 @@ class FlujoOperativoTest extends TestCase
     public function test_inspeccion_filtra_por_region_registra_puesto_y_protege_fotos(): void
     {
         $this->actingAs($this->supervisor)->get(route('flujo.inspecciones.create'))->assertOk()
-            ->assertSee('Equipo de rescate en alturas titular')->assertSee('Fotografías');
+            ->assertSee('Equipo de rescate en alturas titular')->assertSee('Observaciones y fotografías');
         $this->getJson(route('flujo.inspecciones.colaboradores', $this->norte))->assertOk()->assertJsonCount(1)
             ->assertJsonPath('0.codigo', 'COL-001')->assertJsonPath('0.puesto', 'Instalación');
         $this->postJson(route('flujo.inspecciones.store'), [])->assertUnprocessable()
@@ -169,22 +171,25 @@ class FlujoOperativoTest extends TestCase
         $this->actingAs($this->central)->post(route('flujo.consolidados.store'), $datos)->assertSessionHasNoErrors();
         $consolidado = Consolidado::sole();
         $linea = $consolidado->lineas()->sole();
+        $persona = $consolidado->participantes()->sole();
+        $necesidad = $persona->necesidades()->sole();
         $this->assertEquals(4294967346, $linea->original);
-        $this->estado($consolidado, 'enviar');
+        $this->assertSame('enviado', $consolidado->estado);
 
         $this->actingAs($this->coordinador)->get(route('flujo.consolidados.show', $consolidado))->assertOk()
             ->assertSee('name="cantidad_nueva"', false)->assertDontSee('max="2000000"', false);
         $url = route('flujo.consolidados.transicion', [$consolidado, 'ajustar']);
         $version = $consolidado->eventos()->max('id');
         $this->postJson($url, ['version' => $version, 'nota' => 'Ajuste de cantidades',
-            'cantidades' => [$linea->id => -1], 'producto_codigo' => 'P-002', 'cantidad_nueva' => '1.5'])
-            ->assertUnprocessable()->assertJsonValidationErrors(['cantidades.'.$linea->id, 'cantidad_nueva']);
-        $this->estado($consolidado, 'ajustar', ['cantidades' => [$linea->id => 0], 'producto_codigo' => 'P-002',
+            'participante_id' => $persona->id, 'cantidades' => [$necesidad->id => -1], 'producto_codigo' => 'P-002', 'cantidad_nueva' => '1.5'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['cantidades.'.$necesidad->id, 'cantidad_nueva']);
+        $this->estado($consolidado, 'ajustar', ['participante_id' => $persona->id, 'cantidades' => [$necesidad->id => 0], 'producto_codigo' => 'P-002',
             'cantidad_nueva' => 4294967296, 'nota' => 'Redistribución por producto']);
         $this->assertEquals(0, $linea->fresh()->cantidad);
         $this->assertDatabaseHas('consolidado_lineas', ['consolidado_id' => $consolidado->id, 'producto_codigo' => 'P-002',
             'original' => 0, 'cantidad' => 4294967296]);
-        $this->estado($consolidado, 'aprobar', ['cantidades' => [$linea->id => 4294967300], 'nota' => 'Cantidad definitiva']);
+        $this->estado($consolidado, 'ajustar', ['participante_id' => $persona->id, 'cantidades' => [$necesidad->id => 4294967300], 'nota' => 'Cantidad definitiva']);
+        $this->estado($consolidado, 'aprobar');
         $this->assertDatabaseHas('consolidado_lineas', ['id' => $linea->id, 'original' => 4294967346, 'cantidad' => 4294967300]);
         $this->assertEquals(4294967346, DB::table('inspeccion_lineas')->sum('cantidad'));
         $this->assertSame(3, $this->saldo('P-001'));
@@ -221,16 +226,18 @@ class FlujoOperativoTest extends TestCase
         $this->postJson(route('flujo.consolidados.store'), $datos)->assertUnprocessable()->assertJsonValidationErrors('inspecciones');
         $consolidado = Consolidado::sole();
         $linea = $consolidado->lineas()->sole();
+        $persona = $consolidado->participantes()->sole();
+        $necesidad = $persona->necesidades()->sole();
         $this->assertEquals(5, $linea->original);
-        $this->get(route('flujo.consolidados.show', $consolidado))->assertOk()->assertSee('Enviar a coordinación');
-        $this->estado($consolidado, 'enviar');
+        $this->get(route('flujo.consolidados.show', $consolidado))->assertOk()->assertDontSee('Guardar ajustes');
+        $this->assertSame('enviado', $consolidado->estado);
         $this->actingAs($this->ajeno)->get(route('flujo.consolidados.show', $consolidado))->assertNotFound();
         $this->actingAs($this->coordinador)->get(route('flujo.consolidados.show', $consolidado))
-            ->assertOk()->assertSee('Aprobar consolidado')->assertSee('Solicitudes originales');
+            ->assertOk()->assertSee('Aprobar consolidado')->assertSee('Necesidades por colaborador');
         $url = route('flujo.consolidados.transicion', [$consolidado, 'aprobar']);
         $version = $consolidado->eventos()->max('id');
-        $this->postJson($url, ['version' => $version, 'cantidades' => [$linea->id => 6]])->assertUnprocessable()->assertJsonValidationErrors('nota');
-        $this->estado($consolidado, 'ajustar', ['cantidades' => [$linea->id => 6], 'producto_codigo' => 'P-002',
+        $this->postJson($url, ['version' => $version, 'participante_id' => $persona->id, 'cantidades' => [$necesidad->id => 6]])->assertUnprocessable()->assertJsonValidationErrors('cantidades');
+        $this->estado($consolidado, 'ajustar', ['participante_id' => $persona->id, 'cantidades' => [$necesidad->id => 6], 'producto_codigo' => 'P-002',
             'cantidad_nueva' => 2, 'nota' => 'Ajuste por nuevas cuadrillas.']);
         $this->postJson($url, ['version' => $version])->assertUnprocessable()->assertJsonValidationErrors('estado');
         $this->estado($consolidado, 'aprobar');
@@ -241,9 +248,9 @@ class FlujoOperativoTest extends TestCase
         $this->assertEquals(5, DB::table('inspeccion_lineas')->sum('cantidad'));
         $evento = $consolidado->eventos()->where('accion', 'ajustar')->sole();
         $this->assertEquals($this->coordinador->id, $evento->user_id);
-        $this->assertEquals(['producto' => 'P-001', 'antes' => 5, 'nuevo' => 6], $evento->cambios['productos'][0]);
+        $this->assertEquals(['colaborador' => 'COL-001', 'region_id' => $this->norte->id, 'producto' => 'P-001', 'antes' => 5, 'nuevo' => 6], $evento->cambios['productos'][0]);
         $this->postJson(route('flujo.consolidados.transicion', [$consolidado, 'ajustar']), [
-            'version' => $consolidado->eventos()->max('id'), 'cantidades' => [$linea->id => 8], 'nota' => 'Intento posterior',
+            'version' => $consolidado->eventos()->max('id'), 'participante_id' => $persona->id, 'cantidades' => [$necesidad->id => 8], 'nota' => 'Intento posterior',
         ])->assertUnprocessable()->assertJsonValidationErrors('estado');
         $this->assertDatabaseCount('inventarios', 0);
     }
@@ -670,6 +677,261 @@ class FlujoOperativoTest extends TestCase
             'desgaste' => ['desgaste', null], 'robo' => ['robo', null],
             'robo injustificado' => ['robo_injustificado', '30.00'],
         ];
+    }
+
+    public function test_guardar_y_continuar_conserva_fecha_y_region_y_reenvio_no_duplica(): void
+    {
+        $formulario = route('flujo.inspecciones.create');
+        $datos = [...$this->datosInspeccion(10), 'observaciones' => 'Revisar tallas', 'destino' => 'continuar'];
+        $continuar = route('flujo.inspecciones.create', ['fecha' => $datos['fecha'], 'region' => $this->norte->id, 'continuar' => 1]);
+        $this->actingAs($this->supervisor)->from($formulario)->post(route('flujo.inspecciones.store'),
+            [...$datos, 'cantidades' => [$this->articulo => '-1']])->assertRedirect($formulario)
+            ->assertSessionHasInput('observaciones', 'Revisar tallas')->assertSessionHasErrors('cantidades.'.$this->articulo);
+        $this->post(route('flujo.inspecciones.store'), $datos)->assertRedirect($continuar)->assertSessionHas('success');
+        $this->get($continuar)->assertOk()->assertDontSee('Revisar tallas')->assertSee('Guardar y finalizar');
+        $this->postJson(route('flujo.inspecciones.store'), $datos)->assertUnprocessable()->assertJsonValidationErrors('solicitud_id');
+        $otra = [...$this->datosInspeccion(0), 'region_id' => $this->sur->id, 'colaborador_codigo' => 'COL-002', 'destino' => 'finalizar'];
+        $this->post(route('flujo.inspecciones.store'), $otra)->assertRedirect(route('flujo.inspecciones.index'));
+        $fila = Inspeccion::where('colaborador_codigo', 'COL-001')->sole();
+        $this->get(route('flujo.inspecciones.show', $fila))->assertOk()->assertSee('Revisar tallas')->assertSee('Nueva inspección');
+        $this->assertDatabaseCount('inspecciones', 2);
+    }
+
+    public function test_configurar_regiones_y_reasignar_pendientes_conserva_responsables_historicos(): void
+    {
+        $nueva = Region::create(['nombre' => 'Centro', 'activa' => true]);
+        $ruta = route('admin.usuarios.regiones.update', $this->coordinador);
+        $this->actingAs($this->central)->putJson($ruta, ['regiones' => [$nueva->id]])->assertForbidden();
+        $this->actingAs($this->admin)->get(route('admin.usuarios.regiones', $this->coordinador))->assertOk();
+        $this->putJson($ruta, ['regiones' => [$this->sur->id]])->assertUnprocessable()->assertJsonValidationErrors('regiones');
+        $this->assertDatabaseCount('region_coordinador_historial', 0);
+        $this->put($ruta, ['regiones' => [$this->norte->id, $nueva->id]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('region_coordinador_historial', ['region_id' => $nueva->id, 'coordinador_id' => $this->coordinador->id, 'user_id' => $this->admin->id]);
+
+        $this->actingAs($this->supervisor)->post(route('flujo.inspecciones.store'), $this->datosInspeccion())->assertRedirect();
+        $this->post(route('flujo.inspecciones.store'), $this->datosInspeccion())->assertRedirect();
+        [$primera, $segunda] = Inspeccion::orderBy('id')->get()->all();
+        $aprobado = $this->consolidar([$primera->id], 'Aprobación histórica');
+        $pendiente = $this->consolidar([$segunda->id], 'Revisión en curso');
+        $this->actingAs($this->coordinador);
+        $this->estado($aprobado, 'aprobar');
+
+        $this->actingAs($this->admin)->put(route('admin.usuarios.regiones.update', $this->ajeno), [
+            'regiones' => [$this->sur->id, $this->norte->id], 'reasignar' => 1,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('region_coordinador_historial', ['region_id' => $this->norte->id, 'anterior_id' => $this->coordinador->id, 'coordinador_id' => $this->ajeno->id]);
+        $this->assertSame($this->coordinador->id, $this->supervisor->fresh()->coordinador_id);
+        $this->assertSame($this->coordinador->id, $aprobado->fresh()->coordinador_id);
+        $this->assertSame($this->coordinador->id, $pendiente->fresh()->coordinador_id);
+        $this->postJson(route('flujo.consolidados.transicion', [$aprobado, 'reasignar']), [
+            'version' => $aprobado->eventos()->max('id'), 'nota' => 'No corresponde',
+        ])->assertUnprocessable()->assertJsonValidationErrors('estado');
+        $this->estado($pendiente, 'reasignar', ['nota' => 'Traspaso de la región Norte']);
+        $this->assertSame($this->ajeno->id, $pendiente->fresh()->coordinador_id);
+        $this->assertEquals(['antes' => $this->coordinador->id, 'nuevo' => $this->ajeno->id], $pendiente->eventos()->where('accion', 'reasignar')->sole()->cambios['coordinador']);
+        $this->actingAs($this->ajeno)->get(route('flujo.consolidados.show', $pendiente))->assertOk();
+        $this->get(route('flujo.consolidados.show', $aprobado))->assertNotFound();
+        $this->actingAs($this->coordinador)->get(route('flujo.consolidados.show', $pendiente))->assertNotFound();
+    }
+
+    public function test_consolidar_bloquea_regiones_sin_responsable_o_con_distinto_coordinador(): void
+    {
+        $this->actingAs($this->supervisor)->post(route('flujo.inspecciones.store'), $this->datosInspeccion())->assertRedirect();
+        $this->post(route('flujo.inspecciones.store'), [...$this->datosInspeccion(), 'region_id' => $this->sur->id, 'colaborador_codigo' => 'COL-002'])->assertRedirect();
+        $ids = Inspeccion::pluck('id')->all();
+        $datos = ['nombre' => 'Operación regional', 'desde' => today()->toDateString(), 'hasta' => today()->toDateString(), 'inspecciones' => $ids];
+        $ruta = route('flujo.consolidados.store');
+        $this->actingAs($this->central)->postJson($ruta, $datos)->assertUnprocessable()
+            ->assertJsonValidationErrors('inspecciones')->assertJsonPath('errors.inspecciones.0', fn ($m) => str_contains($m, 'Separa'));
+        $this->sur->coordinador()->dissociate()->save();
+        $this->postJson($ruta, $datos)->assertUnprocessable()->assertJsonValidationErrors('inspecciones')
+            ->assertJsonPath('errors.inspecciones.0', fn ($m) => str_contains($m, 'Sur'));
+        $this->assertDatabaseCount('consolidados', 0);
+        $this->sur->coordinador()->associate($this->coordinador)->save();
+        $consolidado = $this->consolidar($ids, 'Mismo responsable');
+        $this->assertSame($this->coordinador->id, $consolidado->coordinador_id);
+        $this->assertSame('enviado', $consolidado->estado);
+        $this->assertEqualsCanonicalizing([$this->norte->id, $this->sur->id], $consolidado->participantes()->pluck('region_id')->all());
+    }
+
+    public function test_coordinacion_agrega_colaborador_y_productos_con_auditoria_y_puede_devolver(): void
+    {
+        Colaborador::create(['codigo' => 'COL-003', 'nombre' => 'Omitido norte', 'puesto' => 'Soporte', 'estado' => 'Activo', 'region_id' => $this->norte->id]);
+        $this->actingAs($this->supervisor)->post(route('flujo.inspecciones.store'), $this->datosInspeccion(2))->assertRedirect();
+        $consolidado = $this->consolidar(Inspeccion::pluck('id')->all(), 'Necesidades individuales');
+        $url = route('flujo.consolidados.transicion', [$consolidado, 'ajustar']);
+        $base = ['version' => $consolidado->eventos()->max('id'), 'producto_codigo' => 'P-001', 'cantidad_nueva' => 5, 'nota' => 'Incorporación justificada'];
+        $this->postJson($url, [...$base, 'colaborador_codigo' => 'COL-003'])->assertForbidden();
+        $this->postJson(route('flujo.consolidados.transicion', [$consolidado, 'corregir']), $base)->assertForbidden();
+        $this->actingAs($this->coordinador)->getJson(route('flujo.consolidados.colaboradores', [$consolidado, 'q' => 'COL-00']))
+            ->assertOk()->assertJsonCount(2)->assertJsonMissing(['codigo' => 'COL-002']);
+        foreach (['COL-002', 'NO-EXISTE'] as $codigo) {
+            $this->postJson($url, [...$base, 'colaborador_codigo' => $codigo])->assertUnprocessable()->assertJsonValidationErrors('colaborador_codigo');
+        }
+        $this->postJson($url, [...$base, 'colaborador_codigo' => 'COL-003', 'nota' => ''])->assertUnprocessable()->assertJsonValidationErrors('nota');
+        $this->estado($consolidado, 'ajustar', [...$base, 'colaborador_codigo' => 'COL-003']);
+        $this->get(route('flujo.consolidados.show', $consolidado))->assertOk()->assertSee('Incorporado por coordinación');
+        $this->get(route('flujo.consolidados.show', [$consolidado, 'vista' => 'resumen']))->assertOk()->assertSee('Totales por producto');
+        $this->assertDatabaseHas('consolidado_lineas', ['producto_codigo' => 'P-001', 'original' => 2, 'cantidad' => 7]);
+        $persona = $consolidado->participantes()->where('colaborador_codigo', 'COL-003')->sole();
+        $this->assertSame($this->coordinador->id, $persona->agregado_por);
+        $this->estado($consolidado, 'ajustar', ['colaborador_codigo' => 'COL-003', 'producto_codigo' => 'P-002', 'cantidad_nueva' => 3, 'nota' => 'Falta casco']);
+        $this->assertSame(2, $consolidado->participantes()->count());
+        $this->assertSame(2, $persona->necesidades()->count());
+        $this->assertDatabaseCount('inspecciones', 1);
+        $this->assertDatabaseCount('movimientos', 0);
+        $this->assertTrue($consolidado->eventos()->where('nota', 'Incorporación justificada')->exists());
+        $this->estado($consolidado, 'devolver', ['nota' => 'Validar lugar de entrega']);
+        $this->assertSame('correccion', $consolidado->fresh()->estado);
+    }
+
+    public function test_entregas_manuales_y_masivas_comparten_el_saldo_aprobado_y_conservan_stock(): void
+    {
+        $this->stock('P-001', 5);
+        $this->stock('P-002', 3);
+        $this->actingAs($this->supervisor)->post(route('flujo.inspecciones.store'), $this->datosInspeccion(2))->assertRedirect();
+        $consolidado = $this->consolidar(Inspeccion::pluck('id')->all(), 'Entrega autorizada');
+        $this->actingAs($this->coordinador);
+        $this->estado($consolidado, 'aprobar');
+        $this->assertSame(5, $this->saldo('P-001'));
+        $this->assertDatabaseCount('movimientos', 0);
+        $necesidad = $consolidado->participantes()->sole()->necesidades()->sole();
+        $datos = ['consolidado_id' => $consolidado->id, 'colaborador_codigo' => 'COL-001',
+            'items' => [['producto_codigo' => 'P-001', 'bodega_id' => $this->bodega->id]]];
+        $ruta = route('operador.asignaciones.store');
+        $this->actingAs($this->central)->post($ruta, [...$datos, 'solicitud_id' => (string) Str::uuid()])->assertRedirect()->assertSessionHasNoErrors();
+        $asignacion = AsignacionInventario::where('requerimiento_id', $necesidad->id)->sole();
+        $this->get(route('operador.asignaciones.entrega', $asignacion->grupo_asignacion))->assertOk()->assertSee('Requerimiento #'.$necesidad->id);
+        $this->postJson($ruta, [...$datos, 'solicitud_id' => (string) Str::uuid(), 'colaborador_codigo' => 'COL-002'])
+            ->assertUnprocessable()->assertJsonValidationErrors('consolidado_id');
+
+        $this->post(route('flujo.importar.preview'), ['consolidado_id' => $consolidado->id,
+            'excel' => $this->xlsx([['COL-001', 'P-001', 1, today()->toDateString()]])])->assertRedirect()->assertSessionHasNoErrors();
+        $lote = ImportacionAsignacion::sole();
+        $this->post(route('flujo.importar.confirmar', $lote))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(2, AsignacionInventario::where('requerimiento_id', $necesidad->id)->count());
+        $this->assertSame(3, $this->saldo('P-001'));
+        $this->postJson($ruta, [...$datos, 'solicitud_id' => (string) Str::uuid()])->assertUnprocessable()->assertJsonValidationErrors('consolidado_id');
+        $this->assertSame(3, $this->saldo('P-001'));
+        $this->assertSame(3, $this->saldo('P-002'));
+        $this->actingAs($this->admin)->postJson(route('flujo.consolidados.transicion', [$consolidado, 'reabrir']), [
+            'version' => $consolidado->eventos()->max('id'), 'nota' => 'Ya hay entregas',
+        ])->assertUnprocessable()->assertJsonValidationErrors('estado');
+    }
+
+    public function test_exportaciones_excel_conservan_filtros_permisos_y_texto_seguro(): void
+    {
+        foreach ([
+            [$this->admin, 'usuarios.datos_exportar'],
+            [$this->admin, 'colaboradores.datos_exportar'],
+            [$this->admin, 'compras.datos_exportar'],
+            [$this->admin, 'bodegas.datos_exportar'],
+            [$this->admin, 'asignaciones.datos_exportar'],
+            [$this->regional, 'bodegas.datos_exportar'],
+        ] as [$usuario, $permiso]) {
+            DB::table('sistema_permisos_usuario')->insert(['user_id' => $usuario->id, 'permiso' => $permiso, 'permitido' => true]);
+        }
+        for ($i = 1; $i <= 12; $i++) {
+            Colaborador::create(['codigo' => sprintf('QA-%02d', $i), 'nombre' => '=QA - Técnico '.$i,
+                'puesto' => 'Instalación', 'estado' => 'Activo', 'region_id' => $this->norte->id]);
+        }
+        Colaborador::create(['codigo' => 'NO-QA', 'nombre' => '=QA - inactivo', 'puesto' => 'Instalación',
+            'estado' => 'Inactivo', 'region_id' => $this->sur->id]);
+        $url = route('admin.colaboradores.index', ['q' => '=QA', 'estado' => 'Activo', 'xlsx' => 1, 'page' => 2]);
+        $ficha = $this->excelDescargado($this->actingAs($this->admin->fresh())->get($url), 'colaboradores.xlsx');
+        $this->assertSame(13, $ficha->getHighestDataRow());
+        $this->assertSame('A1:E13', $ficha->getAutoFilter()->getRange());
+        $this->assertSame('=QA - Técnico 1', (string) $ficha->getCell('B2')->getValue());
+        $this->assertSame('inlineStr', $ficha->getCell('B2')->getDataType());
+        $this->assertSame('Norte', (string) $ficha->getCell('D2')->getValue());
+        $this->assertSame('Activo', (string) $ficha->getCell('E13')->getValue());
+        $this->assertSame(15, Colaborador::count());
+
+        $this->coordinador->update(['name' => '@María como texto', 'email' => 'exporta-coord@example.test']);
+        $usuarios = $this->excelDescargado($this->get(route('admin.usuarios.index', ['q' => 'exporta-coord', 'xlsx' => 1])), 'usuarios.xlsx');
+        $this->assertSame(2, $usuarios->getHighestDataRow());
+        $this->assertSame('@María como texto', (string) $usuarios->getCell('A2')->getValue());
+        $this->assertSame('Norte', (string) $usuarios->getCell('E2')->getValue());
+        $this->assertNotContains($this->coordinador->password, $usuarios->toArray()[1]);
+        $this->assertNotContains('Contraseña', $usuarios->toArray()[0]);
+
+        $this->stock('P-001', 3);
+        $this->actingAs($this->central)->post(route('operador.compras.store'), $this->datosCompra('QA-F-21', ['P-002'], [2]))
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->central)->post(route('operador.compras.store'), $this->datosCompra('QA-F-22', ['P-002'], [1]))
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $compras = $this->excelDescargado($this->actingAs($this->admin->fresh())
+            ->get(route('admin.compras.index', ['xlsx' => 1, 'buscar' => 'qa-f-21'])), 'compras.xlsx');
+        $this->assertSame(2, $compras->getHighestDataRow());
+        $this->assertSame('QA-F-21', (string) $compras->getCell('C2')->getValue());
+        $this->assertEquals(2, $compras->getCell('G2')->getValue());
+        $this->assertTrue(\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($compras->getCell('B2')));
+        $this->assertSame(3, $this->saldo('P-002'));
+        $this->assertDatabaseCount('movimientos', 2);
+
+        $bodegas = $this->excelDescargado($this->actingAs($this->regional->fresh())
+            ->get(route('operador.bodegas.index', ['xlsx' => 1])), 'existencias-por-bodega.xlsx');
+        $this->assertSame(2, $bodegas->getHighestDataRow());
+        $this->assertSame('Sucursal', (string) $bodegas->getCell('A2')->getValue());
+        $this->get(route('operador.compras.index', ['xlsx' => 1]))->assertForbidden();
+        $this->actingAs($this->supervisor)->get(route('supervisor.asignaciones.index', ['xlsx' => 1]))->assertForbidden();
+    }
+
+    public function test_exportar_flujo_regional_y_plan_de_compra_no_cambia_datos(): void
+    {
+        $this->actingAs($this->supervisor)->post(route('flujo.inspecciones.store'),
+            [...$this->datosInspeccion(3), 'observaciones' => '-Nota norte'])->assertRedirect();
+        $this->post(route('flujo.inspecciones.store'), [...$this->datosInspeccion(4), 'region_id' => $this->sur->id, 'colaborador_codigo' => 'COL-002'])
+            ->assertRedirect();
+        [$primera, $segunda] = Inspeccion::orderBy('id')->get()->all();
+        $norte = $this->consolidar([$primera->id], 'Solo Norte');
+        $sur = $this->consolidar([$segunda->id], 'Solo Sur');
+        $this->actingAs($this->coordinador);
+        $this->estado($norte, 'aprobar');
+        $this->get(route('flujo.consolidados.index', ['xlsx' => 1, 'consolidado_id' => $sur->id]))->assertNotFound();
+
+        $inspeccion = $this->excelDescargado($this->get(route('flujo.inspecciones.index', ['xlsx' => 1])), 'inspecciones.xlsx');
+        $this->assertSame(2, $inspeccion->getHighestDataRow());
+        $this->assertSame('COL-001', (string) $inspeccion->getCell('E2')->getValue());
+        $this->assertSame('inlineStr', $inspeccion->getCell('K2')->getDataType());
+        $hoja = $this->excelDescargado($this->get(route('flujo.consolidados.index', ['xlsx' => 1, 'estado' => 'aprobado'])), 'consolidados.xlsx');
+        $this->assertSame(2, $hoja->getHighestDataRow());
+        $this->assertSame('Solo Norte', (string) $hoja->getCell('B2')->getValue());
+        $this->assertEquals(3, $hoja->getCell('L2')->getValue());
+        $this->get(route('flujo.compras.index', ['xlsx' => 1]))->assertForbidden();
+
+        $this->actingAs($this->central)->post(route('operador.compras.store'), $this->datosCompra('QA-NORTE', ['P-001'], [1], [
+            'consolidados' => [$norte->id], 'distribucion' => [$norte->id => [bin2hex('P-001') => 1]],
+        ]))->assertRedirect()->assertSessionHasNoErrors();
+        $plan = $this->excelDescargado($this->get(route('flujo.compras.index', ['xlsx' => 1, 'consolidados' => [$norte->id]])), 'necesidades-de-compra.xlsx');
+        $this->assertSame('QA-NORTE (1)', (string) $plan->getCell('K2')->getValue());
+        $this->assertEquals(2, $plan->getCell('J2')->getValue());
+        $this->assertDatabaseCount('movimientos', 1);
+        $this->assertDatabaseCount('asignaciones_inventarios', 0);
+        $this->assertSame(1, $this->saldo('P-001'));
+    }
+
+    private function excelDescargado(\Illuminate\Testing\TestResponse $respuesta, string $nombre): \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet
+    {
+        $ruta = tempnam(sys_get_temp_dir(), 'edson-reporte-');
+        try {
+            $respuesta->assertOk()->assertDownload($nombre)->assertHeader('Content-Type',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            file_put_contents($ruta, $respuesta->streamedContent());
+
+            return IOFactory::createReader('Xlsx')->load($ruta)->getActiveSheet();
+        } finally {
+            unlink($ruta);
+        }
+    }
+
+    private function consolidar(array $ids, string $nombre): Consolidado
+    {
+        $this->actingAs($this->central)->post(route('flujo.consolidados.store'), [
+            'nombre' => $nombre, 'desde' => today()->toDateString(), 'hasta' => today()->toDateString(), 'inspecciones' => $ids,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        return Consolidado::where('nombre', $nombre)->sole();
     }
 
     private function datosCompra(string $factura, array $productos, array $cantidades, array $extra = []): array

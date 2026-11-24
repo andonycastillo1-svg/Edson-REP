@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Sistema\ValoresCampos;
 use App\Exports\ColaboradoresFichaExport;
 use App\Http\Controllers\Controller;
+use App\Services\ExportacionesOperativas;
 use App\Sistema\ConsultaCampos;
 use App\Sistema\Presentacion;
 use App\Models\AlertaReemplazo;
@@ -29,6 +30,15 @@ class ColaboradorController extends Controller
         $campos->buscar($consulta, $request->validate(['q' => ['nullable', 'string', 'max:190']])['q'] ?? null, ['codigo', 'nombre', 'puesto']);
         $campos->filtrar($consulta, $request, 'colaboradores');
 
+        if ($request->boolean('xlsx')) {
+            $exportar = app(ExportacionesOperativas::class);
+            $exportar->autorizar($request, 'colaboradores');
+
+            return $exportar->colaboradores($consulta->when(
+                $estado = $request->validate(['estado' => ['nullable', 'in:Activo,Inactivo']])['estado'] ?? null,
+                fn ($q) => $q->where('estado', $estado)
+            ));
+        }
         $activos = (clone $consulta)->where('estado', 'Activo')->orderBy('nombre')->paginate(10)->withQueryString();
         $inactivos = (clone $consulta)->where('estado', 'Inactivo')->orderBy('nombre')->paginate(10)->withQueryString();
         $codigos = $activos->pluck('codigo')->merge($inactivos->pluck('codigo'));

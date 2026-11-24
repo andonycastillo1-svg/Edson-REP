@@ -6,6 +6,8 @@ use App\Sistema\ValoresCampos;
 use App\Sistema\Presentacion;
 use App\Sistema\Auditoria;
 use App\Http\Controllers\Controller;
+use App\Services\ExportarExcel;
+use App\Services\ExportacionesOperativas;
 use App\Sistema\ConsultaCampos;
 use App\Sistema\Permisos;
 use App\Services\NotificacionService;
@@ -59,6 +61,18 @@ class VehiculoProductoController extends Controller
             $consulta->whereIn('bodega_id', $visibleBodegas);
         }
         app(ConsultaCampos::class)->filtrar($consulta, $request, 'refacciones');
+        if ($request->boolean('xlsx')) {
+            app(ExportacionesOperativas::class)->autorizar($request, 'refacciones');
+            $filas = $consulta->when($visibleBodegas !== null, fn ($q) => $q->whereIn('bodega_id', $visibleBodegas))
+                ->lazy(250)->map(fn ($fila) => [
+                    $fila->vehiculo_vin, $fila->vehiculo?->placa, $fila->producto_codigo, $fila->producto?->nombre,
+                    $fila->bodega?->nombre, (int) $fila->cantidad, $fila->fecha, $fila->estado, $fila->asignadoPor?->name,
+                ]);
+
+            return app(ExportarExcel::class)->descargar('refacciones-de-vehiculos', [
+                'VIN', 'Placa', 'Código', 'Producto', 'Bodega', 'Cantidad', 'Fecha', 'Estado', 'Responsable',
+            ], $filas);
+        }
         $asignaciones = $consulta->paginate(20)->withQueryString();
         $registrosVisibles = $asignaciones->getCollection()->filter(
             fn ($registro) => $visibleBodegas === null || in_array((int) $registro->bodega_id, $visibleBodegas, true)
