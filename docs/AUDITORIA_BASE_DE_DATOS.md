@@ -1,6 +1,6 @@
 # Auditoría técnica de la base de datos de Edson-REP
 
-**Alcance.** Código y migraciones desde `main` en `1c34b6d`, más la migración aditiva de permisos, relaciones, procesos y delegaciones de esta rama. Se desplegó el esquema anterior y después se aplicó la migración nueva en una base local MySQL 8.4 desechable. Se leyó `information_schema` para verificar tablas, índices y claves. El informe cubre el esquema versionado. El volumen de registros, el uso por integraciones externas y el catálogo efectivo de producción quedan por confirmar.
+**Alcance.** Código y migraciones desde `main` en `1c34b6d`, más las migraciones aditivas de permisos, relaciones, procesos, delegaciones y alcance de inventario de esta rama. Se desplegó el esquema anterior y después se aplicó la migración nueva en una base local MySQL 8.4 desechable. Se leyó `information_schema` para verificar tablas, índices y claves. El informe cubre el esquema versionado. El volumen de registros, el uso por integraciones externas y el catálogo efectivo de producción quedan por confirmar.
 
 ## Conclusiones y prioridades
 
@@ -35,7 +35,7 @@ La columna de evidencia identifica clases, controladores o configuraciones del r
 | `asignacion_vehiculo_archivos` | Históricas | Evidencia documental de vehículos | AsignacionVehiculoArchivo y AsignacionVehiculoController |
 | `asignaciones_inventarios` | En uso | Custodia vigente, entregas, reemplazos y cierres | AsignacionInventario, RegistrarAsignaciones, AccesoCustodia |
 | `asignaciones_vehiculos` | Históricas | Custodias de vehículos y fechas | AsignacionVehiculo, AsignacionVehiculoController |
-| `bodega_usuario_operativa` | En uso | Bodegas adicionales para consulta | DelegacionesOperativas e InventarioAutorizadoController. Complementa la sede operativa principal |
+| `bodega_usuario_operativa` | En uso | Bodegas adicionales con alcance de consulta, requerimientos o inventario | DelegacionesOperativas, AccesoInventarioOperativo e InventarioAutorizadoController. Complementa la sede operativa principal |
 | `bodegas` | En uso | Sedes de almacenaje y recepción | Bodega, BodegaController, compras, inventario y traslados |
 | `cache` | En uso | Caché de Laravel cuando usa conexión de base de datos | config/cache.php |
 | `cache_locks` | En uso | Bloqueos de caché y middleware de limitación | config/cache.php y throttle en routes/sistema.php |
@@ -44,7 +44,7 @@ La columna de evidencia identifica clases, controladores o configuraciones del r
 | `compra_consolidado` | En uso | Vínculos generales de facturas con requerimientos | ConsolidadoController, PlanCompras y DistribucionCompras. Preserva vínculos sin reparto histórico |
 | `compra_detalle_consolidado` | En uso | Reparto verificado de cantidad por línea | DistribucionCompras, PlanCompras y exportación. Preserva cantidades por destino |
 | `compra_detalles` | En uso | Líneas, cantidades y precios de factura | CompraController, DistribucionCompras y ExportacionesOperativas |
-| `compras` | En uso | Facturas por proveedor y entradas autorizadas | CompraController, DistribucionCompras. Evitar cambiar unicidad de referencia |
+| `compras` | En uso | Facturas por proveedor y entradas autorizadas. Las nuevas conservan su bodega | CompraController, DistribucionCompras. Evitar cambiar unicidad de referencia |
 | `consolidado_colaboradores` | En uso | Detalle de personas y región conservada en el requerimiento | ConsolidadoColaborador, DetalleConsolidado |
 | `consolidado_constancia` | Históricas | Vínculo de la constancia con los requerimientos | ConstanciaGerencia, Consolidado, PlanCompras |
 | `consolidado_eventos` | Históricas | Cambios del flujo con su autor, estado y versión | ConsolidadoEvento y ConsolidacionInspecciones. El máximo id protege contra ediciones simultáneas |
@@ -107,7 +107,7 @@ La columna de evidencia identifica clases, controladores o configuraciones del r
 
 ## Anexo de claves e índices verificados en MySQL 8.4
 
-79 tablas, 252 índices y 154 claves foráneas. PK identifica clave primaria, UQ índice único e IX índice ordinario. Las dos reglas al final de cada clave se aplican al eliminar y actualizar, en ese orden.
+79 tablas, 253 índices y 155 claves foráneas. PK identifica clave primaria, UQ índice único e IX índice ordinario. Las dos reglas al final de cada clave se aplican al eliminar y actualizar, en ese orden.
 
 | Tabla | Índices por columnas | Claves foráneas |
 | --- | --- | --- |
@@ -130,7 +130,7 @@ La columna de evidencia identifica clases, controladores o configuraciones del r
 | `compra_consolidado` | IX(consolidado_id) · PK(compra_id,consolidado_id) | compra_id → compras.id (RESTRICT/NO ACTION) · consolidado_id → consolidados.id (RESTRICT/NO ACTION) |
 | `compra_detalle_consolidado` | IX(compra_detalle_id) · PK(consolidado_linea_id,compra_detalle_id) | compra_detalle_id → compra_detalles.id (RESTRICT/NO ACTION) · consolidado_linea_id → consolidado_lineas.id (RESTRICT/NO ACTION) |
 | `compra_detalles` | IX(producto_codigo) · PK(id) · UQ(compra_id,producto_codigo) | compra_id → compras.id (CASCADE/NO ACTION) · producto_codigo → productos.codigo (NO ACTION/NO ACTION) |
-| `compras` | PK(id) · UQ(proveedor_id,no_factura) | proveedor_id → proveedores.id (NO ACTION/NO ACTION) |
+| `compras` | IX(bodega_id) · PK(id) · UQ(proveedor_id,no_factura) | bodega_id → bodegas.id (RESTRICT/NO ACTION) · proveedor_id → proveedores.id (NO ACTION/NO ACTION) |
 | `consolidado_colaboradores` | IX(agregado_por) · IX(colaborador_codigo) · IX(region_id) · PK(id) · UQ(consolidado_id,colaborador_codigo) | agregado_por → users.id (RESTRICT/NO ACTION) · consolidado_id → consolidados.id (RESTRICT/NO ACTION) · region_id → regiones.id (RESTRICT/NO ACTION) · colaborador_codigo → colaboradores.codigo (RESTRICT/CASCADE) |
 | `consolidado_constancia` | IX(constancia_id) · PK(consolidado_id,constancia_id) | consolidado_id → consolidados.id (RESTRICT/NO ACTION) · constancia_id → constancias_gerencia.id (RESTRICT/NO ACTION) |
 | `consolidado_eventos` | IX(consolidado_id) · IX(user_id) · PK(id) | consolidado_id → consolidados.id (RESTRICT/NO ACTION) · user_id → users.id (RESTRICT/NO ACTION) |

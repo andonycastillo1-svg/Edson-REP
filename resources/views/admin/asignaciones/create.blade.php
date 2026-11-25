@@ -3,8 +3,8 @@
 @section('content')
 @php
     $usuario = auth()->user();
-    $routePrefix = \App\Sistema\CatalogoPermisos::prefijo($usuario->rolOperativo());
-    $puedeElegirNuevo = app(\App\Sistema\Permisos::class)->permite($usuario, 'asignaciones.entregar_nuevo');
+    $routePrefix = \App\Services\AccesoInventarioOperativo::prefijo($usuario);
+    $puedeElegirNuevo = app(\App\Services\AccesoInventarioOperativo::class)->tiene($usuario, 'asignaciones.entregar_nuevo');
     $disponibles = $inventarios->groupBy(fn ($fila) => $fila->bodega_id.'|'.$fila->producto_codigo)->map(function ($filas) {
         $fila = $filas->first();
 
@@ -48,6 +48,9 @@
 
         <section class="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
             <h2 class="text-lg font-bold" id="titulo-productos">Productos</h2>
+            @if($bodegas->count() === 1)
+                <p class="text-sm text-slate-600">Bodega de salida <strong>{{ $bodegas->sole()->nombre }}</strong></p>
+            @endif
             <p class="text-sm" id="estado-productos" role="status"></p>
             <ul class="grid gap-2 sm:grid-cols-2" id="productos-pendientes" hidden></ul>
             <div id="items-wrapper" class="space-y-3"></div>
@@ -131,7 +134,7 @@
     const pendientes = document.getElementById('productos-pendientes');
     const guardar = forma.querySelector('button[type=submit]');
     let consulta;
-    let contexto = {productos: [], custodias: []};
+    let contexto = {productos: [], custodias: [], bodegas: null};
     let medioIndependiente = medio.value;
 
     function actualizarMedio() {
@@ -165,7 +168,15 @@
         const reemplazo = campo('sustituir_asignacion_id');
         const motivo = campo('motivo_asignacion');
         const nuevo = campo('motivo_inventario_nuevo');
-        if (datos.bodega_id) bodega.value = datos.bodega_id;
+        if (bodega instanceof HTMLSelectElement && contexto.bodegas !== null) {
+            const autorizadas = contexto.bodegas.map(String);
+            for (const opcion of [...bodega.options]) {
+                if (!autorizadas.includes(opcion.value)) opcion.remove();
+            }
+        }
+        if (datos.bodega_id && (!(bodega instanceof HTMLSelectElement) || [...bodega.options].some(opcion => opcion.value === String(datos.bodega_id)))) {
+            bodega.value = datos.bodega_id;
+        }
         if (nuevo && datos.motivo_inventario_nuevo) {
             nuevo.value = datos.motivo_inventario_nuevo;
             nuevo.closest('details').open = true;
@@ -254,7 +265,7 @@
         consulta?.abort();
         consulta = new AbortController();
         const nuevaConsulta = consulta;
-        contexto = {productos: [], custodias: []};
+        contexto = {productos: [], custodias: [], bodegas: null};
         filas.replaceChildren();
         pendientes.replaceChildren();
         agregarOtro.hidden = !!origen?.value;

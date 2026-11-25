@@ -7,6 +7,7 @@ use App\Models\Region;
 use App\Models\User;
 use App\Sistema\Auditoria;
 use App\Sistema\Permisos;
+use App\Sistema\CatalogoPermisos;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,12 +23,22 @@ class DelegacionesOperativas
 
     public const BODEGAS = ['bodegas.consultar', 'bodegas.exportar'];
 
+    public static function permisosBodega(): array
+    {
+        return [...self::BODEGAS, ...array_keys(CatalogoPermisos::INVENTARIO_OPERATIVO)];
+    }
+
+    public static function requiereRegionInventario(string $permiso): bool
+    {
+        return str_starts_with($permiso, 'asignaciones.') || $permiso === 'flujo.importar';
+    }
+
     public function __construct(private Permisos $permisos, private Auditoria $auditoria) {}
 
     public function vigentes(User $sustituto, string $permiso, bool $bloquear = false): Collection
     {
         if (!$sustituto->rolOperativo() || $sustituto->acceso_activo === false
-            || !in_array($permiso, [...self::REGIONALES, ...self::BODEGAS], true)
+            || !in_array($permiso, [...self::REGIONALES, ...self::permisosBodega()], true)
             || ($this->permisos->reglasUsuario($sustituto)[$permiso] ?? null) === false) {
             return collect();
         }
@@ -39,17 +50,19 @@ class DelegacionesOperativas
                 && $this->permisos->permite($fila->titular, $permiso));
     }
 
-    public function regionesTitular(User $usuario): array
+    public function regionesTitular(User $usuario, bool $bloquear = false): array
     {
-        return Region::where('activa', true)->where(fn ($q) => $q->where('coordinador_id', $usuario->id)
+        $consulta = Region::where('activa', true)->where(fn ($q) => $q->where('coordinador_id', $usuario->id)
             ->orWhereIn('id', $usuario->regionesOperativas()->select('regiones.id'))
             ->orWhereIn('id', DB::table('region_coordinador_operativo')->where('user_id', $usuario->id)->select('region_id')))
-            ->pluck('id')->map(fn ($id) => (int) $id)->all();
+            ->orderBy('id');
+
+        return ($bloquear ? $consulta->sharedLock() : $consulta)->pluck('id')->map(fn ($id) => (int) $id)->all();
     }
 
-    public function regiones(DelegacionOperativa $fila): array
+    public function regiones(DelegacionOperativa $fila, bool $bloquear = false): array
     {
-        return array_values(array_intersect($fila->regiones->modelKeys(), $this->regionesTitular($fila->titular)));
+        return array_values(array_intersect($fila->regiones->modelKeys(), $this->regionesTitular($fila->titular, $bloquear)));
     }
 
     public function bodegasTitular(User $usuario): array
@@ -89,13 +102,26 @@ class DelegacionesOperativas
                 throw ValidationException::withMessages(['permisos' => 'Incluye el permiso de consulta del módulo para delegar sus acciones.']);
             }
         }
+        $inventario = app(AccesoInventarioOperativo::class);
+        $permisosInventario = array_intersect($datos['permisos'], array_keys(CatalogoPermisos::INVENTARIO_OPERATIVO));
+        foreach ($permisosInventario as $permiso) {
+            if (array_diff($inventario->dependencias($permiso), $datos['permisos']) !== []) {
+                throw ValidationException::withMessages(['permisos' => 'Incluye las funciones requeridas por la operación de inventario.']);
+            }
+            if (!$inventario->permanentes($titular, $permiso)->contains(fn ($alcance) => $alcance->contiene($datos['bodegas'] ?? [],
+                self::requiereRegionInventario($permiso) ? ($datos['regiones'] ?? []) : []))) {
+                throw ValidationException::withMessages(['bodegas' => 'El titular debe poder realizar cada operación en todo el alcance seleccionado.']);
+            }
+        }
         $regiones = $datos['regiones'] ?? [];
         $bodegas = $datos['bodegas'] ?? [];
-        if ((bool) array_intersect($datos['permisos'], self::REGIONALES) !== ($regiones !== [])
+        $requiereRegion = (bool) array_intersect($datos['permisos'], self::REGIONALES)
+            || collect($permisosInventario)->contains(self::requiereRegionInventario(...));
+        if ($requiereRegion !== ($regiones !== [])
             || array_diff($regiones, $this->regionesTitular($titular))) {
             throw ValidationException::withMessages(['regiones' => 'Selecciona únicamente regiones activas asignadas al titular para los permisos regionales.']);
         }
-        if ((bool) array_intersect($datos['permisos'], self::BODEGAS) !== ($bodegas !== [])
+        if ((bool) array_intersect($datos['permisos'], self::permisosBodega()) !== ($bodegas !== [])
             || array_diff($bodegas, $this->bodegasTitular($titular))) {
             throw ValidationException::withMessages(['bodegas' => 'Selecciona la bodega asignada al titular para los permisos de bodega.']);
         }

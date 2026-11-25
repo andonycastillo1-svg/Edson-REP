@@ -1,5 +1,6 @@
 @php
-    $prefijo = \App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo());
+    $puedeVincularCompra = app(\App\Services\AccesoInventarioOperativo::class)->tiene(auth()->user(), 'compras.vincular');
+    $prefijo = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user());
     $porConsolidado = $lineas->groupBy('consolidado_id');
     $lineasPlan = $lineas->whereIn('consolidado_id', $planificables->modelKeys());
     $comprables = $lineasPlan->where('pendiente', '>', 0)->pluck('consolidado_id')->unique()->values()->all();
@@ -9,9 +10,9 @@
     <x-slot:acciones>
         @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'exportar_compras'))<x-ui.exportar-excel />@endif
         @if($estado === 'aprobado' && $bodega && $comprables)
-            @rutaDisponible($prefijo.'.compras.create')
+            @if($puedeVincularCompra)
                 <a class="ui-btn-primary" href="{{ route($prefijo.'.compras.create', ['consolidados' => $comprables]) }}">Registrar compra</a>
-            @endrutaDisponible
+            @endif
         @endif
     </x-slot:acciones>
     @include('flujo.accesos')
@@ -147,9 +148,9 @@
                             @endif
                             @include('flujo.facturas-consolidado', ['facturas' => $vinculadas])
                             @if($estado === 'aprobado' && $bodega && in_array($consolidado->id, $comprables))
-                                @rutaDisponible($prefijo.'.compras.create')
+                                @if($puedeVincularCompra)
                                     <a class="ui-btn-secondary" href="{{ route($prefijo.'.compras.create', ['consolidados' => [$consolidado->id]]) }}">Registrar nueva compra</a>
-                                @endrutaDisponible
+                                @endif
                             @endif
                         </div>
                     </details>

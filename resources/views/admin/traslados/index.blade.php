@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-  $routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin';
+  $routePrefix = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user());
 @endphp
 
 <style>
@@ -327,22 +327,16 @@
         <h1 class="ui-page-title tras-title">Solicitudes de traslado</h1>
         <x-ui.exportar-excel modulo="traslados" />
         <div class="tras-subtitle">
-          @if($user->isEncargado())
-            Bandeja de solicitudes para tu bodega de destino.
-          @else
-            Solicitudes creadas y gestionadas por tu usuario.
-          @endif
+          Solicitudes relacionadas con tus bodegas autorizadas.
         </div>
       </div>
 
       <div class="tras-header-actions">
-        @if(!$user->isEncargado())
           @rutaDisponible($routePrefix . '.operaciones.traslados.create')
           <a href="{{ route($routePrefix . '.operaciones.traslados.create') }}" class="btn-primary">
             + Nueva solicitud
           </a>
           @endrutaDisponible
-        @endif
       </div>
     </div>
 

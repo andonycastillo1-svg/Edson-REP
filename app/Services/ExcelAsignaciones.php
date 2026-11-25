@@ -312,7 +312,7 @@ class ExcelAsignaciones
         if ($pedidos->sum() > RegistrarAsignaciones::MAX_UNIDADES) {
             $errores[1][] = 'Divide la operación en archivos de hasta '.RegistrarAsignaciones::MAX_UNIDADES.' unidades.';
         }
-        $pendientes = $consolidado ? app(RequerimientosAsignacion::class)->pendientes($consolidado)
+        $pendientes = $consolidado ? app(RequerimientosAsignacion::class)->pendientes($consolidado, usuario: $usuario, permiso: 'flujo.importar')
             ->groupBy(fn ($fila) => $fila->participante->colaborador_codigo) : collect();
 
         foreach ($filas as $numero => $fila) {

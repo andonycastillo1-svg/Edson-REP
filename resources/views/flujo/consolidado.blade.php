@@ -136,7 +136,7 @@
     @endif
     @if($seguimiento)
         <x-sistema.panel titulo="Seguimiento de compras">
-            @php($prefijo = \App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo()))
+            @php($prefijo = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user()))
             <a class="ui-btn-secondary" href="{{ route('flujo.compras.index', ['estado' => $consolidado->estado, 'consolidados' => [$consolidado->id]]) }}">Ver seguimiento de compra</a>
             @include('flujo.facturas-consolidado')
             @foreach($constancias as $constancia)

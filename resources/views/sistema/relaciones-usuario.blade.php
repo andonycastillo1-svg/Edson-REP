@@ -33,6 +33,18 @@
                 @endforeach
             </div>
         </fieldset>
+        <fieldset>
+            <legend class="font-semibold">Bodegas para operar inventario</legend>
+            <p class="mb-2 text-sm">Marca las bodegas donde puede realizar las acciones que le otorgues en Permisos. Las entregas y devoluciones requieren además la región del colaborador.</p>
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach($bodegas as $bodega)
+                    <label class="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm">
+                        <input type="checkbox" name="bodegas_inventario[]" value="{{ $bodega->id }}" @checked(in_array($bodega->id, old('bodegas_inventario', $bodegasInventario)))>
+                        {{ $bodega->nombre }}
+                    </label>
+                @endforeach
+            </div>
+        </fieldset>
         @if($bodegaPrincipal)
             <label class="flex min-h-11 items-center gap-2 text-sm">
                 <input type="checkbox" name="opera_requerimientos" value="1" @checked(old('opera_requerimientos', $operaRequerimientos))>

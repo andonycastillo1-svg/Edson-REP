@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AsignacionInventario;
 use App\Models\Bodega;
+use App\Models\Colaborador;
 use App\Models\ImportacionAsignacion;
 use App\Models\User;
 use App\Sistema\Auditoria;
@@ -13,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 class ConciliarImportacionAsignaciones
 {
-    public function __construct(private RequerimientosAsignacion $requerimientos, private Auditoria $auditoria) {}
+    public function __construct(private RequerimientosAsignacion $requerimientos, private Auditoria $auditoria, private AccesoInventarioOperativo $acceso) {}
 
     public function conciliar(User $actor, Bodega $bodega, string $id, int $destino, string $evidencia): int
     {
@@ -23,7 +24,11 @@ class ConciliarImportacionAsignaciones
             if ($lote->consolidado_id && (int) $lote->consolidado_id !== $destino) {
                 $this->error('El lote ya identifica otro consolidado.');
             }
-            $consolidado = $this->requerimientos->verificar($actor, $destino, bloquear: true);
+            $codigos = collect($lote->filas)->pluck('colaborador_codigo')->unique();
+            $regiones = Colaborador::whereKey($codigos->all())->orderBy('codigo')->lockForUpdate()->pluck('region_id');
+            abort_unless($regiones->count() === $codigos->count(), 403);
+            $alcance = $this->acceso->autorizar($actor, 'flujo.importar', [(int) $bodega->id], $regiones->all(), bloquear: true);
+            $consolidado = $this->requerimientos->verificar($actor, $destino, bloquear: true, permiso: 'flujo.importar');
             $plan = collect($lote->filas)->groupBy('colaborador_codigo');
             $manifiesto = collect($lote->entregas ?? []);
             $grupos = $manifiesto->pluck('grupo');
@@ -68,7 +73,7 @@ class ConciliarImportacionAsignaciones
                     continue;
                 }
                 $articulos = $sinOrigen->map(fn ($fila) => ['producto_codigo' => $fila->producto_codigo, 'cantidad' => 1]);
-                $porCodigo = $this->requerimientos->vincular($actor, $destino, $codigo, $articulos);
+                $porCodigo = $this->requerimientos->vincular($actor, $destino, $codigo, $articulos, permiso: 'flujo.importar');
                 foreach ($sinOrigen as $asignacion) {
                     $asignacion->requerimiento_id = $porCodigo->get($asignacion->producto_codigo);
                     $asignacion->save();
@@ -79,6 +84,7 @@ class ConciliarImportacionAsignaciones
             if ($cambios !== []) {
                 $origenAnterior = $lote->consolidado_id;
                 $lote->update(['consolidado_id' => $consolidado->id]);
+                $this->acceso->registrar($alcance, 'flujo.importar', $lote->id);
                 $this->auditoria->registrar('asignaciones', 'conciliar_importacion', $lote->id, ['consolidado_id' => $origenAnterior],
                     ['consolidado_id' => $consolidado->id, 'evidencia' => $evidencia, 'vinculos' => $cambios]);
             }

@@ -20,7 +20,7 @@ class DelegacionController extends Controller
         $datos = $request->validate([
             'titular_id' => ['required', 'integer', 'exists:users,id'],
             'permisos' => ['required', 'array', 'list'],
-            'permisos.*' => ['required', 'distinct', Rule::in([...DelegacionesOperativas::REGIONALES, ...DelegacionesOperativas::BODEGAS])],
+            'permisos.*' => ['required', 'distinct', Rule::in([...DelegacionesOperativas::REGIONALES, ...DelegacionesOperativas::permisosBodega()])],
             'regiones' => ['nullable', 'array', 'list'],
             'regiones.*' => ['required', 'integer', 'distinct', 'exists:regiones,id'],
             'bodegas' => ['nullable', 'array', 'list'],

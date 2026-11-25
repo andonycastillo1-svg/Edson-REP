@@ -20,17 +20,27 @@
                 <p class="text-sm sm:col-span-2">Zona horaria {{ config('app.timezone') }}.</p>
                 <label class="ui-label sm:col-span-2">Motivo<textarea name="motivo" class="ui-input mt-1" maxlength="500" rows="2" required>{{ old('motivo') }}</textarea></label>
             </div>
-            <fieldset>
+            <fieldset class="space-y-2">
                 <legend class="font-semibold">Funciones temporales</legend>
-                <p class="mb-2 text-sm">Selecciona también la consulta del módulo para delegar registros, revisiones o exportaciones.</p>
-                <div class="grid gap-2 sm:grid-cols-2">
-                    @foreach([...\App\Services\DelegacionesOperativas::REGIONALES, ...\App\Services\DelegacionesOperativas::BODEGAS] as $permiso)
-                        <label class="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm">
-                            <input type="checkbox" name="permisos[]" value="{{ $permiso }}" @checked(in_array($permiso, old('permisos', [])))>
-                            {{ \App\Sistema\CatalogoPermisos::presentacion($permiso)['titulo'] }}
-                        </label>
-                    @endforeach
-                </div>
+                <p class="mb-2 text-sm">Elige las funciones necesarias. Para importar Excel, incluye también Entregar productos. Para abrir registros y documentos, añade la consulta del módulo.</p>
+                @php
+                    $funciones = collect([...\App\Services\DelegacionesOperativas::REGIONALES, ...\App\Services\DelegacionesOperativas::permisosBodega()])
+                        ->mapWithKeys(fn ($permiso) => [$permiso => \App\Sistema\CatalogoPermisos::presentacion($permiso)])
+                        ->groupBy('grupo', preserveKeys: true);
+                @endphp
+                @foreach($funciones as $grupo => $opciones)
+                    <details class="flujo-lectura" @if(array_intersect($opciones->keys()->all(), old('permisos', []))) open @endif>
+                        <summary>{{ $grupo }}</summary>
+                        <div class="grid gap-2 p-2 sm:grid-cols-2">
+                            @foreach($opciones as $permiso => $detalle)
+                                <label class="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm">
+                                    <input type="checkbox" name="permisos[]" value="{{ $permiso }}" @checked(in_array($permiso, old('permisos', [])))>
+                                    {{ $detalle['titulo'] }}
+                                </label>
+                            @endforeach
+                        </div>
+                    </details>
+                @endforeach
             </fieldset>
             @foreach(['regiones' => ['Regiones delegadas', $regiones], 'bodegas' => ['Bodega delegada', $bodegas]] as $campo => [$titulo, $opciones])
                 <fieldset>
@@ -50,7 +60,7 @@
     </details>
     <div class="mt-4 space-y-2">
         @forelse($delegaciones as $fila)
-            @php($estado = $fila->revocada_en ? 'Revocada' : ($fila->vigente_hasta->isPast() ? 'Vencida' : ($fila->vigente_desde->isFuture() ? 'Programada' : 'Activa')))
+            @php($estado = $fila->revocada_en ? 'Revocada' : ($fila->vigente_hasta->lte(now()) ? 'Vencida' : ($fila->vigente_desde->isFuture() ? 'Programada' : 'Activa')))
             <details class="flujo-lectura">
                 <summary>{{ $fila->titular->name }} · <span class="ui-badge ui-badge-info">{{ $estado }}</span></summary>
                 <div class="space-y-2 p-3 text-sm">

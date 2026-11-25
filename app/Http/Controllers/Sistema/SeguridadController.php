@@ -125,6 +125,8 @@ class SeguridadController extends Controller
         $regionesOperativas = $usuario->regionesOperativas()->pluck('regiones.id')->all();
         $regionesAdicionales = DB::table('region_coordinador_operativo')->where('user_id', $usuario->id)->pluck('region_id')->all();
         $bodegasOperativas = DB::table('bodega_usuario_operativa')->where('user_id', $usuario->id)->pluck('bodega_id')->all();
+        $bodegasInventario = DB::table('bodega_usuario_operativa')->where('user_id', $usuario->id)
+            ->where('opera_inventario', true)->pluck('bodega_id')->all();
         $bodegaPrincipal = app(\App\Services\BodegaAccessService::class)->principal();
         $operaRequerimientos = $bodegaPrincipal && DB::table('bodega_usuario_operativa')->where('user_id', $usuario->id)
             ->where('bodega_id', $bodegaPrincipal->id)->where('opera_requerimientos', true)->exists();
@@ -133,7 +135,7 @@ class SeguridadController extends Controller
             ->latest('id')->paginate(10)->withQueryString();
 
         return view('sistema.usuario', compact('usuario', 'catalogo', 'reglas', 'rol', 'efectivos', 'heredados', 'super',
-            'roles', 'bodegas', 'almacenistas', 'almacenistaId', 'regiones', 'regionesOperativas', 'regionesAdicionales', 'bodegasOperativas', 'bodegaPrincipal', 'operaRequerimientos', 'titulares', 'delegaciones'));
+            'roles', 'bodegas', 'almacenistas', 'almacenistaId', 'regiones', 'regionesOperativas', 'regionesAdicionales', 'bodegasOperativas', 'bodegasInventario', 'bodegaPrincipal', 'operaRequerimientos', 'titulares', 'delegaciones'));
     }
 
     public function permisosUsuario(Request $request, User $usuario)
@@ -145,7 +147,7 @@ class SeguridadController extends Controller
         ]);
 
         $this->seguridad->cambiar($request->user(), $data['current_password'], function () use ($usuario, $data) {
-            $usuario = User::findOrFail($usuario->id);
+            $usuario = User::whereKey($usuario->id)->lockForUpdate()->firstOrFail();
             $this->cambiarReglas('usuario', $usuario->id, $usuario->role?->ambito() ?? 0, $data['reglas'] ?? [], $this->permisos->reglasUsuario($usuario));
         });
 
@@ -159,6 +161,7 @@ class SeguridadController extends Controller
             'coordinacion' => ['nullable', 'array', 'list'], 'coordinacion.*' => ['required', 'integer', 'distinct', 'exists:regiones,id'],
             'bodegas_operativas' => ['nullable', 'array', 'list'], 'bodegas_operativas.*' => ['required', 'integer', 'distinct', 'exists:bodegas,id'],
             'opera_requerimientos' => ['nullable', 'boolean'],
+            'bodegas_inventario' => ['nullable', 'array', 'list'], 'bodegas_inventario.*' => ['required', 'integer', 'distinct', 'exists:bodegas,id'],
             'current_password' => ['required', 'string', 'max:255'],
         ]);
         $this->seguridad->cambiar($request->user(), $datos['current_password'], function (User $actor) use ($usuario, $coordinacion, $datos) {
@@ -174,8 +177,10 @@ class SeguridadController extends Controller
                 ['regiones' => $antes], ['regiones' => [...$elegidas, ...$inactivas]]);
 
             $bodegas = DB::table('bodega_usuario_operativa')->where('user_id', $usuario->id);
-            $previas = $bodegas->pluck('opera_requerimientos', 'bodega_id')->all();
-            $nuevas = array_map('intval', $datos['bodegas_operativas'] ?? []);
+            $previas = $bodegas->get(['bodega_id', 'opera_requerimientos', 'opera_inventario'])->all();
+            $operativas = array_map('intval', $datos['bodegas_operativas'] ?? []);
+            $inventario = array_map('intval', $datos['bodegas_inventario'] ?? []);
+            $nuevas = array_values(array_unique([...$operativas, ...$inventario]));
             $principal = app(\App\Services\BodegaAccessService::class)->principal()?->id;
             $operaRequerimientos = (bool) ($datos['opera_requerimientos'] ?? false);
             if ($operaRequerimientos && (!$principal || !in_array((int) $principal, $nuevas, true))) {
@@ -183,9 +188,10 @@ class SeguridadController extends Controller
             }
             $bodegas->whereNotIn('bodega_id', $nuevas)->delete();
             $asignaciones = array_map(fn ($id) => ['user_id' => $usuario->id, 'bodega_id' => $id,
-                'opera_requerimientos' => $operaRequerimientos && $id === (int) $principal], $nuevas);
+                'opera_requerimientos' => $operaRequerimientos && $id === (int) $principal,
+                'opera_inventario' => in_array($id, $inventario, true)], $nuevas);
             if ($asignaciones !== []) {
-                DB::table('bodega_usuario_operativa')->upsert($asignaciones, ['bodega_id', 'user_id'], ['opera_requerimientos']);
+                DB::table('bodega_usuario_operativa')->upsert($asignaciones, ['bodega_id', 'user_id'], ['opera_requerimientos', 'opera_inventario']);
             }
             $this->auditoria->registrar('seguridad', 'actualizar_bodegas_operativas', $usuario->id,
                 ['bodegas' => $previas], ['bodegas' => $asignaciones]);

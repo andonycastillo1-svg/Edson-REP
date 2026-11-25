@@ -6,6 +6,46 @@ class CatalogoPermisos
 {
     public const AMBITOS = [1 => 'Administrador', 2 => 'Operador', 3 => 'Supervisor', 4 => 'Recursos Humanos', 5 => 'Coordinador'];
 
+    public const INVENTARIO_OPERATIVO = [
+        'compras.consultar' => 'Consultar facturas de la bodega central',
+        'compras.crear' => 'Registrar compras e ingresar existencias en central',
+        'compras.archivos' => 'Abrir facturas y respaldos',
+        'compras.datos_exportar' => 'Exportar facturas de central',
+        'compras.vincular' => 'Distribuir una compra entre requerimientos aprobados',
+        'compras.conciliar' => 'Conciliar la distribución de facturas anteriores',
+        'asignaciones.consultar' => 'Consultar custodias y entregas autorizadas',
+        'asignaciones.crear' => 'Entregar productos a colaboradores autorizados',
+        'asignaciones.vincular' => 'Vincular la entrega con un requerimiento aprobado',
+        'asignaciones.confirmar_recepcion' => 'Confirmar la recepción de una entrega',
+        'asignaciones.devolver' => 'Resolver custodias y registrar devoluciones',
+        'asignaciones.entregar_nuevo' => 'Entregar existencias nuevas por excepción',
+        'asignaciones.evidencias' => 'Adjuntar documentos de entrega y devolución',
+        'asignaciones.archivos' => 'Ver los respaldos de entregas y devoluciones',
+        'asignaciones.exportar' => 'Descargar hojas de entrega o devolución',
+        'asignaciones.datos_exportar' => 'Exportar listados de entregas y devoluciones',
+        'traslados.crear' => 'Solicitar un traslado desde una bodega autorizada',
+        'traslados.consultar' => 'Consultar solicitudes de traslado relacionadas',
+        'traslados.aprobar' => 'Recibir y aprobar traslados en la bodega de destino',
+        'traslados.rechazar' => 'Rechazar traslados en la bodega de destino',
+        'traslados.archivos' => 'Abrir archivos de solicitudes de traslado',
+        'traslados.exportar' => 'Descargar la hoja de un traslado',
+        'traslados.datos_exportar' => 'Exportar el listado de traslados',
+        'flujo.importar' => 'Importar entregas por Excel desde central',
+    ];
+
+    public static function permisoRutaInventario(string $ruta): ?string
+    {
+        [$prefijo, $accion] = array_pad(explode('.', $ruta, 2), 2, '');
+        if (!in_array($prefijo, ['admin', 'operador', 'supervisor'], true)
+            || !str_starts_with($accion, 'compras.') && !str_starts_with($accion, 'asignaciones.') && !str_starts_with($accion, 'operaciones.traslados.')) {
+            return null;
+        }
+        $ambito = ['admin' => 1, 'operador' => 2, 'supervisor' => 3][$prefijo];
+        $permiso = self::rutas($ambito)[$ruta] ?? null;
+
+        return isset(self::INVENTARIO_OPERATIVO[$permiso]) ? $permiso : null;
+    }
+
     public const ACCIONES_OPERATIVAS = [
         'bodegas.consultar' => ['Consultar existencias', null],
         'bodegas.exportar' => ['Exportar existencias', null],
@@ -32,6 +72,8 @@ class CatalogoPermisos
 
     public const ACCIONES_RESTRINGIDAS = [
         'compras.conciliar' => ['Conciliar facturas históricas', 'compras.crear'],
+        'compras.vincular' => ['Vincular compras con requerimientos aprobados', 'flujo.compras'],
+        'asignaciones.vincular' => ['Vincular entrega con requerimiento aprobado', 'flujo.compras'],
         'asignaciones.confirmar_recepcion' => ['Confirmar recepción de entregas', 'asignaciones.crear'],
         'traslados.rechazar' => ['Rechazar solicitudes de traslado', 'traslados.aprobar'],
         'alertas.regularizar' => ['Regularizar incidencias de RR. HH.', 'alertas.modificar'],
@@ -111,6 +153,15 @@ class CatalogoPermisos
                 'flujo.importar' => 'Asignaciones',
                 'flujo.configurar', 'flujo.configurar_regiones' => 'Catálogos operativos',
                 default => 'Cortes y consolidados',
+            };
+        }
+        if (isset(self::INVENTARIO_OPERATIVO[$permiso])) {
+            $titulo = self::INVENTARIO_OPERATIVO[$permiso];
+            $descripcion = match ($modulo) {
+                'compras' => 'Requiere una relación de operación con la bodega central.',
+                'asignaciones' => 'Se aplica a las bodegas y colaboradores del ámbito autorizado.',
+                'traslados' => 'La solicitud exige acceso al origen. La decisión corresponde a la bodega receptora.',
+                default => 'Requiere autorización para asignar inventario desde central y cubrir todas las regiones del archivo.',
             };
         }
         $categoria = $modulo === 'sistema' ? 'Administración del sistema' : match ($accion) {
@@ -228,7 +279,7 @@ class CatalogoPermisos
         }
 
         $base = array_values(array_unique(self::rutas($ambito)));
-        $extras = [...array_keys(self::CONFIGURACION), ...self::flujoPara($ambito), ...array_keys(self::ACCIONES_OPERATIVAS)];
+        $extras = [...array_keys(self::CONFIGURACION), ...self::flujoPara($ambito), ...array_keys(self::ACCIONES_OPERATIVAS), ...array_keys(self::INVENTARIO_OPERATIVO)];
         foreach (self::ACCIONES_RESTRINGIDAS as $accion => [, $anterior]) {
             if (in_array($anterior, [...$base, ...self::flujoPara($ambito)], true)) {
                 $extras[] = $accion;
@@ -250,8 +301,12 @@ class CatalogoPermisos
         return $permisos;
     }
 
-    public static function permisoAnterior(string $permiso): ?string
+    public static function permisoAnterior(string $permiso, int $ambito): ?string
     {
+        if (isset(self::INVENTARIO_OPERATIVO[$permiso]) && !in_array($ambito, [1, 2], true)) {
+            return null;
+        }
+
         return (self::ACCIONES_OPERATIVAS + self::ACCIONES_RESTRINGIDAS)[$permiso][1] ?? null;
     }
 }

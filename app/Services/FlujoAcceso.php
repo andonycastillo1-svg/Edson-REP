@@ -17,9 +17,11 @@ class FlujoAcceso
 
     public function puede(User $usuario, string $permiso): bool
     {
-        if (($permiso === 'importar' && !$this->central($usuario))
-            || (in_array($permiso, ['compras', 'plan_compras', 'exportar_compras', 'constancias', 'cerrar_compras', 'cortes',
-                'consolidar', 'crear_consolidados', 'enviar_consolidados'], true) && !$this->centralRequerimientos($usuario))) {
+        if ($permiso === 'importar') {
+            return app(AccesoInventarioOperativo::class)->tiene($usuario, 'flujo.importar');
+        }
+        if (in_array($permiso, ['compras', 'plan_compras', 'exportar_compras', 'constancias', 'cerrar_compras', 'cortes',
+                'consolidar', 'crear_consolidados', 'enviar_consolidados'], true) && !$this->centralRequerimientos($usuario)) {
             return false;
         }
 
