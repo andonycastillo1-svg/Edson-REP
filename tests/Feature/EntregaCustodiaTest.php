@@ -19,11 +19,12 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\RefreshDatabase;
+use Tests\Support\ConBajasLaborales;
 use Tests\TestCase;
 
 class EntregaCustodiaTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, ConBajasLaborales;
 
     private Bodega $regional;
     private Bodega $central;
@@ -85,7 +86,7 @@ class EntregaCustodiaTest extends TestCase
         $this->assertDatabaseHas('inventarios', ['bodega_id' => $this->central->id, 'cantidad' => 0]);
     }
 
-    public function test_reemplazo_explicito_y_retorno_ordinario_en_operaciones_independientes(): void
+    public function test_reemplazo_explicito_y_retorno_por_baja_en_operaciones_independientes(): void
     {
         $salida = now()->subDays(12);
         $recibida = now()->subDays(10);
@@ -117,14 +118,16 @@ class EntregaCustodiaTest extends TestCase
         $this->assertEquals(0, $this->saldo('usado'));
         $this->actingAs($this->almacenista);
         $devolucion = route('operador.asignaciones.devolver', $anterior);
-        $this->post($devolucion, ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1,
-            'estado_devolucion' => 'buen_estado'])->assertSessionHasNoErrors()->assertSessionMissing('grupo_devolucion');
+        $datos = ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado'];
+        $this->postJson($devolucion, $datos + ['baja_laboral_id' => 1])->assertForbidden();
+        $baja = $this->bajaFixture($anterior->colaborador_codigo);
+        $this->post($devolucion, $datos + ['baja_laboral_id' => $baja->id])->assertSessionHasNoErrors()->assertSessionHas('grupo_devolucion');
         $this->assertSame('Devuelta', $anterior->refresh()->estado);
         $this->assertEquals(1, $this->saldo('usado'));
         $this->assertGreaterThan(49 * 86400, $anterior->periodos()->sole()->vida_util_restante_segundos);
         $this->assertDatabaseCount('alertas_reemplazos_rrhh', 1);
         $movimiento = $anterior->movimientos()->where('tipo', 'Reemplazo')->sole();
-        $this->get(route('operador.asignaciones.hoja_devolucion', $movimiento->grupo_devolucion))->assertNotFound();
+        $this->get(route('operador.asignaciones.hoja_devolucion', $movimiento->grupo_devolucion))->assertOk();
         $this->artisan('inventario:contrastar-saldos')->assertSuccessful();
     }
 
@@ -140,7 +143,8 @@ class EntregaCustodiaTest extends TestCase
         $asignacion = AsignacionInventario::sole();
         $this->assertSame('Activa', $asignacion->estado);
         $ruta = route('operador.asignaciones.devolver', $asignacion);
-        $datos = ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'fecha_incidente' => now()->toDateTimeString()];
+        $baja = $this->bajaFixture($asignacion->colaborador_codigo);
+        $datos = ['baja_laboral_id' => $baja->id, 'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'fecha_incidente' => now()->toDateTimeString()];
         $this->postJson($ruta, $datos)->assertUnprocessable()->assertJsonValidationErrors('estado_devolucion');
         $this->postJson($ruta, [...$datos, 'estado_devolucion' => 'otra'])->assertUnprocessable()->assertJsonValidationErrors('resultado_otra');
         $this->post($ruta, [...$datos, 'estado_devolucion' => $motivo])->assertSessionHasNoErrors();
@@ -191,7 +195,7 @@ class EntregaCustodiaTest extends TestCase
         $this->post($documentos, ['pdf_firmado' => $pdf('firmado-2.pdf')])->assertRedirect($ruta);
         $this->post($documentos, ['foto' => UploadedFile::fake()->image('evidencia.png')])->assertRedirect($ruta);
         $this->get($ruta)->assertOk()->assertSee('Versión 1')->assertSee('Versión 2');
-        $this->get(route('operador.asignaciones.index', ['seguimiento' => 'documentacion']))->assertViewHas('asignacionesPorColaborador', fn ($grupos) => $grupos->isEmpty());
+        $this->get(route('operador.asignaciones.index', ['seguimiento' => 'documentacion']))->assertViewHas('entregas', fn ($entregas) => $entregas->isEmpty());
         $this->assertCount(3, $entrega->documentos);
         $archivo = $entrega->documentos->first();
         Storage::disk('documentos')->assertExists($archivo->ruta);
@@ -248,7 +252,8 @@ class EntregaCustodiaTest extends TestCase
         $this->crearSalida($this->datosSalida());
         $fila = AsignacionInventario::sole();
         $ruta = route('operador.asignaciones.devolver', $fila);
-        $datos = ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'robado'];
+        $baja = $this->bajaFixture($fila->colaborador_codigo);
+        $datos = ['baja_laboral_id' => $baja->id, 'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'robado'];
         $this->postJson($ruta, $datos)->assertForbidden();
         DB::table('sistema_permisos_usuario')->insert([
             'user_id' => $operador->id, 'permiso' => 'asignaciones.devolver', 'permitido' => true,
@@ -283,6 +288,7 @@ class EntregaCustodiaTest extends TestCase
         $this->crearSalida($this->datosSalida());
         $asignacion = AsignacionInventario::sole();
         $this->post(route('operador.asignaciones.devolver_lote'), [
+            'baja_laboral_id' => $this->bajaFixture($asignacion->colaborador_codigo)->id,
             'solicitud_id' => (string) Str::uuid(), 'seleccionadas' => [$asignacion->id], 'devoluciones' => [$asignacion->id => 1],
             'resoluciones' => [$asignacion->id => [
                 'estado_devolucion' => 'otra', 'resultado_otra' => 'sin_retorno', 'detalle_devolucion' => 'Custodia resuelta con acta.',
@@ -314,7 +320,7 @@ class EntregaCustodiaTest extends TestCase
         $this->post(route('operador.asignaciones.documento_entrega', $entrega), ['pdf_firmado' => $pdf])->assertSessionHasNoErrors();
         $this->assertCount(1, $entrega->documentos);
         $this->get($seguimiento)->assertOk()
-            ->assertViewHas('asignacionesPorColaborador', fn ($grupos) => $grupos->isEmpty());
+            ->assertViewHas('entregas', fn ($entregas) => $entregas->isEmpty());
         $this->get(route('operador.asignaciones.pdf', $entrega->id))->assertOk()
             ->assertViewHas('asignaciones', fn ($filas) => $filas->count() === 2);
 
@@ -346,6 +352,7 @@ class EntregaCustodiaTest extends TestCase
         $this->crearSalida($primera);
         $anterior = AsignacionInventario::sole();
         $this->post(route('operador.asignaciones.devolver', $anterior), [
+            'baja_laboral_id' => $this->bajaFixture($anterior->colaborador_codigo)->id,
             'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado',
         ])->assertSessionHasNoErrors();
         $vida = (int) DB::table('inventarios')->where('stock_tipo', 'usado')->value('vida_util_disponible_segundos');
@@ -353,6 +360,8 @@ class EntregaCustodiaTest extends TestCase
         $fecha = now()->toDateTimeString();
         $datos = $this->datosSalida(['fecha' => $fecha, 'confirmar_recepcion' => true,
             'recibida_en' => $fecha, 'medio_confirmacion' => 'presencial']);
+        Colaborador::create(['codigo' => 'C-LOTE', 'nombre' => 'Nuevo destinatario', 'puesto' => 'Técnico', 'estado' => 'Activo']);
+        $datos['colaborador_codigo'] = 'C-LOTE';
         $datos['items'][0]['producto_codigo'] = 'P-LOTE';
         $this->crearSalida($datos);
         $nueva = AsignacionInventario::custodiaActiva()->sole();
@@ -416,6 +425,7 @@ class EntregaCustodiaTest extends TestCase
         $this->travelTo($t0);
         foreach ([$vencida, $vigente] as $fila) {
             $this->post(route('operador.asignaciones.devolver', $fila), [
+                'baja_laboral_id' => $this->bajaFixture($fila->colaborador_codigo)->id,
                 'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado',
             ])->assertSessionHasNoErrors();
         }
@@ -441,9 +451,12 @@ class EntregaCustodiaTest extends TestCase
         $this->crearSalida($this->datosSalida());
         $asignacion = AsignacionInventario::sole();
         $this->post(route('operador.asignaciones.devolver', $asignacion), [
+            'baja_laboral_id' => $this->bajaFixture($asignacion->colaborador_codigo)->id,
             'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado',
         ])->assertSessionHasNoErrors();
 
+        $this->actingAs($this->rrhh)->patch(route('rrhh.colaboradores.estado', $asignacion->colaborador_codigo))->assertSessionHasNoErrors();
+        $this->actingAs($this->almacenista);
         $datos = $this->datosSalida();
         $datos['items'][0]['motivo_inventario_nuevo'] = 'Requisito del área de trabajo';
         $this->postJson(route('operador.asignaciones.store'), $datos)->assertForbidden();
@@ -495,6 +508,7 @@ class EntregaCustodiaTest extends TestCase
             ->assertJsonPath('asignaciones.1.documentos.0.nombre', 'respaldo.pdf')
             ->assertJsonPath('incidencias.0.motivo', 'Robo');
         $this->actingAs($this->almacenista)->post(route('operador.asignaciones.devolver', $anterior), [
+            'baja_laboral_id' => $this->bajaFixture($anterior->colaborador_codigo)->id,
             'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'robado',
         ])->assertSessionHasNoErrors();
         $this->actingAs($admin)->getJson($url)->assertOk()

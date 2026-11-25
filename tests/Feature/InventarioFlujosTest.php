@@ -19,11 +19,12 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\Support\RefreshDatabase;
+use Tests\Support\ConBajasLaborales;
 use Tests\TestCase;
 
 class InventarioFlujosTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, ConBajasLaborales;
 
     private Bodega $principal;
     private Bodega $regional;
@@ -97,11 +98,12 @@ class InventarioFlujosTest extends TestCase
         $asignacion = $this->custodiaHistorica($this->principal, 2);
         $ruta = route('admin.asignaciones.devolver', $asignacion);
 
-        $devolucion = ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado'];
+        $baja = $this->bajaFixture($asignacion->colaborador_codigo);
+        $devolucion = ['baja_laboral_id' => $baja->id, 'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado'];
         $this->post($ruta, $devolucion)->assertSessionHasNoErrors();
         $this->postJson($ruta, $devolucion)->assertUnprocessable()->assertJsonValidationErrors('solicitud_id');
         $this->postJson(route('admin.asignaciones.devolver_lote'), [
-            'solicitud_id' => $devolucion['solicitud_id'], 'estado_devolucion' => 'buen_estado',
+            'baja_laboral_id' => $baja->id, 'solicitud_id' => $devolucion['solicitud_id'], 'estado_devolucion' => 'buen_estado',
             'seleccionadas' => [$asignacion->id], 'devoluciones' => [$asignacion->id => 1],
         ])->assertUnprocessable()->assertJsonValidationErrors('solicitud_id');
         $this->assertDatabaseHas('inventarios', ['bodega_id' => $this->principal->id, 'stock_tipo' => 'usado', 'cantidad' => 1]);
@@ -125,7 +127,9 @@ class InventarioFlujosTest extends TestCase
 
         $this->actingAs($this->operador)->post(route('operador.asignaciones.store'), $this->asignacion($this->regional))
             ->assertSessionHasNoErrors();
+        $baja = $this->bajaFixture($anterior->colaborador_codigo);
         $this->postJson(route('operador.asignaciones.devolver', $anterior), [
+            'baja_laboral_id' => $baja->id,
             'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado',
         ])->assertForbidden();
 
@@ -161,7 +165,7 @@ class InventarioFlujosTest extends TestCase
         $this->agregarStock($this->principal, 1);
         $this->post(route('admin.asignaciones.store'), $this->asignacion($this->principal))->assertSessionHasNoErrors();
         $asignacion = AsignacionInventario::sole();
-        $this->post(route('admin.asignaciones.devolver', $asignacion), ['solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado', 'motivo_administrativo' => 'renuncia'])->assertSessionHasNoErrors();
+        $this->post(route('admin.asignaciones.devolver', $asignacion), ['baja_laboral_id' => $this->bajaFixture($asignacion->colaborador_codigo)->id, 'solicitud_id' => (string) Str::uuid(), 'cantidad_devuelta' => 1, 'estado_devolucion' => 'buen_estado', 'motivo_administrativo' => 'renuncia'])->assertSessionHasNoErrors();
 
         $grupo = DB::table('asignacion_movimientos')->where('tipo', 'Devolucion')->value('grupo_devolucion');
         $ruta = route('admin.asignaciones.upload_pdf_devolucion_firmado', $grupo);

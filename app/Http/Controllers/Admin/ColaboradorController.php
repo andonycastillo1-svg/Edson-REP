@@ -11,8 +11,12 @@ use App\Sistema\Presentacion;
 use App\Models\AlertaReemplazo;
 use App\Models\AsignacionInventario;
 use App\Models\Colaborador;
+use App\Models\BajaLaboral;
+use App\Sistema\Auditoria;
+use Illuminate\Validation\ValidationException;
 use App\Models\IncidenciaInventario;
 use App\Services\AsignacionVidaUtilService;
+use App\Services\AccesoCustodia;
 use App\Sistema\Permisos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -102,6 +106,7 @@ class ColaboradorController extends Controller
                 $campos->verificarClaveDisponible('colaboradores', $data['codigo']);
             }
             $colaborador->update($data);
+            $this->cerrarBajaSiActivo($colaborador);
             $campos->trasladarClave('colaboradores', $anterior, $colaborador->codigo);
             $campos->guardar('colaboradores', $colaborador->codigo, $valores);
         });
@@ -129,6 +134,19 @@ class ColaboradorController extends Controller
 
             'incidencias' => $ficha['incidencias'],
         ]);
+    }
+
+    public function expediente(Request $request, Colaborador $colaborador)
+    {
+        $datos = $request->validate(['seccion' => ['nullable', Rule::in(['resumen', 'productos', 'historial', 'incidencias', 'vehiculo'])]]);
+        $seccion = $datos['seccion'] ?? 'resumen';
+        abort_if($seccion === 'vehiculo' && !config('modulos.vehiculos'), 404);
+        $ruta = $this->colaboradoresRoutePrefix().'.colaboradores';
+        $ficha = $this->generarFichaColaborador($colaborador, $seccion);
+        $puedeHistorial = $ficha['puede_historial'];
+        abort_if($seccion === 'historial' && !$puedeHistorial, 403);
+
+        return view('admin.colaboradores.expediente', compact('colaborador', 'seccion', 'ficha', 'ruta', 'puedeHistorial'));
     }
 
     public function fichaTecnica(Request $request, Colaborador $colaborador)
@@ -181,7 +199,7 @@ class ColaboradorController extends Controller
         );
     }
 
-    private function generarFichaColaborador(Colaborador $colaborador): array
+    private function generarFichaColaborador(Colaborador $colaborador, ?string $seccion = null): array
     {
         $usuario = auth()->user();
         $permisos = app(Permisos::class);
@@ -189,32 +207,42 @@ class ColaboradorController extends Controller
         $puedeConsultarInventario = $permisos->ruta($usuario, 'admin.asignaciones.index');
         $puedeHistorial = $puedeConsultarInventario || $puedeRevisar;
         $puedeAbrirArchivos = $permisos->ruta($usuario, 'admin.asignaciones.ver_pdf_firmado');
-        $consulta = AsignacionInventario::with('producto', 'bodega', 'entrega')
-            ->where('colaborador_codigo', $colaborador->codigo)->latest('id');
-        if ($puedeHistorial) {
-            $consulta->with('movimientos.user', 'movimientoInicial', 'incidencias.registrador', 'entrega.documentos', 'evidencias');
-        } else {
+        $consulta = AsignacionInventario::where('colaborador_codigo', $colaborador->codigo)->latest('id');
+        if (!$puedeHistorial || $seccion === 'productos') {
             $consulta->custodiaAbierta();
         }
-        $asignaciones = $consulta->get();
+        $paginador = null;
+        $totalInventario = 0;
+        $totalEnCustodia = 0;
+        if ($seccion === 'resumen') {
+            $totalEnCustodia = (int) (clone $consulta)->custodiaAbierta()->sum('cantidad_asignada');
+            $totalInventario = $this->valorarCustodia($consulta);
+        }
+        $asignaciones = collect();
+        if ($seccion === null || in_array($seccion, ['productos', 'historial'], true)) {
+            $consulta->with('producto', 'bodega', 'entrega');
+            if ($puedeHistorial) {
+                $consulta->with('movimientos.user', 'movimientoInicial', 'incidencias.registrador', 'entrega.documentos', 'evidencias');
+            }
+            if ($seccion === null) {
+                $asignaciones = $consulta->get();
+            } else {
+                $paginador = $consulta->paginate(10)->withQueryString();
+                $asignaciones = $paginador->getCollection();
+            }
+        }
 
-        if (config('inventario.seguimiento_unidades')) {
+        if (config('inventario.seguimiento_unidades') && $asignaciones->isNotEmpty()) {
             $asignaciones->load('periodosActivos');
         }
         $codigosProducto = $asignaciones->pluck('producto_codigo')->filter()->unique()->values();
         $ultimosCostos = $this->obtenerUltimosCostos($codigosProducto);
 
-        $totalInventario = 0;
-
         $vida = app(AsignacionVidaUtilService::class);
-        $dataAsignaciones = $asignaciones->map(function ($a) use (&$totalInventario, $ultimosCostos, $vida, $puedeHistorial, $puedeAbrirArchivos) {
-            $costoUnitario = $a->costo_unitario ?? 0;
-
-            if ($a->entrega === null && (float) $costoUnitario <= 0 && isset($ultimosCostos[$a->producto_codigo])) {
-                $costoUnitario = (float) $ultimosCostos[$a->producto_codigo];
-            }
-
-            $total = (float) $costoUnitario * (int) $a->cantidad_asignada;
+        $mostrarDetalle = $seccion !== null && $puedeConsultarInventario;
+        $dataAsignaciones = $asignaciones->map(function ($a) use (&$totalInventario, $ultimosCostos, $vida, $puedeHistorial, $puedeAbrirArchivos, $usuario, $mostrarDetalle) {
+            $costoUnitario = $this->costoFicha($a, $ultimosCostos);
+            $total = $costoUnitario * (int) $a->cantidad_asignada;
             $fechaAsignacion = $a->fecha ? Carbon::parse($a->fecha) : null;
             $fechaVencimiento = $a->fecha_vencimiento ? Carbon::parse($a->fecha_vencimiento) : null;
 
@@ -233,6 +261,7 @@ class ColaboradorController extends Controller
 
             return [
                 'producto' => $a->producto->nombre ?? '—',
+                'url' => $mostrarDetalle && app(AccesoCustodia::class)->puedeVer($usuario, $a) ? route('admin.asignaciones.articulo', $a) : null,
                 'producto_codigo' => $a->producto_codigo,
                 'bodega' => $a->bodega->nombre ?? '—',
                 'cantidad' => $a->cantidad_asignada,
@@ -270,7 +299,8 @@ class ColaboradorController extends Controller
             ];
         })->values();
 
-        $vehiculoAsignado = config('modulos.vehiculos') ? $this->obtenerVehiculoAsignado($colaborador) : null;
+        $vehiculoAsignado = config('modulos.vehiculos') && in_array($seccion, [null, 'resumen', 'vehiculo'], true)
+            ? $this->obtenerVehiculoAsignado($colaborador) : null;
         $productosVehiculo = collect();
         $totalProductosVehiculo = 0;
 
@@ -280,8 +310,8 @@ class ColaboradorController extends Controller
         }
 
         $incidencias = collect();
-        if ($puedeRevisar || $usuario->rolOperativo() === 1) {
-            $incidencias = AlertaReemplazo::with(AlertaReemplazo::RELACIONES_LISTADO)
+        if (in_array($seccion, [null, 'resumen', 'incidencias'], true) && ($puedeRevisar || $usuario->rolOperativo() === 1)) {
+            $incidencias = AlertaReemplazo::with([...AlertaReemplazo::RELACIONES_LISTADO, 'actuaciones'])
                 ->where('colaborador_codigo', $colaborador->codigo)
                 ->when(!config('modulos.vehiculos'), fn ($q) => $q->whereNull('vehiculo_producto_asignacion_id')->whereNull('vehiculo_vin'))->latest()->get()
                 ->map(fn (AlertaReemplazo $alerta) => [
@@ -296,10 +326,11 @@ class ColaboradorController extends Controller
                     'estado' => $alerta->estado_etiqueta,
                     'registrador' => $alerta->registrador?->name,
                     'detalle' => $alerta->detalle,
+                    'resolucion' => $alerta->actuaciones->where('estado', AlertaReemplazo::ESTADO_FINALIZADO)->sortByDesc('id')->first()?->nota,
                     'url' => $puedeRevisar ? route('rrhh.alertas.show', $alerta) : null,
                 ]);
         }
-        if ($usuario->rolOperativo() === 1 && $permisos->permite($usuario, 'asignaciones.consultar')) {
+        if (in_array($seccion, [null, 'resumen', 'incidencias'], true) && $usuario->rolOperativo() === 1 && $puedeConsultarInventario) {
             $sinAlerta = IncidenciaInventario::with('asignacion.bodega', 'asignacion.producto', 'registrador')
                 ->whereDoesntHave('alerta')->whereHas('asignacion', fn ($q) => $q->where('colaborador_codigo', $colaborador->codigo))
                 ->latest()->get()->map(fn (IncidenciaInventario $incidencia) => [
@@ -314,6 +345,7 @@ class ColaboradorController extends Controller
                     'estado' => 'Registrada en inventario',
                     'registrador' => $incidencia->registrador?->name,
                     'detalle' => $incidencia->observaciones,
+                    'resolucion' => \App\Services\ResolverCustodia::RESULTADOS_OTRA[$incidencia->resultado_stock] ?? $incidencia->resultado_stock,
                     'url' => route('admin.asignaciones.incidencia', $incidencia),
                 ]);
             $incidencias = $incidencias->concat($sinAlerta);
@@ -324,6 +356,7 @@ class ColaboradorController extends Controller
                 'codigo' => $colaborador->codigo,
                 'nombre' => $colaborador->nombre,
                 'puesto' => $colaborador->puesto,
+                'region' => $colaborador->region?->nombre,
                 'estado' => $colaborador->estado,
             ],
 
@@ -337,7 +370,31 @@ class ColaboradorController extends Controller
             'total_general' => (float) ($totalInventario + $totalProductosVehiculo),
 
             'incidencias' => $incidencias,
+            'paginador' => $paginador,
+            'total_custodia' => $totalEnCustodia,
+            'puede_historial' => $puedeHistorial,
         ];
+    }
+
+    private function costoFicha(AsignacionInventario $asignacion, $ultimosCostos): float
+    {
+        $costo = (float) ($asignacion->costo_unitario ?? 0);
+
+        return $asignacion->entrega === null && $costo <= 0
+            ? (float) ($ultimosCostos[$asignacion->producto_codigo] ?? $costo) : $costo;
+    }
+
+    private function valorarCustodia($consulta): float
+    {
+        $total = 0;
+        $lotes = (clone $consulta)->reorder()->with('entrega:id')->where('cantidad_asignada', '!=', 0)
+            ->select('id', 'grupo_asignacion', 'producto_codigo', 'cantidad_asignada', 'costo_unitario');
+        $lotes->chunkById(150, function ($filas) use (&$total) {
+            $costos = $this->obtenerUltimosCostos($filas->filter(fn ($fila) => !$fila->entrega && (float) $fila->costo_unitario <= 0)->pluck('producto_codigo'));
+            $total += $filas->sum(fn ($fila) => $this->costoFicha($fila, $costos) * $fila->cantidad_asignada);
+        });
+
+        return (float) $total;
     }
 
     private function obtenerVehiculoAsignado(Colaborador $colaborador): ?array
@@ -543,15 +600,59 @@ class ColaboradorController extends Controller
 
     public function cambiarEstado(Colaborador $colaborador)
     {
-        $nuevoEstado = $colaborador->estado === 'Activo' ? 'Inactivo' : 'Activo';
-
-        $colaborador->update([
-            'estado' => $nuevoEstado,
-        ]);
+        DB::transaction(function () use ($colaborador) {
+            $fila = Colaborador::whereKey($colaborador->codigo)->lockForUpdate()->firstOrFail();
+            $fila->update(['estado' => $fila->estado === 'Activo' ? 'Inactivo' : 'Activo']);
+            $this->cerrarBajaSiActivo($fila);
+        }, 3);
 
         return redirect()
             ->route($this->colaboradoresRoutePrefix().'.colaboradores.index')
             ->with('success', 'Estado del colaborador actualizado correctamente.');
+    }
+
+    public function formularioBaja(Colaborador $colaborador)
+    {
+        $colaborador->load('bajaVigente.registrador');
+        $ruta = $this->colaboradoresRoutePrefix().'.colaboradores';
+
+        return view('admin.colaboradores.baja', compact('colaborador', 'ruta'));
+    }
+
+    public function registrarBaja(Request $request, Colaborador $colaborador)
+    {
+        $data = $request->validate([
+            'motivo' => ['required', Rule::in(array_keys(BajaLaboral::MOTIVOS))],
+            'fecha_efectiva' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'observaciones' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        DB::transaction(function () use ($request, $colaborador, $data) {
+            $fila = Colaborador::whereKey($colaborador->codigo)->lockForUpdate()->firstOrFail();
+            if ($fila->bajaVigente()->exists()) {
+                throw ValidationException::withMessages(['motivo' => 'Este colaborador ya tiene una baja laboral registrada.']);
+            }
+            $baja = $fila->bajasLaborales()->create($data + ['registrada_por' => $request->user()->id]);
+            $fila->update(['estado' => 'Inactivo']);
+            app(Auditoria::class)->registrar('colaboradores', 'registrar_baja_laboral', $fila->codigo, null,
+                ['baja_id' => $baja->id, 'motivo' => $baja->motivo, 'fecha_efectiva' => $data['fecha_efectiva']]);
+        }, 3);
+
+        return redirect()->route($this->colaboradoresRoutePrefix().'.colaboradores.baja', $colaborador)
+            ->with('success', 'Baja registrada. Los responsables de bodega pueden verificar los artículos bajo custodia.');
+    }
+
+    private function cerrarBajaSiActivo(Colaborador $colaborador): void
+    {
+        if ($colaborador->estado !== 'Activo' || !$colaborador->wasChanged('estado')) {
+            return;
+        }
+        $baja = $colaborador->bajaVigente()->first();
+        if ($baja) {
+            $baja->forceFill(['cerrada_en' => now()])->save();
+            app(Auditoria::class)->registrar('colaboradores', 'cerrar_baja_por_reactivacion', $colaborador->codigo, null,
+                ['baja_id' => $baja->id]);
+        }
     }
 
     private function colaboradoresRoutePrefix(): string

@@ -18,6 +18,7 @@ use App\Services\PlanCompras;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\BodegaAccessService;
@@ -42,14 +43,18 @@ class CompraController extends Controller
         $consulta = $this->facturasAutorizadas($permiso, auditar: true)
             ->join('proveedores as p', 'p.id', '=', 'c.proveedor_id')
             ->select('c.*', 'p.nombre as proveedor_nombre');
-        app(ConsultaCampos::class)->filtrar($consulta, $request, 'compras', 'c.id');
+        $datos = $request->validate([
+            'buscar' => ['nullable', 'string', 'max:190'],
+            'por_pagina' => ['nullable', Rule::in([10, 15, 25, 50])],
+        ]);
+        $campos = app(ConsultaCampos::class);
+        $campos->filtrar($consulta, $request, 'compras', 'c.id');
+        $busqueda = $datos['buscar'] ?? null;
+        $campos->buscar($consulta, $busqueda, ['c.id', 'c.fecha_compra', 'c.no_factura', 'p.nombre', 'c.proyecto', 'c.total_factura']);
         if ($request->boolean('xlsx')) {
-            $exportar = app(ExportacionesOperativas::class);
-
-            return $exportar->compras($consulta,
-                $request->validate(['buscar' => ['nullable', 'string', 'max:190']])['buscar'] ?? null);
+            return app(ExportacionesOperativas::class)->compras($consulta);
         }
-        $compras = $consulta->orderByDesc('c.id')->get();
+        $compras = $consulta->orderByDesc('c.id')->paginate((int) ($datos['por_pagina'] ?? 10))->withQueryString();
         $tablaCampos = app(Presentacion::class)->operativa('compras', $request->user(), $compras->pluck('id'));
 
         $proveedores = DB::table('proveedores')->orderBy('nombre')->get();

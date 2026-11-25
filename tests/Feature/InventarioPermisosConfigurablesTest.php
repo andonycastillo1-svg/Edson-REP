@@ -20,11 +20,12 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\RefreshDatabase;
+use Tests\Support\ConBajasLaborales;
 use Tests\TestCase;
 
 class InventarioPermisosConfigurablesTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, ConBajasLaborales;
 
     private User $admin;
     private User $coordinador;
@@ -137,13 +138,14 @@ class InventarioPermisosConfigurablesTest extends TestCase
             ->assertOk()->assertSee('Persona NORTE-01')->assertDontSee('Persona SUR-01');
         $this->get(route('sistema.datos.ficha', ['asignaciones', $fuera->id]))->assertNotFound();
         $this->get(route('operador.asignaciones.entrega', $fuera->grupo_asignacion))->assertForbidden();
-        $devolver = $this->devolucion();
+        $baja = $this->bajaFixture($asignacion->colaborador_codigo);
+        $devolver = $this->devolucion() + ['baja_laboral_id' => $baja->id];
         $this->postJson(route('operador.asignaciones.devolver_lote'), $devolver + [
             'seleccionadas' => [$asignacion->id, $fuera->id], 'devoluciones' => [$asignacion->id => 1, $fuera->id => 1],
         ])->assertForbidden();
         $this->assertSame(1, $asignacion->fresh()->cantidad_asignada);
         $this->assertSame(9, $this->stock($this->central));
-        $this->post(route('operador.asignaciones.devolver', $asignacion), $this->devolucion() + ['cantidad_devuelta' => 1])->assertSessionHasNoErrors();
+        $this->post(route('operador.asignaciones.devolver', $asignacion), $this->devolucion() + ['cantidad_devuelta' => 1, 'baja_laboral_id' => $baja->id])->assertSessionHasNoErrors();
         $this->assertSame(0, $asignacion->fresh()->cantidad_asignada);
         $this->assertDatabaseHas('asignacion_movimientos', ['asignacion_inventario_id' => $asignacion->id, 'user_id' => $this->coordinador->id, 'tipo' => 'Devolucion']);
         $this->assertSame(1, $this->stock($this->central, tipo: 'usado'));
@@ -193,8 +195,10 @@ class InventarioPermisosConfigurablesTest extends TestCase
         $this->postJson($manual, $this->entrega('SUR-01', $this->central))->assertForbidden();
         $this->post($manual, $this->entrega('NORTE-01', $this->central))->assertSessionHasNoErrors();
         $fila = AsignacionInventario::sole();
-        $this->post(route('operador.asignaciones.devolver', $fila), $this->devolucion() + ['cantidad_devuelta' => 1])->assertSessionHasNoErrors();
+        $baja = $this->bajaFixture($fila->colaborador_codigo);
+        $this->post(route('operador.asignaciones.devolver', $fila), $this->devolucion() + ['cantidad_devuelta' => 1, 'baja_laboral_id' => $baja->id])->assertSessionHasNoErrors();
         $this->assertSame($this->rrhh->id, $fila->user_id);
+        $this->patch(route('rrhh.colaboradores.estado', $fila->colaborador_codigo))->assertSessionHasNoErrors();
         $this->post(route('flujo.importar.preview'), ['excel' => $this->excel('NORTE-01', 'EQUIPO-B')])->assertRedirect()->assertSessionHasNoErrors();
         $importacion = ImportacionAsignacion::sole();
         $this->post(route('flujo.importar.confirmar', $importacion))->assertSessionHasNoErrors();

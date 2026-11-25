@@ -9,7 +9,7 @@
     $puedeSeleccionar = app(\App\Sistema\Permisos::class)->ruta(auth()->user(), $ruta.'.fichas_tecnicas_masivas');
 @endphp
 
-<div x-data="colaboradoresPage('{{ $routePrefix }}')" class="space-y-4">
+<div x-data="colaboradoresPage()" class="space-y-4">
     <x-ui.encabezado titulo="Colaboradores" descripcion="Consulta expedientes y descarga fichas técnicas del personal.">
         @rutaDisponible($ruta.'.create')
             <x-ui.accion :href="route($ruta.'.create')" variante="primaria">Nuevo colaborador</x-ui.accion>
@@ -92,11 +92,14 @@
                                     <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$c->codigo" />
                                     <td>
                                         <div class="flex flex-wrap justify-end gap-2">
-                                            @rutaDisponible($ruta.'.detalle')
-                                                <button type="button" class="ui-btn-secondary ui-btn-sm" @click="openDetalle(@js($c->codigo))">Ver expediente</button>
+                                            @rutaDisponible($ruta.'.expediente')
+                                                <x-ui.accion class="ui-btn-sm" :href="route($ruta.'.expediente', $c)">Ver expediente</x-ui.accion>
                                             @endrutaDisponible
                                             @rutaDisponible($ruta.'.edit')
                                                 <x-ui.accion class="ui-btn-sm" :href="route($ruta.'.edit', $c)">Editar</x-ui.accion>
+                                            @endrutaDisponible
+                                            @rutaDisponible($ruta.'.baja')
+                                                <x-ui.accion class="ui-btn-sm" :href="route($ruta.'.baja', $c)">Baja laboral</x-ui.accion>
                                             @endrutaDisponible
                                             @rutaDisponible($ruta.'.estado')
                                                 <form method="POST" action="{{ route($ruta.'.estado', $c) }}"
@@ -119,8 +122,7 @@
         @endforeach
     </x-sistema.panel>
 
-    @include('admin.colaboradores.Modals.expediente-modal')
 </div>
 
-@include('admin.colaboradores.Modals.expediente-script')
+@include('admin.colaboradores.seleccion-script')
 @endsection

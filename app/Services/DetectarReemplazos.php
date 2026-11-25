@@ -13,7 +13,7 @@ class DetectarReemplazos
 {
     public function __construct(private AsignacionVidaUtilService $vida, private Auditoria $auditoria) {}
 
-    public function registrar(AsignacionInventario $nueva, Collection $anteriores, ?MotivoAsignacion $motivo = null): array
+    public function registrar(AsignacionInventario $nueva, Collection $anteriores, ?MotivoAsignacion $motivo = null, bool $condicionVerificada = false): array
     {
         $salida = $nueva->entrega->salida_en;
         $alertas = [];
@@ -21,11 +21,13 @@ class DetectarReemplazos
             if ($salida->lt($anterior->entrega?->salida_en ?? $anterior->fecha)) {
                 throw ValidationException::withMessages(['fecha' => 'La salida debe ser posterior o igual a la entrega anterior.']);
             }
-            $anterior->update(['sustituida_por_id' => $nueva->id]);
+            if (!$condicionVerificada || $anterior->cantidad_asignada === 1) {
+                $anterior->update(['sustituida_por_id' => $nueva->id]);
+            }
             $this->auditoria->registrar('asignaciones', 'vincular_custodia_anterior', $anterior->id, null,
                 ['asignacion_nueva_id' => $nueva->id]);
             if ($motivo === null) {
-                $restante = $this->vida->restante($anterior, $salida);
+                $restante = $this->vida->restante($anterior, $salida, 1);
                 if ($restante !== 0) {
                     $alertas[] = $this->alerta($nueva, $anterior, $restante)->id;
                 }
@@ -34,7 +36,7 @@ class DetectarReemplazos
 
         if ($motivo && $motivo->politica !== 'sin_propuesta') {
             $anterior = $anteriores->last();
-            $restante = $anterior ? $this->vida->restante($anterior, $salida) : null;
+            $restante = $anterior ? $this->vida->restante($anterior, $salida, 1) : null;
             $alertas[] = $this->alerta($nueva, $anterior, $restante, $motivo)->id;
         }
 

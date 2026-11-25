@@ -91,6 +91,8 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
+        Route::get('colaboradores/{colaborador}/expediente', [ColaboradorController::class, 'expediente'])
+            ->name('colaboradores.expediente');
 
         Route::get('colaboradores/{colaborador}/ficha-tecnica', [ColaboradorController::class, 'fichaTecnica'])
             ->name('colaboradores.ficha_tecnica');
@@ -100,6 +102,11 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::patch('colaboradores/{colaborador}/estado', [ColaboradorController::class, 'cambiarEstado'])
             ->name('colaboradores.estado');
+
+        Route::get('colaboradores/{colaborador}/baja-laboral', [ColaboradorController::class, 'formularioBaja'])
+            ->name('colaboradores.baja');
+        Route::post('colaboradores/{colaborador}/baja-laboral', [ColaboradorController::class, 'registrarBaja'])
+            ->name('colaboradores.baja.store');
 
         Route::resource('colaboradores', ColaboradorController::class)
             ->except(['show', 'destroy'])->parameters(['colaboradores' => 'colaborador']);
@@ -235,6 +242,10 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
 
+        Route::get('asignaciones/historial', [AsignacionInventarioController::class, 'historial'])->name('asignaciones.historial');
+        Route::get('asignaciones/colaborador/{codigo}', [AsignacionInventarioController::class, 'colaborador'])->name('asignaciones.colaborador');
+        Route::get('asignaciones/articulos/{asignacion}', [AsignacionInventarioController::class, 'articulo'])->name('asignaciones.articulo');
+
         Route::post('asignaciones', [AsignacionInventarioController::class, 'store'])
             ->name('asignaciones.store');
 
@@ -272,6 +283,9 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::post('asignaciones/devolver-lote', [AsignacionInventarioController::class, 'devolverLote'])
             ->name('asignaciones.devolver_lote');
+
+        Route::get('asignaciones/colaborador/{codigo}/baja-laboral', [AsignacionInventarioController::class, 'devolucionLaboral'])
+            ->name('asignaciones.baja');
 
         Route::post('asignaciones/colaborador/{codigo}/devolver-todo', [AsignacionInventarioController::class, 'devolverTodoColaborador'])
             ->name('asignaciones.devolver_todo_colaborador');
@@ -309,6 +323,10 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
 
+        Route::get('asignaciones/historial', [AsignacionInventarioController::class, 'historial'])->name('asignaciones.historial');
+        Route::get('asignaciones/colaborador/{codigo}', [AsignacionInventarioController::class, 'colaborador'])->name('asignaciones.colaborador');
+        Route::get('asignaciones/articulos/{asignacion}', [AsignacionInventarioController::class, 'articulo'])->name('asignaciones.articulo');
+
         Route::post('asignaciones', [AsignacionInventarioController::class, 'store'])
             ->name('asignaciones.store');
 
@@ -346,6 +364,9 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
 
         Route::post('asignaciones/devolver-lote', [AsignacionInventarioController::class, 'devolverLote'])
             ->name('asignaciones.devolver_lote');
+
+        Route::get('asignaciones/colaborador/{codigo}/baja-laboral', [AsignacionInventarioController::class, 'devolucionLaboral'])
+            ->name('asignaciones.baja');
 
         Route::post('asignaciones/colaborador/{codigo}/devolver-todo', [AsignacionInventarioController::class, 'devolverTodoColaborador'])
             ->name('asignaciones.devolver_todo_colaborador');
@@ -386,6 +407,10 @@ Route::middleware(['auth', 'auto.logout', 'role:3'])
     ->group(function () {
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
+
+        Route::get('asignaciones/historial', [AsignacionInventarioController::class, 'historial'])->name('asignaciones.historial');
+        Route::get('asignaciones/colaborador/{codigo}', [AsignacionInventarioController::class, 'colaborador'])->name('asignaciones.colaborador');
+        Route::get('asignaciones/articulos/{asignacion}', [AsignacionInventarioController::class, 'articulo'])->name('asignaciones.articulo');
 
         Route::get('asignaciones/entregas/{grupo}', [AsignacionInventarioController::class, 'entrega'])
             ->whereUuid('grupo')->name('asignaciones.entrega');
@@ -443,6 +468,8 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
+        Route::get('colaboradores/{colaborador}/expediente', [ColaboradorController::class, 'expediente'])
+            ->name('colaboradores.expediente');
 
         Route::get('colaboradores/{colaborador}/ficha-tecnica', [ColaboradorController::class, 'fichaTecnica'])
             ->name('colaboradores.ficha_tecnica');
@@ -452,6 +479,11 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 
         Route::patch('colaboradores/{colaborador}/estado', [ColaboradorController::class, 'cambiarEstado'])
             ->name('colaboradores.estado');
+
+        Route::get('colaboradores/{colaborador}/baja-laboral', [ColaboradorController::class, 'formularioBaja'])
+            ->name('colaboradores.baja');
+        Route::post('colaboradores/{colaborador}/baja-laboral', [ColaboradorController::class, 'registrarBaja'])
+            ->name('colaboradores.baja.store');
 
         Route::resource('colaboradores', ColaboradorController::class)
             ->except(['show', 'destroy'])->parameters(['colaboradores' => 'colaborador']);

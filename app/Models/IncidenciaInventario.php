@@ -17,6 +17,7 @@ class IncidenciaInventario extends Model
     protected $table = 'incidencias_inventario';
 
     protected $fillable = [
+        'baja_laboral_id',
         'asignacion_id', 'reemplazo_id', 'registrado_por', 'cantidad', 'motivo',
         'resultado_stock', 'ocurrio_en', 'observaciones', 'estado_vida',
         'vida_restante_segundos', 'archivo', 'archivo_nombre', 'archivo_subido_por',

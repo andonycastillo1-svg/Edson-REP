@@ -99,15 +99,11 @@ class ExportacionesOperativas
         ], $filas);
     }
 
-    public function compras($consulta, ?string $busqueda)
+    public function compras($consulta)
     {
-        $buscar = $this->normalizar($busqueda ?? '');
-        $filas = (function () use ($consulta, $buscar) {
+        $filas = (function () use ($consulta) {
             foreach ($consulta->orderByDesc('c.id')->lazy(150)->chunk(150) as $grupo) {
-                $compras = $grupo->filter(fn ($fila) => str_contains($this->normalizar(implode(' ', [
-                    $fila->id, $fila->fecha_compra, $fila->no_factura, $fila->proveedor_nombre, $fila->proyecto,
-                    number_format($fila->total_factura, 2),
-                ])), $buscar))->collect();
+                $compras = $grupo->collect();
                 $detalles = DB::table('compra_detalles as d')->leftJoin('productos as p', 'p.codigo', '=', 'd.producto_codigo')
                     ->whereIn('d.compra_id', $compras->pluck('id'))->orderBy('d.id')
                     ->get(['d.*', 'p.nombre as producto'])->groupBy('compra_id');
@@ -147,8 +143,14 @@ class ExportacionesOperativas
 
     public function devoluciones($consulta)
     {
-        $filas = AsignacionMovimiento::with('user', 'asignacion.colaborador', 'asignacion.producto')
-            ->where(fn ($q) => $q->where('tipo', 'Devolucion')->orWhereNotNull('grupo_devolucion'))->whereIn('asignacion_inventario_id', $consulta->reorder()->select('asignaciones_inventarios.id')->toBase())
+        return $this->devolucionesPorMovimiento(AsignacionMovimiento::whereIn('asignacion_inventario_id',
+            $consulta->reorder()->select('asignaciones_inventarios.id')->toBase()));
+    }
+
+    public function devolucionesPorMovimiento($consulta)
+    {
+        $filas = $consulta->with('user', 'asignacion.colaborador', 'asignacion.producto')
+            ->where(fn ($q) => $q->where('tipo', 'Devolucion')->orWhereNotNull('grupo_devolucion'))
             ->orderByDesc('id')->lazy(250)->map(fn ($fila) => [
                 $fila->asignacion?->colaborador_codigo, $fila->asignacion?->colaborador?->nombre,
                 $fila->asignacion?->producto_codigo, $fila->asignacion?->producto?->nombre, (int) $fila->cantidad,
@@ -251,8 +253,5 @@ class ExportacionesOperativas
             'Cantidad pendiente', 'Facturas distribuidas (unidades)', 'Facturas del consolidado por conciliar'], $filas);
     }
 
-    private function normalizar(string $texto): string
-    {
-        return mb_strtolower(preg_replace('/\p{Mn}/u', '', \Normalizer::normalize(trim($texto), \Normalizer::FORM_D)));
-    }
+
 }

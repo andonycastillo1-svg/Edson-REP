@@ -9,6 +9,7 @@ class AsignacionMovimiento extends Model
     protected $table = 'asignacion_movimientos';
 
     protected $fillable = [
+        'baja_laboral_id',
         'asignacion_inventario_id',
         'tipo',
         'cantidad',
@@ -28,6 +29,11 @@ class AsignacionMovimiento extends Model
     public function asignacion()
     {
         return $this->belongsTo(AsignacionInventario::class, 'asignacion_inventario_id');
+    }
+
+    public function bodegaRetorno()
+    {
+        return $this->belongsTo(Bodega::class, 'bodega_retorno_id');
     }
 
     public function user()
