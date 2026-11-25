@@ -176,17 +176,6 @@ class AccesoInventarioOperativo
         });
     }
 
-    public function custodiasParaResolverTodo($consulta, User $usuario): void
-    {
-        $consulta->where(function ($q) use ($usuario) {
-            $q->where(fn ($rama) => $this->limitarAsignaciones($rama, $usuario, 'asignaciones.devolver'));
-            if ($this->permanentes($usuario, 'asignaciones.devolver')->contains(fn ($ambito) =>
-                $ambito->historico && $ambito->custodios === [$usuario->id])) {
-                $q->orWhere('user_id', $usuario->id);
-            }
-        });
-    }
-
     public function buscarCustodias(User $usuario, string $permiso, Collection $filas, bool $bloquear = false): ?AlcanceInventario
     {
         if ($filas->isEmpty()) {

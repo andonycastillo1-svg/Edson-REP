@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class AsignacionInventarioArchivo extends Model
 {
+    public const DEVOLUCION_GENERADA = 'devolucion_generada';
+
     protected $table = 'asignacion_inventario_archivos';
 
     protected $fillable = [

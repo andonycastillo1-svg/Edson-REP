@@ -20,7 +20,7 @@ class HojaAsignacion
         $this->acceso->registrar($alcance, 'asignaciones.exportar', $grupo);
         $asignaciones->each(function (AsignacionInventario $asignacion) {
             $asignacion->cantidad = $asignacion->movimientoInicial?->cantidad
-                ?? ($asignacion->cantidad_asignada + $asignacion->movimientos->whereIn('tipo', ['Devolucion', 'Reemplazo'])->sum('cantidad')
+                ?? ($asignacion->cantidad_asignada + $asignacion->movimientos->whereIn('tipo', ['Devolucion', 'Reemplazo'])->where('estado_devolucion', '!==', 'sin_retorno')->sum('cantidad')
                     + $asignacion->incidencias->where('resultado_stock', 'sin_retorno')->sum('cantidad'));
         });
 

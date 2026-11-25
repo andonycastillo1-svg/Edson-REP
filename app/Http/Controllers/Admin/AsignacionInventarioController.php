@@ -18,7 +18,6 @@ use App\Models\IncidenciaInventario;
 use App\Models\User;
 use App\Models\Bodega;
 use App\Models\AsignacionMovimiento;
-use App\Models\BajaLaboral;
 use App\Models\AsignacionInventarioArchivo;
 use App\Models\AlertaReemplazo;
 use Illuminate\Http\Request;
@@ -34,10 +33,11 @@ use App\Models\MotivoAsignacion;
 use App\Services\NotificacionService;
 use Carbon\Carbon;
 use App\Services\ResolverCustodia;
+use App\Services\DevolverCustodiaCompleta;
+use App\Services\HojaDevolucion;
 use App\Services\AccesoInventarioOperativo;
 use App\Services\DocumentoPrivado;
 use App\Services\InventarioStockService;
-use App\Services\SolicitudInventarioService;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -47,7 +47,6 @@ class AsignacionInventarioController extends Controller
         private AccesoInventarioOperativo $inventario,
         private InventarioStockService $stock,
         private AccesoCustodia $acceso,
-        private ResolverCustodia $resolverCustodia,
     ) {}
 
     public function index(Request $request)
@@ -106,7 +105,7 @@ class AsignacionInventarioController extends Controller
                 ->selectRaw("SUM(CASE WHEN estado = 'Activa' AND sustituida_por_id IS NULL THEN cantidad_asignada ELSE 0 END) AS cantidad_activa");
             $colaboradores = Colaborador::query()->joinSub($resumen, 'resumen', 'resumen.colaborador_codigo', '=', 'colaboradores.codigo')
                 ->select('colaboradores.*', 'resumen.asignaciones_count', 'resumen.cantidad_activa')
-                ->with('bajaVigente')->orderBy('nombre')->orderBy('codigo')->paginate($porPagina)->withQueryString();
+                ->orderBy('nombre')->orderBy('codigo')->paginate($porPagina)->withQueryString();
         }
 
         return view('admin.asignaciones.index', compact('colaboradores', 'entregas', 'routePrefix', 'faltantes',
@@ -118,17 +117,14 @@ class AsignacionInventarioController extends Controller
         $datos = $request->validate(['por_pagina' => ['nullable', Rule::in([10, 25, 50])]]);
         $consulta = $this->asignacionesVisibles($request->user(), 'asignaciones.consultar')->where('colaborador_codigo', $codigo);
         abort_unless((clone $consulta)->exists(), 404);
-        $colaborador = Colaborador::with('bajaVigente')->findOrFail($codigo);
+        $colaborador = Colaborador::findOrFail($codigo);
         $routePrefix = $this->asignacionesRoutePrefix();
         $asignaciones = $consulta->with('producto', 'entrega')
             ->when(config('inventario.seguimiento_unidades'), fn ($q) => $q->with('periodosActivos'))
             ->latest('fecha')->orderByDesc('id')->paginate((int) ($datos['por_pagina'] ?? 10))->withQueryString();
         $vida = app(AsignacionVidaUtilService::class);
         $vigencias = $asignaciones->getCollection()->mapWithKeys(fn ($fila) => [$fila->id => $vida->restante($fila, now())]);
-        $devolvibles = AsignacionInventario::custodiaAbierta()->where('colaborador_codigo', $codigo);
-        $this->inventario->limitarAsignaciones($devolvibles, $request->user(), 'asignaciones.devolver');
-        $puedeDevolver = $colaborador->estado === 'Inactivo' && $colaborador->bajaVigente
-            && app(Permisos::class)->ruta($request->user(), $routePrefix.'.asignaciones.baja') && $devolvibles->exists();
+        $puedeDevolver = app(DevolverCustodiaCompleta::class)->puedeRegistrar($request->user(), $colaborador);
 
         return view('admin.asignaciones.colaborador', compact('colaborador', 'asignaciones', 'vigencias', 'routePrefix', 'puedeDevolver'));
     }
@@ -200,8 +196,7 @@ class AsignacionInventarioController extends Controller
             ->where('tipo_documento', 'devolucion_firmada')->latest('id')->get()->unique('grupo_devolucion')->keyBy('grupo_devolucion');
 
         $gruposDevolucion = AsignacionMovimiento::with('asignacion')->whereIn('grupo_devolucion', $grupos)
-            ->whereIn('tipo', ['Devolucion', 'Reemplazo'])
-            ->where(fn ($q) => $q->whereNull('motivo_administrativo')->orWhereIn('motivo_administrativo', array_keys(BajaLaboral::MOTIVOS)))
+            ->conHojaDevolucion()
             ->get()->groupBy('grupo_devolucion')->map(function ($filas) use ($usuario, $routePrefix) {
                 $asignaciones = $filas->pluck('asignacion');
                 $permisos = app(Permisos::class);
@@ -604,10 +599,8 @@ class AsignacionInventarioController extends Controller
         }
 
         $prefijo = $this->asignacionesRoutePrefix();
-        $destino = app(Permisos::class)->ruta($request->user(), $prefijo.'.asignaciones.baja')
-            ? route($prefijo.'.asignaciones.baja', $codigo) : route('dashboard');
-
-        return redirect()->to($destino)->with('success', 'Respaldo histórico guardado.');
+        return redirect()->route($prefijo.'.asignaciones.articulo', $asignacion)
+            ->with('success', 'Respaldo histórico guardado.');
     }
 
     public function uploadPdfDevolucionFirmado(Request $request, string $grupo)
@@ -658,6 +651,9 @@ class AsignacionInventarioController extends Controller
 
     public function verPdfFirmado(AsignacionInventarioArchivo $archivo)
     {
+        if ($archivo->tipo_documento === AsignacionInventarioArchivo::DEVOLUCION_GENERADA) {
+            return $this->descargarDevolucion(request(), $archivo->grupo_devolucion, app(DevolverCustodiaCompleta::class));
+        }
         if ($archivo->tipo_documento === 'devolucion_firmada') {
             $movimientos = $this->movimientosDevolucionAutorizados((string) $archivo->grupo_devolucion, 'asignaciones.archivos');
 
@@ -679,131 +675,68 @@ class AsignacionInventarioController extends Controller
         return DocumentoPrivado::responder($archivo->ruta, $archivo->nombre_original);
     }
 
-    public function devolucionLaboral(Request $request, string $codigo)
+    public function formularioDevolucion(Request $request, string $codigo, DevolverCustodiaCompleta $devolucion)
     {
         $usuario = $request->user();
-        $consulta = $this->asignacionesVisibles($usuario, 'asignaciones.devolver')->where('colaborador_codigo', $codigo);
-        abort_unless((clone $consulta)->exists(), 404);
-        $colaborador = Colaborador::with('bajaVigente')->findOrFail($codigo);
-        $baja = $colaborador->bajaVigente;
-        abort_unless($colaborador->estado === 'Inactivo' && $baja, 404);
-        $asignaciones = $consulta->custodiaAbierta()->with('producto', 'bodega', 'entrega')
-            ->orderBy('producto_codigo')->orderBy('id')->paginate(25)->withQueryString();
-        $routePrefix = $this->asignacionesRoutePrefix();
+        abort_unless($this->inventario->tiene($usuario, 'asignaciones.devolver'), 403);
+        $colaborador = Colaborador::with('region')->findOrFail($codigo);
+        $articulos = $devolucion->cargar($usuario, $colaborador);
+        $rutaExpediente = \App\Sistema\CatalogoPermisos::prefijo($usuario->rolOperativo()).'.colaboradores.expediente';
+        $volver = app(Permisos::class)->ruta($usuario, $rutaExpediente) ? route($rutaExpediente, $colaborador) : route('dashboard');
 
-        return view('admin.asignaciones.baja', compact('colaborador', 'asignaciones', 'baja', 'routePrefix'));
+        return view('admin.asignaciones.devolucion', compact('colaborador', 'articulos', 'volver'));
     }
 
-    public function devolver(Request $request, AsignacionInventario $asignacion)
+    public function rechazarDevolucionParcial(): never
     {
-        $data = $request->validate($this->reglasDevolucion() + [
-            'cantidad_devuelta' => ['required', 'integer', 'min:1'],
-        ]);
-
-        return $this->procesarDevoluciones($request, $data, AsignacionInventario::whereKey($asignacion->id),
-            fn () => (int) $data['cantidad_devuelta']);
+        throw ValidationException::withMessages(['articulos' => 'Registra la devolución completa de la custodia del colaborador.']);
     }
 
-    public function devolverLote(Request $request)
+    public function registrarDevolucionCompleta(Request $request, string $codigo, DevolverCustodiaCompleta $devolucion)
     {
-        $data = $request->validate($this->reglasDevolucion() + [
-            'seleccionadas' => ['required', 'array', 'min:1', 'max:100'],
-            'seleccionadas.*' => ['required', 'integer', 'distinct', 'exists:asignaciones_inventarios,id'],
-            'devoluciones' => ['required', 'array', 'min:1'],
-            'devoluciones.*' => ['nullable', 'integer', 'min:1'],
-        ]);
-
-        return $this->procesarDevoluciones($request, $data, AsignacionInventario::whereKey($data['seleccionadas']),
-            fn ($asignacion) => (int) ($data['devoluciones'][$asignacion->id] ?? 0));
-    }
-
-    public function devolverTodoColaborador(Request $request, string $colaboradorCodigo)
-    {
-        $data = $request->validate($this->reglasDevolucion());
-        $query = AsignacionInventario::custodiaAbierta()->where('colaborador_codigo', $colaboradorCodigo);
-        $this->inventario->custodiasParaResolverTodo($query, $request->user());
-
-        return $this->procesarDevoluciones($request, $data, $query, fn ($asignacion) => $asignacion->cantidad_asignada);
-    }
-
-    private function reglasDevolucion(): array
-    {
-        return [
+        abort_unless($this->inventario->tiene($request->user(), 'asignaciones.devolver'), 403);
+        if ($request->filled('articulos_json')) {
+            $json = $request->validate(['articulos_json' => ['required', 'json']])['articulos_json'];
+            $request->merge(['articulos' => json_decode($json, true, flags: JSON_THROW_ON_ERROR)]);
+        }
+        $datos = $request->validate([
             'solicitud_id' => ['required', 'uuid'],
-            'baja_laboral_id' => ['required', 'integer', 'min:1'],
-            'motivo_administrativo' => ['nullable', Rule::in(array_keys(BajaLaboral::MOTIVOS))],
-            'resoluciones' => ['nullable', 'array', 'max:100'],
-            'resoluciones.*' => ['required', 'array'],
-        ] + ResolverCustodia::reglas() + ResolverCustodia::reglas('resoluciones.*.');
+            'articulos' => ['required', 'array', 'min:1'],
+            'articulos.*' => ['required', 'array:buen_estado,danado,sin_retorno', 'required_array_keys:buen_estado,danado,sin_retorno'],
+            'articulos.*.*' => ['required', 'integer', 'min:0', 'max:4294967295'],
+        ], [
+            'articulos.*.*.required' => 'Indica una cantidad para cada condición. Usa cero si no aplica.',
+        ]);
+        $grupo = $devolucion->registrar($request->user(), $codigo, $datos['solicitud_id'], $datos['articulos']);
+
+        return redirect()->route('devoluciones.pdf', $grupo);
     }
 
-    private function procesarDevoluciones(Request $request, array $data, $query, callable $cantidadPedida)
+    public function descargarDevolucion(Request $request, string $grupo, DevolverCustodiaCompleta $devolucion)
     {
-        $grupo = (string) Str::uuid();
-        $usuario = $request->user();
-
-        [$codigo, $ids, $alertas, $retorno] = DB::transaction(function () use ($data, $query, $cantidadPedida, $grupo, $usuario) {
-            SolicitudInventarioService::registrarDevolucion($data['solicitud_id']);
-            // Se usa el mismo orden de bloqueo que en las salidas y reemplazos.
-            $codigos = (clone $query)->distinct()->pluck('colaborador_codigo');
-            $colaboradores = Colaborador::whereIn('codigo', $codigos)->orderBy('codigo')->lockForUpdate()->get();
-            $asignaciones = (clone $query)->orderBy('producto_codigo')->orderBy('id')->lockForUpdate()->get();
-            if ($asignaciones->isEmpty()) {
-                throw ValidationException::withMessages(['cantidad_devuelta' => 'No hay custodias activas para resolver.']);
-            }
-
-            $alcance = $this->inventario->autorizarCustodias($usuario, 'asignaciones.devolver', $asignaciones, bloquear: true);
-            $colaborador = $colaboradores->count() === 1 ? $colaboradores->sole() : null;
-            $baja = $colaborador?->bajaVigente()->whereKey($data['baja_laboral_id'])->lockForUpdate()->first();
-            abort_unless($baja && $colaborador->estado === 'Inactivo', 403, 'La devolución requiere una baja laboral vigente.');
-            if (isset($data['motivo_administrativo']) && $data['motivo_administrativo'] !== $baja->motivo) {
-                throw ValidationException::withMessages(['motivo_administrativo' => 'El motivo debe coincidir con la baja registrada.']);
-            }
-            if (!isset($data['cantidad_devuelta']) && !isset($data['seleccionadas'])) {
-                if (array_diff($asignaciones->modelKeys(), array_keys($data['resoluciones'] ?? [])) !== []) {
-                    throw ValidationException::withMessages(['resoluciones' => 'Registra la condición de cada artículo antes de resolver toda la custodia.']);
-                }
-            }
-            $this->inventario->registrar($alcance, 'asignaciones.devolver', $grupo);
-            $alertas = [];
-            $tuvoRetorno = false;
-            foreach ($asignaciones as $asignacion) {
-                $condicion = $data['resoluciones'][$asignacion->id] ?? $data;
-                $resultado = $this->resolverCustodia->aplicar($asignacion, $cantidadPedida($asignacion), $condicion, $usuario, $grupo, $baja->motivo, $baja->id);
-                $tuvoRetorno = $tuvoRetorno || $resultado['retorno'];
-                if ($resultado['alerta'] !== null) {
-                    $alertas[] = $resultado['alerta'];
-                }
-            }
-
-            return [$colaborador->codigo, $asignaciones->modelKeys(), $alertas, $tuvoRetorno];
-        }, 3);
-        $this->notificarAlertas($alertas, $usuario);
-        app(NotificacionService::class)->safeAction(
-            fn (NotificacionService $service) => $service->notificarCambioEstadoAsignacion(
-                AsignacionInventario::whereKey($ids)->get(), $usuario, 'una resolución de custodia'
-            )
-        );
-
-        $prefijo = $this->asignacionesRoutePrefix();
-        $destino = app(Permisos::class)->ruta($usuario, $prefijo.'.asignaciones.baja')
-            ? route($prefijo.'.asignaciones.baja', $codigo) : route('dashboard');
-
-        return redirect()->to($destino)->with('success', 'Custodia actualizada correctamente.')
-            ->with('grupo_devolucion', $retorno ? $grupo : null);
-    }
-
-    public function hojaDevolucion(string $grupo)
-    {
-        $movimientos = $this->movimientosDevolucionAutorizados($grupo);
-
-        if ($movimientos->isEmpty()) {
-            abort(404, 'No se encontraron movimientos de devolución para este grupo.');
+        $movimientos = HojaDevolucion::movimientos($grupo);
+        abort_if($movimientos->isEmpty(), 404);
+        $alcance = $devolucion->alcanceHoja($request->user(), $movimientos);
+        abort_if($alcance === null, 403);
+        $this->inventario->registrar($alcance, 'asignaciones.consultar_hoja_devolucion', $grupo);
+        $guardado = AsignacionInventarioArchivo::where('grupo_devolucion', $grupo)
+            ->where('tipo_documento', AsignacionInventarioArchivo::DEVOLUCION_GENERADA)->first();
+        $descargar = $request->boolean('descargar');
+        if ($guardado) {
+            return DocumentoPrivado::responder($guardado->ruta, $guardado->nombre_original, $descargar);
         }
 
-        $primerMovimiento = $movimientos->first();
+        return response(HojaDevolucion::pdf($movimientos, $grupo), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => ($descargar ? 'attachment' : 'inline').'; filename="devolucion-'.$grupo.'.pdf"',
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
 
-        return view('admin.asignaciones.hoja_devolucion', compact('movimientos', 'grupo', 'primerMovimiento'));
+    public function hojaDevolucion(Request $request, string $grupo, DevolverCustodiaCompleta $devolucion)
+    {
+        return $this->descargarDevolucion($request, $grupo, $devolucion);
     }
 
     private function autorizarAsignacionInventario(AsignacionInventario $asignacion, string $permiso = 'asignaciones.consultar', bool $bloquear = false): void
@@ -821,19 +754,7 @@ class AsignacionInventarioController extends Controller
 
     private function movimientosDevolucionAutorizados(string $grupo, string $permiso = 'asignaciones.exportar')
     {
-        $query = AsignacionMovimiento::with([
-            'asignacion',
-            'asignacion.colaborador',
-            'asignacion.producto',
-            'asignacion.bodega',
-            'user',
-        ])
-            ->whereIn('tipo', ['Devolucion', 'Reemplazo'])
-            ->where('grupo_devolucion', $grupo)
-            ->where(fn ($q) => $q->whereNull('motivo_administrativo')->orWhereIn('motivo_administrativo', ['renuncia', 'despido']))
-            ->orderBy('created_at');
-
-        $filas = $query->get();
+        $filas = HojaDevolucion::movimientos($grupo);
         if ($filas->isNotEmpty()) {
             $alcance = $this->inventario->autorizarCustodias(auth()->user(), $permiso, $filas->pluck('asignacion'));
             if (request()->isMethod('GET')) {

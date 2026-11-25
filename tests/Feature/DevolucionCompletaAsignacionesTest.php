@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AsignacionInventario;
 use App\Models\AsignacionMovimiento;
-use App\Models\BajaLaboral;
+use App\Models\AsignacionInventarioArchivo;
 use App\Models\Bodega;
 use App\Models\Colaborador;
 use App\Models\EntregaInventario;
@@ -16,11 +16,10 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\RefreshDatabase;
 use Tests\TestCase;
 
-class BajaLaboralAsignacionesTest extends TestCase
+class DevolucionCompletaAsignacionesTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -51,56 +50,88 @@ class BajaLaboralAsignacionesTest extends TestCase
         }
     }
 
-    public static function motivosBaja(): array
-    {
-        return [['renuncia'], ['despido']];
-    }
-
-    #[DataProvider('motivosBaja')]
-    public function test_baja_registrada_separa_la_recepcion_fisica_de_un_faltante(string $motivo): void
+    public function test_rrhh_resuelve_toda_la_custodia_y_archiva_una_hoja_incluso_con_faltantes(): void
     {
         $this->actingAs($this->operador)->post(route('operador.asignaciones.store'), $this->salida(['CASCO', 'GUANTES']))
             ->assertSessionHasNoErrors();
-        $entrega = EntregaInventario::sole();
-        [$casco, $guantes] = $entrega->asignaciones()->orderBy('id')->get();
-        $ruta = route('operador.asignaciones.devolver_lote');
-        $formulario = route('operador.asignaciones.baja', 'EMP-01');
-        $datos = [
-            'solicitud_id' => (string) Str::uuid(),
-            'seleccionadas' => [$casco->id, $guantes->id],
-            'devoluciones' => [$casco->id => 1, $guantes->id => 1],
-            'resoluciones' => [
-                $casco->id => ['estado_devolucion' => 'buen_estado'],
-                $guantes->id => ['estado_devolucion' => 'otra', 'resultado_otra' => 'sin_retorno', 'detalle_devolucion' => 'Equipo sin recuperar.'],
-            ],
-        ];
-        $this->get($formulario)->assertNotFound();
-        $this->postJson($ruta, $datos + ['baja_laboral_id' => 1, 'motivo_administrativo' => $motivo])->assertForbidden();
-        $registrar = route('rrhh.colaboradores.baja.store', 'EMP-01');
-        $personal = ['motivo' => $motivo, 'fecha_efectiva' => today()->toDateString(), 'observaciones' => 'Acta de personal'];
-        $this->postJson($registrar, $personal)->assertForbidden();
-        $this->actingAs($this->rrhh)->patch(route('rrhh.colaboradores.estado', 'EMP-01'))->assertSessionHasNoErrors();
-        $this->actingAs($this->operador)->postJson($ruta, $datos + ['baja_laboral_id' => 1])->assertForbidden();
-        $this->actingAs($this->rrhh)->post($registrar, $personal)->assertSessionHasNoErrors();
-        $baja = BajaLaboral::sole();
-        $this->assertSame($this->rrhh->id, $baja->registrada_por);
-        $this->assertSame($motivo, $baja->motivo);
-        $this->postJson($registrar, $personal)->assertUnprocessable();
-        $this->assertDatabaseCount('asignacion_movimientos', 2);
-        $this->assertDatabaseCount('incidencias_inventario', 0);
+        [$casco, $guantes] = AsignacionInventario::orderBy('id')->get();
+        $segundaBodega = Bodega::where('tipo', 'Principal')->sole();
+        $legado = AsignacionInventario::create([
+            'grupo_asignacion' => (string) Str::uuid(), 'producto_codigo' => 'GUANTES', 'colaborador_codigo' => 'EMP-01',
+            'bodega_id' => $segundaBodega->id, 'user_id' => $this->operador->id, 'fecha' => today()->subMonth(),
+            'cantidad_asignada' => 3, 'estado' => 'Activa',
+        ]);
+        $ruta = route('devoluciones.registrar', 'EMP-01');
+        $formulario = route('devoluciones.formulario', 'EMP-01');
+        $expediente = route('rrhh.colaboradores.expediente', 'EMP-01');
+        $datos = ['solicitud_id' => (string) Str::uuid(), 'articulos' => [
+            $casco->id => ['buen_estado' => 1, 'danado' => 0, 'sin_retorno' => 0],
+            $guantes->id => ['buen_estado' => 0, 'danado' => 0, 'sin_retorno' => 1],
+            $legado->id => ['buen_estado' => 1, 'danado' => 1, 'sin_retorno' => 1],
+        ]];
 
-        $datos['baja_laboral_id'] = $baja->id;
-        $this->actingAs($this->operador)->get($formulario)->assertOk()->assertSee('Guantes de seguridad');
-        $this->postJson($ruta, $datos + ['motivo_administrativo' => $motivo === 'renuncia' ? 'despido' : 'renuncia'])->assertUnprocessable();
-        $this->post($ruta, $datos)->assertRedirect($formulario)->assertSessionHas('grupo_devolucion');
+        $this->actingAs($this->rrhh)->get($expediente)->assertOk()->assertDontSeeText('Registrar devolución');
+        $this->get($formulario)->assertForbidden();
+        $this->postJson($ruta, $datos)->assertForbidden();
+        DB::table('sistema_permisos_usuario')->insert(['user_id' => $this->rrhh->id, 'permiso' => 'asignaciones.devolver', 'permitido' => true]);
+        $this->rrhh->regionesOperativas()->attach(Colaborador::findOrFail('EMP-01')->region_id);
+        DB::table('bodega_usuario_operativa')->insert(['user_id' => $this->rrhh->id, 'bodega_id' => $this->bodega->id, 'opera_inventario' => true]);
+        $this->actingAs($this->rrhh->fresh())->postJson($ruta, $datos)->assertForbidden();
+        $this->get($formulario)->assertForbidden();
+        DB::table('bodega_usuario_operativa')->insert(['user_id' => $this->rrhh->id, 'bodega_id' => $segundaBodega->id, 'opera_inventario' => true]);
+
+        $this->actingAs($this->rrhh->fresh())->get($expediente)->assertOk()->assertSeeText('Registrar devolución');
+        $this->get($formulario)->assertOk()->assertSeeText('Guantes de seguridad')->assertSeeText('Bodega central')
+            ->assertSeeText('Región Norte')->assertSeeText($this->rrhh->name);
+        $this->postJson($ruta, ['solicitud_id' => $datos['solicitud_id'], 'articulos' => [$casco->id => $datos['articulos'][$casco->id]]])
+            ->assertUnprocessable()->assertJsonValidationErrors('articulos.'.$guantes->id);
+        $this->assertDatabaseCount('asignacion_movimientos', 2);
+        $this->assertDatabaseCount('asignacion_inventario_archivos', 0);
+        $this->get(route('operador.compras.create'))->assertForbidden();
+
+        $respuesta = $this->post($ruta, $datos)->assertRedirect();
+        $documento = AsignacionInventarioArchivo::sole();
+        $respuesta->assertRedirect(route('devoluciones.pdf', $documento->grupo_devolucion));
         $this->postJson($ruta, $datos)->assertUnprocessable()->assertJsonValidationErrors('solicitud_id');
-        $this->assertDatabaseCount('asignacion_movimientos', 3);
-        $this->assertDatabaseHas('asignacion_movimientos', ['baja_laboral_id' => $baja->id, 'motivo_administrativo' => $motivo,
-            'user_id' => $this->operador->id, 'asignacion_inventario_id' => $casco->id, 'tipo' => 'Devolucion']);
-        $this->assertDatabaseHas('incidencias_inventario', ['baja_laboral_id' => $baja->id, 'asignacion_id' => $guantes->id, 'resultado_stock' => 'sin_retorno']);
-        $this->assertDatabaseHas('inventarios', ['producto_codigo' => 'CASCO', 'stock_tipo' => 'usado', 'cantidad' => 1]);
-        $this->assertDatabaseMissing('inventarios', ['producto_codigo' => 'GUANTES', 'stock_tipo' => 'usado']);
-        $this->get($formulario)->assertOk()->assertSee('No quedan artículos pendientes');
+        $this->postJson($ruta, [...$datos, 'solicitud_id' => (string) Str::uuid()])->assertUnprocessable()->assertJsonValidationErrors('articulos');
+        $this->assertDatabaseCount('asignacion_movimientos', 7);
+        $this->assertDatabaseHas('asignacion_movimientos', ['motivo_administrativo' => 'custodia_total',
+            'user_id' => $this->rrhh->id, 'asignacion_inventario_id' => $guantes->id, 'estado_devolucion' => 'sin_retorno',
+            'bodega_retorno_id' => null, 'stock_tipo_resultante' => null]);
+        $this->assertDatabaseHas('incidencias_inventario', ['asignacion_id' => $guantes->id, 'resultado_stock' => 'sin_retorno']);
+        $this->assertDatabaseHas('inventarios', ['producto_codigo' => 'CASCO', 'bodega_id' => $this->bodega->id, 'stock_tipo' => 'usado', 'cantidad' => 1]);
+        $this->assertDatabaseHas('inventarios', ['producto_codigo' => 'GUANTES', 'bodega_id' => $segundaBodega->id, 'stock_tipo' => 'danado', 'cantidad' => 1]);
+        $this->assertDatabaseHas('inventarios', ['producto_codigo' => 'GUANTES', 'bodega_id' => $segundaBodega->id, 'stock_tipo' => 'usado', 'cantidad' => 1]);
+        $this->assertDatabaseMissing('inventarios', ['producto_codigo' => 'GUANTES', 'bodega_id' => $this->bodega->id, 'stock_tipo' => 'usado']);
+        $this->assertFalse(AsignacionInventario::custodiaAbierta()->exists());
+        $this->assertDatabaseHas('colaboradores', ['codigo' => 'EMP-01', 'estado' => 'Activo']);
+        $this->get($expediente.'?seccion=historial')->assertOk()->assertSeeText('Descargar PDF');
+        $this->get(route('devoluciones.pdf', $documento->grupo_devolucion))->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', Storage::disk('documentos')->get($documento->ruta));
+        $ajeno = User::factory()->create(['role_id' => 2, 'bodega_id' => $this->bodega->id]);
+        $this->actingAs($ajeno)->get(route('devoluciones.pdf', $documento->grupo_devolucion))->assertForbidden();
+    }
+
+    public function test_fallo_al_guardar_pdf_revierte_toda_la_devolucion(): void
+    {
+        $this->actingAs($this->operador)->post(route('operador.asignaciones.store'), $this->salida(['CASCO']))
+            ->assertSessionHasNoErrors();
+        $fila = AsignacionInventario::sole();
+        $disco = \Mockery::mock(\Illuminate\Filesystem\FilesystemAdapter::class);
+        $disco->shouldReceive('put')->once()->andReturn(false);
+        $disco->shouldReceive('delete')->once()->andReturn(true);
+        Storage::shouldReceive('disk')->with('documentos')->andReturn($disco);
+        $solicitud = (string) Str::uuid();
+
+        $this->postJson(route('devoluciones.registrar', 'EMP-01'), [
+            'solicitud_id' => $solicitud,
+            'articulos' => [$fila->id => ['buen_estado' => 1, 'danado' => 0, 'sin_retorno' => 0]],
+        ])->assertServerError();
+        $this->assertSame(1, $fila->fresh()->cantidad_asignada);
+        $this->assertDatabaseCount('asignacion_movimientos', 1);
+        $this->assertDatabaseCount('asignacion_inventario_archivos', 0);
+        $this->assertDatabaseMissing('inventarios', ['producto_codigo' => 'CASCO', 'stock_tipo' => 'usado']);
+        $this->assertDatabaseMissing('solicitudes_inventario', ['clave' => $solicitud]);
     }
 
     public function test_listados_paginados_historial_expediente_y_evidencias_respetan_los_filtros(): void

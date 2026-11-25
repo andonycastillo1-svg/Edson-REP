@@ -3,13 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class AsignacionMovimiento extends Model
 {
+    public const DEVOLUCION_COMPLETA = 'custodia_total';
+
     protected $table = 'asignacion_movimientos';
 
     protected $fillable = [
-        'baja_laboral_id',
         'asignacion_inventario_id',
         'tipo',
         'cantidad',
@@ -25,6 +27,23 @@ class AsignacionMovimiento extends Model
     ];
 
     protected $casts = ['ocurrio_en' => 'datetime', 'vida_restante_segundos' => 'integer'];
+
+    public function scopeConHojaDevolucion(Builder $consulta): Builder
+    {
+        return $consulta->whereIn('tipo', ['Devolucion', 'Reemplazo'])
+            ->where(fn ($q) => $q->whereNull('motivo_administrativo')
+                ->orWhereIn('motivo_administrativo', ['renuncia', 'despido', self::DEVOLUCION_COMPLETA]));
+    }
+
+    public function getCondicionDevolucionAttribute(): string
+    {
+        return match ($this->estado_devolucion) {
+            'buen_estado' => 'Recibido en buen estado',
+            'danado' => 'Recibido dañado',
+            'sin_retorno' => 'No devuelto',
+            default => \App\Services\ResolverCustodia::CONDICIONES[$this->estado_devolucion] ?? ($this->detalle ?: 'Retorno físico'),
+        };
+    }
 
     public function asignacion()
     {

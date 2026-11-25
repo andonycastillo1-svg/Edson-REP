@@ -12,16 +12,15 @@ En la nueva asignación, selecciona la custodia anterior del mismo código. Si l
 
 Cuando tengas permiso de devolución sobre el artículo anterior, puedes registrar en la misma asignación si se recuperó y en qué condición. Una unidad recibida en buen estado entra como inventario usado. Las dañadas o recibidas para baja quedan fuera del saldo asignable. La pérdida, el robo o un cierre sin retorno físico conservan la incidencia y el responsable sin generar entradas. Si todavía no se verificó el retorno, el sistema conserva la custodia anterior y su saldo con el vínculo al reemplazo.
 
-## Registrar una devolución por baja laboral
+## Registrar una devolución completa
 
-1. En **Colaboradores → Baja laboral**, Recursos Humanos registra la renuncia o el despido, con la fecha efectiva. Una inactivación general no habilita devoluciones.
-2. En **Asignaciones y devoluciones**, el responsable de bodega busca al colaborador y abre **Devolución por baja laboral**. La vista muestra las custodias abiertas de su ámbito.
-3. Selecciona los artículos verificados e indica cantidades y condiciones. Puedes dejar artículos pendientes para una visita posterior. Los artículos declarados no recuperados quedan como incidencias.
-4. Guarda la verificación. Cada devolución queda vinculada a la baja y al usuario de bodega. La hoja se genera para los retornos físicos y sus adjuntos se administran desde **Historial de movimientos**. Reactivar al colaborador cierra la autorización de devolver por esa baja y conserva sus registros.
+En el expediente del colaborador, abre **Registrar devolución**. El permiso y el alcance deben cubrir todas las bodegas y custodias incluidas. Clasifica las cantidades de cada artículo como recibidas en buen estado, dañadas o no devueltas. Al confirmar, el sistema cierra toda la custodia y genera el PDF. El expediente y **Historial de movimientos** conservan el acceso autorizado al documento y a sus versiones firmadas.
+
+La inactivación es una acción administrativa independiente. La devolución conserva el estado laboral y registra al responsable, las condiciones y los movimientos con sus bodegas de origen.
 
 ## Consultar y revisar incidencias
 
-En **Incidencias de RR. HH.**, se conserva la revisión según el motivo configurado. Puede limitarse al registro del motivo, solicitar revisión o incluir una referencia proporcional con datos disponibles. La referencia no aplica descuentos automáticamente. Las incidencias por baja laboral conservan sus reglas de revisión por condición.
+En **Incidencias de RR. HH.**, se conserva la revisión según el motivo configurado. Puede limitarse al registro del motivo, solicitar revisión o incluir una referencia proporcional con datos disponibles. La referencia no aplica descuentos automáticamente. La devolución completa conserva las incidencias y el seguimiento según la condición registrada.
 
 El expediente separa **Resumen**, **Productos asignados** e **Incidencias**. Desde Productos asignados se abre el historial paginado. Conserva la descarga de la ficha Excel y el acceso a respaldos según permisos.
 
@@ -37,7 +36,7 @@ Usa `php artisan inventario:contrastar-saldos` para conciliar existencias por un
 
 ## Migración y recordatorios
 
-La migración `2026_11_25_000003_create_bajas_laborales.php` agrega los registros de baja y sus referencias opcionales en movimientos e incidencias. Conserva las asignaciones y documentos históricos. Si ya hay bajas registradas, el esquema bloquea una reversión que las eliminaría.
+La devolución completa utiliza el esquema existente. El documento generado y las versiones firmadas se guardan en el disco privado de documentos.
 
 En un despliegue autorizado, ejecuta `php artisan migrate --force` y comprueba la tarea con `php artisan schedule:list`. El cron debe ejecutar Laravel cada minuto.
 
@@ -51,7 +50,7 @@ La tarea `php artisan inventario:recordar-entregas` se ejecuta cada 15 minutos y
 
 1. Registra dos entradas del mismo código con fechas de ingreso distintas y trasládalas a una bodega secundaria. Guarda una salida y verifica que salga la entrada más antigua. Registra un reemplazo con el retorno confirmado en buen estado y comprueba que la próxima salida prefiera el usado.
 2. Guarda una segunda entrega al mismo colaborador. Comprueba que el almacén descontó solo la unidad nueva, que la anterior conserva su custodia y que RR. HH. recibe la revisión que corresponde. Comprueba que una condición registrada durante el reemplazo use los permisos operativos y quede vinculada a la alerta correspondiente.
-3. Registra una renuncia y un despido en casos de prueba. Confirma los retornos físicos y documenta los faltantes por separado. Contrasta los saldos y verifica que la hoja solo incluya los retornos.
+3. Clasifica todos los artículos de un colaborador, con retornos físicos y faltantes. Contrasta los saldos y verifica que la hoja distinga los resultados.
 4. Registra una salida por tercero. Carga dos versiones del PDF desde el detalle. Ejecuta dos veces la tarea sobre casos con más de 24 horas y comprueba que solo exista un aviso donde falte la hoja.
 5. Revisa las entregas, incidencias y respaldos en el expediente. Usa un rol personalizado con reglas individuales para verificar la excepción de inventario nuevo y los límites de bodega.
 

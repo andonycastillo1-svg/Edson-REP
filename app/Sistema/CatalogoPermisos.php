@@ -17,7 +17,7 @@ class CatalogoPermisos
         'asignaciones.crear' => 'Entregar productos a colaboradores autorizados',
         'asignaciones.vincular' => 'Vincular la entrega con un requerimiento aprobado',
         'asignaciones.confirmar_recepcion' => 'Confirmar la recepción de una entrega',
-        'asignaciones.devolver' => 'Registrar devoluciones por baja laboral y resolver reemplazos',
+        'asignaciones.devolver' => 'Registrar devoluciones de artículos y resolver reemplazos',
         'asignaciones.entregar_nuevo' => 'Entregar existencias nuevas por excepción',
         'asignaciones.evidencias' => 'Adjuntar documentos de entrega y devolución',
         'asignaciones.archivos' => 'Ver los respaldos de entregas y devoluciones',
@@ -117,7 +117,7 @@ class CatalogoPermisos
             'usuarios.desactivar' => ['Desactivar cuentas de usuarios', 'Suspender el inicio de sesión de una cuenta.'],
             'asignaciones.crear' => ['Asignar inventario', 'Entregar equipo a colaboradores y registrar la asignación.'],
             'asignaciones.entregar_nuevo' => ['Entregar inventario nuevo por excepción', 'Autorizar una salida de inventario nuevo y registrar el motivo.'],
-            'asignaciones.devolver' => ['Registrar devoluciones', 'Recibir equipo por renuncia o despido y resolver el artículo anterior durante un reemplazo autorizado.'],
+            'asignaciones.devolver' => ['Registrar devoluciones', 'Resolver toda la custodia de un colaborador o verificar el artículo anterior durante un reemplazo autorizado.'],
             'traslados.aprobar' => ['Resolver solicitudes de traslado', 'Aprobar o rechazar traslados de la bodega correspondiente.'],
             'alertas.modificar' => ['Gestionar incidencias de RR. HH.', 'Registrar notas de seguimiento y finalizar incidencias.'],
             'vehiculos.asignar' => ['Asignar y desasignar vehículos', 'Registrar la entrega y el retorno de unidades.'],
@@ -186,14 +186,14 @@ class CatalogoPermisos
             'entrega' => 'consultar', 'documento_entrega' => 'evidencias', 'confirmar_recepcion' => 'confirmar_recepcion',
             'incidencia' => 'consultar', 'documento_incidencia' => 'evidencias', 'archivo_incidencia' => 'archivos',
             'historial' => 'consultar', 'colaborador' => 'consultar', 'articulo' => 'consultar',
-            'baja' => 'devolver', 'devolver' => 'devolver', 'devolver_lote' => 'devolver', 'devolver_todo_colaborador' => 'devolver',
+            'devolver' => 'devolver', 'devolver_lote' => 'devolver', 'devolver_todo_colaborador' => 'devolver',
         ];
         $traslados = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + [
             'aprobar' => 'aprobar', 'rechazar' => 'rechazar', 'archivo' => 'archivos', 'hoja' => 'exportar',
         ];
         $compras = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + ['archivo' => 'archivos', 'conciliar' => 'conciliar'];
         $colaboradores = array_diff_key($crud, array_flip(['show', 'destroy'])) + [
-            'detalle' => 'consultar', 'expediente' => 'consultar', 'estado' => 'modificar', 'baja' => 'modificar', 'baja.store' => 'modificar', 'ficha_tecnica' => 'exportar', 'fichas_tecnicas_masivas' => 'exportar',
+            'detalle' => 'consultar', 'expediente' => 'consultar', 'estado' => 'modificar', 'ficha_tecnica' => 'exportar', 'fichas_tecnicas_masivas' => 'exportar',
         ];
         $usuarios = array_replace(array_diff_key($crud, ['show' => true]), ['destroy' => 'desactivar', 'regiones' => 'relaciones', 'regiones.update' => 'relaciones']);
 

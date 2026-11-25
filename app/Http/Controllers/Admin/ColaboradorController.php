@@ -11,12 +11,10 @@ use App\Sistema\Presentacion;
 use App\Models\AlertaReemplazo;
 use App\Models\AsignacionInventario;
 use App\Models\Colaborador;
-use App\Models\BajaLaboral;
-use App\Sistema\Auditoria;
-use Illuminate\Validation\ValidationException;
 use App\Models\IncidenciaInventario;
 use App\Services\AsignacionVidaUtilService;
 use App\Services\AccesoCustodia;
+use App\Services\DevolverCustodiaCompleta;
 use App\Sistema\Permisos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -106,7 +104,6 @@ class ColaboradorController extends Controller
                 $campos->verificarClaveDisponible('colaboradores', $data['codigo']);
             }
             $colaborador->update($data);
-            $this->cerrarBajaSiActivo($colaborador);
             $campos->trasladarClave('colaboradores', $anterior, $colaborador->codigo);
             $campos->guardar('colaboradores', $colaborador->codigo, $valores);
         });
@@ -143,10 +140,15 @@ class ColaboradorController extends Controller
         abort_if($seccion === 'vehiculo' && !config('modulos.vehiculos'), 404);
         $ruta = $this->colaboradoresRoutePrefix().'.colaboradores';
         $ficha = $this->generarFichaColaborador($colaborador, $seccion);
-        $puedeHistorial = $ficha['puede_historial'];
+        $acceso = app(\App\Services\AccesoInventarioOperativo::class);
+        $puedeHistorial = $ficha['puede_historial'] || $acceso->tiene($request->user(), 'asignaciones.devolver');
         abort_if($seccion === 'historial' && !$puedeHistorial, 403);
+        $devoluciones = app(DevolverCustodiaCompleta::class);
+        $puedeDevolver = $devoluciones->puedeRegistrar($request->user(), $colaborador);
+        $hojasDevolucion = $seccion === 'historial' ? $devoluciones->hojas($request->user(), $colaborador) : null;
 
-        return view('admin.colaboradores.expediente', compact('colaborador', 'seccion', 'ficha', 'ruta', 'puedeHistorial'));
+        return view('admin.colaboradores.expediente', compact('colaborador', 'seccion', 'ficha', 'ruta',
+            'puedeHistorial', 'puedeDevolver', 'hojasDevolucion'));
     }
 
     public function fichaTecnica(Request $request, Colaborador $colaborador)
@@ -246,7 +248,7 @@ class ColaboradorController extends Controller
             $fechaAsignacion = $a->fecha ? Carbon::parse($a->fecha) : null;
             $fechaVencimiento = $a->fecha_vencimiento ? Carbon::parse($a->fecha_vencimiento) : null;
 
-            $retornos = $puedeHistorial ? $a->movimientos->whereIn('tipo', ['Devolucion', 'Reemplazo']) : collect();
+            $retornos = $puedeHistorial ? $a->movimientos->whereIn('tipo', ['Devolucion', 'Reemplazo'])->where('estado_devolucion', '!==', 'sin_retorno') : collect();
             $incidencias = $puedeHistorial ? $a->incidencias : collect();
             $segundos = $a->estado === 'Activa' ? $vida->restante($a, now())
                 : ($retornos->sortByDesc('id')->first()?->vida_restante_segundos ?? $incidencias->sortByDesc('id')->first()?->vida_restante_segundos);
@@ -603,56 +605,11 @@ class ColaboradorController extends Controller
         DB::transaction(function () use ($colaborador) {
             $fila = Colaborador::whereKey($colaborador->codigo)->lockForUpdate()->firstOrFail();
             $fila->update(['estado' => $fila->estado === 'Activo' ? 'Inactivo' : 'Activo']);
-            $this->cerrarBajaSiActivo($fila);
         }, 3);
 
         return redirect()
             ->route($this->colaboradoresRoutePrefix().'.colaboradores.index')
             ->with('success', 'Estado del colaborador actualizado correctamente.');
-    }
-
-    public function formularioBaja(Colaborador $colaborador)
-    {
-        $colaborador->load('bajaVigente.registrador');
-        $ruta = $this->colaboradoresRoutePrefix().'.colaboradores';
-
-        return view('admin.colaboradores.baja', compact('colaborador', 'ruta'));
-    }
-
-    public function registrarBaja(Request $request, Colaborador $colaborador)
-    {
-        $data = $request->validate([
-            'motivo' => ['required', Rule::in(array_keys(BajaLaboral::MOTIVOS))],
-            'fecha_efectiva' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'observaciones' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        DB::transaction(function () use ($request, $colaborador, $data) {
-            $fila = Colaborador::whereKey($colaborador->codigo)->lockForUpdate()->firstOrFail();
-            if ($fila->bajaVigente()->exists()) {
-                throw ValidationException::withMessages(['motivo' => 'Este colaborador ya tiene una baja laboral registrada.']);
-            }
-            $baja = $fila->bajasLaborales()->create($data + ['registrada_por' => $request->user()->id]);
-            $fila->update(['estado' => 'Inactivo']);
-            app(Auditoria::class)->registrar('colaboradores', 'registrar_baja_laboral', $fila->codigo, null,
-                ['baja_id' => $baja->id, 'motivo' => $baja->motivo, 'fecha_efectiva' => $data['fecha_efectiva']]);
-        }, 3);
-
-        return redirect()->route($this->colaboradoresRoutePrefix().'.colaboradores.baja', $colaborador)
-            ->with('success', 'Baja registrada. Los responsables de bodega pueden verificar los artículos bajo custodia.');
-    }
-
-    private function cerrarBajaSiActivo(Colaborador $colaborador): void
-    {
-        if ($colaborador->estado !== 'Activo' || !$colaborador->wasChanged('estado')) {
-            return;
-        }
-        $baja = $colaborador->bajaVigente()->first();
-        if ($baja) {
-            $baja->forceFill(['cerrada_en' => now()])->save();
-            app(Auditoria::class)->registrar('colaboradores', 'cerrar_baja_por_reactivacion', $colaborador->codigo, null,
-                ['baja_id' => $baja->id]);
-        }
     }
 
     private function colaboradoresRoutePrefix(): string

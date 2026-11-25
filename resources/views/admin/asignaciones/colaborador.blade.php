@@ -6,7 +6,7 @@
     <x-ui.encabezado :titulo="$colaborador->nombre" :descripcion="$colaborador->codigo.' · '.$colaborador->puesto">
         <x-ui.accion :href="route($routePrefix.'.asignaciones.index')">Volver a asignaciones</x-ui.accion>
         @if($puedeDevolver)
-            <x-ui.accion :href="route($routePrefix.'.asignaciones.baja', $colaborador->codigo)" variante="primaria">Devolución por baja laboral</x-ui.accion>
+            <x-ui.accion :href="route('devoluciones.formulario', $colaborador->codigo)" variante="primaria">Registrar devolución</x-ui.accion>
         @endif
     </x-ui.encabezado>
     <x-sistema.panel titulo="Productos asignados">

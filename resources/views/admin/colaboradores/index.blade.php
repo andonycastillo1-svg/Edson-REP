@@ -98,9 +98,6 @@
                                             @rutaDisponible($ruta.'.edit')
                                                 <x-ui.accion class="ui-btn-sm" :href="route($ruta.'.edit', $c)">Editar</x-ui.accion>
                                             @endrutaDisponible
-                                            @rutaDisponible($ruta.'.baja')
-                                                <x-ui.accion class="ui-btn-sm" :href="route($ruta.'.baja', $c)">Baja laboral</x-ui.accion>
-                                            @endrutaDisponible
                                             @rutaDisponible($ruta.'.estado')
                                                 <form method="POST" action="{{ route($ruta.'.estado', $c) }}"
                                                       data-confirmar="{{ $activo ? '¿Deseas inactivar este colaborador?' : '¿Deseas activar este colaborador?' }}">

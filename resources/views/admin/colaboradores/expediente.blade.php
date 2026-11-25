@@ -10,6 +10,9 @@
 <div class="space-y-4">
     <x-ui.encabezado :titulo="$colaborador->nombre" descripcion="Expediente del colaborador">
         <x-ui.accion :href="route($ruta.'.index')">Volver a colaboradores</x-ui.accion>
+        @if($puedeDevolver)
+            <x-ui.accion :href="route('devoluciones.formulario', $colaborador->codigo)" variante="primaria">Registrar devolución</x-ui.accion>
+        @endif
         @rutaDisponible($ruta.'.ficha_tecnica')
             <x-ui.accion :href="route($ruta.'.ficha_tecnica', $colaborador)" icono="archivo">Descargar ficha Excel</x-ui.accion>
         @endrutaDisponible
@@ -93,6 +96,19 @@
             </ul>
             {{ $ficha['paginador']->links() }}
         </x-sistema.panel>
+        @if($seccion === 'historial' && $hojasDevolucion && $hojasDevolucion->isNotEmpty())
+            <x-sistema.panel titulo="Hojas de devolución">
+                <ul class="divide-y divide-line">
+                    @foreach($hojasDevolucion as $hoja)
+                        <li class="flex flex-wrap items-center justify-between gap-2 py-2">
+                            <span>{{ \Illuminate\Support\Carbon::parse($hoja->fecha)->format('d/m/Y H:i') }}</span>
+                            <x-ui.accion :href="route('devoluciones.pdf', [$hoja->grupo_devolucion, 'descargar' => 1])" icono="archivo">Descargar PDF</x-ui.accion>
+                        </li>
+                    @endforeach
+                </ul>
+                {{ $hojasDevolucion->links() }}
+            </x-sistema.panel>
+        @endif
     @elseif($seccion === 'incidencias')
         <x-sistema.panel titulo="Incidencias registradas">
             <ul class="divide-y divide-line">

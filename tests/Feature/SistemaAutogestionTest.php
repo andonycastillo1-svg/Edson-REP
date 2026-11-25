@@ -23,12 +23,12 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\Support\RefreshDatabase;
-use Tests\Support\ConBajasLaborales;
+use Tests\Support\ConDevolucionesCompletas;
 use Tests\TestCase;
 
 class SistemaAutogestionTest extends TestCase
 {
-    use RefreshDatabase, ConBajasLaborales;
+    use RefreshDatabase, ConDevolucionesCompletas;
 
     private User $super;
     private User $admin;
@@ -615,11 +615,10 @@ class SistemaAutogestionTest extends TestCase
             'user_id' => $this->operador->id, 'bodega_id' => $this->regional->id, 'producto_codigo' => $producto->codigo,
             'colaborador_codigo' => $colaborador->codigo, 'cantidad_asignada' => 2, 'costo_unitario' => 12, 'estado' => 'Activa', 'fecha' => now(),
         ]);
-        $baja = $this->bajaFixture($colaborador->codigo);
         $listado = route('operador.asignaciones.index');
         $detalle = route('operador.asignaciones.colaborador', $colaborador->codigo);
-        $formulario = route('operador.asignaciones.baja', $colaborador->codigo);
-        $devolucion = route('operador.asignaciones.devolver_lote');
+        $formulario = route('devoluciones.formulario', $colaborador->codigo);
+        $devolucion = route('devoluciones.registrar', $colaborador->codigo);
         $rutaExcepciones = route('sistema.usuario.permisos', $this->operador);
 
         foreach (['heredar', 'denegar', 'permitir'] as $regla) {
@@ -631,22 +630,20 @@ class SistemaAutogestionTest extends TestCase
                 ->assertDontSee('name="seleccionadas[]"', false);
             $vista = $this->get($detalle)->assertOk();
             if ($regla === 'denegar') {
-                $vista->assertDontSee('Devolución por baja laboral');
+                $vista->assertDontSee('Registrar devolución');
                 $this->get($formulario)->assertForbidden();
                 $this->postJson($devolucion, ['seleccionadas' => [$asignacion->id], 'devoluciones' => [$asignacion->id => 1]])
                     ->assertForbidden();
             } else {
-                $vista->assertSee('Devolución por baja laboral');
-                $this->get($formulario)->assertOk()->assertSee('name="seleccionadas[]"', false);
+                $vista->assertSee('Registrar devolución');
+                $this->get($formulario)->assertOk()->assertSee('Artículos bajo custodia');
             }
             $this->get(route('operador.asignaciones.create'))->assertOk();
         }
 
         $asignacion->replicate()->fill(['bodega_id' => $this->principal->id])->save();
-        $this->get($formulario)->assertOk()->assertDontSee('value="'.AsignacionInventario::latest('id')->firstOrFail()->id.'"', false);
-        $this->postJson(route('operador.asignaciones.devolver_todo_colaborador', $colaborador->codigo), [
-            'baja_laboral_id' => $baja->id, 'solicitud_id' => (string) \Illuminate\Support\Str::uuid(), 'estado_devolucion' => 'buen_estado',
-        ])->assertForbidden();
+        $this->get($formulario)->assertForbidden();
+        $this->postJson($devolucion, $this->datosDevolucion($asignacion))->assertForbidden();
         $this->assertSame(2, $asignacion->fresh()->cantidad_asignada);
     }
 

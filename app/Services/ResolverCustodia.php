@@ -76,7 +76,6 @@ class ResolverCustodia
         User $usuario,
         string $grupo,
         string $motivoAdministrativo = 'ordinaria',
-        ?int $bajaLaboralId = null,
         ?int $alertaReemplazoId = null,
         ?int $reemplazoId = null,
     ): array {
@@ -106,20 +105,20 @@ class ResolverCustodia
         $asignacion->save();
 
         $tipo = $resultado === 'buen_estado' ? 'usado' : $resultado;
-        if ($retorno) {
+        $devolucionCompleta = $motivoAdministrativo === AsignacionMovimiento::DEVOLUCION_COMPLETA;
+        if ($retorno || $devolucionCompleta) {
             AsignacionMovimiento::create([
                 'asignacion_inventario_id' => $asignacion->id,
-                'tipo' => ($reemplazoId ?? $asignacion->sustituida_por_id) ? 'Reemplazo' : 'Devolucion',
+                'tipo' => !$devolucionCompleta && ($reemplazoId ?? $asignacion->sustituida_por_id) ? 'Reemplazo' : 'Devolucion',
                 'motivo_administrativo' => $motivoAdministrativo,
-                'baja_laboral_id' => $bajaLaboralId,
                 'ocurrio_en' => $fechaMovimiento,
                 'vida_restante_segundos' => $retorno && $resultado === 'buen_estado' ? $vidaRetorno : $segundos,
                 'cantidad' => $cantidad,
                 'detalle' => $detalle,
                 'grupo_devolucion' => $grupo,
                 'estado_devolucion' => $resultado,
-                'stock_tipo_resultante' => $tipo,
-                'bodega_retorno_id' => $asignacion->bodega_id,
+                'stock_tipo_resultante' => $retorno ? $tipo : null,
+                'bodega_retorno_id' => $retorno ? $asignacion->bodega_id : null,
                 'user_id' => $usuario->id,
             ]);
         }
@@ -129,7 +128,6 @@ class ResolverCustodia
             $incidencia = $asignacion->incidencias()->create([
                 'reemplazo_id' => $reemplazoId ?? $asignacion->sustituida_por_id,
                 'registrado_por' => $usuario->id,
-                'baja_laboral_id' => $bajaLaboralId,
                 'cantidad' => $cantidad,
                 'motivo' => $motivo,
                 'resultado_stock' => $retorno ? $tipo : 'sin_retorno',
@@ -144,7 +142,7 @@ class ResolverCustodia
             ]);
             if ($alertaReemplazoId !== null) {
                 AlertaReemplazo::whereKey($alertaReemplazoId)->update(['incidencia_inventario_id' => $incidencia->id]);
-            } elseif ($bajaLaboralId !== null && (in_array($motivo, ['perdido', 'robado'], true) || ($resultado === 'danado' && $segundos !== 0))) {
+            } elseif ($devolucionCompleta && (in_array($motivo, ['perdido', 'robado'], true) || ($resultado === 'danado' && $segundos !== 0))) {
                 $alerta = AlertaReemplazo::where('asignacion_anterior_id', $asignacion->id)
                     ->whereNotNull('motivo_revision')->whereNull('incidencia_inventario_id')
                     ->where('estado', '!=', AlertaReemplazo::ESTADO_FINALIZADO)->latest('id')->lockForUpdate()->first();
@@ -180,7 +178,6 @@ class ResolverCustodia
             ['cantidad' => $antes], [
                 'cantidad' => $asignacion->cantidad_asignada, 'motivo' => $motivo, 'resultado' => $tipo,
                 'reemplazo_id' => $reemplazoId ?? $asignacion->sustituida_por_id, 'motivo_administrativo' => $motivoAdministrativo,
-                'baja_laboral_id' => $bajaLaboralId,
             ]);
 
         return ['retorno' => $retorno, 'alerta' => $alerta?->id];

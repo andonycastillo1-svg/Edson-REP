@@ -53,9 +53,6 @@
                             <tr>
                                 <td>
                                     <strong class="text-ink">{{ $persona->nombre }}</strong><p>{{ $persona->codigo }}</p>
-                                    @if($persona->estado === 'Inactivo' && $persona->bajaVigente)
-                                        <x-ui.estado>Baja laboral</x-ui.estado>
-                                    @endif
                                 </td>
                                 <td>{{ $persona->cantidad_activa }}</td>
                                 <td>{{ $persona->asignaciones_count }}</td>
