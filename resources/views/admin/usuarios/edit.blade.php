@@ -27,6 +27,9 @@
                     <a class="ui-btn-secondary mt-2" href="{{ route($routePrefix.'.usuarios.regiones', $usuario) }}">Historial regional</a>
                 @endrutaDisponible
             @endif
+            @if(app(\App\Sistema\Permisos::class)->esSuperadministrador(auth()->user()))
+                <a class="ui-btn-secondary mt-2" href="{{ route('sistema.usuario', $usuario) }}#permisos">Permisos, relaciones y delegaciones</a>
+            @endif
             <p class="text-sm text-gray-500">Modifica la información del usuario</p>
         </div>
     </div>
@@ -163,7 +166,9 @@
         </div>
 
         <x-sistema.campos modulo="usuarios" :registro="$usuario->id" />
-        @include('admin.usuarios.campos-regiones', ['usuario' => $usuario])
+        @if(app(\App\Sistema\Permisos::class)->permite(auth()->user(), 'usuarios.relaciones'))
+            @include('admin.usuarios.campos-regiones', ['usuario' => $usuario])
+        @endif
         @if(app(\App\Sistema\Permisos::class)->esSuperadministrador(auth()->user()))
             <div id="confirmacion-rol" data-cuenta-protegida="{{ $usuario->role?->ambito() === 1 ? 1 : 0 }}" @if($ambitoSeleccionado !== 1 && $usuario->role?->ambito() !== 1) hidden @endif>
                 <p class="mb-2 text-sm">Para administrar un rol del ámbito Administrador, confirma con tu contraseña actual. Si estableces una contraseña nueva para la cuenta, usa 16 caracteres con mayúsculas, minúsculas, números y símbolos.</p>

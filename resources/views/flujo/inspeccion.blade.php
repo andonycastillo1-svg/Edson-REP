@@ -9,7 +9,8 @@
         <dl class="flujo-dato">
             <div><dt class="font-bold">Fecha</dt><dd>{{ $inspeccion->fecha->format('d/m/Y') }}</dd></div>
             <div><dt class="font-bold">Región</dt><dd>{{ $inspeccion->region?->nombre }}</dd></div>
-            <div><dt class="font-bold">Supervisor</dt><dd>{{ $inspeccion->supervisor?->name }}</dd></div>
+            <div><dt class="font-bold">Proceso</dt><dd>{{ $inspeccion->proceso_nombre ?? 'Histórica sin proceso' }}</dd></div>
+            <div><dt class="font-bold">Registrada por</dt><dd>{{ $inspeccion->supervisor?->name }}</dd></div>
             <div><dt class="font-bold">Puesto</dt><dd>{{ $inspeccion->puesto }}</dd></div>
             <div><dt class="font-bold">Estado</dt><dd>@include('flujo.estado', ['estado' => $inspeccion->consolidados->first()?->estado ?? 'recibido'])</dd></div>
         </dl>

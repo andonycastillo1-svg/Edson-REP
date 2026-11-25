@@ -682,7 +682,7 @@ class FlujoOperativoTest extends TestCase
     {
         $formulario = route('flujo.inspecciones.create');
         $datos = [...$this->datosInspeccion(10), 'observaciones' => 'Revisar tallas', 'destino' => 'continuar'];
-        $continuar = route('flujo.inspecciones.create', ['fecha' => $datos['fecha'], 'region' => $this->norte->id, 'continuar' => 1]);
+        $continuar = route('flujo.inspecciones.create', ['fecha' => $datos['fecha'], 'region' => $this->norte->id, 'proceso' => $datos['proceso_id'], 'continuar' => 1]);
         $this->actingAs($this->supervisor)->from($formulario)->post(route('flujo.inspecciones.store'),
             [...$datos, 'cantidades' => [$this->articulo => '-1']])->assertRedirect($formulario)
             ->assertSessionHasInput('observaciones', 'Revisar tallas')->assertSessionHasErrors('cantidades.'.$this->articulo);
@@ -1187,7 +1187,7 @@ class FlujoOperativoTest extends TestCase
 
     private function datosInspeccion(int $cantidad = 1): array
     {
-        return [
+        return ['proceso_id' => DB::table('procesos_inspeccion')->orderBy('id')->value('id'),
             'solicitud_id' => (string) Str::uuid(), 'fecha' => today()->toDateString(), 'region_id' => $this->norte->id,
             'colaborador_codigo' => 'COL-001', 'cantidades' => [$this->articulo => $cantidad],
         ];

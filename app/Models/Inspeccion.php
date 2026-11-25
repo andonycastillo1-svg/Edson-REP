@@ -8,9 +8,11 @@ class Inspeccion extends Model
 {
     protected $table = 'inspecciones';
 
-    protected $fillable = ['supervisor_id', 'coordinador_id', 'region_id', 'colaborador_codigo', 'puesto', 'fecha', 'solicitud_id', 'observaciones', 'captura_regional'];
+    protected $fillable = ['supervisor_id', 'coordinador_id', 'region_id', 'colaborador_codigo', 'puesto', 'fecha', 'solicitud_id', 'observaciones', 'captura_regional', 'proceso_id', 'proceso_nombre'];
 
     protected $casts = ['fecha' => 'date'];
+
+    public function proceso() { return $this->belongsTo(ProcesoInspeccion::class); }
 
     public function supervisor() { return $this->belongsTo(User::class); }
     public function coordinador() { return $this->belongsTo(User::class); }

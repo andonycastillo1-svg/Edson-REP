@@ -8,13 +8,13 @@
             <a class="ui-btn-primary" href="{{ route('flujo.cortes.create') }}">Nuevo corte</a>
             <a class="ui-btn-secondary" href="{{ route('flujo.cortes.index') }}">Historial de cortes</a>
         @endif
-        <x-ui.exportar-excel />
+        @if($acceso->puede(auth()->user(), 'exportar_inspecciones'))<x-ui.exportar-excel />@endif
         @if($acceso->puede(auth()->user(), 'capturar'))
             <a href="{{ route('flujo.inspecciones.create') }}" class="ui-btn-primary">Nueva inspección</a>
         @endif
     </x-slot:acciones>
     @include('flujo.accesos')
-    <details class="flujo-lectura" @if(request()->anyFilled(['desde', 'hasta', 'region', 'supervisor', 'coordinador'])) open @endif>
+    <details class="flujo-lectura" @if(request()->anyFilled(['desde', 'hasta', 'region', 'supervisor', 'coordinador', 'proceso'])) open @endif>
         <summary>Filtrar requerimientos</summary>
         <form class="grid items-end gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3" method="GET">
             <label class="ui-label">Desde<input class="ui-input mt-1" type="date" name="desde" value="{{ request('desde') }}"></label>
@@ -27,7 +27,16 @@
                     @endforeach
                 </select>
             </label>
-            @foreach(['supervisor' => ['Supervisor', $supervisores], 'coordinador' => ['Coordinador', $coordinadores]] as $campo => [$etiqueta, $ids])
+            <label class="ui-label">Proceso
+                <select name="proceso" class="ui-input mt-1">
+                    <option value="">Todos</option>
+                    <option value="historico" @selected(request('proceso') === 'historico')>Históricas sin proceso</option>
+                    @foreach($procesos as $proceso)
+                        <option value="{{ $proceso->id }}" @selected((int) request('proceso') === $proceso->id)>{{ $proceso->nombre }}</option>
+                    @endforeach
+                </select>
+            </label>
+            @foreach(['supervisor' => ['Registrada por', $supervisores], 'coordinador' => ['Coordinador', $coordinadores]] as $campo => [$etiqueta, $ids])
                 @if($ids->count() > 1 || ($puedeConsolidar && $campo === 'coordinador' && $ids->isNotEmpty()))
                     <label class="ui-label">{{ $etiqueta }}
                         <select name="{{ $campo }}" class="ui-input mt-1">
@@ -53,17 +62,17 @@
         <ul class="divide-y divide-slate-200" aria-label="Requerimientos">
             @forelse($inspecciones as $fila)
                 @php($consolidado = $fila->consolidados->first())
-                @php($responsable = $coordinadores->contains($fila->region?->coordinador_id) && $fila->region?->activa ? $fila->region?->coordinador : null)
+                @php($responsables = $opciones->get($fila->region_id, collect()))
                 <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 py-3 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_auto] sm:items-center">
                     <div class="flex min-w-0 items-start gap-3">
                         <div class="min-w-0">
                             <a class="flujo-enlace" href="{{ route('flujo.inspecciones.show', $fila) }}">{{ $fila->colaborador?->nombre }}</a>
-                            <p class="mt-1 text-sm">{{ $fila->fecha->format('d/m/Y') }} · {{ $fila->region?->nombre }}</p>
+                            <p class="mt-1 text-sm">{{ $fila->fecha->format('d/m/Y') }} · {{ $fila->region?->nombre }} · {{ $fila->proceso_nombre ?? 'Histórica sin proceso' }}</p>
                         </div>
                     </div>
                     <p class="col-start-1 row-start-2 text-sm sm:col-start-2 sm:row-start-1">
                         {{ $fila->supervisor?->name }}
-                        @if($puedeConsolidar)<span class="block text-xs">{{ $responsable ? 'Coordina '.$responsable->name : 'Región sin coordinador activo' }}</span>@endif
+                        @if($puedeConsolidar)<span class="block text-xs">{{ $responsables->count() > 1 ? 'Coordinación por elegir' : ($responsables->first() ? 'Coordina '.$responsables->first()->name : 'Región sin coordinador activo') }}</span>@endif
                     </p>
                     <div class="col-start-2 row-start-1 sm:col-start-3">
                         @include('flujo.estado', ['estado' => $consolidado?->estado ?? 'recibido'])

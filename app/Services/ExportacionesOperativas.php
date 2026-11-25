@@ -178,11 +178,11 @@ class ExportacionesOperativas
             ($fila->lineas->isEmpty() ? collect([null]) : $fila->lineas)->map(fn ($detalle) => [
                 $fila->id, $fila->fecha, $fila->supervisor?->name, $fila->region?->nombre, $fila->colaborador_codigo,
                 $fila->colaborador?->nombre, $detalle?->producto_codigo, $detalle?->etiqueta, $detalle ? (int) $detalle->cantidad : null,
-                Consolidado::ESTADOS[$fila->consolidados->first()?->estado] ?? 'Recibido', $fila->observaciones,
+                Consolidado::ESTADOS[$fila->consolidados->first()?->estado] ?? 'Recibido', $fila->observaciones, $fila->proceso_nombre ?? 'Histórica sin proceso',
             ])->all());
 
-        return $this->excel->descargar('inspecciones', ['Inspección', 'Fecha', 'Supervisor', 'Región', 'Código de colaborador',
-            'Colaborador', 'Código de producto', 'Producto', 'Cantidad original', 'Estado', 'Observaciones'], $filas);
+        return $this->excel->descargar('inspecciones', ['Inspección', 'Fecha', 'Registrada por', 'Región', 'Código de colaborador',
+            'Colaborador', 'Código de producto', 'Producto', 'Cantidad original', 'Estado', 'Observaciones', 'Proceso'], $filas);
     }
 
     public function consolidados($consulta)
@@ -195,11 +195,13 @@ class ExportacionesOperativas
                 $aprobado = in_array($fila->estado, ['aprobado', 'cerrado'], true);
                 if ($fila->detalle_individual) {
                     foreach ($fila->participantes as $persona) {
+                        $procesos = $fila->inspecciones->where('colaborador_codigo', $persona->colaborador_codigo)
+                            ->map(fn ($inspeccion) => $inspeccion->proceso_nombre ?? 'Histórica sin proceso')->unique()->join(', ');
                         foreach ($persona->necesidades->isEmpty() ? [null] : $persona->necesidades as $detalle) {
                             yield [...$base, $persona->region?->nombre, $persona->colaborador_codigo, $persona->colaborador?->nombre,
                                 $detalle?->producto_codigo, $detalle?->producto?->nombre, $detalle?->original,
                                 $aprobado ? $detalle?->cantidad : null, $detalle ? $detalle->cantidad - $detalle->original : null,
-                                $estado, $aprobado ? 'Aprobado por colaborador' : 'Propuesta', $aprobado ? null : $detalle?->cantidad];
+                                $estado, $aprobado ? 'Aprobado por colaborador' : 'Propuesta', $aprobado ? null : $detalle?->cantidad, $procesos ?: null];
                         }
                     }
                     continue;
@@ -208,20 +210,20 @@ class ExportacionesOperativas
                     foreach ($inspeccion->lineas->isEmpty() ? [null] : $inspeccion->lineas as $detalle) {
                         yield [...$base, $inspeccion->region?->nombre, $inspeccion->colaborador_codigo, $inspeccion->colaborador?->nombre,
                             $detalle?->producto_codigo, $detalle?->etiqueta, $detalle ? (int) $detalle->cantidad : null,
-                            null, null, $estado, 'Inspección histórica sin distribución individual verificada'];
+                            null, null, $estado, 'Inspección histórica sin distribución individual verificada', null, $inspeccion->proceso_nombre ?? 'Histórica sin proceso'];
                     }
                 }
                 foreach ($fila->lineas->isEmpty() ? [null] : $fila->lineas as $detalle) {
                     yield [...$base, null, null, null, $detalle?->producto_codigo, $detalle?->producto?->nombre,
                         $detalle ? (int) $detalle->original : null, $aprobado && $detalle ? (int) $detalle->cantidad : null,
-                        null, $estado, 'Total histórico por producto'];
+                        null, $estado, 'Total histórico por producto', null, null];
                 }
             }
         })();
 
         return $this->excel->descargar('consolidados', ['Consolidado', 'Período', 'Desde', 'Hasta', 'Coordinador', 'Región',
             'Código de colaborador', 'Colaborador', 'Código de producto', 'Producto', 'Cantidad original', 'Cantidad aprobada',
-            'Diferencia', 'Estado', 'Fuente de la cantidad', 'Cantidad propuesta'], $filas);
+            'Diferencia', 'Estado', 'Fuente de la cantidad', 'Cantidad propuesta', 'Procesos de origen'], $filas);
     }
 
     public function necesidades($lineas, $seleccion, $facturas, $saldo)

@@ -60,6 +60,11 @@ class Permisos
             }
         }
 
+        $anterior = CatalogoPermisos::permisoAnterior($permiso);
+        if ($anterior && !array_key_exists($permiso, $user->role ? $this->reglasRol($user->role) : [])) {
+            return $this->resultado($user, $anterior);
+        }
+
         return $this->resultadoRol($user->role, $permiso, $ambito);
     }
 
@@ -69,7 +74,11 @@ class Permisos
         if ($regla !== null) {
             return ['permitido' => $regla, 'origen' => 'Regla del rol'];
         }
+        if ($anterior = CatalogoPermisos::permisoAnterior($permiso)) {
+            return $this->resultadoRol($rol, $anterior, $ambito);
+        }
         $heredado = in_array((int) $rol?->id, [1, 2, 3, 4], true)
+            && !isset(CatalogoPermisos::ACCIONES_RESTRINGIDAS[$permiso])
             && in_array($permiso, [...CatalogoPermisos::rutas($ambito ?? $rol->ambito()),
                 ...CatalogoPermisos::flujoPara($ambito ?? $rol->ambito())], true);
 

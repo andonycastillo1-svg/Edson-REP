@@ -1,6 +1,6 @@
 <ul class="grid gap-2 lg:grid-cols-2">
     @forelse($paginador as $fila)
-        @php($coordinador = $coordinadores->get($fila->region_id))
+        @php($candidatos = $coordinadores->get($fila->region_id, collect()))
         <li>
             <input type="hidden" name="visibles[]" value="{{ $fila->id }}">
             <label class="flujo-eleccion cursor-pointer">
@@ -8,12 +8,14 @@
                     @checked(old('seleccion_enviada') ? in_array($fila->id, (array) old($campo, [])) : $ids->contains($fila->id))>
                 <span class="min-w-0 break-words">
                     <strong class="block">{{ $fila->colaborador?->nombre }} · {{ $fila->colaborador_codigo }}</strong>
-                    <span class="block">#{{ $fila->id }} · {{ $fila->fecha->format('d/m/Y') }} · {{ $fila->region?->nombre }}</span>
+                    <span class="block">#{{ $fila->id }} · {{ $fila->fecha->format('d/m/Y') }} · {{ $fila->region?->nombre }} · {{ $fila->proceso_nombre ?? 'Histórica sin proceso' }}</span>
                     <span class="block text-slate-600">{{ $fila->supervisor?->name }}</span>
                     @if($fila->consolidados_exists)
                         <span class="ui-badge ui-badge-warning">Ya consolidada. Desmarca esta inspección.</span>
-                    @elseif($coordinador)
-                        <span class="block text-slate-600">Coordina {{ $coordinador->name }}</span>
+                    @elseif($candidatos->count() > 1)
+                        <span class="block text-slate-600">Coordinador por elegir</span>
+                    @elseif($candidatos->isNotEmpty())
+                        <span class="block text-slate-600">Coordina {{ $candidatos->sole()->name }}</span>
                     @else
                         <span class="ui-badge ui-badge-warning">Región sin coordinador activo</span>
                     @endif

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Flujo;
 use App\Http\Controllers\Controller;
 use App\Models\MotivoAsignacion;
 use App\Models\Producto;
+use App\Models\ProcesoInspeccion;
 use App\Models\Region;
 use App\Services\FlujoAcceso;
 use App\Services\ExportarExcel;
@@ -36,7 +37,9 @@ class CatalogosController extends Controller
         $productos = Producto::orderBy('nombre')->get(['codigo', 'nombre']);
         $motivos = MotivoAsignacion::orderBy('id')->get();
 
-        return view('flujo.catalogos', compact('regiones', 'secciones', 'articulos', 'productos', 'motivos'));
+        $procesos = ProcesoInspeccion::orderBy('nombre')->get();
+
+        return view('flujo.catalogos', compact('regiones', 'secciones', 'articulos', 'productos', 'motivos', 'procesos'));
     }
 
     public function producto(Request $request, ValoresCampos $campos)
@@ -65,9 +68,20 @@ class CatalogosController extends Controller
         return back()->with('success', 'Producto creado en el catálogo.');
     }
 
-    public function region(Request $request, ?int $id = null)
+    public function proceso(Request $request, ?int $id = null)
     {
         $this->acceso->autorizar($request->user(), 'configurar');
+        $datos = $request->validate([
+            'nombre' => ['required', 'string', 'max:120', Rule::unique('procesos_inspeccion')->ignore($id)],
+            'activo' => ['required', 'boolean'],
+        ]);
+
+        return $this->guardar('procesos_inspeccion', $id, $datos + ['updated_at' => now()], ['created_at' => now()]);
+    }
+
+    public function region(Request $request, ?int $id = null)
+    {
+        $this->acceso->autorizar($request->user(), 'configurar_regiones');
         $datos = $request->validate([
             'nombre' => ['required', 'string', 'max:120', Rule::unique('regiones')->ignore($id)],
             'activa' => ['required', 'boolean'],

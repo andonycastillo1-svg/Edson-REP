@@ -26,7 +26,7 @@
             @forelse($inspecciones as $fila)
                 <li class="py-2 text-sm">
                     <a class="flujo-enlace" href="{{ route('flujo.inspecciones.show', $fila) }}">#{{ $fila->id }} · {{ $fila->colaborador?->nombre }}</a>
-                    <span>{{ $fila->fecha->format('d/m/Y') }} · {{ $fila->region?->nombre }}</span>
+                    <span>{{ $fila->fecha->format('d/m/Y') }} · {{ $fila->region?->nombre }} · {{ $fila->proceso_nombre ?? 'Histórica sin proceso' }}</span>
                     @if($fila->pivot->anterior)<span class="ui-badge ui-badge-info">Anterior al período</span>@endif
                 </li>
             @empty

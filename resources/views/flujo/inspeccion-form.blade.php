@@ -8,8 +8,17 @@
             <input type="hidden" name="solicitud_id" value="{{ old('solicitud_id', (string) \Illuminate\Support\Str::uuid()) }}">
             <x-sistema.panel titulo="Datos de la inspección">
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <p class="text-sm"><strong>Supervisor</strong><br>{{ auth()->user()->name }}</p>
+                    <p class="text-sm"><strong>Registrada por</strong><br>{{ auth()->user()->name }}</p>
                     <label class="text-sm font-semibold">Fecha<input class="ui-input mt-1" type="date" name="fecha" value="{{ old('fecha', $preferencias['fecha'] ?? today()->toDateString()) }}" required></label>
+                    <label class="text-sm font-semibold">Proceso
+                        <select name="proceso_id" class="ui-input mt-1" required>
+                            <option value="">Selecciona un proceso</option>
+                            @foreach($procesos as $proceso)
+                                <option value="{{ $proceso->id }}" @selected((int) old('proceso_id', $preferencias['proceso'] ?? 0) === $proceso->id)>{{ $proceso->nombre }}</option>
+                            @endforeach
+                        </select>
+                        @error('proceso_id')<span class="block text-xs text-red-700">{{ $message }}</span>@enderror
+                    </label>
                     <label class="text-sm font-semibold">Región
                         <select id="inspeccion-region" name="region_id" class="ui-input mt-1" required>
                             <option value="">Selecciona una región</option>

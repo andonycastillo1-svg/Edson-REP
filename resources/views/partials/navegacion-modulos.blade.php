@@ -13,6 +13,10 @@
                 ["$prefijo.operaciones.traslados.index", "$prefijo.operaciones.traslados.*", 'Traslados', 'traslado', $permisos->ruta($usuario, "$prefijo.operaciones.traslados.index")],
             ],
             'Requerimientos y compras' => [
+                ['flujo.existencias.index', 'flujo.existencias.*', 'Existencias autorizadas', 'bodega',
+                    ($permisos->permite($usuario, 'bodegas.consultar') && app(\App\Services\DelegacionesOperativas::class)->bodegasTitular($usuario) !== [] && !$permisos->ruta($usuario, "$prefijo.bodegas.index"))
+                    || app(\App\Services\DelegacionesOperativas::class)->bodegas($usuario, 'bodegas.consultar') !== []
+                    || $permisos->permite($usuario, 'inventario.movimientos')],
                 ['flujo.inspecciones.index', ['flujo.inspecciones.*', 'flujo.cortes.*'], 'Inspecciones', 'lista', $flujo->puede($usuario, 'inspecciones')],
                 ['flujo.consolidados.index', 'flujo.consolidados.*', 'Consolidados', 'capas', $flujo->puede($usuario, 'consolidados')],
                 ['flujo.compras.index', 'flujo.compras.*', 'Necesidades de compra', 'compra', $flujo->puede($usuario, 'compras')],

@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Sistema;
 
 use App\Http\Controllers\Controller;
 use App\Models\Role;
+use App\Models\DelegacionOperativa;
+use App\Models\Region;
+use App\Services\RegionesCoordinacion;
 use App\Models\Bodega;
 use App\Models\User;
 use App\Sistema\Auditoria;
@@ -118,8 +121,19 @@ class SeguridadController extends Controller
         $almacenistas = User::deAmbito(2)->orderBy('name')->get(['id', 'name']);
         $almacenistaId = $usuario->almacenistasAsignados()->value('users.id');
 
+        $regiones = Region::where('activa', true)->orderBy('nombre')->get();
+        $regionesOperativas = $usuario->regionesOperativas()->pluck('regiones.id')->all();
+        $regionesAdicionales = DB::table('region_coordinador_operativo')->where('user_id', $usuario->id)->pluck('region_id')->all();
+        $bodegasOperativas = DB::table('bodega_usuario_operativa')->where('user_id', $usuario->id)->pluck('bodega_id')->all();
+        $bodegaPrincipal = app(\App\Services\BodegaAccessService::class)->principal();
+        $operaRequerimientos = $bodegaPrincipal && DB::table('bodega_usuario_operativa')->where('user_id', $usuario->id)
+            ->where('bodega_id', $bodegaPrincipal->id)->where('opera_requerimientos', true)->exists();
+        $titulares = User::where('acceso_activo', true)->whereKeyNot($usuario->id)->orderBy('name')->get(['id', 'name']);
+        $delegaciones = DelegacionOperativa::with('titular', 'autorizador', 'regiones', 'bodegas')->where('sustituto_id', $usuario->id)
+            ->latest('id')->paginate(10)->withQueryString();
+
         return view('sistema.usuario', compact('usuario', 'catalogo', 'reglas', 'rol', 'efectivos', 'heredados', 'super',
-            'roles', 'bodegas', 'almacenistas', 'almacenistaId'));
+            'roles', 'bodegas', 'almacenistas', 'almacenistaId', 'regiones', 'regionesOperativas', 'regionesAdicionales', 'bodegasOperativas', 'bodegaPrincipal', 'operaRequerimientos', 'titulares', 'delegaciones'));
     }
 
     public function permisosUsuario(Request $request, User $usuario)
@@ -136,6 +150,52 @@ class SeguridadController extends Controller
         });
 
         return redirect()->to(route('sistema.usuario', $usuario).'#permisos')->with('ok', 'Permisos individuales actualizados.');
+    }
+
+    public function relacionesUsuario(Request $request, User $usuario, RegionesCoordinacion $coordinacion)
+    {
+        $datos = $request->validate([
+            'regiones' => ['nullable', 'array', 'list'], 'regiones.*' => ['required', 'integer', 'distinct', 'exists:regiones,id'],
+            'coordinacion' => ['nullable', 'array', 'list'], 'coordinacion.*' => ['required', 'integer', 'distinct', 'exists:regiones,id'],
+            'bodegas_operativas' => ['nullable', 'array', 'list'], 'bodegas_operativas.*' => ['required', 'integer', 'distinct', 'exists:bodegas,id'],
+            'opera_requerimientos' => ['nullable', 'boolean'],
+            'current_password' => ['required', 'string', 'max:255'],
+        ]);
+        $this->seguridad->cambiar($request->user(), $datos['current_password'], function (User $actor) use ($usuario, $coordinacion, $datos) {
+            $usuario = User::whereKey($usuario->id)->lockForUpdate()->firstOrFail();
+            $elegidas = $datos['regiones'] ?? [];
+            $antes = $usuario->regionesOperativas()->pluck('regiones.id')->all();
+            if (Region::whereKey($elegidas)->where('activa', false)->exists()) {
+                throw ValidationException::withMessages(['regiones' => 'Selecciona únicamente regiones activas.']);
+            }
+            $inactivas = Region::whereKey($antes)->where('activa', false)->pluck('id')->all();
+            $usuario->regionesOperativas()->sync([...$elegidas, ...$inactivas]);
+            $this->auditoria->registrar('seguridad', 'actualizar_regiones_operativas', $usuario->id,
+                ['regiones' => $antes], ['regiones' => [...$elegidas, ...$inactivas]]);
+
+            $bodegas = DB::table('bodega_usuario_operativa')->where('user_id', $usuario->id);
+            $previas = $bodegas->pluck('opera_requerimientos', 'bodega_id')->all();
+            $nuevas = array_map('intval', $datos['bodegas_operativas'] ?? []);
+            $principal = app(\App\Services\BodegaAccessService::class)->principal()?->id;
+            $operaRequerimientos = (bool) ($datos['opera_requerimientos'] ?? false);
+            if ($operaRequerimientos && (!$principal || !in_array((int) $principal, $nuevas, true))) {
+                throw ValidationException::withMessages(['bodegas_operativas' => 'Selecciona la bodega central para operar requerimientos de central.']);
+            }
+            $bodegas->whereNotIn('bodega_id', $nuevas)->delete();
+            $asignaciones = array_map(fn ($id) => ['user_id' => $usuario->id, 'bodega_id' => $id,
+                'opera_requerimientos' => $operaRequerimientos && $id === (int) $principal], $nuevas);
+            if ($asignaciones !== []) {
+                DB::table('bodega_usuario_operativa')->upsert($asignaciones, ['bodega_id', 'user_id'], ['opera_requerimientos']);
+            }
+            $this->auditoria->registrar('seguridad', 'actualizar_bodegas_operativas', $usuario->id,
+                ['bodegas' => $previas], ['bodegas' => $asignaciones]);
+
+            if ($usuario->rolOperativo() === 5 || ($datos['coordinacion'] ?? []) !== []) {
+                $coordinacion->guardarAdicionales($usuario, $datos['coordinacion'] ?? []);
+            }
+        });
+
+        return redirect()->to(route('sistema.usuario', $usuario).'#relaciones')->with('ok', 'Relaciones actualizadas.');
     }
 
     public function estadoCuenta(Request $request, User $usuario)

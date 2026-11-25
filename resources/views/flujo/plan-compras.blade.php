@@ -7,7 +7,7 @@
 @endphp
 <x-sistema.pagina titulo="Necesidades de compra" descripcion="Compara lo aprobado con el saldo central y las facturas recibidas." :volver="route('dashboard')">
     <x-slot:acciones>
-        <x-ui.exportar-excel />
+        @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'exportar_compras'))<x-ui.exportar-excel />@endif
         @if($estado === 'aprobado' && $bodega && $comprables)
             @rutaDisponible($prefijo.'.compras.create')
                 <a class="ui-btn-primary" href="{{ route($prefijo.'.compras.create', ['consolidados' => $comprables]) }}">Registrar compra</a>
@@ -157,7 +157,7 @@
             </div>
         </x-sistema.panel>
 
-        @if($estado === 'aprobado' && $bodega && $lineasPlan->isNotEmpty())
+        @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'plan_compras') && $estado === 'aprobado' && $bodega && $lineasPlan->isNotEmpty())
             <details class="flujo-lectura" @if($errors->has('propuestas') || $errors->has('propuestas.*')) open @endif>
                 <summary>Ajustar plan de compra</summary>
                 <form method="POST" action="{{ route('flujo.compras.plan') }}" class="space-y-4 p-4">

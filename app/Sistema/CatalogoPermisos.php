@@ -6,6 +6,40 @@ class CatalogoPermisos
 {
     public const AMBITOS = [1 => 'Administrador', 2 => 'Operador', 3 => 'Supervisor', 4 => 'Recursos Humanos', 5 => 'Coordinador'];
 
+    public const ACCIONES_OPERATIVAS = [
+        'bodegas.consultar' => ['Consultar existencias', null],
+        'bodegas.exportar' => ['Exportar existencias', null],
+        'inventario.movimientos' => ['Consultar movimientos de bodega', null],
+        'flujo.inspecciones' => ['Consultar inspecciones', null],
+        'flujo.capturar' => ['Registrar inspecciones', null],
+        'flujo.exportar_inspecciones' => ['Exportar inspecciones', 'flujo.inspecciones'],
+        'flujo.cortes' => ['Preparar cortes', 'flujo.consolidar'],
+        'flujo.crear_consolidados' => ['Crear consolidados', 'flujo.consolidar'],
+        'flujo.enviar_consolidados' => ['Enviar y retirar consolidados', 'flujo.consolidar'],
+        'flujo.consolidados' => ['Consultar consolidados', null],
+        'flujo.exportar_consolidados' => ['Exportar consolidados', 'flujo.consolidados'],
+        'flujo.revisar' => ['Revisar consolidados', null],
+        'flujo.ajustar' => ['Modificar requerimientos', 'flujo.revisar'],
+        'flujo.agregar_colaboradores' => ['Agregar colaboradores omitidos', 'flujo.revisar'],
+        'flujo.aprobar' => ['Aprobar o devolver consolidados', 'flujo.revisar'],
+        'flujo.compras' => ['Consultar necesidades de compra', null],
+        'flujo.plan_compras' => ['Guardar planes de compra', 'flujo.compras'],
+        'flujo.exportar_compras' => ['Exportar necesidades de compra', 'flujo.compras'],
+        'flujo.constancias' => ['Administrar constancias de compra', 'flujo.compras'],
+        'flujo.cerrar_compras' => ['Cerrar compras de un consolidado', 'flujo.consolidar'],
+        'flujo.importar' => ['Importar asignaciones', null],
+    ];
+
+    public const ACCIONES_RESTRINGIDAS = [
+        'compras.conciliar' => ['Conciliar facturas históricas', 'compras.crear'],
+        'asignaciones.confirmar_recepcion' => ['Confirmar recepción de entregas', 'asignaciones.crear'],
+        'traslados.rechazar' => ['Rechazar solicitudes de traslado', 'traslados.aprobar'],
+        'alertas.regularizar' => ['Regularizar incidencias de RR. HH.', 'alertas.modificar'],
+        'alertas.cerrar' => ['Finalizar incidencias de RR. HH.', 'alertas.modificar'],
+        'flujo.configurar_regiones' => ['Configurar regiones', 'flujo.configurar'],
+        'usuarios.relaciones' => ['Configurar relaciones operativas', 'usuarios.modificar'],
+    ];
+
     public const CONFIGURACION = [
         'sistema.campos' => 'Administrar campos personalizados',
         'sistema.presentacion' => 'Administrar formularios y tablas',
@@ -67,6 +101,18 @@ class CatalogoPermisos
             },
         };
 
+        if (isset((self::ACCIONES_OPERATIVAS + self::ACCIONES_RESTRINGIDAS)[$permiso])) {
+            $titulo = (self::ACCIONES_OPERATIVAS + self::ACCIONES_RESTRINGIDAS)[$permiso][0];
+        }
+        if ($modulo === 'flujo') {
+            $grupo = match ($permiso) {
+                'flujo.inspecciones', 'flujo.capturar', 'flujo.exportar_inspecciones' => 'Inspecciones',
+                'flujo.compras', 'flujo.plan_compras', 'flujo.exportar_compras', 'flujo.constancias', 'flujo.cerrar_compras' => 'Compras',
+                'flujo.importar' => 'Asignaciones',
+                'flujo.configurar', 'flujo.configurar_regiones' => 'Catálogos operativos',
+                default => 'Cortes y consolidados',
+            };
+        }
         $categoria = $modulo === 'sistema' ? 'Administración del sistema' : match ($accion) {
             'consultar' => 'Consulta',
             'archivos', 'evidencias', 'datos_archivos', 'exportar', 'datos_exportar' => 'Documentos y reportes',
@@ -86,18 +132,18 @@ class CatalogoPermisos
             'index' => 'consultar', 'create' => 'crear', 'store' => 'crear', 'contexto' => 'crear',
             'pdf' => 'exportar', 'hoja_devolucion' => 'exportar', 'upload_pdf_firmado' => 'evidencias',
             'upload_pdf_devolucion_firmado' => 'evidencias', 'ver_pdf_firmado' => 'archivos',
-            'entrega' => 'consultar', 'documento_entrega' => 'evidencias', 'confirmar_recepcion' => 'crear',
+            'entrega' => 'consultar', 'documento_entrega' => 'evidencias', 'confirmar_recepcion' => 'confirmar_recepcion',
             'incidencia' => 'consultar', 'documento_incidencia' => 'evidencias', 'archivo_incidencia' => 'archivos',
             'devolver' => 'devolver', 'devolver_lote' => 'devolver', 'devolver_todo_colaborador' => 'devolver',
         ];
         $traslados = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + [
-            'aprobar' => 'aprobar', 'rechazar' => 'aprobar', 'archivo' => 'archivos', 'hoja' => 'exportar',
+            'aprobar' => 'aprobar', 'rechazar' => 'rechazar', 'archivo' => 'archivos', 'hoja' => 'exportar',
         ];
-        $compras = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + ['archivo' => 'archivos', 'conciliar' => 'crear'];
+        $compras = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + ['archivo' => 'archivos', 'conciliar' => 'conciliar'];
         $colaboradores = array_diff_key($crud, array_flip(['show', 'destroy'])) + [
             'detalle' => 'consultar', 'estado' => 'modificar', 'ficha_tecnica' => 'exportar', 'fichas_tecnicas_masivas' => 'exportar',
         ];
-        $usuarios = array_replace(array_diff_key($crud, ['show' => true]), ['destroy' => 'desactivar', 'regiones' => 'modificar', 'regiones.update' => 'modificar']);
+        $usuarios = array_replace(array_diff_key($crud, ['show' => true]), ['destroy' => 'desactivar', 'regiones' => 'relaciones', 'regiones.update' => 'relaciones']);
 
         $definiciones = match ($ambito) {
             1 => [
@@ -134,7 +180,7 @@ class CatalogoPermisos
                 'alertas' => ['alertas', [
                     'index' => 'consultar', 'show' => 'consultar', 'evidencia' => 'consultar',
                     'documento' => 'consultar', 'documento_refaccion' => 'consultar',
-                    'export' => 'exportar', 'actuacion' => 'modificar', 'regularizacion' => 'modificar', 'finalizar' => 'modificar',
+                    'export' => 'exportar', 'actuacion' => 'modificar', 'regularizacion' => 'regularizar', 'finalizar' => 'cerrar',
                 ]],
             ],
             default => [],
@@ -182,7 +228,12 @@ class CatalogoPermisos
         }
 
         $base = array_values(array_unique(self::rutas($ambito)));
-        $extras = [...array_keys(self::CONFIGURACION), ...self::flujoPara($ambito)];
+        $extras = [...array_keys(self::CONFIGURACION), ...self::flujoPara($ambito), ...array_keys(self::ACCIONES_OPERATIVAS)];
+        foreach (self::ACCIONES_RESTRINGIDAS as $accion => [, $anterior]) {
+            if (in_array($anterior, [...$base, ...self::flujoPara($ambito)], true)) {
+                $extras[] = $accion;
+            }
+        }
         if (in_array('asignaciones.crear', $base, true)) {
             $extras[] = 'asignaciones.entregar_nuevo';
         }
@@ -197,5 +248,10 @@ class CatalogoPermisos
         sort($permisos);
 
         return $permisos;
+    }
+
+    public static function permisoAnterior(string $permiso): ?string
+    {
+        return (self::ACCIONES_OPERATIVAS + self::ACCIONES_RESTRINGIDAS)[$permiso][1] ?? null;
     }
 }

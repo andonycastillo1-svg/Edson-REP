@@ -158,7 +158,9 @@
         </div>
 
         <x-sistema.campos modulo="usuarios" />
-        @include('admin.usuarios.campos-regiones', ['usuario' => null])
+        @if(app(\App\Sistema\Permisos::class)->permite(auth()->user(), 'usuarios.relaciones'))
+            @include('admin.usuarios.campos-regiones', ['usuario' => null])
+        @endif
         @if(app(\App\Sistema\Permisos::class)->esSuperadministrador(auth()->user()))
             <div id="confirmacion-rol"  @if($ambitoSeleccionado !== 1 ) hidden @endif>
                 <p class="mb-2 text-sm">Para administrar un rol del ámbito Administrador, confirma con tu contraseña actual. Si estableces una contraseña nueva para la cuenta, usa 16 caracteres con mayúsculas, minúsculas, números y símbolos.</p>

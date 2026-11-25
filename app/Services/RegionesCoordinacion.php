@@ -4,42 +4,76 @@ namespace App\Services;
 
 use App\Models\Region;
 use App\Models\User;
+use App\Sistema\Permisos;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class RegionesCoordinacion
 {
-    public function responsables(Collection $regiones, bool $bloquear = false): Collection
+    public function opciones(array $ids, bool $bloquear = false): Collection
     {
-        $consulta = Region::whereKey($regiones->unique()->all())->orderBy('id');
+        $consulta = Region::whereKey(array_unique($ids))->orderBy('id');
         $filas = ($bloquear ? $consulta->lockForUpdate() : $consulta)->get();
-        $usuarios = User::deAmbito(5)->whereKey($filas->pluck('coordinador_id')->filter()->unique()->all())->orderBy('id');
-        $activos = ($bloquear ? $usuarios->lockForUpdate() : $usuarios)->get()->keyBy('id');
+        $consulta = DB::table('region_coordinador_operativo')->whereIn('region_id', $filas->modelKeys())
+            ->orderBy('region_id')->orderBy('user_id');
+        $adicionales = ($bloquear ? $consulta->lockForUpdate() : $consulta)->get();
+        $consulta = User::deAmbito(5)->whereKey($filas->pluck('coordinador_id')->merge($adicionales->pluck('user_id'))->filter()->unique()->all())->orderBy('id');
+        $permisos = app(Permisos::class);
+        $activos = ($bloquear ? $consulta->lockForUpdate() : $consulta)->with('role.reglasSistema', 'reglasSistema')->get()
+            ->filter(fn (User $usuario) => $permisos->permite($usuario, 'flujo.consolidados') && $permisos->permite($usuario, 'flujo.revisar'))
+            ->keyBy('id');
+        $asignaciones = $adicionales->groupBy('region_id');
 
         return $filas->mapWithKeys(fn (Region $region) => [
-            $region->id => $region->activa ? $activos->get($region->coordinador_id) : null,
+            $region->id => !$region->activa ? collect() : collect([$region->coordinador_id])
+                ->merge($asignaciones->get($region->id, collect())->pluck('user_id'))
+                ->filter()->unique()->map(fn ($id) => $activos->get($id))->filter()->values(),
         ]);
     }
 
-    public function resolver(Collection $regiones, bool $bloquear = false): User
+    public function resolver(Collection $regiones, bool $bloquear = false, ?int $eleccion = null): User
     {
-        $responsables = $this->responsables($regiones, $bloquear);
-        $sinResponsable = $regiones->unique()->filter(fn ($id) => $responsables->get($id) === null);
-        if ($responsables->isEmpty() || $sinResponsable->isNotEmpty()) {
-            $nombres = Region::whereKey($sinResponsable->all())->pluck('nombre')->implode(', ');
-            throw ValidationException::withMessages(['inspecciones' => 'Configura un coordinador activo para cada región seleccionada. '.$nombres]);
+        $opciones = $this->opciones($regiones->all(), $bloquear);
+        if ($opciones->isEmpty() || $opciones->contains(fn ($candidatos) => $candidatos->isEmpty())) {
+            $nombres = Region::whereKey($opciones->filter(fn ($candidatos) => $candidatos->isEmpty())->keys()->all())->pluck('nombre');
+            throw ValidationException::withMessages(['inspecciones' => 'Configura un coordinador activo para cada región seleccionada. '.$nombres->implode(', ')]);
+        }
+        if ($eleccion !== null && $opciones->every(fn ($candidatos) => $candidatos->contains('id', $eleccion))) {
+            return $opciones->first()->firstWhere('id', $eleccion);
+        }
+        if ($eleccion === null && $opciones->every(fn ($candidatos) => $candidatos->count() === 1)) {
+            $unicos = $opciones->map(fn ($candidatos) => $candidatos->sole())->unique('id');
+            if ($unicos->count() === 1) {
+                return $unicos->sole();
+            }
+            throw ValidationException::withMessages(['inspecciones' => 'Separa los requerimientos de estos coordinadores. '.$unicos->pluck('name')->implode(' · ')]);
         }
 
-        $activos = $responsables->unique('id');
-        if ($activos->count() !== 1) {
-            $nombres = Region::whereKey($responsables->keys()->all())->pluck('nombre', 'id');
-            $grupos = $responsables->groupBy('id', preserveKeys: true)->map(fn ($grupo) =>
-                $grupo->first()->name.' ('.$grupo->keys()->map(fn ($id) => $nombres->get($id))->implode(', ').')');
-            throw ValidationException::withMessages(['inspecciones' => 'Separa los requerimientos de estos coordinadores. '.$grupos->implode(' · ')]);
-        }
+        throw ValidationException::withMessages(['coordinador_id' => 'Selecciona un coordinador activo en todas las regiones del consolidado.']);
+    }
 
-        return $activos->first();
+    public function guardarAdicionales(User $usuario, array $ids): void
+    {
+        if (!User::deAmbito(5)->whereKey($usuario->id)->exists()) {
+            throw ValidationException::withMessages(['coordinacion' => 'Selecciona una cuenta activa de coordinación.']);
+        }
+        $consulta = DB::table('region_coordinador_operativo')->where('user_id', $usuario->id);
+        $antes = $consulta->orderBy('region_id')->pluck('region_id')->all();
+        $regiones = Region::whereKey(array_unique([...$antes, ...$ids]))->orderBy('id')->lockForUpdate()->get();
+        if ($regiones->whereIn('id', $ids)->where('activa', false)->isNotEmpty()) {
+            throw ValidationException::withMessages(['coordinacion' => 'Selecciona únicamente regiones activas.']);
+        }
+        $ids = array_values(array_unique([...$ids, ...$regiones->where('activa', false)->whereIn('id', $antes)->modelKeys()]));
+        $consulta->whereNotIn('region_id', $ids)->delete();
+        $altas = array_diff($ids, $antes);
+        if ($altas !== []) {
+            DB::table('region_coordinador_operativo')->insert(array_map(fn ($id) => [
+                'region_id' => $id, 'user_id' => $usuario->id, 'created_at' => now(), 'updated_at' => now(),
+            ], $altas));
+        }
+        app(\App\Sistema\Auditoria::class)->registrar('seguridad', 'actualizar_coordinacion_adicional', $usuario->id,
+            ['regiones' => $antes], ['regiones' => $ids]);
     }
 
     public function guardarUsuario(User $actor, User $usuario, array $datos, ?int $ambitoAnterior = null): void

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Sistema\CampoController;
 use App\Http\Controllers\Sistema\ConfiguracionController;
 use App\Http\Controllers\Sistema\DatosController;
+use App\Http\Controllers\Sistema\DelegacionController;
 use App\Http\Controllers\Sistema\SeguridadController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +34,9 @@ Route::name('sistema.')->middleware(['auth', 'auto.logout'])->group(function () 
                 Route::post('cuentas', 'crearCuentaAdministrativa')->name('usuario.crear');
                 Route::put('roles/{rol}', 'actualizarRol')->name('rol.actualizar');
                 Route::put('cuentas/{usuario}/reglas', 'permisosUsuario')->name('usuario.permisos');
+                Route::put('cuentas/{usuario}/relaciones', 'relacionesUsuario')->name('usuario.relaciones');
+                Route::post('cuentas/{usuario}/delegaciones', [DelegacionController::class, 'store'])->name('usuario.delegaciones.store');
+                Route::patch('cuentas/{usuario}/delegaciones/{delegacion}', [DelegacionController::class, 'revocar'])->whereNumber('delegacion')->name('usuario.delegaciones.revocar');
                 Route::put('cuentas/{usuario}/estado', 'estadoCuenta')->name('usuario.estado');
                 Route::put('cuentas/{usuario}/contrasena', 'actualizarContrasena')->name('usuario.contrasena');
                 Route::put('cuentas/{usuario}/superadministrador', 'superadministrador')->name('usuario.superadministrador');
