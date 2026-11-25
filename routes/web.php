@@ -91,6 +91,8 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
+        Route::get('colaboradores/{colaborador}/expediente', [ColaboradorController::class, 'expediente'])
+            ->name('colaboradores.expediente');
 
         Route::get('colaboradores/{colaborador}/ficha-tecnica', [ColaboradorController::class, 'fichaTecnica'])
             ->name('colaboradores.ficha_tecnica');
@@ -235,6 +237,10 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
 
+        Route::get('asignaciones/historial', [AsignacionInventarioController::class, 'historial'])->name('asignaciones.historial');
+        Route::get('asignaciones/colaborador/{codigo}', [AsignacionInventarioController::class, 'colaborador'])->name('asignaciones.colaborador');
+        Route::get('asignaciones/articulos/{asignacion}', [AsignacionInventarioController::class, 'articulo'])->name('asignaciones.articulo');
+
         Route::post('asignaciones', [AsignacionInventarioController::class, 'store'])
             ->name('asignaciones.store');
 
@@ -267,13 +273,13 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         Route::get('asignaciones/archivos/{archivo}/ver', [AsignacionInventarioController::class, 'verPdfFirmado'])
             ->name('asignaciones.ver_pdf_firmado');
 
-        Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'devolver'])
+        Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'rechazarDevolucionParcial'])
             ->name('asignaciones.devolver');
 
-        Route::post('asignaciones/devolver-lote', [AsignacionInventarioController::class, 'devolverLote'])
+        Route::post('asignaciones/devolver-lote', [AsignacionInventarioController::class, 'rechazarDevolucionParcial'])
             ->name('asignaciones.devolver_lote');
 
-        Route::post('asignaciones/colaborador/{codigo}/devolver-todo', [AsignacionInventarioController::class, 'devolverTodoColaborador'])
+        Route::post('asignaciones/colaborador/{codigo}/devolver-todo', [AsignacionInventarioController::class, 'registrarDevolucionCompleta'])
             ->name('asignaciones.devolver_todo_colaborador');
     });
 
@@ -309,6 +315,10 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
 
+        Route::get('asignaciones/historial', [AsignacionInventarioController::class, 'historial'])->name('asignaciones.historial');
+        Route::get('asignaciones/colaborador/{codigo}', [AsignacionInventarioController::class, 'colaborador'])->name('asignaciones.colaborador');
+        Route::get('asignaciones/articulos/{asignacion}', [AsignacionInventarioController::class, 'articulo'])->name('asignaciones.articulo');
+
         Route::post('asignaciones', [AsignacionInventarioController::class, 'store'])
             ->name('asignaciones.store');
 
@@ -341,13 +351,13 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
         Route::get('asignaciones/archivos/{archivo}/ver', [AsignacionInventarioController::class, 'verPdfFirmado'])
             ->name('asignaciones.ver_pdf_firmado');
 
-        Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'devolver'])
+        Route::post('asignaciones/{asignacion}/devolver', [AsignacionInventarioController::class, 'rechazarDevolucionParcial'])
             ->name('asignaciones.devolver');
 
-        Route::post('asignaciones/devolver-lote', [AsignacionInventarioController::class, 'devolverLote'])
+        Route::post('asignaciones/devolver-lote', [AsignacionInventarioController::class, 'rechazarDevolucionParcial'])
             ->name('asignaciones.devolver_lote');
 
-        Route::post('asignaciones/colaborador/{codigo}/devolver-todo', [AsignacionInventarioController::class, 'devolverTodoColaborador'])
+        Route::post('asignaciones/colaborador/{codigo}/devolver-todo', [AsignacionInventarioController::class, 'registrarDevolucionCompleta'])
             ->name('asignaciones.devolver_todo_colaborador');
 
         Route::get('operaciones/traslados', [OperacionTrasladoController::class, 'index'])
@@ -386,6 +396,10 @@ Route::middleware(['auth', 'auto.logout', 'role:3'])
     ->group(function () {
         Route::get('asignaciones', [AsignacionInventarioController::class, 'index'])
             ->name('asignaciones.index');
+
+        Route::get('asignaciones/historial', [AsignacionInventarioController::class, 'historial'])->name('asignaciones.historial');
+        Route::get('asignaciones/colaborador/{codigo}', [AsignacionInventarioController::class, 'colaborador'])->name('asignaciones.colaborador');
+        Route::get('asignaciones/articulos/{asignacion}', [AsignacionInventarioController::class, 'articulo'])->name('asignaciones.articulo');
 
         Route::get('asignaciones/entregas/{grupo}', [AsignacionInventarioController::class, 'entrega'])
             ->whereUuid('grupo')->name('asignaciones.entrega');
@@ -443,6 +457,8 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 
         Route::get('colaboradores/{colaborador}/detalle', [ColaboradorController::class, 'detalle'])
             ->name('colaboradores.detalle');
+        Route::get('colaboradores/{colaborador}/expediente', [ColaboradorController::class, 'expediente'])
+            ->name('colaboradores.expediente');
 
         Route::get('colaboradores/{colaborador}/ficha-tecnica', [ColaboradorController::class, 'fichaTecnica'])
             ->name('colaboradores.ficha_tecnica');
@@ -462,6 +478,12 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 | Rutas de autenticación Breeze
 |--------------------------------------------------------------------------
 */
+Route::middleware(['auth', 'auto.logout'])->prefix('devoluciones')->name('devoluciones.')->group(function () {
+    Route::get('colaborador/{codigo}', [AsignacionInventarioController::class, 'formularioDevolucion'])->name('formulario');
+    Route::post('colaborador/{codigo}', [AsignacionInventarioController::class, 'registrarDevolucionCompleta'])->name('registrar');
+    Route::get('hoja/{grupo}', [AsignacionInventarioController::class, 'descargarDevolucion'])->whereUuid('grupo')->name('pdf');
+});
+
 require __DIR__ . '/auth.php';
 require __DIR__.'/sistema.php';
 

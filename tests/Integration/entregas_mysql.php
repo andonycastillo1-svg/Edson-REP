@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AsignacionInventario;
+use App\Models\AsignacionInventarioArchivo;
 use App\Models\Bodega;
 use App\Models\Colaborador;
 use App\Models\Consolidado;
@@ -34,7 +35,7 @@ if (($argv[1] ?? '') === '--solicitud') {
     $solicitud = json_decode($argv[2], true, flags: JSON_THROW_ON_ERROR);
     $usuario = User::findOrFail($solicitud['usuario']);
     Auth::guard('web')->setUser($usuario);
-    $peticion = Request::create($solicitud['ruta'] ?? '/operador/asignaciones', 'POST', $solicitud['datos'],
+    $peticion = Request::create($solicitud['ruta'] ?? '/operador/asignaciones', $solicitud['metodo'] ?? 'POST', $solicitud['datos'],
         server: ['HTTP_ACCEPT' => 'application/json']);
     echo "LISTA\n";
     flush();
@@ -144,19 +145,45 @@ comprobar((clone $asignaciones)->custodiaAbierta()->count() === 3, 'Las tres cus
 comprobar(DB::table('alertas_reemplazos_rrhh')->where('producto_codigo', $producto->codigo)->count() === 1, 'Solo el reemplazo declarado genera revisión.');
 $conciliar();
 
+DB::table('roles')->insertOrIgnore(['id' => 4, 'nombre' => 'Recursos Humanos']);
+$rrhh = User::factory()->create(['role_id' => 4]);
+$regionRetorno = Region::create(['nombre' => 'Devolución QA '.$identificador, 'activa' => true]);
+$colaborador->update(['region_id' => $regionRetorno->id]);
+$rrhh->regionesOperativas()->attach($regionRetorno);
+DB::table('sistema_permisos_usuario')->insert(['user_id' => $rrhh->id, 'permiso' => 'asignaciones.devolver', 'permitido' => true]);
 $devolucion = [
-    'usuario' => $vigente->user_id, 'ruta' => '/operador/asignaciones/'.$vigente->id.'/devolver',
-    'datos' => ['solicitud_id' => (string) Str::uuid(), 'estado_devolucion' => 'buen_estado', 'cantidad_devuelta' => 1],
+    'usuario' => $rrhh->id, 'ruta' => '/devoluciones/colaborador/'.$colaborador->codigo,
+    'datos' => [
+        'solicitud_id' => (string) Str::uuid(),
+        'articulos' => (clone $asignaciones)->get()->mapWithKeys(fn ($fila) => [$fila->id => [
+            'buen_estado' => (int) ($fila->id === $vigente->id), 'danado' => 0, 'sin_retorno' => (int) ($fila->id !== $vigente->id),
+        ]])->all(),
+    ],
 ];
+$bodegasRetorno = (clone $asignaciones)->distinct()->pluck('bodega_id');
+foreach ($bodegasRetorno as $bodegaId) {
+    if ($bodegaId !== $bodegasRetorno->first()) {
+        $resultado = ejecutarEnParalelo($colaborador, [$devolucion])[0];
+        comprobar($resultado['estado'] === 403 && $saldo('usado') === 0, 'El alcance parcial no permite devolver.');
+    }
+    DB::table('bodega_usuario_operativa')->insert(['bodega_id' => $bodegaId, 'user_id' => $rrhh->id, 'opera_inventario' => true]);
+}
+
+$incompleta = $devolucion;
+array_pop($incompleta['datos']['articulos']);
+$resultado = ejecutarEnParalelo($colaborador, [$incompleta])[0];
+comprobar($resultado['estado'] === 422 && $saldo('usado') === 0, 'La devolución incompleta debe ser atómica.');
 $resultados = ejecutarEnParalelo($colaborador, [$devolucion, $devolucion]);
 $estados = array_column($resultados, 'estado');
 sort($estados);
-comprobar($estados === [302, 422], 'El mismo retorno físico solo debe aplicarse una vez. Resultados: '.json_encode($resultados));
-comprobar($vigente->fresh()->estado === 'Devuelta' && $saldo('usado') === 1 && $saldo('nuevo') === 1, 'El retorno real debe sumar un usado.');
-comprobar($vigente->movimientos()->where('tipo', 'Reemplazo')->count() === 1, 'Debe existir un único movimiento de retorno.');
+comprobar($estados === [302, 422], 'La devolución concurrente solo debe aplicarse una vez. Resultados: '.json_encode($resultados));
+comprobar($vigente->fresh()->estado === 'Devuelta' && $saldo('usado') === 1 && $saldo('nuevo') === 1, 'Solo un retorno real debe sumar un usado.');
+comprobar(!(clone $asignaciones)->custodiaAbierta()->exists(), 'Todas las custodias deben cerrar.');
+$grupoDevolucion = $vigente->movimientos()->where('tipo', 'Devolucion')->value('grupo_devolucion');
+comprobar(AsignacionInventarioArchivo::where('grupo_devolucion', $grupoDevolucion)->where('tipo_documento', 'devolucion_generada')->count() === 1,
+    'Debe conservarse un único PDF de la operación.');
 $conciliar();
-
-echo 'MySQL: salidas concurrentes, reintentos, retorno real y conciliación verificados por '.($porUnidad ? 'unidad' : 'lotes').".\n";
+echo 'MySQL: devolución completa concurrente, PDF único y conciliación verificados por '.($porUnidad ? 'unidad' : 'lotes').".\n";
 
 $central = app(\App\Services\BodegaAccessService::class)->principal()
     ?? Bodega::create(['nombre' => 'Central QA '.$identificador, 'tipo' => 'Principal']);
@@ -186,3 +213,16 @@ comprobar($necesidad->asignaciones()->count() === 1, 'Debe quedar una salida vin
 comprobar((int) DB::table('inventarios')->where('producto_codigo', $producto->codigo)->where('bodega_id', $central->id)->sum('cantidad') === 1,
     'La segunda solicitud no descuenta stock.');
 echo "MySQL: dos salidas concurrentes para un requerimiento aplicaron solo la unidad aprobada.\n";
+
+foreach ([
+    ['/operador/asignaciones', ['q' => $colaborador->codigo, 'por_pagina' => 25]],
+    ['/operador/asignaciones', ['q' => $colaborador->codigo, 'seguimiento' => 'documentacion']],
+    ['/operador/asignaciones/historial', ['desde' => today()->toDateString(), 'colaborador' => $colaborador->codigo,
+        'producto' => $producto->codigo, 'tipo' => 'Devolucion', 'bodega' => $vigente->bodega_id]],
+] as [$ruta, $filtros]) {
+    $resultado = ejecutarEnParalelo($colaborador, [[
+        'usuario' => $vigente->user_id, 'metodo' => 'GET', 'ruta' => $ruta, 'datos' => $filtros,
+    ]]);
+    comprobar($resultado[0]['estado'] === 200, 'El listado filtrado debe responder en MySQL. '.json_encode($resultado));
+}
+echo "MySQL: filtros de asignaciones, hojas pendientes e historial verificados.\n";

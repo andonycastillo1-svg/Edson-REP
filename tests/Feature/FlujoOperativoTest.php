@@ -602,6 +602,35 @@ class FlujoOperativoTest extends TestCase
         $this->artisan('inventario:contrastar-saldos', ['--lotes' => true])->assertSuccessful();
     }
 
+    public function test_excel_reemplaza_sin_motivo_solo_con_vida_vencida_y_revalida_al_confirmar(): void
+    {
+        $this->stock('P-001', 3);
+        $ruta = route('operador.asignaciones.store');
+        $datos = ['colaborador_codigo' => 'COL-001', 'items' => [['producto_codigo' => 'P-001', 'bodega_id' => $this->bodega->id]]];
+        $this->actingAs($this->central)->post($ruta, $datos + ['solicitud_id' => (string) Str::uuid()])
+            ->assertSessionHasNoErrors();
+        $anterior = AsignacionInventario::sole();
+        $fecha = today()->toDateString();
+        $reemplazo = [['COL-001', 'P-001', 1, $fecha, 'Gerencia', 'Correo', '', '', $anterior->id]];
+        $preview = route('flujo.importar.preview');
+        $this->post($preview, ['excel' => $this->xlsx($reemplazo)])
+            ->assertUnprocessable()->assertSee('Indica el motivo del reemplazo');
+
+        $anterior->entrega->update(['recibida_en' => now()->subMonths(18), 'salida_en' => now()->subMonths(18)]);
+        $anterior->update(['fecha_vencimiento' => now()->subDays(7)]);
+        $this->post($preview, ['excel' => $this->xlsx($reemplazo)])->assertRedirect()->assertSessionHasNoErrors();
+        $lote = ImportacionAsignacion::sole();
+        $confirmar = route('flujo.importar.confirmar', $lote);
+        $this->post($confirmar)->assertSessionHasNoErrors();
+        $this->post($confirmar)->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('asignaciones_inventarios', 2);
+        $this->assertDatabaseHas('asignaciones_inventarios', [
+            'asignacion_anterior_id' => $anterior->id, 'tipo_entrega' => 'reposicion', 'motivo_registrado' => 'Vencimiento de vida útil',
+        ]);
+        $this->assertDatabaseCount('alertas_reemplazos_rrhh', 0);
+        $this->assertSame(1, $this->saldo('P-001'));
+    }
+
     public function test_la_vista_previa_detecta_saldo_sin_conciliar_sin_movimientos(): void
     {
         $this->stock('P-001', 3);

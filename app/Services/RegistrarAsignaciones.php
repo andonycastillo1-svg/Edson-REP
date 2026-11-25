@@ -30,6 +30,7 @@ class RegistrarAsignaciones
         private RequerimientosAsignacion $requerimientos,
         private AccesoCustodia $custodias,
         private AccesoInventarioOperativo $inventario,
+        private ResolverCustodia $resolverCustodia,
     ) {}
 
     public function registrar(User $usuario, array $data, Collection $items, array $valores, ?callable $adjuntarFoto = null, string $permiso = 'asignaciones.crear'): EntregaInventario
@@ -115,8 +116,17 @@ class RegistrarAsignaciones
                 throw ValidationException::withMessages(['items' => 'La asignación anterior debe corresponder a una custodia vigente del colaborador que tengas permiso de consultar.']);
             }
             $motivo = $anterior ? MotivoAsignacion::where('codigo', $item['motivo_asignacion'] ?? '')->where('activo', true)->first() : null;
-            if (($anterior && !$motivo) || (!$anterior && filled($item['motivo_asignacion'] ?? null))) {
-                throw ValidationException::withMessages(['motivo_asignacion' => 'Selecciona un motivo vigente únicamente al sustituir una asignación.']);
+            $restante = $anterior ? $this->vida->restante($anterior, $salida, 1) : null;
+            if (($anterior && $restante !== 0 && !$motivo) || (filled($item['motivo_asignacion'] ?? null) && !$motivo)) {
+                throw ValidationException::withMessages(['motivo_asignacion' => 'Selecciona un motivo vigente para justificar el reemplazo.']);
+            }
+            $condicionAnterior = array_filter($item['condicion_anterior'] ?? [], fn ($valor) => filled($valor)) ?: null;
+            if ($condicionAnterior !== null && !$anterior) {
+                throw ValidationException::withMessages(['items' => 'Selecciona la asignación anterior antes de registrar su condición.']);
+            }
+            if ($condicionAnterior !== null) {
+                $resolucion = $this->inventario->autorizarCustodias($usuario, 'asignaciones.devolver', collect([$anterior]), bloquear: true);
+                $this->inventario->registrar($resolucion, 'asignaciones.devolver', $grupo);
             }
             $tipoEntrega = $tiposEntrega[$codigo] ??= ($anterior ? 'reposicion' : ($previas->isNotEmpty() || AsignacionInventario::where('colaborador_codigo', $colaborador->codigo)
                 ->where('producto_codigo', $codigo)->exists() ? 'adicional' : 'inicial'));
@@ -142,7 +152,7 @@ class RegistrarAsignaciones
                 'asignacion_anterior_id' => $anterior?->id,
                 'motivo_inventario_nuevo' => $motivoNuevo,
                 'motivo_asignacion_id' => $motivo?->id,
-                'motivo_registrado' => $motivo?->nombre,
+                'motivo_registrado' => $motivo?->nombre ?? ($anterior ? 'Vencimiento de vida útil' : null),
                 'user_id' => $usuario->id,
             ]);
             $asignacion->setRelation('entrega', $entrega);
@@ -164,7 +174,12 @@ class RegistrarAsignaciones
                     'requerimiento_id' => $asignacion->requerimiento_id]);
 
             if ($anterior) {
-                $alertas = [...$alertas, ...$this->reemplazos->registrar($asignacion, collect([$anterior]), $motivo)];
+                $alertasReemplazo = $this->reemplazos->registrar($asignacion, collect([$anterior]), $motivo, $condicionAnterior !== null);
+                $alertas = [...$alertas, ...$alertasReemplazo];
+                if ($condicionAnterior !== null) {
+                    $this->resolverCustodia->aplicar($anterior, 1, $condicionAnterior, $usuario, $grupo,
+                        'reemplazo', alertaReemplazoId: $alertasReemplazo[0] ?? null, reemplazoId: $asignacion->id);
+                }
             }
         }
 

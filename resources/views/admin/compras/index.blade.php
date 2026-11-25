@@ -16,29 +16,32 @@
         <x-sistema.enlace-datos modulo="compras" />
         <x-sistema.enlace-datos modulo="productos" />
     </div>
-    <x-sistema.consulta-campos :tabla="$tablaCampos" />
+    <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['buscar', 'por_pagina']" />
 
-    <div class="ui-filtros sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(7rem,auto)_auto] lg:items-end">
+    <form method="GET" class="ui-filtros sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(7rem,auto)_auto] lg:items-end">
+        <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
         <label class="ui-label mb-0">Buscar factura
-            <input type="search" id="buscarCompra" maxlength="190" placeholder="Número, proveedor o fecha" class="ui-input mt-1">
+            <input type="search" id="buscarCompra" name="buscar" value="{{ request('buscar') }}" maxlength="190" placeholder="Número, proveedor o fecha" class="ui-input mt-1">
         </label>
         <label class="ui-label mb-0">Filas por página
-            <select id="filasPorPagina" class="ui-select mt-1">
+            <select id="filasPorPagina" name="por_pagina" class="ui-select mt-1">
                 @foreach([10, 15, 25, 50] as $cantidad)
-                    <option value="{{ $cantidad }}">{{ $cantidad }} filas</option>
+                    <option value="{{ $cantidad }}" @selected($compras->perPage() === $cantidad)>{{ $cantidad }} filas</option>
                 @endforeach
             </select>
         </label>
         <div class="flex flex-wrap items-center gap-2">
-            <x-ui.exportar-excel modulo="compras" :campos="['buscar' => 'buscarCompra']" />
+            <x-ui.accion type="submit">Buscar</x-ui.accion>
+            <x-ui.exportar-excel modulo="compras" />
             @rutaDisponible($routePrefix.'.compras.create')
                 <x-ui.accion onclick="abrirModal()" aria-controls="modalCompra" aria-haspopup="dialog"
                     title="Abre el formulario en el listado">Compra rápida</x-ui.accion>
             @endrutaDisponible
         </div>
-    </div>
+    </form>
 
     <x-sistema.panel titulo="Facturas registradas">
+        <p class="mb-3 text-sm">{{ $compras->total() }} facturas</p>
         <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Facturas registradas">
             <table class="ui-table" id="tablaCompras">
                 <thead>
@@ -55,7 +58,7 @@
                 </thead>
                 <tbody>
                     @forelse($compras as $c)
-                        <tr class="fila-compra" data-search="{{ strtolower($c->id . ' ' . $c->fecha_compra . ' ' . $c->no_factura . ' ' . $c->proveedor_nombre . ' ' . ($c->proyecto ?? '') . ' ' . number_format($c->total_factura, 2)) }}">
+                        <tr>
                             <td class="whitespace-nowrap">#{{ $c->id }}</td>
                             <td class="whitespace-nowrap">{{ $c->fecha_compra }}</td>
                             <td><strong>{{ $c->no_factura }}</strong></td>
@@ -68,21 +71,13 @@
                             </td>
                         </tr>
                     @empty
-                        <tr id="sinRegistrosOriginal"><td colspan="{{ 7 + $tablaCampos['campos']->count() }}"><p class="ui-empty-state">No hay compras registradas.</p></td></tr>
+                        <tr><td colspan="{{ 7 + $tablaCampos['campos']->count() }}"><p class="ui-empty-state">No hay facturas que coincidan con la búsqueda.</p></td></tr>
                     @endforelse
-                    <tr id="sinResultados" class="hidden"><td colspan="{{ 7 + $tablaCampos['campos']->count() }}"><p class="ui-empty-state">No hay facturas que coincidan con la búsqueda.</p></td></tr>
                 </tbody>
             </table>
         </div>
 
-        <nav class="ui-paginacion" aria-label="Paginación de compras">
-            <p role="status">Compras <strong id="desdeRegistro">0</strong>–<strong id="hastaRegistro">0</strong> de <strong id="totalRegistros">0</strong></p>
-            <div class="flex flex-wrap items-center gap-1.5">
-                <button class="ui-pagina" type="button" id="btnAnterior">Anterior</button>
-                <div id="numerosPagina" class="flex flex-wrap gap-1.5"></div>
-                <button class="ui-pagina" type="button" id="btnSiguiente">Siguiente</button>
-            </div>
-        </nav>
+        {{ $compras->links() }}
     </x-sistema.panel>
 </div>
 
@@ -123,126 +118,5 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') cerrarModal();
 });
 
-document.addEventListener('DOMContentLoaded', function () {
-    const inputBuscar = document.getElementById('buscarCompra');
-    const selectFilas = document.getElementById('filasPorPagina');
-    const filas = Array.from(document.querySelectorAll('.fila-compra'));
-    const sinResultados = document.getElementById('sinResultados');
-
-    const btnAnterior = document.getElementById('btnAnterior');
-    const btnSiguiente = document.getElementById('btnSiguiente');
-    const numerosPagina = document.getElementById('numerosPagina');
-
-    const desdeRegistro = document.getElementById('desdeRegistro');
-    const hastaRegistro = document.getElementById('hastaRegistro');
-    const totalRegistros = document.getElementById('totalRegistros');
-
-    let paginaActual = 1;
-    let filasPorPagina = parseInt(selectFilas.value);
-
-    function normalizarTexto(texto) {
-        return texto
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim();
-    }
-
-    function obtenerFilasFiltradas() {
-        const texto = normalizarTexto(inputBuscar.value);
-
-        return filas.filter(fila => {
-            const contenido = normalizarTexto(fila.dataset.search || '');
-            return contenido.includes(texto);
-        });
-    }
-
-    function renderTabla() {
-        const filtradas = obtenerFilasFiltradas();
-        const total = filtradas.length;
-        const totalPaginas = Math.max(1, Math.ceil(total / filasPorPagina));
-
-        if (paginaActual > totalPaginas) {
-            paginaActual = totalPaginas;
-        }
-
-        filas.forEach(fila => fila.classList.add('hidden'));
-
-        const inicio = (paginaActual - 1) * filasPorPagina;
-        const fin = inicio + filasPorPagina;
-        const visibles = filtradas.slice(inicio, fin);
-
-        visibles.forEach(fila => fila.classList.remove('hidden'));
-
-        sinResultados.classList.toggle('hidden', total !== 0 || filas.length === 0);
-
-        desdeRegistro.textContent = total === 0 ? 0 : inicio + 1;
-        hastaRegistro.textContent = Math.min(fin, total);
-        totalRegistros.textContent = total;
-
-        btnAnterior.disabled = paginaActual <= 1;
-        btnSiguiente.disabled = paginaActual >= totalPaginas || total === 0;
-
-        renderNumeros(totalPaginas, total);
-    }
-
-    function renderNumeros(totalPaginas, total) {
-        numerosPagina.innerHTML = '';
-
-        if (total === 0) return;
-
-        const maxBotones = 5;
-        let inicio = Math.max(1, paginaActual - 2);
-        let fin = Math.min(totalPaginas, inicio + maxBotones - 1);
-
-        if (fin - inicio < maxBotones - 1) {
-            inicio = Math.max(1, fin - maxBotones + 1);
-        }
-
-        for (let i = inicio; i <= fin; i++) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.textContent = i;
-
-            btn.className = 'ui-pagina';
-            btn.dataset.pagina = i;
-            if (i === paginaActual) btn.setAttribute('aria-current', 'page');
-            btn.setAttribute('aria-label', 'Ir a la página ' + i);
-            btn.addEventListener('click', () => {
-                paginaActual = i;
-                renderTabla();
-                numerosPagina.querySelector(`[data-pagina="${i}"]`)?.focus();
-            });
-
-            numerosPagina.appendChild(btn);
-        }
-    }
-
-    inputBuscar.addEventListener('input', function () {
-        paginaActual = 1;
-        renderTabla();
-    });
-
-    selectFilas.addEventListener('change', function () {
-        filasPorPagina = parseInt(this.value);
-        paginaActual = 1;
-        renderTabla();
-    });
-
-    btnAnterior.addEventListener('click', function () {
-        if (paginaActual > 1) {
-            paginaActual--;
-            renderTabla();
-        }
-    });
-
-    btnSiguiente.addEventListener('click', function () {
-        paginaActual++;
-        renderTabla();
-    });
-
-    renderTabla();
-});
 </script>
-
 @endsection

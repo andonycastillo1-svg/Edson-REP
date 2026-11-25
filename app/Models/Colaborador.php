@@ -25,4 +25,9 @@ class Colaborador extends Model
     {
         return $this->belongsTo(Region::class);
     }
+
+    public function asignaciones()
+    {
+        return $this->hasMany(AsignacionInventario::class, 'colaborador_codigo');
+    }
 }

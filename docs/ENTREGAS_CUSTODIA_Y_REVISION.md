@@ -6,22 +6,23 @@
 2. Guarda la asignación. La operación habitual registra la entrega directa al colaborador con la fecha y el usuario de la salida. Si otra persona transporta los productos, selecciona **Salida por medio de un tercero**. Su nombre es opcional y esa salida queda registrada con la recepción sin acreditar. El registro posterior de la recepción es opcional en el detalle.
 3. Abre la hoja de asignación desde el detalle. Carga el PDF firmado cuando esté disponible. Cada PDF queda como una versión privada del grupo. La fotografía es opcional y el estado documental se consulta por separado en **Hojas firmadas faltantes**.
 
-Si ya existe la custodia ordinaria del mismo código, el sistema vincula la entrega nueva con el historial. La anterior se identifica como **Custodia anterior sin retorno confirmado** y conserva su saldo hasta registrarse el hecho correspondiente. Solo la nueva unidad queda como custodia ordinaria. Cada salida válida consume una unidad de su bodega.
+## Reemplazar un producto
 
-## Registrar lo que ocurrió con la unidad anterior
+En la nueva asignación, selecciona la custodia anterior del mismo código. Si la vida útil sigue vigente o se desconoce, registra un motivo activo del catálogo. Una primera asignación no genera revisión. Si la vida útil terminó, un reemplazo normal puede registrarse sin motivo adicional ni alerta.
 
-En **Mis asignaciones**, abre al colaborador y selecciona uno o varios productos. Registra la cantidad, la condición y, si se conoce, la fecha del hecho. La operación guarda al responsable y la bodega de la asignación de origen.
+Cuando tengas permiso de devolución sobre el artículo anterior, puedes registrar en la misma asignación si se recuperó y en qué condición. Una unidad recibida en buen estado entra como inventario usado. Las dañadas o recibidas para baja quedan fuera del saldo asignable. La pérdida, el robo o un cierre sin retorno físico conservan la incidencia y el responsable sin generar entradas. Si todavía no se verificó el retorno, el sistema conserva la custodia anterior y su saldo con el vínculo al reemplazo.
 
-- **Buen estado.** La unidad vuelve a la bodega como inventario usado, con su vida restante acreditada.
-- **Daño.** Se registra la entrada a inventario dañado, fuera del saldo asignable.
-- **Pérdida o robo.** Se cierra la custodia y queda una incidencia para RR. HH. sin entrada a inventario. Otra incidencia requiere explicación y efecto de inventario.
-- **Renuncia y despido.** Selecciona el motivo correspondiente para generar la hoja de los retornos físicos. Los retornos ordinarios quedan registrados en la bitácora. Las hojas y documentos anteriores mantienen su acceso histórico.
+## Registrar una devolución completa
 
-## Revisar una incidencia en RR. HH.
+En el expediente del colaborador, abre **Registrar devolución**. El permiso y el alcance deben cubrir todas las bodegas y custodias incluidas. Clasifica las cantidades de cada artículo como recibidas en buen estado, dañadas o no devueltas. Al confirmar, el sistema cierra toda la custodia y genera el PDF. El expediente y **Historial de movimientos** conservan el acceso autorizado al documento y a sus versiones firmadas.
 
-Una salida del mismo código con la anterior aún bajo custodia genera revisión por **posible reemplazo anticipado** cuando queda vida útil acreditada. Si faltan datos, aparece **Reemplazo por verificar**. Un producto vencido sigue bajo custodia y su nueva entrega no genera alerta automática por anticipación. El buen estado tampoco genera una alerta de devolución. El daño con vida vigente o desconocida, la pérdida y el robo se envían a revisión.
+La inactivación es una acción administrativa independiente. La devolución conserva el estado laboral y registra al responsable, las condiciones y los movimientos con sus bodegas de origen.
 
-En **Incidencias para revisión de RR. HH.**, consulta las dos fechas, la custodia, los documentos y los movimientos del código. Guarda una nota, solicita regularización a una persona con permisos operativos sobre la custodia o finaliza con una nota. El sistema registra el autor y la fecha de cada actuación. El expediente del colaborador muestra las entregas, las custodias sin resolver, los retornos, las incidencias y los respaldos dentro del acceso autorizado.
+## Consultar y revisar incidencias
+
+En **Incidencias de RR. HH.**, se conserva la revisión según el motivo configurado. Puede limitarse al registro del motivo, solicitar revisión o incluir una referencia proporcional con datos disponibles. La referencia no aplica descuentos automáticamente. La devolución completa conserva las incidencias y el seguimiento según la condición registrada.
+
+El expediente separa **Resumen**, **Productos asignados** e **Incidencias**. Desde Productos asignados se abre el historial paginado. Conserva la descarga de la ficha Excel y el acceso a respaldos según permisos.
 
 ## Prioridad de inventario y vida útil
 
@@ -35,7 +36,7 @@ Usa `php artisan inventario:contrastar-saldos` para conciliar existencias por un
 
 ## Migración y recordatorios
 
-La migración `2026_11_20_000001_add_operational_assignment_tracking.php` agrega los lotes y los campos de fecha de ingreso, vínculo de custodia, motivo de devolución y seguimiento de RR. HH. Conserva los registros y archivos existentes. El esquema conserva la evidencia de operaciones registradas al revertir la aplicación.
+La devolución completa utiliza el esquema existente. El documento generado y las versiones firmadas se guardan en el disco privado de documentos.
 
 En un despliegue autorizado, ejecuta `php artisan migrate --force` y comprueba la tarea con `php artisan schedule:list`. El cron debe ejecutar Laravel cada minuto.
 
@@ -47,9 +48,9 @@ La tarea `php artisan inventario:recordar-entregas` se ejecuta cada 15 minutos y
 
 ## Cómo validar en un entorno de prueba
 
-1. Registra dos entradas del mismo código con fechas de ingreso distintas y trasládalas a una bodega secundaria. Guarda una salida y verifica que salga la entrada más antigua. Devuélvela en buen estado y confirma que la siguiente salida prefiera el usado.
-2. Guarda una segunda entrega al mismo colaborador. Comprueba que el almacén descontó solo la unidad nueva, que la anterior conserva su custodia y que RR. HH. recibe la revisión que corresponde. Pide la regularización y registra el hecho con el usuario operativo.
-3. Registra un buen retorno ordinario, un daño, una pérdida, un robo y un retorno por renuncia. Contrasta los saldos y comprueba que la hoja de devolución se genera para la renuncia.
+1. Registra dos entradas del mismo código con fechas de ingreso distintas y trasládalas a una bodega secundaria. Guarda una salida y verifica que salga la entrada más antigua. Registra un reemplazo con el retorno confirmado en buen estado y comprueba que la próxima salida prefiera el usado.
+2. Guarda una segunda entrega al mismo colaborador. Comprueba que el almacén descontó solo la unidad nueva, que la anterior conserva su custodia y que RR. HH. recibe la revisión que corresponde. Comprueba que una condición registrada durante el reemplazo use los permisos operativos y quede vinculada a la alerta correspondiente.
+3. Clasifica todos los artículos de un colaborador, con retornos físicos y faltantes. Contrasta los saldos y verifica que la hoja distinga los resultados.
 4. Registra una salida por tercero. Carga dos versiones del PDF desde el detalle. Ejecuta dos veces la tarea sobre casos con más de 24 horas y comprueba que solo exista un aviso donde falte la hoja.
 5. Revisa las entregas, incidencias y respaldos en el expediente. Usa un rol personalizado con reglas individuales para verificar la excepción de inventario nuevo y los límites de bodega.
 

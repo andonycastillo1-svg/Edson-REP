@@ -89,6 +89,14 @@
                             @endforeach
                         </select>
                     </label>
+                    <fieldset data-condicion-anterior class="space-y-2 rounded-lg border border-line p-3 sm:col-span-2" hidden disabled>
+                        <legend class="px-1 text-sm font-semibold">Artículo anterior</legend>
+                        @include('admin.asignaciones.condicion', [
+                            'opcional' => true, 'etiquetaCondicion' => 'Resultado de la verificación',
+                            'textoSinCondicion' => 'Sin verificación confirmada',
+                        ])
+                        <p class="text-sm">Si queda sin verificar, la custodia anterior seguirá identificada como pendiente de retorno.</p>
+                    </fieldset>
                     @if($puedeElegirNuevo)
                         <details class="sm:col-span-2">
                             <summary class="cursor-pointer text-sm font-semibold">Entregar inventario nuevo por excepción</summary>
@@ -120,6 +128,7 @@
     </form>
 </div>
 
+@include('admin.asignaciones.condicion-script')
 <script>
 (() => {
     const disponibles = @js($disponibles);
@@ -146,7 +155,8 @@
         const productos = [...filas.querySelectorAll('[data-campo="producto_codigo"]')].map(campo => campo.value);
         [...filas.children].forEach((fila, indice) => {
             for (const campo of fila.querySelectorAll('[data-campo]')) {
-                campo.name = `items[${indice}][${campo.dataset.campo}]`;
+                const prefijo = campo.closest('[data-condicion-anterior]') ? '[condicion_anterior]' : '';
+                campo.name = `items[${indice}]${prefijo}[${campo.dataset.campo}]`;
             }
             const producto = fila.querySelector('[data-campo="producto_codigo"]');
             const repetido = producto.value && productos.filter(codigo => codigo === producto.value).length > 1;
@@ -168,6 +178,16 @@
         const reemplazo = campo('sustituir_asignacion_id');
         const motivo = campo('motivo_asignacion');
         const nuevo = campo('motivo_inventario_nuevo');
+        const condicion = fila.querySelector('[data-condicion-anterior]');
+        const opcionesCondicion = condicion.querySelectorAll('[data-campo]');
+        for (const opcion of opcionesCondicion) {
+            opcion.value = datos.condicion_anterior?.[opcion.dataset.campo] ?? '';
+        }
+        configurarCondicion(condicion.querySelector('[data-condicion]'));
+        function limpiarCondicion() {
+            for (const opcion of opcionesCondicion) opcion.value = '';
+            campo('estado_devolucion').dispatchEvent(new Event('change'));
+        }
         if (bodega instanceof HTMLSelectElement && contexto.bodegas !== null) {
             const autorizadas = contexto.bodegas.map(String);
             for (const opcion of [...bodega.options]) {
@@ -195,11 +215,13 @@
             const custodias = contexto.custodias.filter(item => item.producto_codigo === producto.value);
             const anterior = reemplazo.value || (sugerir ? '' : datos.sustituir_asignacion_id ?? '');
             reemplazo.replaceChildren(new Option('Entrega sin sustitución', ''), ...custodias.map(item =>
-                new Option(`Asignación #${item.id} · ${item.fecha.slice(0, 10)} · ${item.cantidad_asignada} en custodia`, item.id)));
+                new Option(`Asignación #${item.id} · ${item.fecha.slice(0, 10)} · ${item.vida_restante === 0 ? 'Vida vencida' : (item.vida_restante === null ? 'Vida sin definir' : 'Vida vigente')}`, item.id)));
             reemplazo.value = anterior;
             reemplazo.closest('label').hidden = reemplazo.disabled = custodias.length === 0;
             motivo.closest('label').hidden = motivo.disabled = !reemplazo.value;
-            motivo.required = !!reemplazo.value;
+            const previa = custodias.find(item => String(item.id) === reemplazo.value);
+            motivo.required = !!previa && previa.vida_restante !== 0;
+            condicion.hidden = condicion.disabled = !previa?.puede_resolver;
             if (reemplazo.value) cantidad.max = Math.min(1, Number(cantidad.max));
             pintar();
         }
@@ -213,9 +235,12 @@
         bodega.addEventListener('change', () => cargar(producto.value));
         producto.addEventListener('change', () => {
             reemplazo.value = motivo.value = '';
+            datos.sustituir_asignacion_id = '';
+            limpiarCondicion();
             actualizar(true);
         });
         reemplazo.addEventListener('change', () => {
+            limpiarCondicion();
             if (reemplazo.value) cantidad.value = 1;
             else motivo.value = '';
             datos.sustituir_asignacion_id = '';
@@ -300,7 +325,7 @@
     colaborador.addEventListener('change', () => {
         const anteriores = origen?.value ? [] : [...filas.children].map(fila => Object.fromEntries(
             [...fila.querySelectorAll('[data-campo]')]
-                .filter(campo => !['sustituir_asignacion_id', 'motivo_asignacion'].includes(campo.dataset.campo))
+                .filter(campo => !campo.closest('[data-condicion-anterior]') && !['sustituir_asignacion_id', 'motivo_asignacion'].includes(campo.dataset.campo))
                 .map(campo => [campo.dataset.campo, campo.value])
         ));
         cargarContexto(anteriores);

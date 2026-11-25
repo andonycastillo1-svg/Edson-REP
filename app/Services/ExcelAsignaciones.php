@@ -249,8 +249,8 @@ class ExcelAsignaciones
             }
             if (filled($fila['sustituir_asignacion_id'] ?? null)) {
                 $anterior = filter_var($fila['sustituir_asignacion_id'], FILTER_VALIDATE_INT);
-                if ($anterior < 1 || $cantidad !== 1 || blank($fila['motivo_asignacion'])) {
-                    $errores[$numero][] = 'Para un reemplazo indica el ID de la asignación vigente, una unidad y un motivo.';
+                if ($anterior < 1 || $cantidad !== 1) {
+                    $errores[$numero][] = 'Para un reemplazo indica el ID de la asignación vigente y una unidad.';
                 }
                 $fila['sustituir_asignacion_id'] = $anterior;
             } elseif (filled($fila['motivo_asignacion'])) {
@@ -337,6 +337,8 @@ class ExcelAsignaciones
                 $anterior = $custodias->firstWhere('id', $fila['sustituir_asignacion_id']);
                 if (!$anterior || $anterior->producto_codigo !== $codigo || !app(AccesoCustodia::class)->puedeVer($usuario, $anterior)) {
                     $errores[$numero][] = 'El ID debe corresponder a una asignación vigente y autorizada del mismo colaborador y producto.';
+                } elseif (blank($fila['motivo_asignacion']) && app(AsignacionVidaUtilService::class)->restante($anterior, $salida, 1) !== 0) {
+                    $errores[$numero][] = 'Indica el motivo del reemplazo si la vida útil está vigente o es desconocida.';
                 }
             }
             if ($custodias->contains(fn ($previa) =>
