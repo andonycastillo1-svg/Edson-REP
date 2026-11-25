@@ -5,6 +5,7 @@ namespace App\Sistema;
 use App\Models\AsignacionInventario;
 use App\Models\User;
 use App\Services\BodegaAccessService;
+use App\Services\AccesoInventarioOperativo;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -58,7 +59,7 @@ class Modulos
         }];
     }
 
-    public function __construct(private BodegaAccessService $bodegas, private Permisos $permisos) {}
+    public function __construct(private BodegaAccessService $bodegas, private Permisos $permisos, private AccesoInventarioOperativo $acceso) {}
 
     public static function permisoLectura(string $modulo): string
     {
@@ -87,6 +88,10 @@ class Modulos
 
     public function consultar(User $user, string $modulo): bool
     {
+        if (in_array($modulo, ['compras', 'productos', 'asignaciones', 'traslados'], true)) {
+            return $this->acceso->tiene($user, self::permisoLectura($modulo));
+        }
+
         return isset(self::DEFINICIONES[$modulo]) && $this->permisos->permite($user, self::permisoLectura($modulo));
     }
 
@@ -98,20 +103,31 @@ class Modulos
         $q = DB::table($tabla);
         $ambito = $user->rolOperativo();
 
+        if ($modulo === 'compras') {
+            $central = $this->bodegas->principal();
+            $alcances = $this->acceso->alcances($user, 'compras.consultar')->filter(fn ($ambito) => $ambito->contiene([(int) $central?->id]));
+            abort_if($alcances->isEmpty(), 403);
+
+            return $q->where(fn ($q) => $q->where('bodega_id', $central?->id)
+                ->when($alcances->contains('historico', true), fn ($q) => $q->orWhereNull('bodega_id')));
+        }
+        if ($modulo === 'asignaciones') {
+            $this->acceso->limitarAsignaciones($q, $user, 'asignaciones.consultar');
+
+            return $q;
+        }
+        if ($modulo === 'traslados') {
+            $this->acceso->limitarTraslados($q, $this->acceso->alcances($user, 'traslados.consultar'));
+
+            return $q->where('tipo', 'TRASLADO');
+        }
+
         return match ($modulo) {
             'usuarios' => $q->when($ambito !== 1, fn (Builder $q) => $q->where('created_by', $user->id)),
             'bodegas', 'inventario', 'refacciones' => $q->when(
                 ($ids = $this->bodegas->visibleBodegaIds($user)) !== null,
                 fn (Builder $q) => $q->whereIn($modulo === 'bodegas' ? 'id' : 'bodega_id', $ids)
             ),
-            'compras', 'productos' => $q->when(!$this->bodegas->canViewCompras($user), fn (Builder $q) => $q->whereRaw('1 = 0')),
-            'asignaciones' => $q
-                ->when($ambito === 2, fn (Builder $q) => $q->where('user_id', $user->id))
-                ->when($ambito === 3, fn (Builder $q) => $q->whereIn('user_id', $user->almacenistasAsignados()->select('users.id'))),
-            'traslados' => $q->where('tipo', 'TRASLADO')->when($ambito !== 1, fn (Builder $q) => $q->where(
-                fn (Builder $scope) => $scope->where('creado_por', $user->id)
-                    ->when($user->isEncargado() && $user->bodega_id, fn (Builder $scope) => $scope->orWhere('bodega_destino_id', $user->bodega_id))
-            )),
             default => $q,
         };
     }
@@ -126,7 +142,8 @@ class Modulos
 
     public function enlaceOperativo(User $user, string $modulo, object $registro): ?string
     {
-        $prefijo = CatalogoPermisos::prefijo($user->rolOperativo());
+        $prefijo = in_array($modulo, ['compras', 'productos', 'asignaciones', 'traslados'], true)
+            ? AccesoInventarioOperativo::prefijo($user) : CatalogoPermisos::prefijo($user->rolOperativo());
         [$ruta, $parametros] = match ($modulo) {
             'usuarios' => ['usuarios.edit', [$registro->id]],
             'colaboradores' => ['colaboradores.edit', [$registro->codigo]],

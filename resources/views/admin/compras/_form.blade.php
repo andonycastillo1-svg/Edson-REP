@@ -1,5 +1,5 @@
 @php
-    $routePrefix = auth()->user()->rolOperativo() === 2 ? 'operador' : 'admin';
+    $routePrefix = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user());
     $origenCompra = collect((array) request('consolidados', []))->filter(fn ($id) => is_scalar($id))->map(fn ($id) => (int) $id);
     $sugerencias = $pendientes->only($origenCompra->all())->collapse()->groupBy('codigo');
 @endphp

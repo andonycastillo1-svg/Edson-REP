@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    @php($rutaCompras = auth()->user()->rolOperativo() === 2 ? 'operador.compras.index' : 'admin.compras.index')
+    @php($rutaCompras = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user()).'.compras.index')
     <div class="mx-auto max-w-6xl">
         <header class="ui-page-header ui-page-header-body">
             <div>

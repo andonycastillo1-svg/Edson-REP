@@ -13,29 +13,53 @@ use Illuminate\Validation\ValidationException;
 
 class RequerimientosAsignacion
 {
-    public function __construct(private FlujoAcceso $acceso) {}
+    public function __construct(private AccesoInventarioOperativo $acceso, private BodegaAccessService $bodegas) {}
 
-    public function disponibles(User $usuario): Builder
+    private function regiones(User $usuario, string $permiso): ?array
     {
-        return Consolidado::query()->where('detalle_individual', true)->whereIn('estado', ['aprobado', 'cerrado'])
-            ->when(!$this->acceso->puede($usuario, 'compras'), fn ($q) => $q->whereRaw('1 = 0'));
+        $central = $this->bodegas->principal()?->id;
+        if ($central === null) {
+            return [];
+        }
+        $alcances = collect([$permiso, 'asignaciones.vincular'])->map(function ($clave) use ($usuario, $central) {
+            $vigentes = $this->acceso->alcances($usuario, $clave)->filter(fn ($ambito) => $ambito->contiene([(int) $central]));
+
+            return $vigentes->contains(fn ($ambito) => $ambito->regiones === null)
+                ? null : $vigentes->flatMap(fn ($ambito) => $ambito->regiones)->unique()->all();
+        });
+        [$operacion, $vinculo] = $alcances->all();
+
+        return $operacion === null || $vinculo === null ? $operacion ?? $vinculo : array_intersect($operacion, $vinculo);
     }
 
-    public function verificar(User $usuario, int $id, bool $bloquear = false): Consolidado
+    public function disponibles(User $usuario, string $permiso = 'asignaciones.crear'): Builder
     {
-        $this->acceso->autorizar($usuario, 'compras');
-        $consulta = $this->disponibles($usuario)->whereKey($id);
+        $regiones = $this->regiones($usuario, $permiso);
+
+        return Consolidado::query()->where('detalle_individual', true)->whereIn('estado', ['aprobado', 'cerrado'])
+            ->when($regiones !== null, fn ($q) => $q->whereHas('participantes', fn ($q) =>
+                $q->whereIn('region_id', $regiones)->whereHas('colaborador', fn ($q) => $q->whereIn('region_id', $regiones))));
+    }
+
+    public function verificar(User $usuario, int $id, bool $bloquear = false, string $permiso = 'asignaciones.crear'): Consolidado
+    {
+        abort_if($this->regiones($usuario, $permiso) === [], 403);
+        $consulta = $this->disponibles($usuario, $permiso)->whereKey($id);
 
         return ($bloquear ? $consulta->lockForUpdate() : $consulta)->first()
             ?? throw ValidationException::withMessages(['consolidado_id' => 'Selecciona un consolidado aprobado con necesidades verificadas por colaborador.']);
     }
 
-    public function pendientes(Consolidado $consolidado, ?string $colaborador = null): Collection
+    public function pendientes(Consolidado $consolidado, ?string $colaborador = null, ?User $usuario = null, string $permiso = 'asignaciones.crear'): Collection
     {
+        $regiones = $usuario ? $this->regiones($usuario, $permiso) : null;
+
         return ConsolidadoNecesidad::query()->with('participante.colaborador', 'producto')->withCount('asignaciones')
             ->whereHas('participante', fn ($q) => $q->where('consolidado_id', $consolidado->id)
                 ->when($colaborador !== null, fn ($q) => $q->where('colaborador_codigo', $colaborador))
-                ->whereHas('colaborador', fn ($q) => $q->where('estado', 'Activo')))
+                ->when($regiones !== null, fn ($q) => $q->whereIn('region_id', $regiones))
+                ->whereHas('colaborador', fn ($q) => $q->where('estado', 'Activo')
+                    ->when($regiones !== null, fn ($q) => $q->whereIn('region_id', $regiones))))
             ->where('cantidad', '>', 0)->orderBy('consolidado_colaborador_id')->orderBy('producto_codigo')->get()
             ->filter(fn ($fila) => $fila->cantidad > $fila->asignaciones_count);
     }
@@ -47,10 +71,19 @@ class RequerimientosAsignacion
             ->groupBy('bodega_id', 'producto_codigo')->get()->groupBy('producto_codigo');
     }
 
-    public function vincular(User $usuario, int $id, string $colaborador, Collection $items, bool $bloquear = true): Collection
+    public function vincular(User $usuario, int $id, string $colaborador, Collection $items, bool $bloquear = true, string $permiso = 'asignaciones.crear'): Collection
     {
-        $consolidado = $this->verificar($usuario, $id, $bloquear);
+        $consolidado = $this->verificar($usuario, $id, $bloquear, $permiso);
         $persona = $consolidado->participantes()->where('colaborador_codigo', $colaborador)->first();
+        if ($persona) {
+            $ids = $items->pluck('bodega_id')->filter()->map(fn ($id) => (int) $id)->unique()->all();
+            $regiones = [$persona->region_id, $persona->colaborador?->region_id];
+            $this->acceso->autorizar($usuario, $permiso, $ids, $regiones, bloquear: $bloquear);
+            $alcance = $this->acceso->autorizar($usuario, 'asignaciones.vincular', [(int) $this->bodegas->principal()?->id], $regiones, bloquear: $bloquear);
+            if ($bloquear) {
+                $this->acceso->registrar($alcance, 'asignaciones.vincular', $consolidado->id);
+            }
+        }
         $necesidades = $persona ? $persona->necesidades()->whereIn('producto_codigo', $items->pluck('producto_codigo'))
             ->orderBy('id')->when($bloquear, fn ($q) => $q->lockForUpdate())->get()->keyBy('producto_codigo') : collect();
         // Cada fila vinculada representa una unidad entregada, aunque después se devuelva.

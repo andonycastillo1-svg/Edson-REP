@@ -1,6 +1,7 @@
 <x-sistema.pagina titulo="Catálogos operativos" :volver="route('dashboard')">
     <x-slot:acciones><x-ui.exportar-excel texto="Exportar regiones" /></x-slot:acciones>
     @include('flujo.accesos')
+    @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'configurar_regiones'))
     <x-sistema.panel titulo="Regiones">
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             @foreach($regiones->concat([null]) as $region)
@@ -14,6 +15,23 @@
                         <label class="text-sm"><input type="checkbox" name="activa" value="1" @checked($region?->activa ?? true)> Activa</label>
                         <button class="ui-btn-secondary">{{ $region ? 'Guardar región' : 'Crear región' }}</button>
                     </div>
+                </form>
+            @endforeach
+        </div>
+    </x-sistema.panel>
+    @endif
+    <x-sistema.panel titulo="Procesos de inspección">
+        <p class="mb-3 text-sm">Los cambios de nombre y estado se aplican a las nuevas inspecciones.</p>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach($procesos->concat([null]) as $proceso)
+                <form action="{{ route('flujo.catalogos.proceso', $proceso?->id) }}" method="POST" class="space-y-2 rounded-xl border border-slate-200 p-3">
+                    @csrf
+                    <label class="ui-label">{{ $proceso ? 'Nombre del proceso' : 'Nuevo proceso' }}
+                        <input name="nombre" class="ui-input mt-1" maxlength="120" value="{{ $proceso?->nombre }}" required>
+                    </label>
+                    <input type="hidden" name="activo" value="0">
+                    <label class="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="activo" value="1" @checked($proceso?->activo ?? true)> Activo</label>
+                    <button class="ui-btn-secondary">{{ $proceso ? 'Guardar proceso' : 'Crear proceso' }}</button>
                 </form>
             @endforeach
         </div>

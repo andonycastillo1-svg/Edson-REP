@@ -339,25 +339,26 @@ class UsuarioController extends Controller
 
     private function coordinadores(): \Illuminate\Support\Collection
     {
-        return app(Permisos::class)->permite(auth()->user(), 'flujo.configurar')
+        return app(Permisos::class)->permite(auth()->user(), 'flujo.configurar') && app(Permisos::class)->permite(auth()->user(), 'usuarios.relaciones')
             ? User::deAmbito(5)->orderBy('name')->get(['users.id', 'users.name']) : collect();
     }
 
     private function reglasRegionales(?int $ambito): array
     {
-        $admiteRegiones = in_array($ambito, [2, 3, 5], true);
+        $admiteRegiones = in_array($ambito, [2, 3, 5], true) && app(Permisos::class)->permite(auth()->user(), 'usuarios.relaciones');
 
         return [
             'configurar_regiones' => [$admiteRegiones ? 'sometimes' : 'prohibited', 'boolean'],
             'regiones' => [$admiteRegiones ? 'nullable' : 'prohibited', 'array'],
             'regiones.*' => ['required', 'integer', 'distinct', 'exists:regiones,id'],
-            'reasignar_regiones' => [$ambito === 5 ? 'nullable' : 'prohibited', 'boolean'],
+            'reasignar_regiones' => [$ambito === 5 && $admiteRegiones ? 'nullable' : 'prohibited', 'boolean'],
         ];
     }
 
     private function reglasCoordinador(?int $ambito): array
     {
-        $permitido = $ambito === $this->rolSupervisorId() && app(Permisos::class)->permite(auth()->user(), 'flujo.configurar');
+        $permitido = $ambito === $this->rolSupervisorId() && app(Permisos::class)->permite(auth()->user(), 'flujo.configurar')
+            && app(Permisos::class)->permite(auth()->user(), 'usuarios.relaciones');
         if (!$permitido) {
             return ['prohibited'];
         }

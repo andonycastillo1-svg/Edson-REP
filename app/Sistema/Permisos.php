@@ -27,6 +27,9 @@ class Permisos
         if (!config('modulos.vehiculos') && (str_starts_with($ruta, 'admin.vehiculos.') || $ruta === 'rrhh.alertas.documento_refaccion')) {
             return false;
         }
+        if ($operativo = CatalogoPermisos::permisoRutaInventario($ruta)) {
+            return app(\App\Services\AccesoInventarioOperativo::class)->tiene($user, $operativo);
+        }
         $permiso = CatalogoPermisos::rutas($user->rolOperativo())[$ruta] ?? null;
 
         return $permiso !== null && $this->permite($user, $permiso);
@@ -60,6 +63,11 @@ class Permisos
             }
         }
 
+        $anterior = CatalogoPermisos::permisoAnterior($permiso, $ambito);
+        if ($anterior && !array_key_exists($permiso, $user->role ? $this->reglasRol($user->role) : [])) {
+            return $this->resultado($user, $anterior);
+        }
+
         return $this->resultadoRol($user->role, $permiso, $ambito);
     }
 
@@ -69,7 +77,12 @@ class Permisos
         if ($regla !== null) {
             return ['permitido' => $regla, 'origen' => 'Regla del rol'];
         }
+        if ($anterior = CatalogoPermisos::permisoAnterior($permiso, $ambito ?? $rol?->ambito() ?? 0)) {
+            return $this->resultadoRol($rol, $anterior, $ambito);
+        }
         $heredado = in_array((int) $rol?->id, [1, 2, 3, 4], true)
+            && !isset(CatalogoPermisos::ACCIONES_RESTRINGIDAS[$permiso])
+            && !(($ambito ?? $rol->ambito()) === 1 && $permiso === 'traslados.aprobar')
             && in_array($permiso, [...CatalogoPermisos::rutas($ambito ?? $rol->ambito()),
                 ...CatalogoPermisos::flujoPara($ambito ?? $rol->ambito())], true);
 

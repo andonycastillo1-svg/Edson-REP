@@ -15,6 +15,7 @@ use App\Models\Operacion;
 use App\Models\OperacionDetalle;
 use App\Models\Producto;
 use App\Services\NotificacionService;
+use App\Services\AccesoInventarioOperativo;
 use App\Services\DocumentoPrivado;
 use App\Services\InventarioStockService;
 use App\Services\SolicitudInventarioService;
@@ -24,6 +25,8 @@ use Illuminate\Validation\ValidationException;
 
 class OperacionTrasladoController extends Controller
 {
+    public function __construct(private AccesoInventarioOperativo $acceso) {}
+
     public function index(Request $request)
     {
         $estado  = $request->get('estado');
@@ -35,26 +38,11 @@ class OperacionTrasladoController extends Controller
         $q = Operacion::with(['bodegaOrigen', 'bodegaDestino', 'creador'])
             ->where('tipo', Operacion::TIPO_TRASLADO);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Permisos de visualización
-        |--------------------------------------------------------------------------
-        | Admin ve todo.
-        | Operador/encargado ve:
-        | - solicitudes donde su bodega es destino
-        | - solicitudes que él creó
-        */
-
-        if ($user->rolOperativo() === 1) {
-            // Admin ve todas.
-        } elseif ($user->isEncargado()) {
-            $q->where(function ($query) use ($user) {
-                $query->where('bodega_destino_id', $user->bodega_id)
-                    ->orWhere('creado_por', $user->id);
-            });
-        } else {
-            $q->where('creado_por', $user->id);
-        }
+        $permiso = $request->boolean('xlsx') ? 'traslados.datos_exportar' : 'traslados.consultar';
+        $alcances = $this->acceso->alcances($user, $permiso);
+        abort_if($alcances->isEmpty(), 403);
+        $this->acceso->limitarTraslados($q, $alcances);
+        $visibles = clone $q;
 
         $q->when($estado, function ($qq) use ($estado) {
             $qq->where('estado', $estado);
@@ -70,13 +58,14 @@ class OperacionTrasladoController extends Controller
         app(ConsultaCampos::class)->filtrar($q, $request, 'traslados');
         if ($request->boolean('xlsx')) {
             $exportar = app(ExportacionesOperativas::class);
-            $exportar->autorizar($request, 'traslados');
+            $alcances->each(fn ($alcance) => $this->acceso->registrar($alcance, $permiso, 'traslados'));
 
             return $exportar->traslados($q);
         }
         $operaciones = $q->paginate(20)->withQueryString();
         $tablaCampos = app(Presentacion::class)->operativa('traslados', $request->user(), $operaciones->pluck('id'));
-        $bodegas = Bodega::orderBy('nombre')->get();
+        $bodegas = Bodega::whereIn('id', (clone $visibles)->select('bodega_origen_id'))
+            ->orWhereIn('id', (clone $visibles)->select('bodega_destino_id'))->orderBy('nombre')->get();
 
         return view('admin.traslados.index', compact(
             'operaciones',
@@ -84,38 +73,30 @@ class OperacionTrasladoController extends Controller
             'bodegas',
             'estado',
             'origen',
-            'destino',
-            'user'
+            'destino'
         ));
     }
 
     public function create(Request $request)
     {
-        $bodegas   = Bodega::orderBy('nombre')->get();
+        $usuario = $request->user();
+        $alcances = $this->acceso->alcances($usuario, 'traslados.crear');
+        $origenes = Bodega::whereKey($this->acceso->bodegasPara($usuario, 'traslados.crear'))->orderBy('nombre')->get();
+        $bodegas = Bodega::query()->when(!$alcances->contains('historico', true), fn ($q) => $q->whereKey($origenes->modelKeys()))
+            ->orderBy('nombre')->get();
         $productos = Producto::orderBy('nombre')->get();
-        $origenId  = $request->get('origen');
+        $origenId = $origenes->count() === 1 ? $origenes->sole()->id : $request->integer('origen');
 
-        return view('admin.traslados.create', compact(
-            'bodegas',
-            'productos',
-            'origenId'
-        ));
+        return view('admin.traslados.create', compact('bodegas', 'productos', 'origenId', 'origenes'));
     }
 
     public function store(Request $request)
     {
         $user = auth()->user();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Si es operador, forzar origen a su bodega asignada
-        |--------------------------------------------------------------------------
-        */
-
-        if ($user->rolOperativo() === 2) {
-            $request->merge([
-                'bodega_origen_id' => $user->bodega_id,
-            ]);
+        $alcances = $this->acceso->alcances($user, 'traslados.crear');
+        if ($user->bodega_id && $alcances->count() === 1 && $alcances->sole()->historico && $alcances->sole()->bodegas !== null) {
+            $request->merge(['bodega_origen_id' => $user->bodega_id]);
         }
 
         $data = $request->validate([
@@ -132,21 +113,7 @@ class OperacionTrasladoController extends Controller
             'lineas.required' => 'Debes agregar al menos un producto.',
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Validación extra para evitar manipulación
-        |--------------------------------------------------------------------------
-        */
-
-        if ($user->rolOperativo() === 2 && (int) $data['bodega_origen_id'] !== (int) $user->bodega_id) {
-            abort(403);
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Unificar productos repetidos
-        |--------------------------------------------------------------------------
-        */
+        $this->acceso->solicitudTraslado($user, (int) $data['bodega_origen_id'], (int) $data['bodega_destino_id']);
 
         $agrupadas = [];
 
@@ -200,7 +167,8 @@ class OperacionTrasladoController extends Controller
         }
 
         try {
-            $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre, $campos, $valores) {
+            $operacion = DB::transaction(function () use ($data, $agrupadas, $archivoExcelPath, $archivoExcelNombre, $campos, $valores, $user) {
+                $alcance = $this->acceso->solicitudTraslado($user, (int) $data['bodega_origen_id'], (int) $data['bodega_destino_id'], bloquear: true);
                 SolicitudInventarioService::registrar('traslado', $data['solicitud_id'] ?? null);
                 $operacion = new Operacion([
                     'tipo'                 => Operacion::TIPO_TRASLADO,
@@ -223,6 +191,7 @@ class OperacionTrasladoController extends Controller
                     ]);
                 }
 
+                $this->acceso->registrar($alcance, 'traslados.crear', $operacion->id);
                 $campos->guardar('traslados', $operacion->id, $valores);
                 app(Auditoria::class)->registrar('traslados', 'solicitar', $operacion->id, null, [
                     'origen' => $operacion->bodega_origen_id, 'destino' => $operacion->bodega_destino_id,
@@ -241,10 +210,12 @@ class OperacionTrasladoController extends Controller
             fn (NotificacionService $service) => $service->notificarNuevoTraslado($operacion, $user)
         );
 
-        $routePrefix = $user->rolOperativo() === 2 ? 'operador' : 'admin';
+        $routePrefix = AccesoInventarioOperativo::prefijo($user);
+
+        $ruta = $this->acceso->tiene($user, 'traslados.consultar') ? $routePrefix.'.operaciones.traslados.show' : $routePrefix.'.operaciones.traslados.create';
 
         return redirect()
-            ->route($routePrefix . '.operaciones.traslados.show', $operacion)
+            ->route($ruta, str_ends_with($ruta, '.show') ? [$operacion] : [])
             ->with('ok', 'Solicitud de traslado creada. Queda pendiente de aprobación.');
     }
 
@@ -262,16 +233,14 @@ class OperacionTrasladoController extends Controller
 
         $user = auth()->user();
 
-        $esDestinoEncargado = $user->isEncargado()
-            && (int) $user->bodega_id === (int) $operacion->bodega_destino_id;
-
-        $puedeDecidir = $esDestinoEncargado
-            && $operacion->estado === Operacion::ESTADO_PENDIENTE;
+        $pendiente = $operacion->estado === Operacion::ESTADO_PENDIENTE;
+        $puedeAprobar = $pendiente && $this->acceso->decidirTraslado($user, $operacion, 'traslados.aprobar');
+        $puedeRechazar = $pendiente && $this->acceso->decidirTraslado($user, $operacion, 'traslados.rechazar');
+        $puedeDecidir = $puedeAprobar || $puedeRechazar;
 
         return view('admin.traslados.show', compact(
             'operacion',
-            'user',
-            'puedeDecidir'
+            'puedeDecidir', 'puedeAprobar', 'puedeRechazar'
         ));
     }
 
@@ -280,7 +249,7 @@ class OperacionTrasladoController extends Controller
         $user = auth()->user();
 
         DB::transaction(function () use ($operacion, $user, $stockService) {
-            $operacion = $this->bloquearPendiente($operacion);
+            $operacion = $this->bloquearPendiente($operacion, 'traslados.aprobar');
             $origenId = (int) $operacion->bodega_origen_id;
             $destinoId = (int) $operacion->bodega_destino_id;
 
@@ -317,7 +286,7 @@ class OperacionTrasladoController extends Controller
         ]);
 
         DB::transaction(function () use ($data, $operacion) {
-            $operacion = $this->bloquearPendiente($operacion);
+            $operacion = $this->bloquearPendiente($operacion, 'traslados.rechazar');
             $operacion->estado = Operacion::ESTADO_RECHAZADO;
             $operacion->rechazado_por = auth()->id();
             $operacion->rechazado_en = now();
@@ -329,16 +298,18 @@ class OperacionTrasladoController extends Controller
         return $this->respuestaDecision($operacion, 'Solicitud rechazada.');
     }
 
-    private function bloquearPendiente(Operacion $operacion): Operacion
+    private function bloquearPendiente(Operacion $operacion, string $permiso): Operacion
     {
         $operacion = Operacion::whereKey($operacion->id)->lockForUpdate()->firstOrFail();
         abort_unless($operacion->tipo === Operacion::TIPO_TRASLADO, 404);
         $user = auth()->user();
-        abort_unless($user->isEncargado() && (int) $user->bodega_id === (int) $operacion->bodega_destino_id, 403);
+        $alcance = $this->acceso->decidirTraslado($user, $operacion, $permiso, bloquear: true) ?? abort(403);
 
         if ($operacion->estado !== Operacion::ESTADO_PENDIENTE) {
             throw ValidationException::withMessages(['error' => 'Esta solicitud ya fue procesada.']);
         }
+
+        $this->acceso->registrar($alcance, $permiso, $operacion->id);
 
         return $operacion;
     }
@@ -350,32 +321,26 @@ class OperacionTrasladoController extends Controller
             fn (NotificacionService $service) => $service->notificarCambioEstadoTraslado($operacion->fresh(), $user)
         );
 
-        $routePrefix = $user->rolOperativo() === 2 ? 'operador' : 'admin';
+        $routePrefix = AccesoInventarioOperativo::prefijo($user);
 
-        return redirect()->route($routePrefix . '.operaciones.traslados.show', $operacion)->with('ok', $mensaje);
+        $ruta = $this->acceso->tiene($user, 'traslados.consultar') ? $routePrefix.'.operaciones.traslados.show' : 'dashboard';
+
+        return redirect()->route($ruta, $ruta === 'dashboard' ? [] : [$operacion])->with('ok', $mensaje);
     }
 
     public function archivo(Operacion $operacion)
     {
-        $this->autorizarVerOperacion($operacion);
+        $this->autorizarVerOperacion($operacion, 'traslados.archivos');
         abort_unless($operacion->archivo_excel_path, 404, 'El archivo adjunto no existe.');
 
         return DocumentoPrivado::responder($operacion->archivo_excel_path, $operacion->archivo_excel_nombre, true);
     }
 
-    private function autorizarVerOperacion(Operacion $operacion): void
+    private function autorizarVerOperacion(Operacion $operacion, string $permiso = 'traslados.consultar'): void
     {
         abort_unless($operacion->tipo === Operacion::TIPO_TRASLADO, 404);
-        $user = auth()->user();
-
-        $esAdmin = $user->rolOperativo() === 1;
-        $esCreador = (int) $user->id === (int) $operacion->creado_por;
-        $esDestinoEncargado = $user->isEncargado()
-            && (int) $user->bodega_id === (int) $operacion->bodega_destino_id;
-
-        if (!$esAdmin && !$esCreador && !$esDestinoEncargado) {
-            abort(403);
-        }
+        $alcance = $this->acceso->trasladoVisible(auth()->user(), $operacion, $permiso) ?? abort(403);
+        $this->acceso->registrar($alcance, $permiso, $operacion->id);
     }
 
     public function hoja(Operacion $operacion)
@@ -387,7 +352,7 @@ class OperacionTrasladoController extends Controller
             'detalles.producto',
         ]);
 
-        $this->autorizarVerOperacion($operacion);
+        $this->autorizarVerOperacion($operacion, 'traslados.exportar');
 
         return view('admin.traslados.hoja', compact('operacion'));
     }

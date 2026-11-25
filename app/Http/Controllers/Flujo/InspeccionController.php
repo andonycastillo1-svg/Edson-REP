@@ -7,6 +7,8 @@ use App\Services\ExportacionesOperativas;
 use App\Models\Colaborador;
 use App\Models\Inspeccion;
 use App\Models\Region;
+use App\Models\ProcesoInspeccion;
+use App\Services\RegionesCoordinacion;
 use App\Models\User;
 use App\Services\DocumentoPrivado;
 use App\Services\FlujoAcceso;
@@ -25,17 +27,28 @@ class InspeccionController extends Controller
     {
         $filtros = $request->validate([
             'desde' => ['nullable', 'date_format:Y-m-d'], 'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],
+            'proceso' => ['nullable', Rule::anyOf(['integer', 'in:historico'])],
             'coordinador' => ['nullable', 'integer'], 'supervisor' => ['nullable', 'integer'], 'region' => ['nullable', 'integer'],
         ]);
         $usuario = $request->user();
-        $consulta = $this->acceso->inspecciones($usuario)->with('region.coordinador', 'supervisor', 'colaborador', 'consolidados');
+        $exportar = $request->boolean('xlsx');
+        $consulta = $this->acceso->inspecciones($usuario, $exportar ? 'exportar_inspecciones' : 'inspecciones')->with('region.coordinador', 'supervisor', 'colaborador', 'consolidados');
         foreach (['supervisor' => 'supervisor_id', 'region' => 'region_id'] as $filtro => $campo) {
             if (!empty($filtros[$filtro])) {
                 $consulta->where($campo, $filtros[$filtro]);
             }
         }
+        if (($filtros['proceso'] ?? null) === 'historico') {
+            $consulta->whereNull('proceso_id');
+        } elseif (!empty($filtros['proceso'])) {
+            $consulta->where('proceso_id', $filtros['proceso']);
+        }
         if (!empty($filtros['coordinador'])) {
-            $consulta->whereHas('region', fn ($q) => $q->where('coordinador_id', $filtros['coordinador']));
+            $consulta->where(function ($q) use ($filtros) {
+                $q->where('coordinador_id', $filtros['coordinador'])
+                    ->orWhereHas('region', fn ($r) => $r->where('coordinador_id', $filtros['coordinador'])
+                        ->orWhereHas('coordinadoresAdicionales', fn ($u) => $u->whereKey($filtros['coordinador'])));
+            });
         }
         if (!empty($filtros['desde'])) {
             $consulta->where('fecha', '>=', $filtros['desde']);
@@ -43,38 +56,41 @@ class InspeccionController extends Controller
         if (!empty($filtros['hasta'])) {
             $consulta->where('fecha', '<=', $filtros['hasta']);
         }
-        if ($request->boolean('xlsx')) {
+        if ($exportar) {
             return app(ExportacionesOperativas::class)->inspecciones($consulta);
         }
         $supervisores = $this->acceso->inspecciones($usuario)->distinct()->pluck('supervisor_id');
-        $regiones = Region::query()->when(in_array($usuario->rolOperativo(), [3, 5], true), fn ($q) => $q->whereIn('id', $this->acceso->regiones($usuario)))
-            ->orderBy('nombre')->get();
-        $coordinadores = User::deAmbito(5)->whereKey($regiones->where('activa', true)->pluck('coordinador_id')->filter()->unique()->all())->pluck('id');
+        $regiones = Region::whereIn('id', $this->acceso->inspecciones($usuario)->select('region_id'))->orderBy('nombre')->get();
+        $opciones = app(RegionesCoordinacion::class)->opciones($regiones->modelKeys());
+        $coordinadores = $opciones->flatten(1)->pluck('id')->unique()->values();
+        $procesos = ProcesoInspeccion::orderBy('nombre')->get();
         $personas = User::whereKey($supervisores->merge($coordinadores)->unique()->all())->get()->keyBy('id');
         $inspecciones = $consulta->latest('id')->paginate($this->acceso->puede($usuario, 'consolidar') ? 100 : 30)->withQueryString();
 
-        return view('flujo.inspecciones', compact('inspecciones', 'regiones', 'personas', 'supervisores', 'coordinadores'));
+        return view('flujo.inspecciones', compact('inspecciones', 'regiones', 'personas', 'supervisores', 'coordinadores', 'procesos', 'opciones'));
     }
 
     public function create(Request $request)
     {
         $this->acceso->autorizar($request->user(), 'capturar');
-        $regiones = Region::whereIn('id', $this->acceso->regiones($request->user()))->orderBy('nombre')->get();
+        $regiones = Region::whereIn('id', $this->acceso->regiones($request->user(), 'capturar'))->orderBy('nombre')->get();
         $secciones = DB::table('inspeccion_secciones')->orderBy('orden')->get();
         $articulos = DB::table('inspeccion_articulos')->where('activo', true)->whereNotNull('producto_codigo')
             ->orderBy('orden')->orderBy('id')->get()->groupBy('seccion');
+        $procesos = ProcesoInspeccion::where('activo', true)->orderBy('nombre')->get();
         $preferencias = $request->validate([
+            'proceso' => ['nullable', 'integer'],
             'fecha' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
             'region' => ['nullable', 'integer'],
         ]);
 
-        return view('flujo.inspeccion-form', compact('regiones', 'secciones', 'articulos', 'preferencias'));
+        return view('flujo.inspeccion-form', compact('regiones', 'secciones', 'articulos', 'preferencias', 'procesos'));
     }
 
     public function colaboradores(Request $request, Region $region)
     {
         $this->acceso->autorizar($request->user(), 'capturar');
-        abort_unless($this->acceso->regiones($request->user())->whereKey($region->id)->exists(), 404);
+        abort_unless($this->acceso->regiones($request->user(), 'capturar')->whereKey($region->id)->exists(), 404);
 
         return response()->json(Colaborador::where('region_id', $region->id)->where('estado', 'Activo')
             ->orderBy('nombre')->get(['codigo', 'nombre', 'puesto']))->header('Cache-Control', 'private, no-store');
@@ -85,6 +101,7 @@ class InspeccionController extends Controller
         $this->acceso->autorizar($request->user(), 'capturar');
         $datos = $request->validate([
             'solicitud_id' => ['required', 'uuid'], 'fecha' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'proceso_id' => ['required', 'integer', 'exists:procesos_inspeccion,id'],
             'region_id' => ['required', 'integer', 'exists:regiones,id'], 'colaborador_codigo' => ['required', 'string', 'max:255'],
             'cantidades' => ['nullable', 'array', 'max:1000'], 'cantidades.*' => ['nullable', 'integer', 'min:0', Rule::anyOf(['integer:strict', 'string'])],
             'observaciones' => ['nullable', 'string', 'max:4000'], 'destino' => ['nullable', 'in:continuar,finalizar'],
@@ -97,7 +114,12 @@ class InspeccionController extends Controller
             }
             $inspeccion = DB::transaction(function () use ($datos, $request, $archivos) {
                 $usuario = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
-                $region = $this->acceso->regiones($usuario)->whereKey($datos['region_id'])->first();
+                $this->acceso->autorizar($usuario, 'capturar');
+                $region = $this->acceso->regiones($usuario, 'capturar')->whereKey($datos['region_id'])->first();
+                $proceso = ProcesoInspeccion::whereKey($datos['proceso_id'])->where('activo', true)->lockForUpdate()->first();
+                if (!$proceso) {
+                    throw ValidationException::withMessages(['proceso_id' => 'Selecciona un proceso activo.']);
+                }
                 $colaborador = Colaborador::whereKey($datos['colaborador_codigo'])->lockForUpdate()->first();
                 if (!$colaborador || $colaborador->estado !== 'Activo' || (int) $colaborador->region_id !== (int) $datos['region_id']
                     || blank($colaborador->puesto) || !$region) {
@@ -117,15 +139,18 @@ class InspeccionController extends Controller
                     }
                     $lineas[] = ['producto_codigo' => $articulo->producto_codigo, 'etiqueta' => $articulo->etiqueta, 'cantidad' => $cantidad];
                 }
+                $opciones = app(RegionesCoordinacion::class)->opciones([(int) $region->id])->get($region->id);
                 $fila = Inspeccion::create([
-                    'supervisor_id' => $usuario->id, 'coordinador_id' => User::deAmbito(5)->whereKey($region->coordinador_id)->value('id'),
+                    'supervisor_id' => $usuario->id, 'coordinador_id' => $opciones->count() === 1 ? $opciones->sole()->id : null,
+                    'proceso_id' => $proceso->id, 'proceso_nombre' => $proceso->nombre,
                     'region_id' => $region->id, 'captura_regional' => true, 'observaciones' => $datos['observaciones'] ?? null,
                     'colaborador_codigo' => $colaborador->codigo, 'puesto' => $colaborador->puesto, 'fecha' => $datos['fecha'],
                     'solicitud_id' => $datos['solicitud_id'],
                 ]);
                 $fila->lineas()->createMany($lineas);
                 $fila->fotos()->createMany($archivos);
-                app(Auditoria::class)->registrar('flujo', 'registrar_inspeccion', $fila->id, null, ['articulos' => count($lineas)]);
+                $this->acceso->registrarCaptura($usuario, $region->id, $fila->id);
+                app(Auditoria::class)->registrar('flujo', 'registrar_inspeccion', $fila->id, null, ['articulos' => count($lineas), 'proceso_id' => $proceso->id]);
 
                 return $fila;
             }, 3);
@@ -137,7 +162,7 @@ class InspeccionController extends Controller
         }
 
         $respuesta = match ($datos['destino'] ?? null) {
-            'continuar' => redirect()->route('flujo.inspecciones.create', ['fecha' => $datos['fecha'], 'region' => $datos['region_id'], 'continuar' => 1]),
+            'continuar' => redirect()->route('flujo.inspecciones.create', ['fecha' => $datos['fecha'], 'region' => $datos['region_id'], 'proceso' => $datos['proceso_id'], 'continuar' => 1]),
             'finalizar' => redirect()->route('flujo.inspecciones.index'),
             default => redirect()->route('flujo.inspecciones.show', $inspeccion),
         };

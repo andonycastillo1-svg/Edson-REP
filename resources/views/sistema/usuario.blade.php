@@ -3,6 +3,8 @@
         <nav aria-label="Apartados de la cuenta" class="sistema-pestanas">
             <a href="#informacion-general" data-pestana>Información general</a>
             <a href="#permisos" data-pestana>Permisos</a>
+            <a href="#relaciones" data-pestana>Relaciones</a>
+            <a href="#delegaciones" data-pestana>Delegaciones</a>
             <a href="#seguridad" data-pestana>Seguridad</a>
         </nav>
 
@@ -59,6 +61,9 @@
                 </div>
             </form>
         </x-sistema.panel>
+
+        @include('sistema.relaciones-usuario')
+        @include('sistema.delegaciones-usuario')
 
         <x-sistema.panel titulo="Seguridad" id="seguridad" class="scroll-mt-20" data-panel-pestana>
             <div class="space-y-3">

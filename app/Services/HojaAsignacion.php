@@ -7,7 +7,7 @@ use App\Models\User;
 
 class HojaAsignacion
 {
-    public function __construct(private AccesoCustodia $acceso) {}
+    public function __construct(private AccesoInventarioOperativo $acceso) {}
 
     public function vista(User $usuario, string $grupo, bool $portatil = false): \Illuminate\Contracts\View\View
     {
@@ -16,8 +16,9 @@ class HojaAsignacion
             ->get();
 
         abort_if($asignaciones->isEmpty(), 404, 'No se encontraron asignaciones para este PDF.');
-        $asignaciones->each(function (AsignacionInventario $asignacion) use ($usuario) {
-            abort_unless($this->acceso->puedeVer($usuario, $asignacion), 403);
+        $alcance = $this->acceso->autorizarCustodias($usuario, 'asignaciones.exportar', $asignaciones);
+        $this->acceso->registrar($alcance, 'asignaciones.exportar', $grupo);
+        $asignaciones->each(function (AsignacionInventario $asignacion) {
             $asignacion->cantidad = $asignacion->movimientoInicial?->cantidad
                 ?? ($asignacion->cantidad_asignada + $asignacion->movimientos->whereIn('tipo', ['Devolucion', 'Reemplazo'])->sum('cantidad')
                     + $asignacion->incidencias->where('resultado_stock', 'sin_retorno')->sum('cantidad'));

@@ -3,7 +3,7 @@
 @section('title', 'Compras')
 
 @section('content')
-@php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
+@php($routePrefix = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user()))
 
 <div class="w-full">
     <x-internal-navigation :back-url="route('dashboard')" />

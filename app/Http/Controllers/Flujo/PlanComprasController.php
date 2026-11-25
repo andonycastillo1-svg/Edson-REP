@@ -23,7 +23,7 @@ class PlanComprasController extends Controller
     {
         $usuario = $request->user();
         $this->acceso->autorizar($usuario, 'compras');
-        $bodega = $this->acceso->central($usuario);
+        $bodega = $this->acceso->centralRequerimientos($usuario);
         $datos = $request->validate($this->reglas() + ['estado' => ['nullable', 'in:aprobado,cerrado']]);
         $estado = $datos['estado'] ?? 'aprobado';
         $disponibles = Consolidado::where('estado', $estado)->with('coordinador')->orderBy('id')->get();
@@ -34,6 +34,7 @@ class PlanComprasController extends Controller
         $saldo = $bodega ? $this->plan->saldoCentral($lineas, $bodega->id) : null;
         $facturas = $this->plan->facturas($seleccion);
         if ($request->boolean('xlsx')) {
+            $this->acceso->autorizar($usuario, 'exportar_compras');
             return app(ExportacionesOperativas::class)->necesidades($lineas, $seleccion, $facturas, $saldo);
         }
         $lineas = $this->plan->sugerencias(
@@ -52,8 +53,8 @@ class PlanComprasController extends Controller
     public function guardarPlan(Request $request)
     {
         $usuario = $request->user();
-        $this->acceso->autorizar($usuario, 'compras');
-        $bodega = $this->acceso->central($usuario) ?? abort(403);
+        $this->acceso->autorizar($usuario, 'plan_compras');
+        $bodega = $this->acceso->centralRequerimientos($usuario) ?? abort(403);
         $datos = $request->validate($this->reglasPlan());
 
         DB::transaction(function () use ($datos, $bodega, $usuario) {
@@ -81,8 +82,8 @@ class PlanComprasController extends Controller
     public function store(Request $request)
     {
         $usuario = $request->user();
-        $this->acceso->autorizar($usuario, 'compras');
-        $bodega = $this->acceso->central($usuario) ?? abort(403);
+        $this->acceso->autorizar($usuario, 'constancias');
+        $bodega = $this->acceso->centralRequerimientos($usuario) ?? abort(403);
         $datos = $request->validate([
             'medio' => ['required', 'in:Correo,WhatsApp'],
             'fecha' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],

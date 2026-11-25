@@ -9,7 +9,6 @@ use App\Models\EntregaInventario;
 use App\Models\MotivoAsignacion;
 use App\Models\User;
 use App\Sistema\Auditoria;
-use App\Sistema\CatalogoPermisos;
 use App\Sistema\ValoresCampos;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -30,9 +29,10 @@ class RegistrarAsignaciones
         private ValoresCampos $campos,
         private RequerimientosAsignacion $requerimientos,
         private AccesoCustodia $custodias,
+        private AccesoInventarioOperativo $inventario,
     ) {}
 
-    public function registrar(User $usuario, array $data, Collection $items, array $valores, ?callable $adjuntarFoto = null): EntregaInventario
+    public function registrar(User $usuario, array $data, Collection $items, array $valores, ?callable $adjuntarFoto = null, string $permiso = 'asignaciones.crear'): EntregaInventario
     {
         if (DB::transactionLevel() === 0) {
             throw new \LogicException('El registro requiere una transacción.');
@@ -50,8 +50,22 @@ class RegistrarAsignaciones
         if ($colaborador->estado !== 'Activo') {
             throw ValidationException::withMessages(['colaborador_codigo' => 'El colaborador no está activo.']);
         }
+        $bodegas = $items->pluck('bodega_id')->map(fn ($id) => (int) $id)->unique()->all();
+        $regiones = [$colaborador->region_id];
+        $alcance = $this->inventario->autorizar($usuario, $permiso, $bodegas, $regiones, bloquear: true);
+        foreach ($items as $item) {
+            if (filled($item['motivo_inventario_nuevo'] ?? null)) {
+                $autorizado = $this->inventario->autorizar($usuario, 'asignaciones.entregar_nuevo', [(int) $item['bodega_id']], $regiones, bloquear: true);
+                $this->inventario->registrar($autorizado, 'asignaciones.entregar_nuevo', $grupo);
+            }
+        }
+        if (!empty($data['confirmar_recepcion'])) {
+            $recepcion = $this->inventario->autorizar($usuario, 'asignaciones.confirmar_recepcion', $bodegas, $regiones, [$usuario->id], bloquear: true);
+            $this->inventario->registrar($recepcion, 'asignaciones.confirmar_recepcion', $grupo);
+        }
+        $this->inventario->registrar($alcance, $permiso, $grupo);
         $requerimientos = isset($data['consolidado_id'])
-            ? $this->requerimientos->vincular($usuario, (int) $data['consolidado_id'], $colaborador->codigo, $items) : collect();
+            ? $this->requerimientos->vincular($usuario, (int) $data['consolidado_id'], $colaborador->codigo, $items, permiso: $permiso) : collect();
 
         $total = $items->sum(fn ($item) => (int) ($item['cantidad_asignada'] ?? $item['cantidad'] ?? 1));
         if ($total < 1 || $total > self::MAX_UNIDADES) {
@@ -95,7 +109,9 @@ class RegistrarAsignaciones
                 throw ValidationException::withMessages(['fecha' => 'La salida debe ser posterior o igual a la custodia vigente.']);
             }
             $anterior = $previas->firstWhere('id', $item['sustituir_asignacion_id'] ?? null);
-            if (filled($item['sustituir_asignacion_id'] ?? null) && (!$anterior || !$this->custodias->puedeVer($usuario, $anterior))) {
+            $anteriorAutorizada = $anterior && $this->custodias->puedeVer($usuario, $anterior)
+                && ($alcance->historico || $alcance->contiene([$anterior->bodega_id], $regiones));
+            if (filled($item['sustituir_asignacion_id'] ?? null) && !$anteriorAutorizada) {
                 throw ValidationException::withMessages(['items' => 'La asignación anterior debe corresponder a una custodia vigente del colaborador que tengas permiso de consultar.']);
             }
             $motivo = $anterior ? MotivoAsignacion::where('codigo', $item['motivo_asignacion'] ?? '')->where('activo', true)->first() : null;
@@ -162,7 +178,7 @@ class RegistrarAsignaciones
 
         DB::afterCommit(function () use ($primera, $alertas, $usuario) {
             $notificaciones = app(NotificacionService::class);
-            $prefijo = CatalogoPermisos::prefijo($usuario->rolOperativo());
+            $prefijo = AccesoInventarioOperativo::prefijo($usuario);
             $notificaciones->safeAction(fn ($servicio) => $servicio->notificarNuevaAsignacion(
                 AsignacionInventario::findOrFail($primera), $usuario, route($prefijo.'.asignaciones.index')
             ));

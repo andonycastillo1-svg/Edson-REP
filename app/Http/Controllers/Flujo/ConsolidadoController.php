@@ -21,16 +21,16 @@ use Illuminate\Validation\ValidationException;
 class ConsolidadoController extends Controller
 {
     private const TRANSICIONES = [
-        'enviar' => ['consolidar', ['borrador', 'correccion'], 'enviado'],
+        'enviar' => ['enviar_consolidados', ['borrador', 'correccion'], 'enviado'],
         'revisar' => ['revisar', ['enviado'], 'revision'],
         'preparar_detalle' => ['revisar', ['enviado', 'revision'], 'revision'],
-        'ajustar' => ['revisar', ['enviado', 'revision'], 'revision'],
-        'aprobar' => ['revisar', ['enviado', 'revision'], 'aprobado'],
-        'devolver' => ['revisar', ['enviado', 'revision'], 'correccion'],
-        'retirar' => ['consolidar', ['enviado', 'revision'], 'correccion'],
+        'ajustar' => ['ajustar', ['enviado', 'revision'], 'revision'],
+        'aprobar' => ['aprobar', ['enviado', 'revision'], 'aprobado'],
+        'devolver' => ['aprobar', ['enviado', 'revision'], 'correccion'],
+        'retirar' => ['enviar_consolidados', ['enviado', 'revision'], 'correccion'],
         'reabrir' => ['reabrir', ['aprobado'], 'correccion'],
         'reasignar' => ['configurar', ['enviado', 'revision', 'correccion'], 'enviado'],
-        'cerrar' => ['consolidar', ['aprobado'], 'cerrado'],
+        'cerrar' => ['cerrar_compras', ['aprobado'], 'cerrado'],
     ];
 
     public function __construct(
@@ -44,7 +44,7 @@ class ConsolidadoController extends Controller
     public function index(Request $request)
     {
         $filtro = $request->validate(['estado' => ['nullable', 'in:borrador,pendientes,correccion,aprobado,cerrado']])['estado'] ?? null;
-        $consulta = $this->acceso->consolidados($request->user())->with('coordinador')->latest('id');
+        $consulta = $this->acceso->consolidados($request->user(), $request->boolean('xlsx') ? 'exportar_consolidados' : 'consolidados')->with('coordinador')->latest('id');
         if ($filtro !== null) {
             $consulta->whereIn('estado', $filtro === 'pendientes' ? ['enviado', 'revision'] : [$filtro]);
         }
@@ -64,19 +64,22 @@ class ConsolidadoController extends Controller
     public function store(Request $request)
     {
         $usuario = $request->user();
-        $this->acceso->autorizar($usuario, 'consolidar');
+        $this->acceso->autorizar($usuario, 'crear_consolidados');
+        $this->acceso->autorizar($usuario, 'enviar_consolidados');
         $datos = $request->validate([
             'nombre' => ['required', 'string', 'max:160'], 'desde' => ['required', 'date_format:Y-m-d'],
             'hasta' => ['required', 'date_format:Y-m-d', 'after_or_equal:desde'],
+            'coordinador_id' => ['nullable', 'integer', 'exists:users,id'],
             'inspecciones' => ['required', 'array', 'min:1', 'max:200'], 'inspecciones.*' => ['required', 'integer', 'distinct'],
         ]);
 
         $consolidado = DB::transaction(function () use ($usuario, $datos) {
+            abort_unless($this->acceso->inspecciones($usuario)->whereKey($datos['inspecciones'])->count() === count($datos['inspecciones']), 403);
             $inspecciones = $this->consolidacion->bloquearDisponibles($datos['inspecciones']);
             if ($inspecciones->contains(fn ($fila) => $fila->fecha->toDateString() < $datos['desde'] || $fila->fecha->toDateString() > $datos['hasta'])) {
                 throw ValidationException::withMessages(['inspecciones' => 'Selecciona inspecciones dentro del período indicado.']);
             }
-            $coordinador = $this->regiones->resolver($inspecciones->pluck('region_id'), bloquear: true);
+            $coordinador = $this->regiones->resolver($inspecciones->pluck('region_id'), bloquear: true, eleccion: $datos['coordinador_id'] ?? null);
             return $this->consolidacion->generar($usuario, $coordinador, $inspecciones, $datos['nombre'], $datos['desde'], $datos['hasta']);
         }, 3);
 
@@ -90,8 +93,18 @@ class ConsolidadoController extends Controller
             'inspecciones.colaborador', 'inspecciones.region', 'inspecciones.lineas', 'participantes.colaborador', 'participantes.region',
             'participantes.necesidades' => fn ($q) => $q->with('producto')->withCount('asignaciones'),
             'lineas.producto', 'eventos.user'])->findOrFail($consolidado);
-        $acciones = collect(self::TRANSICIONES)->filter(fn ($regla) => $this->acceso->puede($usuario, $regla[0])
-            && in_array($consolidado->estado, $regla[1], true))->keys();
+        $acciones = collect(self::TRANSICIONES)->filter(fn ($regla) => in_array($consolidado->estado, $regla[1], true)
+            && $this->acceso->puede($usuario, $regla[0])
+            && $this->acceso->consolidados($usuario, $regla[0])->whereKey($consolidado->id)->exists())->keys();
+        $puedeAgregar = $acciones->contains('ajustar');
+        $puedeAgregar = $puedeAgregar && $this->acceso->puede($usuario, 'agregar_colaboradores')
+            && $this->acceso->consolidados($usuario, 'agregar_colaboradores')->whereKey($consolidado->id)->exists();
+        $candidatos = collect();
+        if ($acciones->contains('reasignar') || ($acciones->contains('enviar') && $consolidado->estado === 'borrador')) {
+            $ids = $consolidado->inspecciones->pluck('region_id')->merge($consolidado->participantes->pluck('region_id'));
+            $opciones = $this->regiones->opciones($ids->all());
+            $candidatos = $opciones->first()?->filter(fn ($usuario) => $opciones->every(fn ($grupo) => $grupo->contains('id', $usuario->id))) ?? collect();
+        }
         $editar = $acciones->contains('ajustar');
         $productos = $editar ? Producto::orderBy('nombre')->get(['codigo', 'nombre']) : collect();
         $vista = $request->query('vista') === 'resumen' ? 'resumen' : 'colaborador';
@@ -109,18 +122,17 @@ class ConsolidadoController extends Controller
         $puedeCerrarCompra = $acciones->contains('cerrar') && $this->plan->puedeCerrar($consolidado);
 
         return view('flujo.consolidado', compact('consolidado', 'acciones', 'productos', 'vista', 'editar', 'facturas',
-            'facturasPorProducto', 'constancias', 'seguimiento', 'puedeCerrarCompra'));
+            'facturasPorProducto', 'constancias', 'seguimiento', 'puedeCerrarCompra', 'puedeAgregar', 'candidatos'));
     }
 
     public function colaboradores(Request $request, int $consolidado)
     {
         $usuario = $request->user();
-        $this->acceso->autorizar($usuario, 'revisar');
-        $fila = $this->acceso->consolidados($usuario)->findOrFail($consolidado);
+        $fila = $this->acceso->consolidados($usuario, 'agregar_colaboradores')->findOrFail($consolidado);
         abort_unless(in_array($fila->estado, ['enviado', 'revision'], true), 404);
         $q = $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']])['q'];
 
-        return response()->json(Colaborador::with('region')->whereIn('region_id', $this->acceso->regiones($usuario))
+        return response()->json(Colaborador::with('region')->whereIn('region_id', $this->acceso->regionesRevision($usuario, $fila, 'agregar_colaboradores'))
             ->where('estado', 'Activo')->where(fn ($consulta) => $consulta->where('nombre', 'like', '%'.$q.'%')->orWhere('codigo', 'like', '%'.$q.'%'))
             ->orderBy('nombre')->limit(20)->get(['codigo', 'nombre', 'region_id'])
             ->map(fn ($persona) => ['codigo' => $persona->codigo, 'nombre' => $persona->nombre, 'region' => $persona->region->nombre]))
@@ -136,6 +148,7 @@ class ConsolidadoController extends Controller
         $cantidadEntera = ['integer', 'min:0', Rule::anyOf(['integer:strict', 'string'])];
         $datos = $request->validate([
             'nota' => [in_array($accion, ['devolver', 'retirar', 'reabrir', 'reasignar', 'ajustar'], true) ? 'required' : 'nullable', 'string', 'max:4000'],
+            'coordinador_id' => ['nullable', 'integer', 'exists:users,id'],
             'participante_id' => ['nullable', 'integer'],
             'colaborador_codigo' => ['nullable', 'string', 'max:255'],
             'cantidades' => ['nullable', 'array', 'max:1000'],
@@ -145,8 +158,8 @@ class ConsolidadoController extends Controller
             'version' => ['required', 'integer', 'min:1'],
         ]);
 
-        DB::transaction(function () use ($usuario, $consolidado, $accion, $estados, $destino, $datos) {
-            $fila = $this->acceso->consolidados($usuario)->whereKey($consolidado)->lockForUpdate()->firstOrFail();
+        DB::transaction(function () use ($usuario, $consolidado, $accion, $permiso, $estados, $destino, $datos) {
+            $fila = $this->acceso->consolidados($usuario, $permiso)->whereKey($consolidado)->lockForUpdate()->firstOrFail();
             $version = (int) $fila->eventos()->max('id');
             if (!in_array($fila->estado, $estados, true) || (int) $datos['version'] !== $version) {
                 throw ValidationException::withMessages(['estado' => 'El consolidado cambió. Abre el detalle y revisa la versión vigente.']);
@@ -162,16 +175,24 @@ class ConsolidadoController extends Controller
             $cambios = ['estado' => ['antes' => $fila->estado, 'nuevo' => $destino ?? $fila->estado]];
             if (in_array($accion, ['enviar', 'revisar', 'preparar_detalle', 'ajustar', 'aprobar', 'devolver', 'reasignar'], true)) {
                 $ids = $fila->inspecciones()->pluck('inspecciones.region_id')->merge($fila->participantes()->pluck('region_id'));
-                $elegido = $this->regiones->resolver($ids, bloquear: true);
                 $puedeCambiar = $accion === 'reasignar' || ($accion === 'enviar' && $fila->estado === 'borrador');
-                if ((int) $elegido->id !== (int) $fila->coordinador_id) {
+                $eleccion = $puedeCambiar ? ($datos['coordinador_id'] ?? null) : (int) $fila->coordinador_id;
+                try {
+                    $elegido = $this->regiones->resolver($ids, bloquear: true, eleccion: $eleccion);
+                } catch (ValidationException $e) {
                     if (!$puedeCambiar) {
                         throw ValidationException::withMessages(['estado' => 'La responsabilidad regional cambió. Administración debe reasignar el consolidado.']);
                     }
+                    throw $e;
+                }
+                if ((int) $elegido->id !== (int) $fila->coordinador_id) {
                     $cambios['coordinador'] = ['antes' => $fila->coordinador_id, 'nuevo' => $elegido->id];
                     $fila->coordinador_id = $elegido->id;
                 } elseif ($accion === 'reasignar') {
                     throw ValidationException::withMessages(['estado' => 'El consolidado ya tiene el responsable regional vigente.']);
+                }
+                if (in_array($permiso, ['revisar', 'ajustar', 'aprobar'], true)) {
+                    $regiones = $this->acceso->regionesRevision($usuario, $fila, $permiso);
                 }
                 if (in_array($accion, ['ajustar', 'aprobar', 'preparar_detalle'], true)) {
                     $this->detalle->inicializar($fila);
@@ -180,8 +201,11 @@ class ConsolidadoController extends Controller
                     if (empty($datos['participante_id']) && blank($datos['colaborador_codigo'] ?? null)) {
                         throw ValidationException::withMessages(['colaborador_codigo' => 'Selecciona un colaborador para registrar el ajuste.']);
                     }
-                    $regiones = $this->acceso->regiones($usuario)->orderBy('id')->lockForUpdate()->pluck('id');
-                    $cambios['productos'] = $this->detalle->ajustar($fila, $usuario, $datos, $regiones);
+                    if (empty($datos['participante_id'])) {
+                        $this->acceso->consolidados($usuario, 'agregar_colaboradores')->whereKey($fila->id)->firstOrFail();
+                        $regiones = array_intersect($regiones, $this->acceso->regionesRevision($usuario, $fila, 'agregar_colaboradores'));
+                    }
+                    $cambios['productos'] = $this->detalle->ajustar($fila, $usuario, $datos, collect($regiones));
                 } elseif (filled($datos['cantidades'] ?? null) || filled($datos['producto_codigo'] ?? null)) {
                     throw ValidationException::withMessages(['cantidades' => 'Guarda los ajustes por colaborador antes de cambiar el estado.']);
                 }

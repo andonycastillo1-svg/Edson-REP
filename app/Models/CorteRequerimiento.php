@@ -13,9 +13,9 @@ class CorteRequerimiento extends Model
 
     protected $table = 'cortes_requerimientos';
 
-    protected $fillable = ['operador_id', 'nombre', 'desde', 'hasta', 'estado'];
+    protected $fillable = ['operador_id', 'nombre', 'desde', 'hasta', 'estado', 'coordinadores_elegidos'];
 
-    protected $casts = ['desde' => 'date', 'hasta' => 'date'];
+    protected $casts = ['desde' => 'date', 'hasta' => 'date', 'coordinadores_elegidos' => 'array'];
 
     public function operador(): BelongsTo
     {

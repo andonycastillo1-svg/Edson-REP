@@ -3,7 +3,7 @@
 @section('title', 'Detalle Compra')
 
 @section('content')
-@php($routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin')
+@php($routePrefix = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user()))
 <div class="w-full max-w-6xl bg-white/90 rounded-xl shadow-lg p-8">
     <x-internal-navigation :back-url="route($routePrefix . '.compras.index')" />
     <div class="flex items-start justify-between gap-4 mb-6">
@@ -124,7 +124,7 @@
         </section>
     @endif
 
-    @rutaDisponible(\App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo()).'.compras.archivo')
+    @rutaDisponible(\App\Services\AccesoInventarioOperativo::prefijo(auth()->user()).'.compras.archivo')
     <div class="rounded-xl border border-slate-200 bg-white p-4">
         <h2 class="font-bold text-slate-800 mb-2">Archivos (PDF)</h2>
 

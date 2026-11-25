@@ -63,6 +63,9 @@ class CortesRequerimientos
         if ($ids === []) {
             throw ValidationException::withMessages(['inspecciones' => 'Selecciona al menos una inspección.']);
         }
+        if ($this->acceso->inspecciones($usuario)->whereKey($ids)->count() !== count($ids)) {
+            throw ValidationException::withMessages(['inspecciones' => 'La selección contiene inspecciones fuera de tu alcance.']);
+        }
         $inspecciones = $this->consolidacion->bloquearDisponibles($ids)->load('region', 'colaborador');
         $resumen = $this->agrupar($corte, $inspecciones, bloquear: true);
         if ($resumen['alertas'] !== []) {
@@ -86,7 +89,12 @@ class CortesRequerimientos
 
     private function agrupar(CorteRequerimiento $corte, Registros $inspecciones, bool $bloquear = false): array
     {
-        $responsables = $this->regiones->responsables($inspecciones->pluck('region_id'), $bloquear);
+        $opciones = $this->regiones->opciones($inspecciones->pluck('region_id')->all(), $bloquear);
+        $nombres = $inspecciones->mapWithKeys(fn ($fila) => [$fila->region_id => $fila->region?->nombre]);
+        $elecciones = $corte->coordinadores_elegidos ?? [];
+        $responsables = $opciones->map(fn ($candidatos, $id) => isset($elecciones[$id])
+            ? $candidatos->firstWhere('id', $elecciones[$id])
+            : ($candidatos->count() === 1 ? $candidatos->sole() : null));
         $alertas = [];
         $grupos = [];
         $ocupadas = $inspecciones->where('consolidados_exists', true);
@@ -96,11 +104,15 @@ class CortesRequerimientos
         if ($inspecciones->contains(fn (Inspeccion $fila) => $fila->fecha->gt($corte->hasta))) {
             $alertas[] = 'La selección incluye inspecciones posteriores a la fecha final.';
         }
-        $sinCoordinador = $inspecciones->filter(fn (Inspeccion $fila) => !$responsables->get($fila->region_id));
-        if ($sinCoordinador->isNotEmpty()) {
-            $alertas[] = 'Configura un coordinador activo para '.($sinCoordinador->pluck('region.nombre')->unique()->implode(', ')).' o retira sus inspecciones.';
+        foreach ($opciones as $id => $candidatos) {
+            if ($candidatos->isEmpty()) {
+                $alertas[] = 'Configura un coordinador activo para '.$nombres[$id].' o retira sus inspecciones.';
+            } elseif (!$responsables->get($id)) {
+                $alertas[] = 'Selecciona un coordinador para '.$nombres[$id].'.';
+            }
         }
-        foreach ($inspecciones->diff($sinCoordinador)->groupBy(fn (Inspeccion $fila) => $responsables[$fila->region_id]->id)->sortKeys() as $grupo) {
+        foreach ($inspecciones->filter(fn ($fila) => $responsables->get($fila->region_id))
+            ->groupBy(fn (Inspeccion $fila) => $responsables[$fila->region_id]->id)->sortKeys() as $grupo) {
             $coordinador = $responsables[$grupo->first()->region_id];
             foreach ($grupo->groupBy('colaborador_codigo') as $persona) {
                 if ($persona->pluck('region_id')->unique()->count() > 1) {
@@ -123,6 +135,9 @@ class CortesRequerimientos
         return [
             'inspecciones' => $inspecciones,
             'grupos' => $grupos,
+            'opciones' => $opciones->filter(fn ($candidatos, $id) => $candidatos->count() > 1
+                || ($candidatos->isNotEmpty() && !$responsables->get($id))),
+            'regiones_nombres' => $nombres,
             'alertas' => $alertas,
             'firma' => $firma,
             'total' => $inspecciones->count(),

@@ -1,7 +1,7 @@
 @php($acceso = app(\App\Services\FlujoAcceso::class))
 <x-sistema.pagina titulo="Consolidados" :descripcion="$acceso->puede(auth()->user(), 'revisar') ? 'Revisa las cantidades del equipo y aprueba los requerimientos listos.' : 'Consulta el avance de cada período, desde el borrador hasta el cierre de compras.'" :volver="route('dashboard')">
     <x-slot:acciones>
-        <x-ui.exportar-excel />
+        @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'exportar_consolidados'))<x-ui.exportar-excel />@endif
         @if($acceso->puedeCortes(auth()->user()))
             <a class="ui-btn-primary" href="{{ route('flujo.cortes.create') }}">Nuevo corte</a>
         @endif

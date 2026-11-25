@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-  $routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin';
+  $routePrefix = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user());
 
   if ($operacion->estado === 'PENDIENTE') {
       $badgeClass = 'badge-pendiente';
@@ -467,7 +467,7 @@
         <div class="decision-box">
           <div class="decision-grid">
 
-            @rutaDisponible($routePrefix . '.operaciones.traslados.aprobar')
+            @if($puedeAprobar)
             <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.aprobar', $operacion) }}"
                   data-confirmar="¿Aprobar este traslado y mover las existencias a la bodega de destino?">
               @csrf
@@ -475,9 +475,9 @@
                 ✅ Aprobar
               </button>
             </form>
-            @endrutaDisponible
+            @endif
 
-            @rutaDisponible($routePrefix . '.operaciones.traslados.rechazar')
+            @if($puedeRechazar)
             <form method="POST"
                   action="{{ route($routePrefix . '.operaciones.traslados.rechazar', $operacion) }}"
                   data-confirmar="¿Rechazar esta solicitud de traslado?"
@@ -494,7 +494,7 @@
                 ❌ Rechazar
               </button>
             </form>
-            @endrutaDisponible
+            @endif
 
           </div>
         </div>

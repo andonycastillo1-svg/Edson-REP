@@ -2,9 +2,9 @@
 
   @section('content')
   @php
-    $routePrefix = auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin';
-    $esOperador = auth()->user()->rolOperativo() == 2;
-    $origenSeleccionado = old('bodega_origen_id', $origenId ?? ($esOperador ? auth()->user()->bodega_id : null));
+    $routePrefix = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user());
+    $origenFijo = $origenes->count() === 1;
+    $origenSeleccionado = old('bodega_origen_id', $origenId);
   @endphp
 
   <div class="max-w-4xl mx-auto">
@@ -29,18 +29,18 @@
 
         <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            @if($esOperador)<p class="text-sm font-semibold">Bodega de origen</p>
+            @if($origenFijo)<p class="text-sm font-semibold">Bodega de origen</p>
             @else<label for="bodega_origen" class="text-sm font-semibold">Bodega de origen</label>@endif
 
-            @if($esOperador)
-              <input type="hidden" name="bodega_origen_id" value="{{ auth()->user()->bodega_id }}">
+            @if($origenFijo)
+              <input type="hidden" name="bodega_origen_id" value="{{ $origenId }}">
               <div class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-slate-100">
-                {{ optional($bodegas->firstWhere('id', auth()->user()->bodega_id))->nombre }}
+                {{ optional($bodegas->firstWhere('id', $origenId))->nombre }}
               </div>
             @else
               <select id="bodega_origen" name="bodega_origen_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 <option value="">Selecciona...</option>
-                @foreach($bodegas as $b)
+                @foreach($origenes as $b)
                   <option value="{{ $b->id }}"
                     {{ (string) old('bodega_origen_id', $origenId) === (string) $b->id ? 'selected' : '' }}>
                     {{ $b->nombre }}

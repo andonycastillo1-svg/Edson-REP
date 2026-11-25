@@ -5,6 +5,7 @@ use App\Http\Controllers\Flujo\ConsolidadoController;
 use App\Http\Controllers\Flujo\CorteRequerimientoController;
 use App\Http\Controllers\Flujo\ImportarAsignacionController;
 use App\Http\Controllers\Flujo\InspeccionController;
+use App\Http\Controllers\Flujo\InventarioAutorizadoController;
 use App\Http\Controllers\Flujo\PlanComprasController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +13,8 @@ Route::view('coordinacion/dashboard', 'flujo.coordinacion')->middleware(['auth',
     ->name('coordinacion.dashboard');
 
 Route::middleware(['auth', 'auto.logout'])->prefix('flujo')->name('flujo.')->group(function () {
+    Route::get('existencias', [InventarioAutorizadoController::class, 'index'])->name('existencias.index');
+
     Route::get('inspecciones', [InspeccionController::class, 'index'])->name('inspecciones.index');
     Route::get('inspecciones/nueva', [InspeccionController::class, 'create'])->name('inspecciones.create');
     Route::get('regiones/{region}/colaboradores', [InspeccionController::class, 'colaboradores'])->name('inspecciones.colaboradores');
@@ -22,6 +25,7 @@ Route::middleware(['auth', 'auto.logout'])->prefix('flujo')->name('flujo.')->gro
     Route::get('catalogos', [CatalogosController::class, 'index'])->name('catalogos');
     Route::post('catalogos/productos', [CatalogosController::class, 'producto'])->name('catalogos.producto');
     Route::post('catalogos/regiones/{id?}', [CatalogosController::class, 'region'])->whereNumber('id')->name('catalogos.region');
+    Route::post('catalogos/procesos/{id?}', [CatalogosController::class, 'proceso'])->whereNumber('id')->name('catalogos.proceso');
     Route::post('catalogos/secciones/{clave}', [CatalogosController::class, 'seccion'])->name('catalogos.seccion');
     Route::post('catalogos/articulos/{id?}', [CatalogosController::class, 'articulo'])->whereNumber('id')->name('catalogos.articulo');
     Route::post('catalogos/motivos/{id?}', [CatalogosController::class, 'motivo'])->whereNumber('id')->name('catalogos.motivo');
@@ -33,6 +37,7 @@ Route::middleware(['auth', 'auto.logout'])->prefix('flujo')->name('flujo.')->gro
         Route::get('{corte}', 'show')->whereNumber('corte')->name('show');
         Route::get('{corte}/seleccion', 'seleccion')->whereNumber('corte')->name('seleccion');
         Route::put('{corte}/seleccion', 'guardarSeleccion')->whereNumber('corte')->name('seleccion.guardar');
+        Route::put('{corte}/coordinacion', 'guardarCoordinacion')->whereNumber('corte')->name('coordinacion');
         Route::post('{corte}/confirmar', 'confirmar')->whereNumber('corte')->name('confirmar');
         Route::post('{corte}/cancelar', 'cancelar')->whereNumber('corte')->name('cancelar');
     });

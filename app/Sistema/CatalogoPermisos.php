@@ -6,6 +6,82 @@ class CatalogoPermisos
 {
     public const AMBITOS = [1 => 'Administrador', 2 => 'Operador', 3 => 'Supervisor', 4 => 'Recursos Humanos', 5 => 'Coordinador'];
 
+    public const INVENTARIO_OPERATIVO = [
+        'compras.consultar' => 'Consultar facturas de la bodega central',
+        'compras.crear' => 'Registrar compras e ingresar existencias en central',
+        'compras.archivos' => 'Abrir facturas y respaldos',
+        'compras.datos_exportar' => 'Exportar facturas de central',
+        'compras.vincular' => 'Distribuir una compra entre requerimientos aprobados',
+        'compras.conciliar' => 'Conciliar la distribución de facturas anteriores',
+        'asignaciones.consultar' => 'Consultar custodias y entregas autorizadas',
+        'asignaciones.crear' => 'Entregar productos a colaboradores autorizados',
+        'asignaciones.vincular' => 'Vincular la entrega con un requerimiento aprobado',
+        'asignaciones.confirmar_recepcion' => 'Confirmar la recepción de una entrega',
+        'asignaciones.devolver' => 'Resolver custodias y registrar devoluciones',
+        'asignaciones.entregar_nuevo' => 'Entregar existencias nuevas por excepción',
+        'asignaciones.evidencias' => 'Adjuntar documentos de entrega y devolución',
+        'asignaciones.archivos' => 'Ver los respaldos de entregas y devoluciones',
+        'asignaciones.exportar' => 'Descargar hojas de entrega o devolución',
+        'asignaciones.datos_exportar' => 'Exportar listados de entregas y devoluciones',
+        'traslados.crear' => 'Solicitar un traslado desde una bodega autorizada',
+        'traslados.consultar' => 'Consultar solicitudes de traslado relacionadas',
+        'traslados.aprobar' => 'Recibir y aprobar traslados en la bodega de destino',
+        'traslados.rechazar' => 'Rechazar traslados en la bodega de destino',
+        'traslados.archivos' => 'Abrir archivos de solicitudes de traslado',
+        'traslados.exportar' => 'Descargar la hoja de un traslado',
+        'traslados.datos_exportar' => 'Exportar el listado de traslados',
+        'flujo.importar' => 'Importar entregas por Excel desde central',
+    ];
+
+    public static function permisoRutaInventario(string $ruta): ?string
+    {
+        [$prefijo, $accion] = array_pad(explode('.', $ruta, 2), 2, '');
+        if (!in_array($prefijo, ['admin', 'operador', 'supervisor'], true)
+            || !str_starts_with($accion, 'compras.') && !str_starts_with($accion, 'asignaciones.') && !str_starts_with($accion, 'operaciones.traslados.')) {
+            return null;
+        }
+        $ambito = ['admin' => 1, 'operador' => 2, 'supervisor' => 3][$prefijo];
+        $permiso = self::rutas($ambito)[$ruta] ?? null;
+
+        return isset(self::INVENTARIO_OPERATIVO[$permiso]) ? $permiso : null;
+    }
+
+    public const ACCIONES_OPERATIVAS = [
+        'bodegas.consultar' => ['Consultar existencias', null],
+        'bodegas.exportar' => ['Exportar existencias', null],
+        'inventario.movimientos' => ['Consultar movimientos de bodega', null],
+        'flujo.inspecciones' => ['Consultar inspecciones', null],
+        'flujo.capturar' => ['Registrar inspecciones', null],
+        'flujo.exportar_inspecciones' => ['Exportar inspecciones', 'flujo.inspecciones'],
+        'flujo.cortes' => ['Preparar cortes', 'flujo.consolidar'],
+        'flujo.crear_consolidados' => ['Crear consolidados', 'flujo.consolidar'],
+        'flujo.enviar_consolidados' => ['Enviar y retirar consolidados', 'flujo.consolidar'],
+        'flujo.consolidados' => ['Consultar consolidados', null],
+        'flujo.exportar_consolidados' => ['Exportar consolidados', 'flujo.consolidados'],
+        'flujo.revisar' => ['Revisar consolidados', null],
+        'flujo.ajustar' => ['Modificar requerimientos', 'flujo.revisar'],
+        'flujo.agregar_colaboradores' => ['Agregar colaboradores omitidos', 'flujo.revisar'],
+        'flujo.aprobar' => ['Aprobar o devolver consolidados', 'flujo.revisar'],
+        'flujo.compras' => ['Consultar necesidades de compra', null],
+        'flujo.plan_compras' => ['Guardar planes de compra', 'flujo.compras'],
+        'flujo.exportar_compras' => ['Exportar necesidades de compra', 'flujo.compras'],
+        'flujo.constancias' => ['Administrar constancias de compra', 'flujo.compras'],
+        'flujo.cerrar_compras' => ['Cerrar compras de un consolidado', 'flujo.consolidar'],
+        'flujo.importar' => ['Importar asignaciones', null],
+    ];
+
+    public const ACCIONES_RESTRINGIDAS = [
+        'compras.conciliar' => ['Conciliar facturas históricas', 'compras.crear'],
+        'compras.vincular' => ['Vincular compras con requerimientos aprobados', 'flujo.compras'],
+        'asignaciones.vincular' => ['Vincular entrega con requerimiento aprobado', 'flujo.compras'],
+        'asignaciones.confirmar_recepcion' => ['Confirmar recepción de entregas', 'asignaciones.crear'],
+        'traslados.rechazar' => ['Rechazar solicitudes de traslado', 'traslados.aprobar'],
+        'alertas.regularizar' => ['Regularizar incidencias de RR. HH.', 'alertas.modificar'],
+        'alertas.cerrar' => ['Finalizar incidencias de RR. HH.', 'alertas.modificar'],
+        'flujo.configurar_regiones' => ['Configurar regiones', 'flujo.configurar'],
+        'usuarios.relaciones' => ['Configurar relaciones operativas', 'usuarios.modificar'],
+    ];
+
     public const CONFIGURACION = [
         'sistema.campos' => 'Administrar campos personalizados',
         'sistema.presentacion' => 'Administrar formularios y tablas',
@@ -67,6 +143,27 @@ class CatalogoPermisos
             },
         };
 
+        if (isset((self::ACCIONES_OPERATIVAS + self::ACCIONES_RESTRINGIDAS)[$permiso])) {
+            $titulo = (self::ACCIONES_OPERATIVAS + self::ACCIONES_RESTRINGIDAS)[$permiso][0];
+        }
+        if ($modulo === 'flujo') {
+            $grupo = match ($permiso) {
+                'flujo.inspecciones', 'flujo.capturar', 'flujo.exportar_inspecciones' => 'Inspecciones',
+                'flujo.compras', 'flujo.plan_compras', 'flujo.exportar_compras', 'flujo.constancias', 'flujo.cerrar_compras' => 'Compras',
+                'flujo.importar' => 'Asignaciones',
+                'flujo.configurar', 'flujo.configurar_regiones' => 'Catálogos operativos',
+                default => 'Cortes y consolidados',
+            };
+        }
+        if (isset(self::INVENTARIO_OPERATIVO[$permiso])) {
+            $titulo = self::INVENTARIO_OPERATIVO[$permiso];
+            $descripcion = match ($modulo) {
+                'compras' => 'Requiere una relación de operación con la bodega central.',
+                'asignaciones' => 'Se aplica a las bodegas y colaboradores del ámbito autorizado.',
+                'traslados' => 'La solicitud exige acceso al origen. La decisión corresponde a la bodega receptora.',
+                default => 'Requiere autorización para asignar inventario desde central y cubrir todas las regiones del archivo.',
+            };
+        }
         $categoria = $modulo === 'sistema' ? 'Administración del sistema' : match ($accion) {
             'consultar' => 'Consulta',
             'archivos', 'evidencias', 'datos_archivos', 'exportar', 'datos_exportar' => 'Documentos y reportes',
@@ -86,18 +183,18 @@ class CatalogoPermisos
             'index' => 'consultar', 'create' => 'crear', 'store' => 'crear', 'contexto' => 'crear',
             'pdf' => 'exportar', 'hoja_devolucion' => 'exportar', 'upload_pdf_firmado' => 'evidencias',
             'upload_pdf_devolucion_firmado' => 'evidencias', 'ver_pdf_firmado' => 'archivos',
-            'entrega' => 'consultar', 'documento_entrega' => 'evidencias', 'confirmar_recepcion' => 'crear',
+            'entrega' => 'consultar', 'documento_entrega' => 'evidencias', 'confirmar_recepcion' => 'confirmar_recepcion',
             'incidencia' => 'consultar', 'documento_incidencia' => 'evidencias', 'archivo_incidencia' => 'archivos',
             'devolver' => 'devolver', 'devolver_lote' => 'devolver', 'devolver_todo_colaborador' => 'devolver',
         ];
         $traslados = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + [
-            'aprobar' => 'aprobar', 'rechazar' => 'aprobar', 'archivo' => 'archivos', 'hoja' => 'exportar',
+            'aprobar' => 'aprobar', 'rechazar' => 'rechazar', 'archivo' => 'archivos', 'hoja' => 'exportar',
         ];
-        $compras = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + ['archivo' => 'archivos', 'conciliar' => 'crear'];
+        $compras = array_intersect_key($crud, array_flip(['index', 'show', 'create', 'store'])) + ['archivo' => 'archivos', 'conciliar' => 'conciliar'];
         $colaboradores = array_diff_key($crud, array_flip(['show', 'destroy'])) + [
             'detalle' => 'consultar', 'estado' => 'modificar', 'ficha_tecnica' => 'exportar', 'fichas_tecnicas_masivas' => 'exportar',
         ];
-        $usuarios = array_replace(array_diff_key($crud, ['show' => true]), ['destroy' => 'desactivar', 'regiones' => 'modificar', 'regiones.update' => 'modificar']);
+        $usuarios = array_replace(array_diff_key($crud, ['show' => true]), ['destroy' => 'desactivar', 'regiones' => 'relaciones', 'regiones.update' => 'relaciones']);
 
         $definiciones = match ($ambito) {
             1 => [
@@ -134,7 +231,7 @@ class CatalogoPermisos
                 'alertas' => ['alertas', [
                     'index' => 'consultar', 'show' => 'consultar', 'evidencia' => 'consultar',
                     'documento' => 'consultar', 'documento_refaccion' => 'consultar',
-                    'export' => 'exportar', 'actuacion' => 'modificar', 'regularizacion' => 'modificar', 'finalizar' => 'modificar',
+                    'export' => 'exportar', 'actuacion' => 'modificar', 'regularizacion' => 'regularizar', 'finalizar' => 'cerrar',
                 ]],
             ],
             default => [],
@@ -182,7 +279,12 @@ class CatalogoPermisos
         }
 
         $base = array_values(array_unique(self::rutas($ambito)));
-        $extras = [...array_keys(self::CONFIGURACION), ...self::flujoPara($ambito)];
+        $extras = [...array_keys(self::CONFIGURACION), ...self::flujoPara($ambito), ...array_keys(self::ACCIONES_OPERATIVAS), ...array_keys(self::INVENTARIO_OPERATIVO)];
+        foreach (self::ACCIONES_RESTRINGIDAS as $accion => [, $anterior]) {
+            if (in_array($anterior, [...$base, ...self::flujoPara($ambito)], true)) {
+                $extras[] = $accion;
+            }
+        }
         if (in_array('asignaciones.crear', $base, true)) {
             $extras[] = 'asignaciones.entregar_nuevo';
         }
@@ -197,5 +299,14 @@ class CatalogoPermisos
         sort($permisos);
 
         return $permisos;
+    }
+
+    public static function permisoAnterior(string $permiso, int $ambito): ?string
+    {
+        if (isset(self::INVENTARIO_OPERATIVO[$permiso]) && !in_array($ambito, [1, 2], true)) {
+            return null;
+        }
+
+        return (self::ACCIONES_OPERATIVAS + self::ACCIONES_RESTRINGIDAS)[$permiso][1] ?? null;
     }
 }

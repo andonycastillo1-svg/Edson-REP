@@ -21,6 +21,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\BodegaAccessService;
+use App\Services\AccesoInventarioOperativo;
 use App\Services\InventarioStockService;
 use App\Services\NotificacionService;
 
@@ -28,6 +29,7 @@ class CompraController extends Controller
 {
     public function __construct(
         private BodegaAccessService $bodegaAccess,
+        private AccesoInventarioOperativo $inventario,
         private InventarioStockService $stockService,
         private PlanCompras $plan,
         private DistribucionCompras $distribuciones
@@ -36,14 +38,13 @@ class CompraController extends Controller
 
     public function index(Request $request)
     {
-        $this->autorizarConsulta();
-        $consulta = DB::table('compras as c')
+        $permiso = $request->boolean('xlsx') ? 'compras.datos_exportar' : 'compras.consultar';
+        $consulta = $this->facturasAutorizadas($permiso, auditar: true)
             ->join('proveedores as p', 'p.id', '=', 'c.proveedor_id')
             ->select('c.*', 'p.nombre as proveedor_nombre');
         app(ConsultaCampos::class)->filtrar($consulta, $request, 'compras', 'c.id');
         if ($request->boolean('xlsx')) {
             $exportar = app(ExportacionesOperativas::class);
-            $exportar->autorizar($request, 'compras');
 
             return $exportar->compras($consulta,
                 $request->validate(['buscar' => ['nullable', 'string', 'max:190']])['buscar'] ?? null);
@@ -78,7 +79,7 @@ class CompraController extends Controller
 
     public function create()
     {
-        $this->autorizarConsulta();
+        $this->inventario->autorizar(auth()->user(), 'compras.crear', [(int) $this->bodegaAccess->principal()?->id]);
         $proveedores = DB::table('proveedores')->orderBy('nombre')->get();
 
         $productos = DB::table('productos')
@@ -105,9 +106,7 @@ class CompraController extends Controller
     private function consolidadosParaCompra(): array
     {
         $usuario = auth()->user();
-        $acceso = app(FlujoAcceso::class);
-        $puedeDistribuir = app(Permisos::class)->ruta($usuario, $this->rutaPrefijo().'.compras.create')
-            && $acceso->puede($usuario, 'compras') && $acceso->central($usuario);
+        $puedeDistribuir = $this->inventario->tiene($usuario, 'compras.vincular');
         $candidatos = $puedeDistribuir
             ? Consolidado::where('estado', 'aprobado')->orderBy('nombre')->get(['id', 'nombre', 'plan_compra']) : collect();
         $facturas = $this->plan->facturas($candidatos);
@@ -120,7 +119,7 @@ class CompraController extends Controller
     public function store(Request $request)
     {
         $bodega = $this->bodegaAccess->principal() ?? abort(404, 'No hay bodega principal configurada.');
-        abort_unless($this->bodegaAccess->canReceiveStock($request->user(), (int) $bodega->id), 403);
+        $this->inventario->autorizar($request->user(), 'compras.crear', [(int) $bodega->id]);
 
         $data = $request->validate([
             'fecha_compra' => ['required', 'date_format:Y-m-d', 'after_or_equal:' . today()->subDays(7)->toDateString(), 'before_or_equal:' . today()->addDays(7)->toDateString()],
@@ -163,9 +162,8 @@ class CompraController extends Controller
         app(Presentacion::class)->validar($request, 'compras', true);
         $campos = app(ValoresCampos::class);
         $valores = $campos->preparar($request, 'compras', true);
-        if (!empty($data['consolidados']) || !empty($data['distribucion'])) {
-            app(FlujoAcceso::class)->autorizar($request->user(), 'compras');
-        }
+        $permiso = !empty($data['consolidados']) || !empty($data['distribucion']) ? 'compras.vincular' : 'compras.crear';
+        $this->inventario->autorizar($request->user(), $permiso, [(int) $bodega->id]);
         if (!empty($data['consolidados']) && app(Presentacion::class)->nativos('compras')['autorizado_por']['visible']) {
             $request->validate(['autorizado_por' => ['required']], [
                 'autorizado_por.required' => 'Indica quién autorizó la compra del consolidado.',
@@ -194,7 +192,7 @@ class CompraController extends Controller
                 ];
             }
 
-            $compra = DB::transaction(function () use ($data, $bodega, $lineas, $total, $adjuntos, $request, $campos, $valores, $bloquearPrincipal) {
+            $compra = DB::transaction(function () use ($data, $bodega, $lineas, $total, $adjuntos, $request, $campos, $valores, $bloquearPrincipal, $permiso) {
                 if ($bloquearPrincipal) {
                     app(\App\Sistema\Seguridad::class)->bloquear();
                     app(\App\Sistema\Ajustes::class)->refrescar('general');
@@ -202,8 +200,10 @@ class CompraController extends Controller
                         throw ValidationException::withMessages(['bodega_id' => 'La bodega principal cambió. Vuelve a enviar la compra.']);
                     }
                 }
+                $alcance = $this->inventario->autorizar($request->user(), $permiso, [(int) $bodega->id], bloquear: true);
                 $proveedorId = $this->proveedor($data);
                 $compraId = DB::table('compras')->insertGetId([
+                    'bodega_id' => $bodega->id,
                     'fecha_compra' => $data['fecha_compra'],
                     'no_factura' => $data['no_factura'],
                     'proveedor_id' => $proveedorId,
@@ -281,6 +281,7 @@ class CompraController extends Controller
                     $this->distribuciones->guardar($compraId, $distribucion, $detalles);
                 }
                 $campos->guardar('compras', $compraId, $valores);
+                $this->inventario->registrar($alcance, $permiso, $compraId);
                 app(Auditoria::class)->registrar('compras', 'registrar', $compraId, null, ['bodega_id' => $bodega->id, 'lineas' => count($lineas)]);
                 return $compraId;
             }, 3);
@@ -292,7 +293,9 @@ class CompraController extends Controller
                 throw ValidationException::withMessages(['producto_codigo' => 'Un producto ya fue registrado. Selecciónalo del catálogo y vuelve a intentar.']);
             }
 
-            return redirect()->route($prefijo . '.compras.show', $registrada)
+            return app(Permisos::class)->ruta($request->user(), $prefijo.'.compras.show')
+                ? redirect()->route($prefijo . '.compras.show', $registrada)->with('info', 'La factura ya fue registrada.')
+                : redirect()->route($prefijo . '.compras.create')
                 ->with('info', 'La factura ya fue registrada. Revisa los detalles de la compra existente.');
         } finally {
             if ($compra === null) {
@@ -308,7 +311,8 @@ class CompraController extends Controller
             )
         );
 
-        return redirect()->route($prefijo . '.compras.index')
+        return redirect()->route(app(Permisos::class)->ruta($request->user(), $prefijo.'.compras.index')
+            ? $prefijo.'.compras.index' : $prefijo.'.compras.create')
             ->with('success', 'Compra registrada y entrada aplicada a inventario (Bodega Principal).');
     }
 
@@ -394,20 +398,28 @@ class CompraController extends Controller
         return mb_strtoupper(preg_replace('/\s+/', ' ', trim($nombre)));
     }
 
-    private function autorizarConsulta(): void
+    private function facturasAutorizadas(string $permiso, bool $auditar = false): Builder
     {
-        abort_unless($this->bodegaAccess->canViewCompras(auth()->user()), 403);
+        $central = $this->bodegaAccess->principal();
+        $consulta = DB::table('compras as c');
+        $alcances = $this->inventario->alcances(auth()->user(), $permiso)->filter(fn ($alcance) => $alcance->contiene([(int) $central?->id]));
+        $alcance = $alcances->firstWhere('historico', true) ?? $alcances->first() ?? abort(403);
+        if ($auditar) {
+            $this->inventario->registrar($alcance, $permiso, 'central');
+        }
+
+        return $consulta->where(fn ($q) => $q->where('c.bodega_id', $central?->id)
+            ->when($alcance->historico, fn ($q) => $q->orWhereNull('c.bodega_id')));
     }
 
     private function rutaPrefijo(): string
     {
-        return auth()->user()->rolOperativo() === 2 ? 'operador' : 'admin';
+        return AccesoInventarioOperativo::prefijo(auth()->user());
     }
 
     public function show(string $id)
     {
-        $this->autorizarConsulta();
-        $compra = DB::table('compras as c')
+        $compra = $this->facturasAutorizadas('compras.consultar', auditar: true)
             ->join('proveedores as p', 'p.id', '=', 'c.proveedor_id')
             ->select('c.*', 'p.nombre as proveedor_nombre')
             ->where('c.id', $id)
@@ -437,15 +449,18 @@ class CompraController extends Controller
 
         $acceso = app(FlujoAcceso::class);
         $usuario = auth()->user();
-        $consolidados = $acceso->puede($usuario, 'consolidados') || $acceso->puede($usuario, 'compras')
-            ? Consolidado::whereIn('id', $this->vinculos($id))->orderBy('id')->get(['id', 'nombre', 'plan_compra']) : collect();
+        $vinculos = $this->vinculos($id);
+        $consolidados = $this->inventario->tiene($usuario, 'compras.vincular')
+            || $acceso->puede($usuario, 'compras')
+            ? Consolidado::whereIn('id', $vinculos)->orderBy('id')->get(['id', 'nombre', 'plan_compra'])
+            : ($acceso->puede($usuario, 'consolidados') ? $acceso->consolidados($usuario)->whereIn('id', $vinculos)
+                ->orderBy('id')->get(['id', 'nombre', 'plan_compra']) : collect());
         $puedeVerConsolidado = $acceso->puede($usuario, 'consolidados');
         $distribucion = DB::table('compra_detalle_consolidado as distribucion')->whereIn('compra_detalle_id', $detalles->pluck('id'))
             ->join('consolidado_lineas as linea', 'linea.id', '=', 'distribucion.consolidado_linea_id')
             ->whereIn('linea.consolidado_id', $consolidados->pluck('id'))
             ->get(['linea.consolidado_id', 'distribucion.compra_detalle_id', 'distribucion.cantidad'])->groupBy('consolidado_id');
-        $conciliar = $consolidados->isNotEmpty() && !$compra->distribucion_confirmada_en && $acceso->puede($usuario, 'compras')
-            && $acceso->central($usuario);
+        $conciliar = $consolidados->isNotEmpty() && !$compra->distribucion_confirmada_en && $this->inventario->tiene($usuario, 'compras.conciliar');
         $pendientes = $conciliar ? $this->plan->avance($consolidados)->keyBy(fn ($fila) => $fila['consolidado_id'].'|'.$fila['codigo']) : collect();
 
         return view('admin.compras.show', compact('compra', 'detalles', 'archivos', 'tablaCampos', 'consolidados', 'puedeVerConsolidado',
@@ -454,15 +469,12 @@ class CompraController extends Controller
 
     public function conciliar(Request $request, string $compra)
     {
-        $this->autorizarConsulta();
-        $acceso = app(FlujoAcceso::class);
         $usuario = $request->user();
-        $acceso->autorizar($usuario, 'compras');
-        abort_unless($acceso->central($usuario)
-            && app(Permisos::class)->ruta($usuario, $this->rutaPrefijo().'.compras.show'), 403);
         $datos = $request->validate(['confirmar' => ['accepted']] + DistribucionCompras::reglas());
 
-        $guardada = DB::transaction(function () use ($compra, $datos) {
+        $guardada = DB::transaction(function () use ($compra, $datos, $usuario) {
+            $alcance = $this->inventario->autorizar($usuario, 'compras.conciliar', [(int) $this->bodegaAccess->principal()?->id], bloquear: true);
+            abort_unless($this->facturasAutorizadas('compras.conciliar')->where('c.id', $compra)->exists(), 404);
             $consolidados = Consolidado::whereIn('id', $this->vinculos($compra))->orderBy('id')->lockForUpdate()->get();
             $factura = DB::table('compras')->where('id', $compra)->lockForUpdate()->first();
             abort_unless($factura && $consolidados->isNotEmpty(), 404);
@@ -476,6 +488,7 @@ class CompraController extends Controller
             ]]);
             $distribucion = $this->distribuciones->validar($consolidados, $facturadas, $datos['distribucion'] ?? [], historica: true);
             $this->distribuciones->guardar((int) $compra, $distribucion, $lineas->pluck('id', 'id')->all());
+            $this->inventario->registrar($alcance, 'compras.conciliar', $compra);
             app(Auditoria::class)->registrar('compras', 'conciliar_distribucion', $compra, null, [
                 'consolidados' => $consolidados->modelKeys(), 'distribucion' => $distribucion,
             ]);
@@ -494,7 +507,7 @@ class CompraController extends Controller
 
     public function archivo(string $compra, string $archivo)
     {
-        $this->autorizarConsulta();
+        abort_unless($this->facturasAutorizadas('compras.archivos', auditar: true)->where('c.id', $compra)->exists(), 404);
         $adjunto = DB::table('compra_archivos')->where('compra_id', $compra)->where('id', $archivo)->first();
         abort_unless($adjunto, 404);
 

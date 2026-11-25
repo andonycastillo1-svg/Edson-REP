@@ -84,7 +84,7 @@ class CorteRequerimientoController extends Controller
         $visibles = $consultas['periodo']->pluck('id')->merge($consultas['anteriores']->pluck('id'));
         $fueraDePagina = $ids->diff($visibles)->count();
         $regiones = $consultas['periodo']->pluck('region_id')->merge($consultas['anteriores']->pluck('region_id'));
-        $coordinadores = $this->regiones->responsables($regiones);
+        $coordinadores = $this->regiones->opciones($regiones->all());
 
         return view('flujo.cortes.seleccion', compact('corte', 'consultas', 'pendientes', 'ids', 'coordinadores', 'fueraDePagina'));
     }
@@ -139,10 +139,34 @@ class CorteRequerimientoController extends Controller
         return view('flujo.cortes.show', compact('corte', 'inspecciones'));
     }
 
+    public function guardarCoordinacion(Request $request, int $corte)
+    {
+        $usuario = $request->user();
+        abort_unless($this->acceso->puedeCortes($usuario), 403);
+        $datos = $request->validate(['responsables' => ['required', 'array'], 'responsables.*' => ['required', 'integer']]);
+        DB::transaction(function () use ($usuario, $corte, $datos) {
+            $fila = $this->bloquear($usuario, $corte);
+            $this->exigirBorrador($fila);
+            $opciones = $this->regiones->opciones($fila->inspecciones()->pluck('inspecciones.region_id')->all(), bloquear: true);
+            foreach ($datos['responsables'] as $region => $elegido) {
+                if (!$opciones->get($region)?->contains('id', (int) $elegido)) {
+                    throw ValidationException::withMessages(['responsables' => 'Selecciona solo coordinadores activos de cada región.']);
+                }
+            }
+            $antes = $fila->coordinadores_elegidos ?? [];
+            $fila->update(['coordinadores_elegidos' => array_replace($antes, $datos['responsables'])]);
+            $this->auditoria->registrar('flujo', 'elegir_coordinacion_corte', $fila->id, $antes, $fila->coordinadores_elegidos);
+        }, 3);
+
+        return redirect()->route('flujo.cortes.show', $corte);
+    }
+
     public function confirmar(Request $request, int $corte)
     {
         $usuario = $request->user();
         abort_unless($this->acceso->puedeCortes($usuario), 403);
+        $this->acceso->autorizar($usuario, 'crear_consolidados');
+        $this->acceso->autorizar($usuario, 'enviar_consolidados');
         $datos = $request->validate(['firma' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/D']]);
         DB::transaction(function () use ($usuario, $corte, $datos) {
             $fila = $this->bloquear($usuario, $corte);

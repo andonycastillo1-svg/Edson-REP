@@ -4,7 +4,9 @@
             && app(\App\Sistema\Permisos::class)->permite(auth()->user(), 'asignaciones.crear'))
             <a class="ui-btn-secondary" href="{{ route('flujo.importar.index', ['consolidado_id' => $consolidado->id]) }}">Preparar asignaciones en Excel</a>
         @endif
+        @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'exportar_consolidados'))
         <x-ui.exportar-excel :url="route('flujo.consolidados.index', ['xlsx' => 1, 'consolidado_id' => $consolidado->id])" />
+        @endif
     </x-slot:acciones>
     @php
         $version = $consolidado->eventos->max('id');
@@ -67,7 +69,7 @@
                 @endforelse
             </div>
         </x-sistema.panel>
-        @if($editar)
+        @if($puedeAgregar)
             <details class="flujo-lectura" @if(old('busqueda_colaborador') || old('colaborador_codigo')) open @endif>
                 <summary>Agregar colaborador</summary>
                 <form method="POST" action="{{ route('flujo.consolidados.transicion', [$consolidado, 'ajustar']) }}" class="grid gap-3 p-4 sm:grid-cols-2" data-buscar-colaborador="{{ route('flujo.consolidados.colaboradores', $consolidado) }}">
@@ -89,6 +91,8 @@
                     <div class="sm:col-span-2"><button class="ui-btn-primary">Guardar incorporación</button></div>
                 </form>
             </details>
+        @endif
+        @if($editar)
             <datalist id="catalogo-productos">
                 @foreach($productos as $producto)<option value="{{ $producto->codigo }}">{{ $producto->nombre }}</option>@endforeach
             </datalist>
@@ -109,6 +113,18 @@
                                 <textarea name="nota" required maxlength="4000" rows="2" class="ui-input mt-1"></textarea>
                             </label>
                         @endif
+                        @if($candidatos->isNotEmpty() && ($accion === 'reasignar' || ($accion === 'enviar' && $consolidado->estado === 'borrador')))
+                            <label class="ui-label">Coordinador responsable
+                                <select class="ui-input mt-1" name="coordinador_id" required>
+                                    <option value="">Selecciona un coordinador</option>
+                                    @foreach($candidatos as $candidato)
+                                        <option value="{{ $candidato->id }}" @selected((int) old('coordinador_id', $candidatos->count() === 1 ? $candidato->id : 0) === $candidato->id)>
+                                            {{ $candidato->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        @endif
                         @if($accion === 'cerrar')
                             <p class="mb-2 text-sm">{{ $puedeCerrarCompra ? 'La cobertura está completa. Las entregas se registran por separado.' : 'Completa la cobertura y concilia las facturas para cerrar las compras.' }}</p>
                         @endif
@@ -120,7 +136,7 @@
     @endif
     @if($seguimiento)
         <x-sistema.panel titulo="Seguimiento de compras">
-            @php($prefijo = \App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo()))
+            @php($prefijo = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user()))
             <a class="ui-btn-secondary" href="{{ route('flujo.compras.index', ['estado' => $consolidado->estado, 'consolidados' => [$consolidado->id]]) }}">Ver seguimiento de compra</a>
             @include('flujo.facturas-consolidado')
             @foreach($constancias as $constancia)
@@ -134,7 +150,7 @@
             @foreach($consolidado->inspecciones as $inspeccion)
                 <li class="py-2">
                     <a class="flujo-enlace" href="{{ route('flujo.inspecciones.show', $inspeccion) }}">{{ $inspeccion->colaborador?->nombre }}</a>
-                    · {{ $inspeccion->supervisor?->name }} · {{ $inspeccion->region?->nombre }} · {{ $inspeccion->fecha->format('d/m/Y') }}
+                    · {{ $inspeccion->supervisor?->name }} · {{ $inspeccion->region?->nombre }} · {{ $inspeccion->proceso_nombre ?? 'Histórica sin proceso' }} · {{ $inspeccion->fecha->format('d/m/Y') }}
                     @foreach($inspeccion->lineas as $linea)<p>{{ $linea->etiqueta }} · {{ $linea->cantidad }}</p>@endforeach
                 </li>
             @endforeach

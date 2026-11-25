@@ -120,7 +120,7 @@ class NotificacionService
         $destinatarios = collect();
 
         $destinatarios = $destinatarios->merge($this->administradores($creador->id));
-        $destinatarios = $destinatarios->merge($this->almacenistasDeBodega((int) $operacion->bodega_destino_id, $creador->id));
+        $destinatarios = $destinatarios->merge($this->responsablesDeTraslado($operacion, $creador->id));
 
         if ($creador->rolOperativo() === 2) {
             $destinatarios = $destinatarios->merge(
@@ -131,7 +131,7 @@ class NotificacionService
             );
         }
 
-        $this->notificarUsuarios($destinatarios, $notification);
+        $this->notificarTraslado($operacion, $destinatarios, $notification);
     }
 
     public function notificarCambioEstadoTraslado(Operacion $operacion, User $actor, ?string $url = null): void
@@ -178,7 +178,7 @@ class NotificacionService
         $destinatarios = $destinatarios->merge($this->almacenistasDeBodega((int) $operacion->bodega_origen_id, $actor->id));
         $destinatarios = $destinatarios->merge($this->almacenistasDeBodega((int) $operacion->bodega_destino_id, $actor->id));
 
-        $this->notificarUsuarios($destinatarios, $notification);
+        $this->notificarTraslado($operacion, $destinatarios, $notification);
     }
 
     public function notificarAlertaRrhh(AlertaReemplazo $alerta, ?User $creador = null): void
@@ -387,6 +387,28 @@ class NotificacionService
             ->get();
     }
 
+    private function responsablesDeTraslado(Operacion $operacion, int $excepto): Collection
+    {
+        $destino = $operacion->bodega_destino_id;
+        $acceso = app(AccesoInventarioOperativo::class);
+
+        return User::whereKeyNot($excepto)->where('acceso_activo', true)->where(fn ($q) => $q
+            ->where('bodega_id', $destino)
+            ->orWhereIn('id', \Illuminate\Support\Facades\DB::table('bodega_usuario_operativa')->where('bodega_id', $destino)
+                ->where('opera_inventario', true)->select('user_id'))
+            ->orWhereIn('id', \App\Models\DelegacionOperativa::query()->whereNull('revocada_en')->where('vigente_desde', '<=', now())
+                ->where('vigente_hasta', '>', now())->whereHas('bodegas', fn ($q) => $q->whereKey($destino))->select('sustituto_id')))
+            ->get()->filter(fn (User $cuenta) => $acceso->decidirTraslado($cuenta, $operacion, 'traslados.aprobar')
+                || $acceso->decidirTraslado($cuenta, $operacion, 'traslados.rechazar'));
+    }
+
+    private function notificarTraslado(Operacion $operacion, Collection $destinatarios, Notification $notificacion): void
+    {
+        $acceso = app(AccesoInventarioOperativo::class);
+        $this->notificarUsuarios($destinatarios->unique('id')->filter(fn (User $cuenta) =>
+            $acceso->trasladoVisible($cuenta, $operacion) !== null), $notificacion);
+    }
+
     private function almacenistasDeBodega(?int $bodegaId, ?int $exceptUserId = null): Collection
     {
         if (!$bodegaId) {
@@ -459,7 +481,7 @@ class NotificacionService
 
     private function urlTraslado(Operacion $operacion, User $user): string
     {
-        $prefix = $user->rolOperativo() === 2 ? 'operador' : 'admin';
+        $prefix = AccesoInventarioOperativo::prefijo($user);
         $route = $prefix . '.operaciones.traslados.show';
 
         return route($route, $operacion);

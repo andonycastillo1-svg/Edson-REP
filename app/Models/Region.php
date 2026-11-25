@@ -10,6 +10,11 @@ class Region extends Model
 
     protected $fillable = ['nombre', 'activa'];
 
+    public function coordinadoresAdicionales()
+    {
+        return $this->belongsToMany(User::class, 'region_coordinador_operativo')->withTimestamps();
+    }
+
     public function coordinador()
     {
         return $this->belongsTo(User::class);

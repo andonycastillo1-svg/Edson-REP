@@ -62,7 +62,10 @@ class SistemaAutogestionTest extends TestCase
                 if (str_starts_with($middleware, 'role:')) {
                     $rol = (int) substr($middleware, 5);
                     foreach ($identidades as $ambito => $user) {
-                        $this->assertSame($rol === $ambito, $permisos->ruta($user, $ruta->getName()), $ruta->getName());
+                        $permiso = \App\Sistema\CatalogoPermisos::permisoRutaInventario($ruta->getName());
+                        $esperado = $permiso === null ? $rol === $ambito
+                            : app(\App\Services\AccesoInventarioOperativo::class)->tiene($user, $permiso);
+                        $this->assertSame($esperado, $permisos->ruta($user, $ruta->getName()), $ruta->getName());
                     }
                 }
             }

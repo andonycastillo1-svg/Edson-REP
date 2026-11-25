@@ -1,5 +1,6 @@
 @php
-    $prefijo = \App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo());
+    $puedeVincularCompra = app(\App\Services\AccesoInventarioOperativo::class)->tiene(auth()->user(), 'compras.vincular');
+    $prefijo = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user());
     $porConsolidado = $lineas->groupBy('consolidado_id');
     $lineasPlan = $lineas->whereIn('consolidado_id', $planificables->modelKeys());
     $comprables = $lineasPlan->where('pendiente', '>', 0)->pluck('consolidado_id')->unique()->values()->all();
@@ -7,11 +8,11 @@
 @endphp
 <x-sistema.pagina titulo="Necesidades de compra" descripcion="Compara lo aprobado con el saldo central y las facturas recibidas." :volver="route('dashboard')">
     <x-slot:acciones>
-        <x-ui.exportar-excel />
+        @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'exportar_compras'))<x-ui.exportar-excel />@endif
         @if($estado === 'aprobado' && $bodega && $comprables)
-            @rutaDisponible($prefijo.'.compras.create')
+            @if($puedeVincularCompra)
                 <a class="ui-btn-primary" href="{{ route($prefijo.'.compras.create', ['consolidados' => $comprables]) }}">Registrar compra</a>
-            @endrutaDisponible
+            @endif
         @endif
     </x-slot:acciones>
     @include('flujo.accesos')
@@ -147,9 +148,9 @@
                             @endif
                             @include('flujo.facturas-consolidado', ['facturas' => $vinculadas])
                             @if($estado === 'aprobado' && $bodega && in_array($consolidado->id, $comprables))
-                                @rutaDisponible($prefijo.'.compras.create')
+                                @if($puedeVincularCompra)
                                     <a class="ui-btn-secondary" href="{{ route($prefijo.'.compras.create', ['consolidados' => [$consolidado->id]]) }}">Registrar nueva compra</a>
-                                @endrutaDisponible
+                                @endif
                             @endif
                         </div>
                     </details>
@@ -157,7 +158,7 @@
             </div>
         </x-sistema.panel>
 
-        @if($estado === 'aprobado' && $bodega && $lineasPlan->isNotEmpty())
+        @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'plan_compras') && $estado === 'aprobado' && $bodega && $lineasPlan->isNotEmpty())
             <details class="flujo-lectura" @if($errors->has('propuestas') || $errors->has('propuestas.*')) open @endif>
                 <summary>Ajustar plan de compra</summary>
                 <form method="POST" action="{{ route('flujo.compras.plan') }}" class="space-y-4 p-4">

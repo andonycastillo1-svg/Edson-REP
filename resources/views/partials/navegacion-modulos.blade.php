@@ -4,19 +4,27 @@
         $ambito = $usuario->rolOperativo();
         $prefijo = \App\Sistema\CatalogoPermisos::prefijo($ambito);
         $permisos = app(\App\Sistema\Permisos::class);
+        $operativo = \App\Services\AccesoInventarioOperativo::prefijo($usuario);
+        $compras = $permisos->ruta($usuario, "$operativo.compras.index") ? 'index' : 'create';
+        $asignaciones = $permisos->ruta($usuario, "$operativo.asignaciones.index") ? 'index' : 'create';
+        $traslados = $permisos->ruta($usuario, "$operativo.operaciones.traslados.index") ? 'index' : 'create';
         $flujo = app(\App\Services\FlujoAcceso::class);
         $grupos = [
             'Inventario' => [
                 ["$prefijo.bodegas.index", "$prefijo.bodegas.*", 'Bodegas e inventario', 'bodega', $permisos->ruta($usuario, "$prefijo.bodegas.index")],
-                ["$prefijo.compras.index", "$prefijo.compras.*", 'Compras', 'compra', $permisos->ruta($usuario, "$prefijo.compras.index") && app(\App\Services\BodegaAccessService::class)->canViewCompras($usuario)],
-                ["$prefijo.asignaciones.index", "$prefijo.asignaciones.*", 'Asignaciones y devoluciones', 'caja', $permisos->ruta($usuario, "$prefijo.asignaciones.index")],
-                ["$prefijo.operaciones.traslados.index", "$prefijo.operaciones.traslados.*", 'Traslados', 'traslado', $permisos->ruta($usuario, "$prefijo.operaciones.traslados.index")],
+                ["$operativo.compras.$compras", '*.compras.*', 'Compras', 'compra', $permisos->ruta($usuario, "$operativo.compras.$compras")],
+                ["$operativo.asignaciones.$asignaciones", '*.asignaciones.*', 'Asignaciones y devoluciones', 'caja', $permisos->ruta($usuario, "$operativo.asignaciones.$asignaciones")],
+                ["$operativo.operaciones.traslados.$traslados", '*.operaciones.traslados.*', 'Traslados', 'traslado', $permisos->ruta($usuario, "$operativo.operaciones.traslados.$traslados")],
             ],
             'Requerimientos y compras' => [
+                ['flujo.existencias.index', 'flujo.existencias.*', 'Existencias autorizadas', 'bodega',
+                    ($permisos->permite($usuario, 'bodegas.consultar') && app(\App\Services\DelegacionesOperativas::class)->bodegasTitular($usuario) !== [] && !$permisos->ruta($usuario, "$prefijo.bodegas.index"))
+                    || app(\App\Services\DelegacionesOperativas::class)->bodegas($usuario, 'bodegas.consultar') !== []
+                    || $permisos->permite($usuario, 'inventario.movimientos')],
                 ['flujo.inspecciones.index', ['flujo.inspecciones.*', 'flujo.cortes.*'], 'Inspecciones', 'lista', $flujo->puede($usuario, 'inspecciones')],
                 ['flujo.consolidados.index', 'flujo.consolidados.*', 'Consolidados', 'capas', $flujo->puede($usuario, 'consolidados')],
                 ['flujo.compras.index', 'flujo.compras.*', 'Necesidades de compra', 'compra', $flujo->puede($usuario, 'compras')],
-                ['flujo.importar.index', 'flujo.importar.*', 'Asignaciones por Excel', 'archivo', $flujo->puede($usuario, 'importar') && $permisos->permite($usuario, 'asignaciones.crear')],
+                ['flujo.importar.index', 'flujo.importar.*', 'Asignaciones por Excel', 'archivo', $flujo->puede($usuario, 'importar')],
                 ['flujo.catalogos', 'flujo.catalogos*', 'Regiones y catálogos', 'lista', $flujo->puede($usuario, 'configurar')],
             ],
             'Personal' => [

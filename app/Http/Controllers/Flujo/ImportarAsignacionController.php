@@ -10,14 +10,15 @@ use App\Models\Colaborador;
 use App\Models\ImportacionAsignacion;
 use App\Models\Producto;
 use App\Services\ExcelAsignaciones;
-use App\Services\FlujoAcceso;
+use App\Services\AccesoInventarioOperativo;
+use App\Services\BodegaAccessService;
+use App\Services\AlcanceInventario;
 use App\Services\HojaAsignacion;
 use ZipArchive;
 use App\Services\RegistrarAsignaciones;
 use App\Services\RequerimientosAsignacion;
 use App\Sistema\Ajustes;
 use App\Sistema\Auditoria;
-use App\Sistema\Permisos;
 use App\Sistema\ValoresCampos;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -27,15 +28,17 @@ use Illuminate\Validation\ValidationException;
 
 class ImportarAsignacionController extends Controller
 {
-    public function __construct(private FlujoAcceso $acceso, private ExcelAsignaciones $excel) {}
+    public function __construct(private AccesoInventarioOperativo $acceso, private BodegaAccessService $bodegas, private ExcelAsignaciones $excel) {}
 
     public function index(Request $request, RequerimientosAsignacion $requerimientos)
     {
         $bodega = $this->bodega($request);
-        $importaciones = ImportacionAsignacion::where('user_id', $request->user()->id)->whereNotNull('confirmada_en')
-            ->latest('confirmada_en')->paginate(15);
+        $importaciones = ImportacionAsignacion::where('user_id', $request->user()->id)->where('bodega_id', $bodega->id)
+            ->whereNotNull('confirmada_en')->latest('confirmada_en')->paginate(15);
+        $importaciones->setCollection($importaciones->getCollection()->filter(fn ($lote) =>
+            $this->acceso->buscar($request->user(), 'flujo.importar', [(int) $bodega->id], $this->regiones($lote->filas)) !== null)->values());
 
-        $consolidadosOrigen = $requerimientos->disponibles($request->user())->latest('id')->get(['id', 'nombre']);
+        $consolidadosOrigen = $requerimientos->disponibles($request->user(), 'flujo.importar')->latest('id')->get(['id', 'nombre']);
 
         return view('flujo.importar', compact('bodega', 'importaciones', 'consolidadosOrigen'));
     }
@@ -52,8 +55,8 @@ class ImportarAsignacionController extends Controller
     {
         $this->bodega($request);
         $datos = $request->validate(['consolidado_id' => ['required', 'integer'], 'parte' => ['nullable', 'integer', 'min:1']]);
-        $consolidado = $requerimientos->verificar($request->user(), $datos['consolidado_id']);
-        $pendientes = $requerimientos->pendientes($consolidado)->values()->forPage($datos['parte'] ?? 1, 500);
+        $consolidado = $requerimientos->verificar($request->user(), $datos['consolidado_id'], permiso: 'flujo.importar');
+        $pendientes = $requerimientos->pendientes($consolidado, usuario: $request->user(), permiso: 'flujo.importar')->values()->forPage($datos['parte'] ?? 1, 500);
         if ($pendientes->isEmpty()) {
             throw ValidationException::withMessages(['consolidado_id' => 'Esta selección no tiene entregas pendientes.']);
         }
@@ -69,11 +72,12 @@ class ImportarAsignacionController extends Controller
         $datos = $request->validate(['excel' => ['required', 'file', 'mimes:xlsx', 'max:4096'], 'consolidado_id' => ['nullable', 'integer']]);
         $archivo = $datos['excel'];
         [$filas, $errores, $origen] = $this->excel->leer($archivo->getRealPath());
+        $alcance = $this->autorizarFilas($request->user(), $bodega, $filas);
         if ($origen && isset($datos['consolidado_id']) && $origen !== (int) $datos['consolidado_id']) {
             throw ValidationException::withMessages(['consolidado_id' => 'El archivo descargado corresponde a otro consolidado.']);
         }
         $id = $origen ?? $datos['consolidado_id'] ?? null;
-        $consolidado = $id ? $requerimientos->verificar($request->user(), (int) $id) : null;
+        $consolidado = $id ? $requerimientos->verificar($request->user(), (int) $id, permiso: 'flujo.importar') : null;
         [$filas, $errores] = $this->excel->validar($filas, $bodega, $request->user(), $errores, $consolidado);
         if ($errores !== []) {
             return response()->view('flujo.importacion', compact('filas', 'errores', 'bodega', 'consolidado'), 422);
@@ -84,6 +88,8 @@ class ImportarAsignacionController extends Controller
             'consolidado_id' => $consolidado?->id,
         ]);
 
+        $this->acceso->registrar($alcance, 'flujo.importar', $importacion->id);
+
         return redirect()->route('flujo.importar.show', $importacion);
     }
 
@@ -91,11 +97,14 @@ class ImportarAsignacionController extends Controller
     {
         $bodega = $this->bodega($request);
         $importacion = ImportacionAsignacion::with('consolidado')->where('user_id', $request->user()->id)->findOrFail($importacion);
+        abort_unless((int) $importacion->bodega_id === (int) $bodega->id, 403);
         $filas = $importacion->filas;
+        $alcance = $this->autorizarFilas($request->user(), $bodega, $filas);
+        $this->acceso->registrar($alcance, 'flujo.importar', $importacion->id);
 
         $haySinOrigen = $importacion->confirmada_en && AsignacionInventario::whereNull('requerimiento_id')
             ->whereIn('grupo_asignacion', collect($importacion->entregas)->pluck('grupo'))->exists();
-        $consolidadosConciliacion = $haySinOrigen ? $requerimientos->disponibles($request->user())
+        $consolidadosConciliacion = $haySinOrigen ? $requerimientos->disponibles($request->user(), 'flujo.importar')
             ->when($importacion->consolidado_id, fn ($q, $id) => $q->whereKey($id))->latest('id')->get(['id', 'nombre']) : collect();
 
         return view('flujo.importacion', compact('importacion', 'filas', 'bodega', 'consolidadosConciliacion'));
@@ -122,17 +131,17 @@ class ImportarAsignacionController extends Controller
         try {
             DB::transaction(function () use ($usuario, $bodega, $importacion, $registro, $campos, $requerimientos) {
                 $lote = ImportacionAsignacion::where('user_id', $usuario->id)->whereKey($importacion)->lockForUpdate()->firstOrFail();
-                if ($lote->confirmada_en !== null) {
-                    return;
-                }
                 DB::table('sistema_ajustes')->where('clave', 'general')->lockForUpdate()->first();
                 app(Ajustes::class)->refrescar('general');
-                if ((int) $lote->bodega_id !== (int) $bodega->id || $this->acceso->central($usuario)?->id !== $bodega->id) {
+                if ((int) $lote->bodega_id !== (int) $bodega->id || $this->bodegas->principal()?->id !== $bodega->id) {
                     throw ValidationException::withMessages(['excel' => 'La bodega central cambió. Genera una nueva vista previa.']);
                 }
                 $filas = collect($lote->filas);
-                Colaborador::whereKey($filas->pluck('colaborador_codigo')->unique()->values()->all())->orderBy('codigo')->lockForUpdate()->get();
-                $consolidado = $lote->consolidado_id ? $requerimientos->verificar($usuario, (int) $lote->consolidado_id, bloquear: true) : null;
+                $alcance = $this->autorizarFilas($usuario, $bodega, $lote->filas, bloquear: true);
+                if ($lote->confirmada_en !== null) {
+                    return;
+                }
+                $consolidado = $lote->consolidado_id ? $requerimientos->verificar($usuario, (int) $lote->consolidado_id, bloquear: true, permiso: 'flujo.importar') : null;
                 Producto::whereKey($filas->pluck('producto_codigo')->unique()->values()->all())->orderBy('codigo')->lockForUpdate()->get();
                 $this->registrarHuella($lote, $lote->filas);
                 [$filas, $errores] = $this->excel->validar($lote->filas, $bodega, $usuario, consolidado: $consolidado);
@@ -147,10 +156,11 @@ class ImportarAsignacionController extends Controller
                     $fecha = $this->excel->salida($grupo->first()['fecha']);
                     $datos = ['colaborador_codigo' => (string) $codigo, 'fecha' => $fecha->toDateTimeString(), 'consolidado_id' => $lote->consolidado_id];
                     $items = $grupo->map(fn ($item) => $item + ['bodega_id' => $bodega->id]);
-                    $entrega = $registro->registrar($usuario, $datos, $items, $valores);
+                    $entrega = $registro->registrar($usuario, $datos, $items, $valores, permiso: 'flujo.importar');
                     $entregas[] = ['codigo' => (string) $codigo, 'grupo' => $entrega->id, 'productos' => $grupo->count()];
                 }
                 $lote->update(['entregas' => $entregas, 'confirmada_en' => now()]);
+                $this->acceso->registrar($alcance, 'flujo.importar', $lote->id);
                 app(Auditoria::class)->registrar('flujo', 'confirmar_importacion', $lote->id, null, ['entregas' => count($entregas), 'consolidado_id' => $lote->consolidado_id, 'unidades' => collect($filas)->sum('cantidad')]);
             }, 3);
         } catch (UniqueConstraintViolationException $e) {
@@ -179,10 +189,12 @@ class ImportarAsignacionController extends Controller
 
     public function hojas(Request $request, string $importacion, HojaAsignacion $hojas)
     {
-        $this->bodega($request);
+        $bodega = $this->bodega($request);
         $usuario = $request->user();
-        abort_unless(app(Permisos::class)->permite($usuario, 'asignaciones.exportar'), 403);
-        $lote = ImportacionAsignacion::where('user_id', $usuario->id)->whereNotNull('confirmada_en')->findOrFail($importacion);
+        $lote = ImportacionAsignacion::where('user_id', $usuario->id)->where('bodega_id', $bodega->id)
+            ->whereNotNull('confirmada_en')->findOrFail($importacion);
+        $this->autorizarFilas($usuario, $bodega, $lote->filas);
+        $this->acceso->autorizar($usuario, 'asignaciones.exportar', [(int) $bodega->id], $this->regiones($lote->filas), [$usuario->id]);
         $ruta = tempnam(sys_get_temp_dir(), 'edson-hojas-');
         abort_if($ruta === false, 500);
         try {
@@ -210,12 +222,25 @@ class ImportarAsignacionController extends Controller
         return response()->download($ruta, 'hojas-asignacion.zip', ['Cache-Control' => 'private, no-store'])->deleteFileAfterSend();
     }
 
+    private function regiones(array $filas, bool $bloquear = false): array
+    {
+        $codigos = array_values(array_unique(array_column($filas, 'colaborador_codigo')));
+        $consulta = Colaborador::whereKey($codigos)->orderBy('codigo');
+        $personas = ($bloquear ? $consulta->lockForUpdate() : $consulta)->get(['codigo', 'region_id']);
+
+        return array_values(array_unique([...$personas->pluck('region_id')->all(), ...($personas->count() === count($codigos) ? [] : [null])], SORT_REGULAR));
+    }
+
+    private function autorizarFilas(\App\Models\User $usuario, Bodega $bodega, array $filas, bool $bloquear = false): AlcanceInventario
+    {
+        return $this->acceso->autorizar($usuario, 'flujo.importar', [(int) $bodega->id], $this->regiones($filas, $bloquear), bloquear: $bloquear);
+    }
+
     private function bodega(Request $request): Bodega
     {
-        $usuario = $request->user();
-        $this->acceso->autorizar($usuario, 'importar');
-        abort_unless(app(Permisos::class)->permite($usuario, 'asignaciones.crear'), 403);
+        $bodega = $this->bodegas->principal() ?? abort(403);
+        $this->acceso->autorizar($request->user(), 'flujo.importar', [(int) $bodega->id]);
 
-        return $this->acceso->central($usuario) ?? abort(403);
+        return $bodega;
     }
 }
