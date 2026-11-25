@@ -1,662 +1,155 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 
 @section('title', 'Inventario')
 
 @section('content')
+@php
+    $prefijo = auth()->user()->rolOperativo() === 2 ? 'operador' : 'admin';
+    $ruta = $prefijo.'.bodegas';
+@endphp
+<div class="space-y-4">
+    <x-ui.encabezado :titulo="'Inventario de '.($bodega->nombre ?? 'la bodega')" :descripcion="implode(' · ', array_filter([$bodega->tipo, $bodega->ubicacion]))">
+        <x-ui.accion :href="route($ruta.'.index')">Volver a bodegas</x-ui.accion>
+        @rutaDisponible($ruta.'.inventario.export')
+            <x-ui.accion :href="route($ruta.'.inventario.export', [$bodega->id] + request()->query())" icono="archivo">Descargar Excel</x-ui.accion>
+        @endrutaDisponible
+        @rutaDisponible('admin.bodegas.entrada')
+            <x-ui.accion :href="route('admin.bodegas.entrada', $bodega->id)" variante="primaria">Agregar al inventario</x-ui.accion>
+        @endrutaDisponible
+    </x-ui.encabezado>
+
     <x-sistema.enlace-datos modulo="inventario" />
-
-
-<style>
-    .inv-page {
-        width: 100%;
-    }
-
-    .inv-wrapper {
-        width: 100%;
-        background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(240,249,255,.96));
-        border: 1px solid #bfdbfe;
-        border-radius: 26px;
-        box-shadow: var(--ui-shadow-sm);
-        overflow: hidden;
-    }
-
-    .inv-top {
-        padding: 26px 28px 22px;
-        background:
-            radial-gradient(circle at top right, rgba(59,130,246,.14), transparent 35%),
-            linear-gradient(135deg, #ffffff 0%, var(--ui-tint) 100%);
-        border-bottom: 1px solid #dbeafe;
-    }
-
-    .inv-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 18px;
-    }
-
-    .inv-title-group {
-        display: flex;
-        align-items: flex-start;
-        gap: 14px;
-        min-width: 0;
-    }
-
-    .inv-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 18px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, var(--ui-primary), #0ea5e9);
-        color: #fff;
-        font-size: 22px;
-        box-shadow: var(--ui-shadow-sm);
-        flex-shrink: 0;
-    }
-
-    .inv-title {
-        margin: 0;
-        color: var(--ui-text);
-        font-size: 27px;
-        font-weight: 900;
-        letter-spacing: -0.035em;
-        line-height: 1.15;
-    }
-
-    .inv-subtitle {
-        margin-top: 7px;
-        color: #64748b;
-        font-size: 13px;
-    }
-
-    .inv-subtitle strong {
-        color: #334155;
-        font-weight: 900;
-    }
-
-    .inv-actions {
-        display: flex;
-        gap: 9px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-    }
-
-    .inv-btn {
-        min-height: 40px;
-        padding: 0 15px;
-        border-radius: 14px;
-        border: 1px solid transparent;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 7px;
-        font-size: 13px;
-        font-weight: 900;
-        text-decoration: none;
-        white-space: nowrap;
-        transition: .15s ease;
-        cursor: pointer;
-    }
-
-    .inv-btn-blue {
-        background: var(--ui-primary);
-        color: #fff;
-        border-color: var(--ui-primary);
-        box-shadow: var(--ui-shadow-sm);
-    }
-
-    .inv-btn-blue:hover {
-        background: var(--ui-primary);
-        color: #fff;
-    }
-
-    .inv-btn-sky {
-        background: #0ea5e9;
-        color: #fff;
-        border-color: #0ea5e9;
-        box-shadow: var(--ui-shadow-sm);
-    }
-
-    .inv-btn-sky:hover {
-        background: #0284c7;
-        color: #fff;
-    }
-
-    .inv-btn-purple {
-        background: #4f46e5;
-        color: #fff;
-        border-color: #4f46e5;
-        box-shadow: var(--ui-shadow-sm);
-    }
-
-    .inv-btn-purple:hover {
-        background: #4338ca;
-        color: #fff;
-    }
-
-    .inv-btn-light {
-        background: #fff;
-        color: #334155;
-        border-color: #cbd5e1;
-    }
-
-    .inv-btn-light:hover {
-        background: var(--ui-bg);
-        color: var(--ui-text);
-    }
-
-    .inv-body {
-        padding: 24px 28px 28px;
-    }
-
-    .inv-stats {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
-        margin-bottom: 18px;
-    }
-
-    .inv-stat {
-        position: relative;
-        overflow: hidden;
-        background: #fff;
-        border: 1px solid #dbeafe;
-        border-radius: 20px;
-        padding: 18px;
-        min-height: 108px;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
-    }
-
-    .inv-stat::after {
-        content: "";
-        position: absolute;
-        right: -32px;
-        top: -32px;
-        width: 95px;
-        height: 95px;
-        border-radius: 999px;
-        background: rgba(59, 130, 246, .08);
-    }
-
-    .inv-stat-label {
-        color: #64748b;
-        font-size: 13px;
-        font-weight: 700;
-        margin-bottom: 7px;
-    }
-
-    .inv-stat-value {
-        color: var(--ui-text);
-        font-size: 27px;
-        font-weight: 950;
-        line-height: 1;
-        letter-spacing: -0.03em;
-    }
-
-    .inv-stat-note {
-        margin-top: 10px;
-        color: #64748b;
-        font-size: 11px;
-        line-height: 1.35;
-    }
-
-    .inv-toolbar {
-        display: grid;
-        grid-template-columns: 1fr auto auto auto;
-        align-items: center;
-        gap: 12px;
-        background: rgba(255,255,255,.92);
-        border: 1px solid #dbeafe;
-        border-radius: 20px;
-        padding: 14px;
-        margin-bottom: 14px;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
-    }
-
-    .inv-search {
-        width: 100%;
-        height: 42px;
-        border: 1px solid #bfdbfe;
-        border-radius: 14px;
-        padding: 0 14px;
-        font-size: 13px;
-        color: #334155;
-        background: #fff;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, .03);
-    }
-
-    .inv-search:focus {
-        outline: 4px solid #dbeafe;
-        border-color: #3b82f6;
-    }
-
-    .inv-counter {
-        height: 38px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 999px;
-        padding: 0 14px;
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        color: var(--ui-primary);
-        font-size: 12px;
-        font-weight: 900;
-        white-space: nowrap;
-    }
-
-    .inv-table-card {
-        background: #fff;
-        border: 1px solid #dbeafe;
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
-    }
-
-    .inv-table-scroll {
-        overflow-x: auto;
-    }
-
-    .inv-table {
-        width: 100%;
-        min-width: 1060px;
-        border-collapse: collapse;
-        font-size: 13px;
-    }
-
-    .inv-table thead {
-        background: linear-gradient(90deg, var(--ui-bg), #eff6ff);
-        color: var(--ui-muted);
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        font-size: 11px;
-    }
-
-    .inv-table th {
-        padding: 13px 14px;
-        font-weight: 950;
-        border-bottom: 1px solid #dbeafe;
-        white-space: nowrap;
-        text-align: left;
-    }
-
-    .inv-table td {
-        padding: 14px;
-        border-bottom: 1px solid #eef2f7;
-        color: var(--ui-text);
-        vertical-align: middle;
-    }
-
-    .inv-table tbody tr:hover {
-        background: var(--ui-tint);
-    }
-
-    .inv-code {
-        font-weight: 950;
-        color: var(--ui-text);
-        white-space: nowrap;
-    }
-
-    .inv-product {
-        font-weight: 950;
-        color: var(--ui-text);
-        margin-bottom: 4px;
-    }
-
-    .inv-description {
-        color: #64748b;
-        font-size: 12px;
-        max-width: 520px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .inv-muted {
-        color: #94a3b8;
-    }
-
-    .inv-stock-pill {
-        display: inline-flex;
-        min-width: 50px;
-        justify-content: center;
-        align-items: center;
-        padding: 5px 11px;
-        border-radius: 999px;
-        background: #f1f5f9;
-        color: var(--ui-text);
-        font-weight: 950;
-    }
-
-    .inv-money {
-        font-weight: 950;
-        color: var(--ui-text);
-        white-space: nowrap;
-    }
-
-    .inv-life {
-        white-space: nowrap;
-        color: #334155;
-        font-weight: 800;
-    }
-
-    .inv-empty {
-        padding: 38px;
-        text-align: center;
-        color: #64748b;
-    }
-
-    .inv-empty-title {
-        color: var(--ui-text);
-        font-weight: 950;
-        margin-bottom: 4px;
-    }
-
-    .inv-pagination {
-        margin-top: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        flex-wrap: wrap;
-    }
-
-    .inv-pagination-text {
-        color: #64748b;
-        font-size: 13px;
-        margin: 0;
-    }
-
-    .inv-pagination-text strong {
-        color: var(--ui-text);
-    }
-
-    .inv-bottom-actions {
-        margin-top: 18px;
-        display: flex;
-        justify-content: flex-end;
-    }
-
-    .text-right {
-        text-align: right !important;
-    }
-
-    @media (max-width: 1000px) {
-        .inv-header {
-            flex-direction: column;
-        }
-
-        .inv-actions {
-            justify-content: flex-start;
-        }
-
-        .inv-stats {
-            grid-template-columns: 1fr;
-        }
-
-        .inv-toolbar {
-            grid-template-columns: 1fr;
-        }
-
-        .inv-counter {
-            width: fit-content;
-        }
-    }
-
-    @media (max-width: 640px) {
-        .inv-top,
-        .inv-body {
-            padding-left: 18px;
-            padding-right: 18px;
-        }
-
-        .inv-wrapper {
-            border-radius: 20px;
-        }
-
-        .inv-title {
-            font-size: 22px;
-        }
-
-        .inv-actions {
-            width: 100%;
-        }
-
-        .inv-btn {
-            width: 100%;
-        }
-
-        .inv-bottom-actions {
-            justify-content: stretch;
-        }
-
-        .inv-bottom-actions .inv-btn {
-            width: 100%;
-        }
-    }
-</style>
-
-<div class="inv-page">
-    <div class="inv-wrapper">
-        <x-internal-navigation :back-url="route((auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin') . '.bodegas.index')" />
-
-        <div class="inv-top">
-            <div class="inv-header">
-                <div class="inv-title-group">
-                    <div class="ui-module-icon"><x-ui.icono nombre="caja" /></div>
-
-                    <div>
-                        <h1 class="ui-page-title inv-title">
-                            Inventario — {{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}
-                        </h1>
-
-                        <p class="inv-subtitle">
-                            Tipo:
-                            <strong>{{ $bodega->tipo ?? '—' }}</strong>
-                            · Ubicación:
-                            <strong>{{ $bodega->ubicacion ?? '—' }}</strong>
-                        </p>
-                    </div>
-                </div>
-
-                <div class="inv-actions">
-                    @rutaDisponible((auth()->user()->rolOperativo() === 2 ? 'operador' : 'admin').'.bodegas.inventario.export')
-                    <a class="inv-btn inv-btn-light"
-                       href="{{ route((auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin') . '.bodegas.inventario.export', [$bodega->id] + request()->query()) }}">
-                        Descargar Excel
-                    </a>
-                    @endrutaDisponible
-
-                    @rutaDisponible('admin.bodegas.entrada')
-                    <a href="{{ route('admin.bodegas.entrada', $bodega->id) }}" class="inv-btn inv-btn-purple">
-                        + Agregar al inventario
-                    </a>
-                    @endrutaDisponible
-                </div>
-            </div>
+    <dl class="grid gap-3 sm:grid-cols-3">
+        <div class="ui-card p-4"><dt class="text-sm text-muted">Productos</dt><dd class="mt-1 text-xl font-semibold tabular-nums">{{ number_format($productosTotal ?? 0) }}</dd></div>
+        <div class="ui-card p-4"><dt class="text-sm text-muted">Unidades en la condición elegida</dt><dd class="mt-1 text-xl font-semibold tabular-nums">{{ number_format($stockTotal ?? 0) }}</dd></div>
+        <div class="ui-card p-4"><dt class="text-sm text-muted">Valor al último costo de compra</dt><dd class="mt-1 text-xl font-semibold tabular-nums">Q {{ number_format((float) ($costoTotalInventario ?? 0), 2) }}</dd></div>
+    </dl>
+
+    <form method="GET" class="ui-filtros sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] sm:items-end">
+        <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
+        <label class="ui-label mb-0">Buscar producto
+            <input type="search" id="inventarioSearch" name="q" value="{{ request()->query('q') }}" class="ui-input mt-1"
+                   placeholder="Código, producto, descripción o unidad">
+        </label>
+        <label class="ui-label mb-0">Condición del inventario
+            <select name="stock_tipo" class="ui-select mt-1">
+                @foreach(['' => 'Disponible', 'nuevo' => 'Nuevo', 'usado' => 'Usado', 'danado' => 'Dañado', 'perdido' => 'Perdido', 'baja' => 'Baja'] as $tipo => $label)
+                    <option value="{{ $tipo }}" @selected(request()->query('stock_tipo', '') === $tipo)>{{ $label }}</option>
+                @endforeach
+            </select>
+        </label>
+        <div class="flex flex-wrap gap-2">
+            <x-ui.accion type="submit" variante="primaria">Filtrar</x-ui.accion>
+            <x-ui.accion :href="route($ruta.'.show', $bodega->id)">Limpiar</x-ui.accion>
         </div>
+    </form>
+    <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['q', 'stock_tipo']" />
 
-        <div class="inv-body">
+    <x-sistema.panel titulo="Productos en inventario">
+        <p class="mb-3 text-sm" id="inventarioCounter" role="status">{{ number_format($inventarios->count()) }} productos en pantalla</p>
+        <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Productos en inventario">
+        <table class="ui-table" id="inventarioTable">
+            <thead>
+                <tr>
+                    <th scope="col">Código</th>
+                    <th scope="col">Producto</th>
+                    <th scope="col">Categoría</th>
+                    <th scope="col" class="text-right">Cantidad</th>
+                    <th scope="col" class="text-right">Vida útil</th>
+                    <th scope="col" class="text-right">Costo unitario</th>
+                    <th scope="col" class="text-right">Costo total</th>
+                    <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
+                </tr>
+            </thead>
 
-            <div class="inv-stats">
-                <div class="inv-stat">
-                    <div class="inv-stat-label">Productos</div>
-                    <div class="inv-stat-value">{{ number_format($productosTotal ?? 0) }}</div>
-                    <div class="inv-stat-note">Total de productos registrados en esta bodega.</div>
-                </div>
+            <tbody>
+                @forelse($inventarios as $inv)
+                    <tr class="inv-row">
+                        <td>
+                            <span class="font-semibold text-ink">{{ $inv->producto_codigo }}</span>
+                        </td>
 
-                <div class="inv-stat">
-                    <div class="inv-stat-label">Stock total</div>
-                    <div class="inv-stat-value">{{ number_format($stockTotal ?? 0) }}</div>
-                    <div class="inv-stat-note">Suma de unidades para la condición seleccionada.</div>
-                </div>
+                        <td>
+                            <div class="font-semibold text-ink">
+                                {{ $inv->nombre ?? '—' }}
+                            </div>
 
-                <div class="inv-stat">
-                    <div class="inv-stat-label">Costo total inventario</div>
-                    <div class="inv-stat-value">
-                        Q {{ number_format((float)($costoTotalInventario ?? 0), 2) }}
-                    </div>
-                    <div class="inv-stat-note">
-                        Basado en el último costo de compra registrado por producto.
-                    </div>
-                </div>
-            </div>
+                            @if(!empty($inv->descripcion))
+                                <div class="mt-1 max-w-sm text-sm text-muted" title="{{ $inv->descripcion }}">
+                                    {{ $inv->descripcion }}
+                                </div>
+                            @else
+                                <div class="mt-1 text-sm text-muted">
+                                    Sin descripción
+                                </div>
+                            @endif
+                        </td>
 
-            <form method="GET" class="inv-toolbar">
-                <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
-                <input type="text"
-                       id="inventarioSearch"
-                       name="q" value="{{ request()->query('q') }}"
-                       class="inv-search"
-                       placeholder="Buscar por código, producto, descripción o unidad...">
+                        <td>
+                            {{ $inv->categoria ?? '—' }}
+                        </td>
 
-                <select name="stock_tipo" class="inv-search" aria-label="Condición del inventario">
-                    @foreach(['' => 'Disponible', 'nuevo' => 'Nuevo', 'usado' => 'Usado', 'danado' => 'Dañado', 'perdido' => 'Perdido', 'baja' => 'Baja'] as $tipo => $label)
-                        <option value="{{ $tipo }}" @selected(request()->query('stock_tipo', '') === $tipo)>{{ $label }}</option>
-                    @endforeach
-                </select>
+                        <td class="text-right">
+                            <span class="font-semibold tabular-nums text-ink">
+                                {{ number_format($inv->cantidad ?? 0) }}
+                            </span>
+                        </td>
 
-                <span class="inv-counter" id="inventarioCounter">
-                    {{ number_format($inventarios->count()) }} productos en pantalla
-                </span>
+                        <td class="text-right">
+                            @if(is_null($inv->vida_util_meses))
+                                <span class="text-muted">—</span>
+                            @else
+                                <span class="whitespace-nowrap">
+                                    {{ number_format($inv->vida_util_meses) }} meses
+                                </span>
+                            @endif
+                        </td>
 
-                <button class="inv-btn inv-btn-blue" type="submit">
-                    Filtrar
-                </button>
+                        <td class="text-right">
+                            <span class="whitespace-nowrap tabular-nums">
+                                Q {{ number_format((float)($inv->costo_unitario ?? 0), 2) }}
+                            </span>
+                        </td>
 
-                <a class="inv-btn inv-btn-light"
-                   href="{{ route((auth()->user()->rolOperativo() == 2 ? 'operador' : 'admin') . '.bodegas.show', $bodega->id) }}">
-                    Limpiar
-                </a>
-            </form>
-            <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['q', 'stock_tipo']" />
+                        <td class="text-right">
+                            <span class="whitespace-nowrap tabular-nums">
+                                Q {{ number_format((float)($inv->costo_total ?? 0), 2) }}
+                            </span>
+                        </td>
+                        <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$inv->producto_codigo" />
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="{{ 7 + $tablaCampos['campos']->count() }}">
+                            <div class="ui-empty-state">
+                                <div class="font-semibold text-ink">
+                                    Esta bodega aún no tiene inventario.
+                                </div>
+                                <div>
+                                    Cuando agregues productos, aparecerán en esta tabla.
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                @endforelse
 
-            <div class="inv-table-card">
-                <div class="inv-table-scroll">
-                    <table class="ui-table inv-table" id="inventarioTable">
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Producto</th>
-                                <th>Categoría</th>
-                                <th class="text-right">Cantidad</th>
-                                <th class="text-right">Vida útil</th>
-                                <th class="text-right">Costo unitario</th>
-                                <th class="text-right">Costo total</th>
-                                <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            @forelse($inventarios as $inv)
-                                <tr class="inv-row">
-                                    <td>
-                                        <span class="inv-code">{{ $inv->producto_codigo }}</span>
-                                    </td>
-
-                                    <td>
-                                        <div class="inv-product">
-                                            {{ $inv->nombre ?? '—' }}
-                                        </div>
-
-                                        @if(!empty($inv->descripcion))
-                                            <div class="inv-description" title="{{ $inv->descripcion }}">
-                                                {{ $inv->descripcion }}
-                                            </div>
-                                        @else
-                                            <div class="inv-description inv-muted">
-                                                Sin descripción
-                                            </div>
-                                        @endif
-                                    </td>
-
-                                    <td>
-                                        {{ $inv->categoria ?? '—' }}
-                                    </td>
-
-                                    <td class="text-right">
-                                        <span class="inv-stock-pill">
-                                            {{ number_format($inv->cantidad ?? 0) }}
-                                        </span>
-                                    </td>
-
-                                    <td class="text-right">
-                                        @if(is_null($inv->vida_util_meses))
-                                            <span class="inv-muted">—</span>
-                                        @else
-                                            <span class="inv-life">
-                                                {{ number_format($inv->vida_util_meses) }} meses
-                                            </span>
-                                        @endif
-                                    </td>
-
-                                    <td class="text-right">
-                                        <span class="inv-money">
-                                            Q {{ number_format((float)($inv->costo_unitario ?? 0), 2) }}
-                                        </span>
-                                    </td>
-
-                                    <td class="text-right">
-                                        <span class="inv-money">
-                                            Q {{ number_format((float)($inv->costo_total ?? 0), 2) }}
-                                        </span>
-                                    </td>
-                                    <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$inv->producto_codigo" />
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="{{ 7 + $tablaCampos['campos']->count() }}">
-                                        <div class="inv-empty">
-                                            <div class="inv-empty-title">
-                                                Esta bodega aún no tiene inventario.
-                                            </div>
-                                            <div>
-                                                Cuando agregues productos, aparecerán en esta tabla.
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-
-                            <tr id="noSearchResults" style="display:none;">
-                                <td colspan="{{ 7 + $tablaCampos['campos']->count() }}">
-                                    <div class="inv-empty">
-                                        <div class="inv-empty-title">
-                                            No se encontraron resultados.
-                                        </div>
-                                        <div>
-                                            Prueba buscando por otro código, producto o descripción.
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            @if(method_exists($inventarios, 'links'))
-                <div class="inv-pagination">
-                    <p class="inv-pagination-text">
-                        Mostrando
-                        <strong>{{ $inventarios->firstItem() ?? 0 }}</strong>
-                        a
-                        <strong>{{ $inventarios->lastItem() ?? 0 }}</strong>
-                        de
-                        <strong>{{ $inventarios->total() }}</strong>
-                        resultados
-                    </p>
-
-                    <div>
-                        {{ $inventarios->links() }}
-                    </div>
-                </div>
-            @endif
-
+                <tr id="noSearchResults" style="display:none;">
+                    <td colspan="{{ 7 + $tablaCampos['campos']->count() }}">
+                        <div class="ui-empty-state">
+                            <div class="font-semibold text-ink">
+                                No se encontraron resultados.
+                            </div>
+                            <div>
+                                Prueba buscando por otro código, producto o descripción.
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
         </div>
-    </div>
+        {{ $inventarios->links() }}
+    </x-sistema.panel>
 </div>
 
 <script>

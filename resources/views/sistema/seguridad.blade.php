@@ -77,7 +77,7 @@
                 <label class="text-sm font-semibold">Repetir contraseña<input name="password_confirmation" type="password" autocomplete="new-password" required class="mt-1 w-full rounded-xl border-slate-300"></label>
                 <x-sistema.confirmacion />
                 <div class="sm:col-span-2"><x-sistema.campos modulo="usuarios" /></div>
-                <div class="sm:col-span-2"><button class="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Crear cuenta</button></div>
+                <div class="sm:col-span-2"><button class="ui-btn-primary">Crear cuenta</button></div>
             </form>
         </details>
     </x-sistema.panel>

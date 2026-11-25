@@ -38,7 +38,7 @@
                 {{ optional($bodegas->firstWhere('id', $origenId))->nombre }}
               </div>
             @else
-              <select id="bodega_origen" name="bodega_origen_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+              <select id="bodega_origen" name="bodega_origen_id" required class="ui-select mt-1">
                 <option value="">Selecciona...</option>
                 @foreach($origenes as $b)
                   <option value="{{ $b->id }}"
@@ -52,7 +52,7 @@
 
           <div>
             <label for="bodega_destino_id" class="text-sm font-semibold text-slate-700">Bodega de destino</label>
-            <select id="bodega_destino_id" name="bodega_destino_id" required class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            <select id="bodega_destino_id" name="bodega_destino_id" required class="ui-select mt-1">
               <option value="">Selecciona...</option>
               @foreach($bodegas as $b)
                   <option value="{{ $b->id }}" @selected((string) old('bodega_destino_id') === (string) $b->id)
@@ -69,7 +69,7 @@
         <div class="px-6 pb-6">
           <label for="campo-archivo-excel" class="text-sm font-semibold text-slate-700">Excel de destinatarios (opcional)</label>
           <input id="campo-archivo-excel" type="file" name="archivo_excel" accept=".xlsx,.xls,.csv"
-            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white">
+            class="ui-input mt-1">
           <p class="mt-1 text-xs text-slate-500">
             Adjunta un archivo XLSX, XLS o CSV de hasta 10 MB con las personas destinatarias. Si el guardado falla, vuelve a adjuntarlo.
           </p>
@@ -83,8 +83,8 @@
         </div>
 
         <div class="p-6">
-          <div class="overflow-x-auto">
-            <table class="ui-table w-full text-sm">
+          <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Productos del traslado">
+            <table class="ui-table">
               <thead class="bg-slate-50 text-slate-600">
                 <tr>
                   <th class="text-left px-3 py-2 font-semibold">Producto</th>
@@ -107,7 +107,7 @@
                               name="lineas[{{ $i }}][producto_codigo]"
                               data-searchable="true"
                               data-search-placeholder="Buscar producto..."
-                              class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                              class="ui-input">
                         <option value="">Selecciona...</option>
                         @foreach($productos as $p)
                           <option value="{{ $p->codigo }}"
@@ -122,12 +122,12 @@
                       <input type="number" min="1" required
                             name="lineas[{{ $i }}][cantidad]"
                             value="{{ $line['cantidad'] ?? 1 }}"
-                            class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"/>
+                            class="ui-input"/>
                     </td>
 
                     <td class="px-3 py-3 text-right">
                       <button type="button"
-                              class="btnRemove inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                              class="btnRemove ui-btn-secondary" aria-label="Quitar línea">
                         ✕
                       </button>
                     </td>
@@ -137,8 +137,7 @@
                 <tr class="bg-slate-50">
                   <td colspan="3" class="px-3 py-3">
                     <button type="button" id="btnAddLine"
-                            class="inline-flex items-center gap-2 rounded-xl border border-blue-700 bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700"
-                            style="background-color:#2563eb;color:#fff;">
+                            class="ui-btn-secondary">
                       + Agregar línea
                     </button>
                   </td>
@@ -152,11 +151,11 @@
 
         <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
           <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}"
-            class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            class="ui-btn-secondary">
             Cancelar
           </a>
 
-          <button class="rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700">
+          <button class="ui-btn-primary">
             Crear solicitud
           </button>
         </div>
@@ -165,7 +164,7 @@
       <template id="lineTemplate">
         <tr class="line-row">
           <td class="px-3 py-3">
-            <select required data-searchable="true" data-search-placeholder="Buscar producto..." class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            <select required data-searchable="true" data-search-placeholder="Buscar producto..." class="ui-input">
               <option value="">Selecciona...</option>
               @foreach($productos as $p)
                 <option value="{{ $p->codigo }}">{{ $p->descripcion ?: $p->nombre }} — {{ $p->codigo }}</option>
@@ -173,10 +172,10 @@
             </select>
           </td>
           <td class="px-3 py-3">
-            <input type="number" min="1" value="1" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"/>
+            <input type="number" min="1" value="1" required class="ui-input"/>
           </td>
           <td class="px-3 py-3 text-right">
-            <button type="button" class="btnRemove inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <button type="button" class="btnRemove ui-btn-secondary" aria-label="Quitar línea">
               ✕
             </button>
           </td>

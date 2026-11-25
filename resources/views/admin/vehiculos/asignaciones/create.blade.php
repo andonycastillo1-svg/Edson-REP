@@ -6,20 +6,20 @@
 <style>
     .veh-form-wrap { max-width: 900px; margin: 0 auto; }
     .veh-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px; }
-    .veh-title { font-size:24px; font-weight:700; color:#111827; margin:0; }
-    .veh-card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:22px; box-shadow:0 8px 24px rgba(15,23,42,.04); }
+    .veh-title { font-size:24px; font-weight:700; color:var(--ui-text); margin:0; }
+    .veh-card { background:var(--ui-surface); border:1px solid var(--ui-border); border-radius:14px; padding:22px; box-shadow:0 8px 24px rgba(15,23,42,.04); }
     .veh-grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
     .veh-field { display:flex; flex-direction:column; gap:6px; }
-    .veh-field label { font-weight:600; color:#111827; font-size:14px; }
-    .veh-field input, .veh-field select, .veh-field textarea { width:100%; border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px; min-height:42px; background:#fff; color:#111827; outline:none; }
+    .veh-field label { font-weight:600; color:var(--ui-text); font-size:14px; }
+    .veh-field input, .veh-field select, .veh-field textarea { width:100%; border:1px solid var(--ui-border); border-radius:10px; padding:10px 12px; min-height:42px; background:var(--ui-surface); color:var(--ui-text); outline:none; }
     .veh-field input:focus, .veh-field select:focus, .veh-field textarea:focus { border-color:var(--ui-primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
     .veh-field textarea { min-height:90px; resize:vertical; }
-    .veh-help { font-size:12px; color:#6b7280; }
+    .veh-help { font-size:12px; color:var(--ui-muted); }
     .veh-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:18px; }
-    .veh-btn-secondary { border:1px solid #cbd5e1; border-radius:10px; padding:10px 14px; background:#fff; cursor:pointer; color:#111827; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
-    .veh-btn-secondary:hover { background:#f1f5f9; }
-    .veh-error { border:1px solid #fecaca; background:#fef2f2; color:#991b1b; padding:12px 14px; border-radius:10px; margin-bottom:16px; }
-    .veh-info-note { border:1px solid #bfdbfe; background:#eff6ff; color:var(--ui-primary-dark); padding:12px 14px; border-radius:10px; margin-bottom:16px; font-size:14px; }
+    .veh-btn-secondary { border:1px solid var(--ui-border); border-radius:10px; padding:10px 14px; background:var(--ui-surface); cursor:pointer; color:var(--ui-text); font-weight:600; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+    .veh-btn-secondary:hover { background:var(--ui-subtle); }
+    .veh-error { border:1px solid var(--ui-danger-border); background:var(--ui-danger-bg); color:var(--ui-danger-dark); padding:12px 14px; border-radius:10px; margin-bottom:16px; }
+    .veh-info-note { border:1px solid var(--ui-info-border); background:var(--ui-info-bg); color:var(--ui-primary-dark); padding:12px 14px; border-radius:10px; margin-bottom:16px; font-size:14px; }
     @media (max-width: 768px) { .veh-header { flex-direction:column; align-items:flex-start; } .veh-grid-2 { grid-template-columns:1fr; } }
 </style>
 

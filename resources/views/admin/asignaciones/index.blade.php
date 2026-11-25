@@ -1,6 +1,5 @@
 @extends('layouts.app')
 
-
 @section('content')
 @php
   $puedeGestionarPdfsFirmados = \Illuminate\Support\Facades\Schema::hasTable('asignacion_inventario_archivos');
@@ -11,529 +10,33 @@
   $puedeCrearAsignaciones = $puedeCrearAsignaciones ?? false;
 @endphp
 
-<style>
-  .asg-page {
-    min-height: 100vh;
-    background: var(--ui-bg);
-    padding: 28px 16px;
-  }
-
-  .asg-container {
-    max-width: 1280px;
-    margin: 0 auto;
-  }
-
-  .asg-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 18px;
-  }
-
-  .asg-title {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ui-text);
-  }
-
-  .asg-subtitle {
-    margin: 4px 0 0;
-    font-size: 13px;
-    color: #64748b;
-  }
-
-  .asg-actions {
-    display: flex;
-    gap: 8px;
-  }
-
-  .asg-btn-primary,
-  .asg-btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 34px;
-    padding: 0 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    border: 1px solid transparent;
-  }
-
-  .asg-btn-primary {
-    background: var(--ui-primary);
-    color: #fff;
-  }
-
-  .asg-btn-primary:hover {
-    background: var(--ui-primary);
-  }
-
-  .asg-btn-secondary {
-    background: #fff;
-    color: #334155;
-    border-color: var(--ui-border);
-  }
-
-  .asg-btn-secondary:hover {
-    background: var(--ui-bg);
-  }
-
-  .asg-alert {
-    margin-bottom: 14px;
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-
-  .asg-alert-success {
-    border: 1px solid #bbf7d0;
-    background: #f0fdf4;
-    color: #166534;
-  }
-
-  .asg-alert-error {
-    border: 1px solid #fecaca;
-    background: #fef2f2;
-    color: #991b1b;
-  }
-
-  .asg-panel {
-    background: #fff;
-    border: 1px solid var(--ui-border);
-    border-radius: 14px;
-    overflow: hidden;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
-  }
-
-  .asg-panel-title {
-    padding: 12px 16px;
-    background: var(--ui-bg);
-    border-bottom: 1px solid var(--ui-border);
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--ui-text);
-  }
-
-  .asg-collab {
-    border-bottom: 1px solid #eef2f7;
-  }
-
-  .asg-collab:last-child {
-    border-bottom: none;
-  }
-
-  .asg-collab summary {
-    list-style: none;
-  }
-
-  .asg-collab summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .asg-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-    min-height: 58px;
-    padding: 10px 16px;
-    cursor: pointer;
-    background: #fff;
-  }
-
-  .asg-row:hover {
-    background: var(--ui-bg);
-  }
-
-  .asg-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 280px;
-    flex: 1;
-  }
-
-  .asg-arrow {
-    font-size: 12px;
-    color: #94a3b8;
-    transition: transform .15s ease;
-  }
-
-  .asg-collab[open] .asg-arrow {
-    transform: rotate(90deg);
-  }
-
-  .asg-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: #eff6ff;
-    color: var(--ui-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 700;
-    flex: 0 0 auto;
-  }
-
-  .asg-name {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--ui-text);
-    line-height: 1.2;
-  }
-
-  .asg-code {
-    margin: 3px 0 0;
-    font-size: 12px;
-    color: #64748b;
-  }
-
-  .asg-metrics {
-    display: flex;
-    align-items: center;
-    gap: 22px;
-    flex: 0 0 auto;
-  }
-
-  .asg-metric-label {
-    display: block;
-    font-size: 10px;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    line-height: 1;
-  }
-
-  .asg-metric-value {
-    display: block;
-    margin-top: 4px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--ui-text);
-  }
-
-  .asg-pill {
-    display: inline-flex;
-    margin-top: 4px;
-    padding: 2px 9px;
-    border-radius: 999px;
-    background: #eff6ff;
-    color: var(--ui-primary);
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .asg-detail-btn {
-    border: 1px solid var(--ui-border);
-    background: #fff;
-    color: #334155;
-    border-radius: 7px;
-    padding: 6px 10px;
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  .asg-collab[open] .asg-detail-btn {
-    background: var(--ui-text);
-    color: #fff;
-    border-color: var(--ui-text);
-  }
-
-  .asg-detail {
-    background: var(--ui-bg);
-    border-top: 1px solid var(--ui-border);
-    padding: 14px;
-  }
-
-  .asg-mini-card {
-    background: #fff;
-    border: 1px solid var(--ui-border);
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 12px;
-  }
-
-  .asg-mini-card form {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .asg-mini-title {
-    margin: 0;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--ui-text);
-  }
-
-  .asg-mini-text {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
-  }
-
-  .asg-input {
-    height: 32px;
-    border: 1px solid #cbd5e1;
-    border-radius: 7px;
-    padding: 0 10px;
-    font-size: 12px;
-    color: #334155;
-    background: #fff;
-  }
-
-  .asg-input:focus {
-    outline: 2px solid #dbeafe;
-    border-color: #3b82f6;
-  }
-
-  .asg-btn-warning {
-    height: 32px;
-    border: 1px solid #fcd34d;
-    background: #fffbeb;
-    color: #92400e;
-    border-radius: 7px;
-    padding: 0 12px;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  .asg-btn-warning:hover {
-    background: #fef3c7;
-  }
-
-  .asg-table-wrap {
-    background: #fff;
-    border: 1px solid var(--ui-border);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  .asg-table-scroll {
-    overflow-x: auto;
-  }
-
-  .asg-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-    min-width: 1080px;
-  }
-
-  .asg-table thead {
-    background: var(--ui-bg);
-    color: #64748b;
-    text-transform: uppercase;
-    font-size: 11px;
-  }
-
-  .asg-table th,
-  .asg-table td {
-    padding: 8px 10px;
-    border-bottom: 1px solid #eef2f7;
-    vertical-align: middle;
-  }
-
-  .asg-table th {
-    text-align: left;
-    font-weight: 700;
-  }
-
-  .asg-product {
-    font-weight: 700;
-    color: var(--ui-text);
-  }
-
-  .asg-product-code {
-    margin-top: 2px;
-    color: #64748b;
-    font-size: 11px;
-  }
-
-  .asg-status {
-    display: inline-flex;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  .asg-status-green {
-    background: #ecfdf5;
-    color: #047857;
-  }
-
-  .asg-status-amber {
-    background: #fffbeb;
-    color: #b45309;
-  }
-
-  .asg-status-red {
-    background: #fef2f2;
-    color: #b91c1c;
-  }
-
-  .asg-status-gray {
-    background: #f1f5f9;
-    color: var(--ui-muted);
-  }
-
-  .asg-small-input {
-    width: 56px;
-    height: 28px;
-    border: 1px solid #cbd5e1;
-    border-radius: 7px;
-    text-align: center;
-    font-size: 12px;
-  }
-
-  .asg-pdf-btn {
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    height: 28px;
-    padding: 0 10px;
-    border-radius: 7px;
-    background: var(--ui-primary);
-    color: #fff;
-    text-decoration: none;
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  .asg-pdf-btn:hover {
-    background: var(--ui-primary);
-  }
-
-  .asg-upload-form {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .asg-upload-row {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-
-  .asg-file {
-    width: 160px;
-    font-size: 11px;
-  }
-
-  .asg-upload-btn {
-    height: 28px;
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    border-radius: 7px;
-    padding: 0 10px;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  .asg-footer-actions {
-    padding: 10px 12px;
-    background: var(--ui-bg);
-    border-top: 1px solid var(--ui-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .asg-footer-title {
-    margin: 0;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--ui-text);
-  }
-
-  .asg-footer-text {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
-  }
-
-  .asg-history {
-    margin-top: 18px;
-  }
-
-  @media (max-width: 768px) {
-    .asg-header,
-    .asg-row,
-    .asg-mini-card form,
-    .asg-footer-actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .asg-actions,
-    .asg-metrics {
-      width: 100%;
-      justify-content: space-between;
-    }
-
-    .asg-left {
-      min-width: 0;
-    }
-
-    .asg-upload-row {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .asg-file {
-      width: 100%;
-      max-width: 100%;
-    }
-  }
-</style>
-
-<div class="asg-page">
-  <div class="asg-container">
-    <x-internal-navigation :back-url="route('dashboard')" />
+<div class="space-y-4">
+  <div class="min-w-0 space-y-4">
+    @php
+        $faltantes = collect($asignacionesPorColaborador)->flatMap(fn ($grupo) => $grupo['asignaciones'])
+            ->filter(fn ($fila) => $fila->entrega && !$fila->entrega->documentos->contains('tipo_documento', 'asignacion_firmada'))
+            ->pluck('grupo_asignacion')->unique()->count();
+    @endphp
+    <x-ui.encabezado titulo="Asignaciones y devoluciones" descripcion="Consulta entregas, devoluciones y respaldos pendientes.">
+        <x-ui.exportar-excel modulo="asignaciones" />
+        @if($puedeVerMovimientos)
+            <x-ui.exportar-excel modulo="asignaciones" :filtros="['devoluciones' => 1]" texto="Exportar devoluciones" />
+        @endif
+        @if($puedeCrearAsignaciones)
+            <x-ui.accion :href="route($routePrefix.'.asignaciones.create')" variante="primaria">Nueva asignación</x-ui.accion>
+        @endif
+    </x-ui.encabezado>
     <x-sistema.enlace-datos modulo="asignaciones" />
-    <x-sistema.consulta-campos :tabla="$tablaCampos" />
+    <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['seguimiento']" />
 
-
-    <div class="asg-header">
-      <div>
-        <h1 class="ui-page-title asg-title">Mis asignaciones</h1>
-        <div class="mt-2 flex flex-wrap gap-2">
-            <x-ui.exportar-excel modulo="asignaciones" />
-            @if($puedeVerMovimientos)
-                <x-ui.exportar-excel modulo="asignaciones" :filtros="['devoluciones' => 1]" texto="Exportar devoluciones" />
-            @endif
-        </div>
-        <p class="asg-subtitle">Control de equipos asignados, documentos firmados y devoluciones.</p>
-      </div>
-
-      @if($puedeCrearAsignaciones)
-        <div class="asg-actions">
-          <a href="{{ route($routePrefix . '.asignaciones.create') }}" class="asg-btn-primary">
-            + Nueva asignación
-          </a>
-        </div>
-      @endif
-    </div>
-
-    <nav class="mb-5 flex flex-wrap gap-3" aria-label="Seguimiento de entregas">
-      @foreach(['' => 'Todas las asignaciones', 'documentacion' => 'Hojas firmadas faltantes'] as $filtro => $etiqueta)
-        <a href="{{ route($routePrefix.'.asignaciones.index', $filtro ? ['seguimiento' => $filtro] : []) }}"
-           @if(request('seguimiento', '') === $filtro) aria-current="page" @endif
-           class="rounded-xl border px-3 py-2 text-sm font-semibold {{ request('seguimiento', '') === $filtro ? 'bg-blue-100 text-blue-900' : 'bg-white text-slate-700' }}">{{ $etiqueta }}</a>
-      @endforeach
+    <nav class="ui-status-tabs mb-4" aria-label="Seguimiento de entregas">
+        @foreach(['' => 'Todas las asignaciones', 'documentacion' => 'Hojas firmadas faltantes'] as $filtro => $etiqueta)
+            <a href="{{ route($routePrefix.'.asignaciones.index', array_filter(['seguimiento' => $filtro]) + request()->only('campo')) }}"
+               @if(request('seguimiento', '') === $filtro) aria-current="page" @endif class="flujo-tab gap-2">
+                {{ $etiqueta }}
+                @if($filtro && $faltantes > 0)<x-ui.estado variante="pendiente">{{ $faltantes }}</x-ui.estado>@endif
+            </a>
+        @endforeach
     </nav>
 
     @if(session('grupo_devolucion'))
@@ -543,13 +46,13 @@
         @endrutaDisponible
     @endif
 
-    <div class="asg-panel">
-      <div class="asg-panel-title">
+    <div class="ui-panel overflow-hidden">
+      <div class="border-b border-line bg-subtle px-4 py-3 text-base font-semibold text-ink">
         Colaboradores con asignaciones
       </div>
 
       @if(blank($asignacionesPorColaborador))
-        <div style="padding:32px; text-align:center; color:#64748b;">
+        <div class="ui-empty-state m-4">
           No hay asignaciones disponibles para este usuario.
         </div>
       @else
@@ -571,7 +74,7 @@
             <summary>
               <div class="asg-row">
                 <div class="asg-left">
-                  <span class="asg-arrow">▶</span>
+                  <x-ui.icono nombre="flecha" class="asg-arrow" />
 
                   <div class="asg-avatar">
                     {{ strtoupper(mb_substr($grupo['colaborador_nombre'] ?? 'C', 0, 1)) }}
@@ -591,16 +94,16 @@
 
                   <div>
                     <span class="asg-metric-label">Activas</span>
-                    <span class="asg-pill">{{ $grupo['total_activo'] }}</span>
+                    <span class="ui-badge ui-badge-info">{{ $grupo['total_activo'] }}</span>
                   </div>
 
                   @if($grupo['sin_retorno'] > 0)
                     <div>
                       <span class="asg-metric-label">Custodia anterior sin retorno</span>
-                      <span class="asg-pill">{{ $grupo['sin_retorno'] }}</span>
+                      <span class="ui-badge ui-badge-info">{{ $grupo['sin_retorno'] }}</span>
                     </div>
                   @endif
-                  <span class="asg-detail-btn">Ver detalle</span>
+                  <span class="ui-btn-secondary ui-btn-sm">Ver detalle</span>
                 </div>
               </div>
             </summary>
@@ -608,24 +111,24 @@
             <div class="asg-detail">
 
               @if($grupo['puede_devolver_todo'])
-              <details class="asg-mini-card">
+              <details class="ui-card mb-3 p-3">
                 <summary class="cursor-pointer font-bold">Resolver todo lo activo con la misma condición</summary>
                 <form method="POST" class="mt-3 space-y-3"
-                      action="{{ route($routePrefix.'.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}">
+                      action="{{ route($routePrefix.'.asignaciones.devolver_todo_colaborador', $grupo['colaborador_codigo']) }}"
+                      data-confirmar="¿Aplicar esta condición a todos los productos bajo custodia?">
                   @csrf
                   <input type="hidden" name="solicitud_id" value="{{ \Illuminate\Support\Str::uuid() }}">
                   @include('admin.asignaciones.motivo-devolucion')
                   @include('admin.asignaciones.condicion')
-                  <button type="submit" class="asg-btn-warning"
-                    onclick="return confirm('¿Aplicar esta condición a todos los productos bajo custodia?')">
+                  <button type="submit" class="ui-btn-danger">
                     Registrar resolución total
                   </button>
                 </form>
               </details>
               @endif
 
-              <div class="asg-table-wrap">
-                <div class="asg-table-scroll" tabindex="0" role="region" aria-label="Asignaciones de {{ $grupo['colaborador_nombre'] }}">
+              <div class="min-w-0">
+                <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Asignaciones de {{ $grupo['colaborador_nombre'] }}">
                   <table class="ui-table asg-table">
                     <thead>
                       <tr>
@@ -672,8 +175,8 @@
                           @endif
 
                           <td>
-                            <div class="asg-product">{{ $productoNombre }}</div>
-                            <div class="asg-product-code">COD: {{ $a->producto_codigo }}</div>
+                            <div class="font-semibold text-ink">{{ $productoNombre }}</div>
+                            <div class="mt-1 text-sm text-muted">COD: {{ $a->producto_codigo }}</div>
                           </td>
 
                           <td>
@@ -686,13 +189,13 @@
 
                           <td>
                             @if($estado === 'Activa' && $a->sustituida_por_id)
-                              <span class="asg-status asg-status-amber">{{ $a->custodia_etiqueta }}</span>
+                              <span class="ui-badge ui-badge-warning">{{ $a->custodia_etiqueta }}</span>
                             @elseif($estado === 'Activa')
-                              <span class="asg-status asg-status-green">Activa</span>
+                              <span class="ui-badge ui-badge-success">Activa</span>
                             @elseif($estado === 'Dañada')
-                              <span class="asg-status asg-status-gray">Cerrada · daño</span>
+                              <span class="ui-badge">Cerrada · daño</span>
                             @else
-                              <span class="asg-status asg-status-gray">{{ $estado }}</span>
+                              <span class="ui-badge">{{ $estado }}</span>
                             @endif
                           </td>
 
@@ -708,9 +211,9 @@
                             @if($estado !== 'Activa')
                               <span>—</span>
                             @elseif($segundosVida > 0)
-                              <span class="asg-status asg-status-green">Vigente</span>
+                              <span class="ui-badge ui-badge-success">Vigente</span>
                             @elseif($segundosVida !== null)
-                              <span class="asg-status asg-status-amber">Vencida</span>
+                              <span class="ui-badge ui-badge-warning">Vencida</span>
                             @else
                               <span>Desconocida</span>
                             @endif
@@ -732,9 +235,9 @@
                                      max="{{ $a->cantidad_asignada }}"
                                      value="1"
                                      disabled
-                                     class="asg-small-input">
+                                     class="ui-input w-20">
                             @else
-                              <span style="color:#94a3b8;">No aplica</span>
+                              <span class="text-muted">No aplica</span>
                             @endif
                           </td>
                           @endif
@@ -746,53 +249,53 @@
                               <a href="{{ route($routePrefix . '.asignaciones.pdf', $a->grupo_asignacion) }}"
                                  target="_blank"
                                  rel="noopener noreferrer"
-                                 class="asg-pdf-btn">
+                                 class="ui-btn-secondary ui-btn-sm">
                                 PDF
                               </a>
                               @endrutaDisponible
                             @else
-                              <span style="color:#94a3b8;">Sin grupo</span>
+                              <span class="text-muted">Sin grupo</span>
                             @endif
                           </td>
 
                           <td>
                             @if($a->entrega)
                               @rutaDisponible($routePrefix.'.asignaciones.entrega')
-                                <a class="asg-pdf-btn" href="{{ route($routePrefix.'.asignaciones.entrega', $a->grupo_asignacion) }}">Ver entrega</a>
+                                <a class="ui-btn-secondary ui-btn-sm" href="{{ route($routePrefix.'.asignaciones.entrega', $a->grupo_asignacion) }}">Ver entrega</a>
                               @endrutaDisponible
                             @else
                             @rutaDisponible($routePrefix.'.asignaciones.upload_pdf_firmado')
                               <form method="POST"
                                     action="{{ route($routePrefix . '.asignaciones.upload_pdf_firmado', $a) }}"
                                     enctype="multipart/form-data"
-                                    class="asg-upload-form">
+                                    class="flex flex-col gap-2">
                                 @csrf
-                                <div class="asg-upload-row">
+                                <div class="flex flex-wrap items-center gap-2">
                                   <input type="file"
                                          name="evidencias[]"
                                          accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                                          multiple
                                          required
-                                         class="asg-file">
-                                  <button type="submit" class="asg-upload-btn">Subir</button>
+                                         class="max-w-full text-sm">
+                                  <button type="submit" class="ui-btn-secondary ui-btn-sm">Subir</button>
                                 </div>
-                                <span style="font-size:11px; color:#64748b;">PDF firmado o imagen opcional.</span>
+                                <span class="text-sm text-muted">PDF firmado o imagen opcional.</span>
                               </form>
                             @endrutaDisponible
 
                             @if($puedeGestionarPdfsFirmados)
                               @rutaDisponible($routePrefix.'.asignaciones.ver_pdf_firmado')
-                              <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+                              <div class="mt-2 flex flex-col gap-1">
                                 @forelse($a->evidencias as $evidencia)
                                   <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $evidencia) }}"
                                      target="_blank"
                                      rel="noopener noreferrer"
-                                     style="font-size:11px; font-weight:700; color:{{ $evidencia->tipo_documento === 'asignacion_firmada' ? '#047857' : '#1d4ed8' }};">
+                                     class="text-xs font-semibold text-brand underline">
                                     {{ $evidencia->tipo_documento === 'asignacion_firmada' ? 'PDF' : 'Imagen' }}:
                                     {{ $evidencia->nombre_original ?? 'Evidencia' }}
                                   </a>
                                 @empty
-                                  <span style="font-size:11px; color:#94a3b8;">Sin evidencias</span>
+                                  <span class="text-xs text-muted">Sin evidencias</span>
                                 @endforelse
                               </div>
                               @endrutaDisponible
@@ -818,17 +321,17 @@
                 </div>
 
                 @if($puedeSeleccionar)
-                  <div class="asg-footer-actions">
+                  <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-subtle p-3">
                     <div>
-                      <p class="asg-footer-title">Resolución de custodia</p>
-                      <p class="asg-footer-text">Selecciona los productos e indica qué ocurrió con cada uno.</p>
+                      <p class="text-sm font-semibold text-ink">Resolución de custodia</p>
+                      <p class="mt-1 text-sm text-muted">Selecciona los productos e indica qué ocurrió con cada uno.</p>
                       @include('admin.asignaciones.motivo-devolucion', ['formulario' => $bulkFormId])
                     </div>
 
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                       <button type="submit"
                               form="{{ $bulkFormId }}"
-                              class="asg-btn-warning">
+                              class="ui-btn-danger">
                         Registrar seleccionados
                       </button>
                     </div>
@@ -843,12 +346,12 @@
     </div>
 
     @if($puedeVerMovimientos)
-    <div class="asg-panel asg-history">
-      <div class="asg-panel-title">
+    <div class="ui-panel mt-4 overflow-hidden">
+      <div class="border-b border-line bg-subtle px-4 py-3 text-base font-semibold text-ink">
         Historial de movimientos
       </div>
 
-      <div class="asg-table-scroll">
+      <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Movimientos de asignaciones y devoluciones">
         <table class="ui-table asg-table">
           <thead>
             <tr>
@@ -865,7 +368,7 @@
           <tbody>
             @if(blank($movimientos))
               <tr>
-                <td colspan="7" style="padding:28px; text-align:center; color:#64748b;">
+                <td colspan="7" class="py-7 text-center text-muted">
                   Sin movimientos registrados.
                 </td>
               </tr>
@@ -883,7 +386,7 @@
                   <td>{{ ($m->ocurrio_en ?? $m->created_at)?->format('d/m/Y H:i') }}</td>
 
                   <td>
-                    <span class="asg-status asg-status-gray">
+                    <span class="ui-badge">
                       {{ match ($m->tipo) {
                         'Asignacion' => 'Salida',
                         'Devolucion' => 'Devolución física',
@@ -911,12 +414,12 @@
 
                   <td style="text-align:center;">
                     @if(in_array($m->tipo, ['Devolucion', 'Reemplazo'], true) && $m->motivo_administrativo !== 'ordinaria' && !empty($m->grupo_devolucion))
-                      <div class="asg-upload-form">
+                      <div class="flex flex-col gap-2">
                         @rutaDisponible($routePrefix.'.asignaciones.hoja_devolucion')
                         <a href="{{ route($routePrefix . '.asignaciones.hoja_devolucion', $m->grupo_devolucion) }}"
                            target="_blank"
                            rel="noopener noreferrer"
-                           class="asg-pdf-btn">
+                           class="ui-btn-secondary ui-btn-sm">
                           Ver hoja
                         </a>
                         @endrutaDisponible
@@ -925,17 +428,17 @@
                         <form method="POST"
                               action="{{ route($routePrefix . '.asignaciones.upload_pdf_devolucion_firmado', $m->grupo_devolucion) }}"
                               enctype="multipart/form-data"
-                              class="asg-upload-form">
+                              class="flex flex-col gap-2">
                           @csrf
 
-                          <div class="asg-upload-row">
+                          <div class="flex flex-wrap items-center gap-2">
                             <input type="file"
                                    name="pdf_firmado"
                                    accept="application/pdf,.pdf"
                                    required
-                                   class="asg-file">
+                                   class="max-w-full text-sm">
 
-                            <button type="submit" class="asg-upload-btn">
+                            <button type="submit" class="ui-btn-secondary ui-btn-sm">
                               {{ $pdfDevolucionFirmado ? 'Reemplazar firmado' : 'Subir firmado' }}
                             </button>
                           </div>
@@ -947,14 +450,14 @@
                           <a href="{{ route($routePrefix . '.asignaciones.ver_pdf_firmado', $pdfDevolucionFirmado) }}"
                              target="_blank"
                              rel="noopener noreferrer"
-                             style="font-size:11px; font-weight:700; color:#047857;">
+                             class="text-xs font-semibold text-brand underline">
                             Ver firmado: {{ $pdfDevolucionFirmado->nombre_original ?? 'PDF firmado' }}
                           </a>
                           @endrutaDisponible
                         @endif
                       </div>
                     @else
-                      <span style="color:#94a3b8;">—</span>
+                      <span class="text-muted">—</span>
                     @endif
                   </td>
                 </tr>

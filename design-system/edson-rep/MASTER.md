@@ -1,23 +1,25 @@
 # Sistema de diseño de Edson-REP
 
-Grupo NetSolutions utiliza una interfaz de trabajo para inventario, operaciones y administración. El punto de partida de UI/UX Pro Max combina diseño plano y vistas de datos densas. Se adapta a una aplicación Laravel de trabajo diario y al logotipo corporativo existente.
+La interfaz operativa conserva el logotipo de Grupo NetSolutions, la navegación lateral y la distribución de los módulos. La revisión con UI/UX Pro Max priorizó consistencia en pantallas densas, lectura rápida de estados, foco visible y controles táctiles.
 
-| Uso | Estándar |
+| Uso | Color y comportamiento |
 | --- | --- |
-| Navegación | Azul marino `#10243A`, texto claro y módulo activo subrayado visualmente con un borde y fondo. Barra lateral en escritorio y menú desplegable en pantallas pequeñas. |
-| Acción principal | Azul `#174F95` sobre blanco. Las demás acciones se apoyan en botones secundarios. |
-| Superficies | Fondo `#F3F6FA`, superficie blanca y bordes `#D5DFEB`. Usar una elevación discreta para menús y diálogos. |
-| Texto | Inter con fallback de sistema, texto `#182C42` y secundario `#475B72`. El cuerpo usa 16 px y las tablas y controles usan 14 px. Las cifras se alinean con numerales tabulares. |
-| Estados | Verde para éxito, ámbar para atención, rojo para error o acción destructiva y azul para información. Cada estado conserva una etiqueta escrita. |
-| Espaciado | Escala de 4 y 8 px, paneles de 16 a 24 px y objetivos táctiles de 44 px en las acciones principales. |
-| Accesibilidad | Enlace para saltar al contenido, foco visible, títulos ordenados, etiquetas y mensajes asociados, cierre de diálogos con Escape y respeto a la preferencia de movimiento reducido. |
+| Navegación | Azul marino `#10263F`. El módulo activo se reconoce por el fondo, el borde y `aria-current`. La barra lateral se abre desde el encabezado en pantallas pequeñas. |
+| Acción principal | Azul `#1D4F91` con texto blanco. Se reserva para guardar, registrar, crear y confirmar. |
+| Interacción | Azul `#2563EB` para el foco visible y fondos azules suaves al pasar el puntero. |
+| Superficies | Fondo `#F3F6FA`, paneles blancos `#FFFFFF` y bordes `#D8E1EC`. Los campos usan un borde de mayor contraste. |
+| Texto | Inter con alternativa de sistema. Texto principal `#172B4D` y secundario `#52647A`. Se usan cifras tabulares en cantidades e importes. |
+| Estados | Verde `#15803D` para éxito, ámbar `#B45309` para pendientes o advertencias, rojo `#B91C1C` para errores o acciones de riesgo. Cada estado tiene una etiqueta escrita. |
+| Espaciado | Escala de 4 y 8 px. Los paneles suelen usar entre 16 y 24 px de margen interior. Las acciones y los campos tienen 44 px de altura mínima. |
 
 ## Componentes
 
-- `layouts.app`, `layouts.admin`, `layouts.operador` y `layouts.guest` consumen la misma base de tipografía, formularios y superficies.
-- `x-ui.encabezado` agrupa título, descripción y acciones. `x-panel-operativo` presenta los accesos que ya corresponden a cada ámbito.
-- `ui-panel`, `ui-table`, `ui-table-scroll`, `ui-filtros`, `ui-paginacion` y `ui-badge` organizan datos, búsqueda y estados. El desplazamiento horizontal de tablas anchas se limita a su contenedor.
-- `ui-input`, `ui-label`, `ui-btn-*`, `x-mensajes`, `x-modal` y `data-confirmar` comparten los estados y la interacción. Los formularios conservan sus métodos, nombres de campo y validaciones.
-- Las hojas imprimibles utilizan estilos propios en el documento. Conservan el espacio de firmas y la composición necesaria para su formato.
+- `resources/css/app.css` define los tokens `--ui-*`. `tailwind.config.js` adapta los tonos azules y neutros de las vistas existentes a esos tokens.
+- `x-ui.encabezado` reúne el título y las acciones de la página. `x-sistema.panel` y `ui-card` organizan los grupos de contenido.
+- `x-ui.accion` admite botones y enlaces, con variantes primaria, secundaria y de riesgo. `x-ui.estado` aplica los estilos de etiqueta. `x-ui.icono` comparte la misma familia de iconos.
+- `ui-table`, `ui-table-scroll`, `ui-filtros` y `ui-paginacion` organizan listados. En tablas anchas, el desplazamiento horizontal queda dentro de la tabla.
+- `ui-input`, `ui-label`, `x-mensajes`, `x-modal` y `data-confirmar` comparten estilos de entrada, respuestas y confirmación. En los diálogos, Escape cierra la ventana y el foco vuelve al botón de apertura.
+- `partials.modulos-operativos` suministra los módulos de la barra lateral y de los paneles según las comprobaciones de acceso existentes.
+- Las hojas imprimibles conservan su composición para impresión, incluidos los espacios de firma.
 
-Las recomendaciones se consultaron con `--design-system` para un panel operativo, `--stack laravel` para Blade y búsquedas de UX específicas sobre foco de diálogos y errores de validación. Se conservó el azul corporativo en lugar de utilizar los acentos genéricos propuestos por la herramienta.
+Los hallazgos por módulo, las pruebas y las capturas están en la [auditoría de interfaz](../../docs/ESTANDARIZACION_UI_UX.md).

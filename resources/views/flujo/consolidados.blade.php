@@ -6,7 +6,6 @@
             <a class="ui-btn-primary" href="{{ route('flujo.cortes.create') }}">Nuevo corte</a>
         @endif
     </x-slot:acciones>
-    @include('flujo.accesos')
     <x-sistema.panel titulo="Bandeja de consolidados">
         <nav class="flujo-nav mb-3" aria-label="Filtrar por estado">
             @foreach(['' => 'Todos', 'pendientes' => 'En coordinación', 'correccion' => 'Devueltos', 'aprobado' => 'Aprobados', 'cerrado' => 'Compras cerradas'] as $valor => $etiqueta)

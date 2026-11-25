@@ -13,7 +13,7 @@
     <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['q', 'role_id']" />
 
 
-    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div class="overflow-hidden ui-panel">
 
         {{-- Encabezado --}}
         <div class="border-b border-slate-200 px-6 py-4">
@@ -39,7 +39,7 @@
                 <x-ui.exportar-excel modulo="usuarios" />
                 @rutaDisponible($routePrefix . '.usuarios.create')
                 <a href="{{ route($routePrefix . '.usuarios.create') }}"
-                   class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+                   class="ui-btn-primary">
                     + Nuevo usuario
                 </a>
                 @endrutaDisponible
@@ -229,7 +229,7 @@
                                 <div class="mt-5">
                                     @rutaDisponible($routePrefix . '.usuarios.create')
                                     <a href="{{ route($routePrefix . '.usuarios.create') }}"
-                                       class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">
+                                       class="ui-btn-primary">
                                         + Nuevo usuario
                                     </a>
                                     @endrutaDisponible

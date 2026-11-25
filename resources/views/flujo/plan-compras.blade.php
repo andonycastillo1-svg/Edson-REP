@@ -15,7 +15,6 @@
             @endif
         @endif
     </x-slot:acciones>
-    @include('flujo.accesos')
     @unless($bodega)
         <p class="ui-alert-warning">Configura la bodega central para consultar existencias y calcular compras.</p>
     @endunless

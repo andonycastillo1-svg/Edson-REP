@@ -1,401 +1,125 @@
 @extends('layouts.app')
 
+@section('title', 'Colaboradores')
 
 @section('content')
 @php
-  $routePrefix = auth()->user()->rolOperativo() == 4 ? 'rrhh' : 'admin';
+    $routePrefix = auth()->user()->rolOperativo() === 4 ? 'rrhh' : 'admin';
+    $ruta = $routePrefix.'.colaboradores';
+    $puedeSeleccionar = app(\App\Sistema\Permisos::class)->ruta(auth()->user(), $ruta.'.fichas_tecnicas_masivas');
 @endphp
 
-<div x-data="colaboradoresPage('{{ $routePrefix }}')" class="min-h-screen bg-slate-50">
-  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-    <x-internal-navigation :back-url="route('dashboard')" />
+<div x-data="colaboradoresPage('{{ $routePrefix }}')" class="space-y-4">
+    <x-ui.encabezado titulo="Colaboradores" descripcion="Consulta expedientes y descarga fichas técnicas del personal.">
+        @rutaDisponible($ruta.'.create')
+            <x-ui.accion :href="route($ruta.'.create')" variante="primaria">Nuevo colaborador</x-ui.accion>
+        @endrutaDisponible
+    </x-ui.encabezado>
     <x-sistema.enlace-datos modulo="colaboradores" />
     <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['q']" />
 
-
-    {{-- ENCABEZADO --}}
-    <div class="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div class="px-6 py-5 border-b border-slate-200">
-        <div>
-          <div class="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
-            Recursos Humanos
-          </div>
-
-          <h1 class="ui-page-title mt-1   tracking-tight text-slate-950">
-            Colaboradores
-          </h1>
-
-          <p class="mt-1 text-sm text-slate-500">
-            Gestión de personal, expedientes administrativos, asignaciones y revisiones de RRHH.
-          </p>
-        </div>
-      </div>
-
-      {{-- BUSCADOR --}}
-      <div class="bg-slate-50 px-6 py-5">
-        <form method="GET">
-          <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
-          <label class="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
-            Buscar colaborador
-          </label>
-
-          <div class="flex flex-col gap-3 md:flex-row">
-            <input name="q"
-                   value="{{ request('q') }}"
-                   class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                   placeholder="Buscar por código, nombre o puesto..." />
-
-            <button type="submit"
-                    class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
-              Buscar
-            </button>
-
+    <form method="GET" class="ui-filtros sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+        <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
+        <label class="ui-label mb-0">Buscar colaborador
+            <input type="search" name="q" value="{{ request('q') }}" class="ui-input mt-1" placeholder="Código, nombre o puesto">
+        </label>
+        <div class="flex flex-wrap gap-2">
+            <x-ui.accion type="submit" variante="primaria">Buscar</x-ui.accion>
             @if(request('q'))
-              <a href="{{ route($routePrefix . '.colaboradores.index') }}"
-                 class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-100">
-                Limpiar
-              </a>
+                <x-ui.accion :href="route($ruta.'.index')">Limpiar búsqueda</x-ui.accion>
             @endif
-          </div>
-        </form>
+        </div>
+    </form>
 
-      </div>
-    </div>
-
-    {{-- DIRECTORIO --}}
-    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-
-      {{-- CABECERA DIRECTORIO --}}
-      <div class="border-b border-slate-200 bg-white px-6 py-5">
-        <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <h2 class="text-lg font-bold text-slate-950">
-              Directorio de colaboradores
-            </h2>
-
-            <p class="mt-1 text-sm text-slate-500">
-              Consulta expedientes, selecciona colaboradores y descarga sus fichas técnicas.
-            </p>
-          </div>
-
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-            <div class="inline-flex w-fit rounded-xl border border-slate-200 bg-slate-100 p-1">
-              <button type="button"
-                      class="rounded-lg px-4 py-2 text-sm font-bold transition"
-                      :class="tab==='activos' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900'"
-                      @click="tab='activos'">
-                Activos
-                <span class="ml-1 text-xs" :class="tab==='activos' ? 'text-blue-100' : 'text-slate-400'">
-                  ({{ $activos->total() }})
-                </span>
-              </button>
-
-              <button type="button"
-                      class="rounded-lg px-4 py-2 text-sm font-bold transition"
-                      :class="tab==='inactivos' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-900'"
-                      @click="tab='inactivos'">
-                Inactivos
-                <span class="ml-1 text-xs" :class="tab==='inactivos' ? 'text-slate-200' : 'text-slate-400'">
-                  ({{ $inactivos->total() }})
-                </span>
-              </button>
+    <x-sistema.panel titulo="Directorio de colaboradores" class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="ui-status-tabs" role="group" aria-label="Estado del colaborador">
+                <button type="button" class="flujo-tab" @click="tab = 'activos'" :aria-pressed="tab === 'activos'">Activos ({{ $activos->total() }})</button>
+                <button type="button" class="flujo-tab" @click="tab = 'inactivos'" :aria-pressed="tab === 'inactivos'">Inactivos ({{ $inactivos->total() }})</button>
             </div>
-
             <x-ui.exportar-excel modulo="colaboradores" :filtros="['estado' => 'Activo']" x-show="tab === 'activos'" />
             <x-ui.exportar-excel modulo="colaboradores" :filtros="['estado' => 'Inactivo']" x-show="tab === 'inactivos'" x-cloak />
-            @rutaDisponible($routePrefix . '.colaboradores.create')
-            <a href="{{ route($routePrefix . '.colaboradores.create') }}"
-               class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
-              + Nuevo colaborador
-            </a>
-            @endrutaDisponible
-          </div>
         </div>
-      </div>
 
-      @rutaDisponible($routePrefix . '.colaboradores.fichas_tecnicas_masivas')
-      {{-- ACCIONES MASIVAS --}}
-      <div class="border-b border-slate-200 bg-slate-50 px-6 py-4">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold text-white shadow-sm">
-              <span x-text="selectedCount()"></span>
-            </div>
-
-            <div>
-              <div class="text-sm font-bold text-slate-900">
-                Selección para descarga
-              </div>
-
-              <p class="text-xs text-slate-500">
-                Marca los colaboradores que deseas incluir en el Excel consolidado.
-              </p>
-            </div>
-          </div>
-
-          <div class="flex flex-wrap gap-2">
-            <button type="button"
-                    class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-100"
-                    x-show="tab === 'activos'"
-                    @click="seleccionarTodosVisibles(@js($activos->pluck('codigo')->values()))">
-              Seleccionar visibles
-            </button>
-
-            <button type="button"
-                    class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-100"
-                    x-show="tab === 'inactivos'"
-                    x-cloak
-                    @click="seleccionarTodosVisibles(@js($inactivos->pluck('codigo')->values()))">
-              Seleccionar visibles
-            </button>
-
-            <button type="button"
-                    class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2.5 text-xs font-bold text-red-700 shadow-sm transition hover:bg-red-50"
-                    @click="limpiarSeleccion()">
-              Limpiar selección
-            </button>
-
-            <form method="POST"
-                  action="{{ route($routePrefix . '.colaboradores.fichas_tecnicas_masivas') }}"
-                  x-ref="formFichasSeleccionadas"
-                  @submit.prevent="descargarSeleccionados($refs.formFichasSeleccionadas)">
-              @csrf
-
-              <template x-for="codigo in selectedCodigos" :key="'codigo-selected-' + codigo">
-                <input type="hidden" name="codigos[]" :value="codigo">
-              </template>
-
-              <button type="submit"
-                      class="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
-                      :class="selectedCount() === 0 ? 'opacity-50 cursor-not-allowed' : ''">
-                Descargar fichas en Excel
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-      @endrutaDisponible
-
-      {{-- TABLA ACTIVOS --}}
-      <div x-show="tab==='activos'">
-        <div class="overflow-x-auto">
-          <table class="ui-table w-full text-sm">
-            <thead>
-              <tr class="border-b border-slate-200 bg-white text-xs uppercase tracking-wide text-slate-500">
-                <th class="px-5 py-3 text-left font-bold w-12">Sel.</th>
-                <th class="px-5 py-3 text-left font-bold">Código</th>
-                <th class="px-5 py-3 text-left font-bold">Colaborador</th>
-                <th class="px-5 py-3 text-left font-bold">Puesto</th>
-                <th class="px-5 py-3 text-center font-bold">Estado</th>
-                <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
-                <th class="px-5 py-3 text-right font-bold">Acciones</th>
-              </tr>
-            </thead>
-
-            <tbody class="divide-y divide-slate-100">
-              @forelse($activos as $c)
-                <tr class="transition hover:bg-blue-50/40">
-                  <td class="px-5 py-4 align-middle">
-                    @rutaDisponible($routePrefix . '.colaboradores.fichas_tecnicas_masivas')
-                      <input type="checkbox"
-                           class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                           :checked="isSelected('{{ $c->codigo }}')"
-                           @change="toggleSeleccion('{{ $c->codigo }}')">
-                    @endrutaDisponible
-                  </td>
-
-                  <td class="px-5 py-4 align-middle">
-                    <span class="inline-flex rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-                      {{ $c->codigo }}
-                    </span>
-                  </td>
-
-                  <td class="px-5 py-4 align-middle">
-                    <div class="font-bold text-slate-950">
-                      {{ $c->nombre }}
-                    </div>
-
-                    <div class="mt-1 text-xs text-slate-500">
-                      Expediente administrativo disponible
-                    </div>
-                  </td>
-
-                  <td class="px-5 py-4 align-middle text-slate-700">
-                    {{ $c->puesto }}
-                  </td>
-
-                  <td class="px-5 py-4 text-center align-middle">
-                    <span class="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700">
-                      Activo
-                    </span>
-                  </td>
-
-                  <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$c->codigo" />
-                  <td class="px-5 py-4 align-middle">
-                    <div class="flex flex-wrap justify-end gap-2">
-                      <button type="button"
-                              class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700"
-                              @click="openDetalle('{{ $c->codigo }}')">
-                        Expediente
-                      </button>
-
-                      @rutaDisponible($routePrefix . '.colaboradores.edit')
-                      <a href="{{ route($routePrefix . '.colaboradores.edit', $c) }}"
-                         class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
-                        Editar
-                      </a>
-                      @endrutaDisponible
-
-                      @rutaDisponible($routePrefix . '.colaboradores.estado')
-                      <form method="POST"
-                            action="{{ route($routePrefix . '.colaboradores.estado', $c) }}"
-                            onsubmit="return confirm('¿Deseas inactivar este colaborador?')">
+        @if($puedeSeleccionar)
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-subtle p-3">
+                <p class="text-sm font-semibold" role="status" x-text="selectedCount() === 1 ? '1 colaborador seleccionado' : selectedCount() + ' colaboradores seleccionados'">0 colaboradores seleccionados</p>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="ui-btn-secondary" @click="seleccionarTodosVisibles(tab === 'activos' ? @js($activos->pluck('codigo')->values()) : @js($inactivos->pluck('codigo')->values()))">Seleccionar visibles</button>
+                    <x-ui.accion @click="limpiarSeleccion()" x-bind:disabled="selectedCount() === 0">Limpiar selección</x-ui.accion>
+                    <form method="POST" action="{{ route($ruta.'.fichas_tecnicas_masivas') }}" x-ref="formFichasSeleccionadas"
+                          @submit.prevent="descargarSeleccionados($refs.formFichasSeleccionadas)">
                         @csrf
-                        @method('PATCH')
+                        <template x-for="codigo in selectedCodigos" :key="'codigo-selected-' + codigo">
+                            <input type="hidden" name="codigos[]" :value="codigo">
+                        </template>
+                        <x-ui.accion type="submit" icono="archivo" x-bind:disabled="selectedCount() === 0">Descargar fichas en Excel</x-ui.accion>
+                    </form>
+                </div>
+            </div>
+        @endif
 
-                        <button type="submit"
-                                class="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-700 transition hover:bg-red-100">
-                          Inactivar
-                        </button>
-                      </form>
-                      @endrutaDisponible
-                    </div>
-                  </td>
-                </tr>
-              @empty
-                <tr>
-                  <td colspan="{{ 6 + $tablaCampos['campos']->count() }}" class="px-6 py-14 text-center">
-                    <div class="text-sm font-bold text-slate-900">
-                      No hay colaboradores activos.
-                    </div>
+        @foreach(['activos' => [$activos, true], 'inactivos' => [$inactivos, false]] as $tab => [$listado, $activo])
+            <div x-show="tab === '{{ $tab }}'" @if(!$activo) x-cloak @endif>
+                <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Colaboradores {{ $tab }}">
+                    <table class="ui-table">
+                        <thead>
+                            <tr>
+                                @if($puedeSeleccionar)<th scope="col" class="w-16">Elegir</th>@endif
+                                <th scope="col">Código</th>
+                                <th scope="col">Colaborador</th>
+                                <th scope="col">Puesto</th>
+                                <th scope="col">Estado</th>
+                                <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
+                                <th scope="col" class="text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($listado as $c)
+                                <tr>
+                                    @if($puedeSeleccionar)
+                                        <td>
+                                            <label class="flex min-h-11 min-w-11 cursor-pointer items-center">
+                                                <input type="checkbox" x-bind:checked="isSelected(@js($c->codigo))" @change="toggleSeleccion(@js($c->codigo))">
+                                                <span class="sr-only">Seleccionar a {{ $c->nombre }}</span>
+                                            </label>
+                                        </td>
+                                    @endif
+                                    <td>{{ $c->codigo }}</td>
+                                    <td class="font-semibold text-ink">{{ $c->nombre }}</td>
+                                    <td>{{ $c->puesto }}</td>
+                                    <td><x-ui.estado :variante="$activo ? 'exito' : 'neutra'">{{ $activo ? 'Activo' : 'Inactivo' }}</x-ui.estado></td>
+                                    <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$c->codigo" />
+                                    <td>
+                                        <div class="flex flex-wrap justify-end gap-2">
+                                            @rutaDisponible($ruta.'.detalle')
+                                                <button type="button" class="ui-btn-secondary ui-btn-sm" @click="openDetalle(@js($c->codigo))">Ver expediente</button>
+                                            @endrutaDisponible
+                                            @rutaDisponible($ruta.'.edit')
+                                                <x-ui.accion class="ui-btn-sm" :href="route($ruta.'.edit', $c)">Editar</x-ui.accion>
+                                            @endrutaDisponible
+                                            @rutaDisponible($ruta.'.estado')
+                                                <form method="POST" action="{{ route($ruta.'.estado', $c) }}"
+                                                      data-confirmar="{{ $activo ? '¿Deseas inactivar este colaborador?' : '¿Deseas activar este colaborador?' }}">
+                                                    @csrf @method('PATCH')
+                                                    <x-ui.accion class="ui-btn-sm" type="submit" :variante="$activo ? 'riesgo' : 'secundaria'">{{ $activo ? 'Inactivar' : 'Activar' }}</x-ui.accion>
+                                                </form>
+                                            @endrutaDisponible
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="{{ 5 + (int) $puedeSeleccionar + $tablaCampos['campos']->count() }}"><p class="ui-empty-state">No hay colaboradores {{ $tab }}.</p></td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                {{ $listado->links() }}
+            </div>
+        @endforeach
+    </x-sistema.panel>
 
-                    <div class="mt-1 text-sm text-slate-500">
-                      Cuando registres colaboradores activos aparecerán aquí.
-                    </div>
-                  </td>
-                </tr>
-              @endforelse
-            </tbody>
-          </table>
-        </div>
-
-        <div class="border-t border-slate-200 bg-slate-50 px-6 py-4">
-          {{ $activos->links() }}
-        </div>
-      </div>
-
-      {{-- TABLA INACTIVOS --}}
-      <div x-show="tab==='inactivos'" x-cloak>
-        <div class="overflow-x-auto">
-          <table class="ui-table w-full text-sm">
-            <thead>
-              <tr class="border-b border-slate-200 bg-white text-xs uppercase tracking-wide text-slate-500">
-                <th class="px-5 py-3 text-left font-bold w-12">Sel.</th>
-                <th class="px-5 py-3 text-left font-bold">Código</th>
-                <th class="px-5 py-3 text-left font-bold">Colaborador</th>
-                <th class="px-5 py-3 text-left font-bold">Puesto</th>
-                <th class="px-5 py-3 text-center font-bold">Estado</th>
-                <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
-                <th class="px-5 py-3 text-right font-bold">Acciones</th>
-              </tr>
-            </thead>
-
-            <tbody class="divide-y divide-slate-100">
-              @forelse($inactivos as $c)
-                <tr class="transition hover:bg-slate-50">
-                  <td class="px-5 py-4 align-middle">
-                    @rutaDisponible($routePrefix . '.colaboradores.fichas_tecnicas_masivas')
-                      <input type="checkbox"
-                           class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                           :checked="isSelected('{{ $c->codigo }}')"
-                           @change="toggleSeleccion('{{ $c->codigo }}')">
-                    @endrutaDisponible
-                  </td>
-
-                  <td class="px-5 py-4 align-middle">
-                    <span class="inline-flex rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-                      {{ $c->codigo }}
-                    </span>
-                  </td>
-
-                  <td class="px-5 py-4 align-middle">
-                    <div class="font-bold text-slate-950">
-                      {{ $c->nombre }}
-                    </div>
-
-                    <div class="mt-1 text-xs text-slate-500">
-                      Expediente administrativo disponible
-                    </div>
-                  </td>
-
-                  <td class="px-5 py-4 align-middle text-slate-700">
-                    {{ $c->puesto }}
-                  </td>
-
-                  <td class="px-5 py-4 text-center align-middle">
-                    <span class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-100 px-4 py-1.5 text-xs font-bold text-slate-700">
-                      Inactivo
-                    </span>
-                  </td>
-
-                  <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$c->codigo" />
-                  <td class="px-5 py-4 align-middle">
-                    <div class="flex flex-wrap justify-end gap-2">
-                      <button type="button"
-                              class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700"
-                              @click="openDetalle('{{ $c->codigo }}')">
-                        Expediente
-                      </button>
-
-                      @rutaDisponible($routePrefix . '.colaboradores.edit')
-                      <a href="{{ route($routePrefix . '.colaboradores.edit', $c) }}"
-                         class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
-                        Editar
-                      </a>
-                      @endrutaDisponible
-
-                      @rutaDisponible($routePrefix . '.colaboradores.estado')
-                      <form method="POST"
-                            action="{{ route($routePrefix . '.colaboradores.estado', $c) }}"
-                            onsubmit="return confirm('¿Deseas activar este colaborador?')">
-                        @csrf
-                        @method('PATCH')
-
-                        <button type="submit"
-                                class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100">
-                          Activar
-                        </button>
-                      </form>
-                      @endrutaDisponible
-                    </div>
-                  </td>
-                </tr>
-              @empty
-                <tr>
-                  <td colspan="{{ 6 + $tablaCampos['campos']->count() }}" class="px-6 py-14 text-center">
-                    <div class="text-sm font-bold text-slate-900">
-                      No hay colaboradores inactivos.
-                    </div>
-
-                    <div class="mt-1 text-sm text-slate-500">
-                      Los colaboradores inactivos aparecerán aquí.
-                    </div>
-                  </td>
-                </tr>
-              @endforelse
-            </tbody>
-          </table>
-        </div>
-
-        <div class="border-t border-slate-200 bg-slate-50 px-6 py-4">
-          {{ $inactivos->links() }}
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  @include('admin.colaboradores.Modals.expediente-modal')
+    @include('admin.colaboradores.Modals.expediente-modal')
 </div>
 
 @include('admin.colaboradores.Modals.expediente-script')

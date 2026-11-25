@@ -13,7 +13,6 @@
             <a href="{{ route('flujo.inspecciones.create') }}" class="ui-btn-primary">Nueva inspección</a>
         @endif
     </x-slot:acciones>
-    @include('flujo.accesos')
     <details class="flujo-lectura" @if(request()->anyFilled(['desde', 'hasta', 'region', 'supervisor', 'coordinador', 'proceso'])) open @endif>
         <summary>Filtrar requerimientos</summary>
         <form class="grid items-end gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3" method="GET">

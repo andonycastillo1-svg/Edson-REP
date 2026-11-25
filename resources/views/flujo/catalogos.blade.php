@@ -1,6 +1,5 @@
 <x-sistema.pagina titulo="Catálogos operativos" :volver="route('dashboard')">
     <x-slot:acciones><x-ui.exportar-excel texto="Exportar regiones" /></x-slot:acciones>
-    @include('flujo.accesos')
     @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'configurar_regiones'))
     <x-sistema.panel titulo="Regiones">
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

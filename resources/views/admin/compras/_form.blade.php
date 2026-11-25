@@ -18,23 +18,23 @@
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-                <label for="campo-fecha-compra" class="mb-1 block text-sm font-semibold text-slate-700">Fecha de compra</label>
+                <label for="campo-fecha-compra" class="ui-label">Fecha de compra</label>
                 <input id="campo-fecha-compra" type="date" name="fecha_compra" value="{{ old('fecha_compra') }}"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    class="ui-input"
                     required>
             </div>
 
             <div>
-                <label for="campo-no-factura" class="mb-1 block text-sm font-semibold text-slate-700">No. Factura</label>
+                <label for="campo-no-factura" class="ui-label">No. Factura</label>
                 <input id="campo-no-factura" name="no_factura" value="{{ old('no_factura') }}"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    class="ui-input"
                     required>
             </div>
 
             <div>
-                <label for="campo-forma-pago" class="mb-1 block text-sm font-semibold text-slate-700">Forma de pago</label>
+                <label for="campo-forma-pago" class="ui-label">Forma de pago</label>
                 <select id="campo-forma-pago" name="forma_pago"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    class="ui-input"
                     required>
                     <option value="">Seleccione...</option>
                     <option value="Al contado" {{ old('forma_pago')=='Al contado' ? 'selected' : '' }}>Al contado</option>
@@ -45,9 +45,9 @@
             </div>
 
             <div>
-                <label for="proveedor_tipo" class="mb-1 block text-sm font-semibold text-slate-700">Proveedor</label>
+                <label for="proveedor_tipo" class="ui-label">Proveedor</label>
                 <select id="proveedor_tipo" name="proveedor_tipo"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    class="ui-input"
                     required>
                     <option value="existente" {{ old('proveedor_tipo','existente')=='existente' ? 'selected' : '' }}>Existente</option>
                     <option value="nuevo" {{ old('proveedor_tipo')=='nuevo' ? 'selected' : '' }}>Nuevo</option>
@@ -55,9 +55,9 @@
             </div>
 
             <div id="wrap_existente" class="md:col-span-2">
-                <label for="proveedor_id" class="mb-1 block text-sm font-semibold text-slate-700">Seleccionar proveedor</label>
+                <label for="proveedor_id" class="ui-label">Seleccionar proveedor</label>
                 <select name="proveedor_id" id="proveedor_id"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                    class="ui-input">
                     <option value="">Seleccione...</option>
                     @foreach($proveedores as $p)
                         <option value="{{ $p->id }}" {{ old('proveedor_id') == $p->id ? 'selected' : '' }}>
@@ -71,10 +71,10 @@
             </div>
 
             <div id="wrap_nuevo" class="hidden md:col-span-2">
-                <label for="proveedor_nombre" class="mb-1 block text-sm font-semibold text-slate-700">Nombre del proveedor</label>
+                <label for="proveedor_nombre" class="ui-label">Nombre del proveedor</label>
                 <input type="text" name="proveedor_nombre" id="proveedor_nombre"
                     value="{{ old('proveedor_nombre') }}"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    class="ui-input"
                     placeholder="Ej: LIBRERIA CENTRAL">
             </div>
         </div>
@@ -93,16 +93,16 @@
             <label class="text-sm font-semibold">
                 Fecha real de ingreso (si se registró después)
                 <input type="datetime-local" name="fecha_ingreso" value="{{ old('fecha_ingreso') }}"
-                       class="mt-1 block w-full rounded-xl border-slate-300">
+                       class="ui-input mt-1">
             </label>
             <div class="md:col-span-2">
                 <x-sistema.campos-nativos modulo="compras" :ayudas="['autorizado_por' => 'Registra aquí a la persona que autorizó la compra.']" />
             </div>
 
             <div>
-                <label for="campo-pdfs" class="mb-1 block text-sm font-semibold text-slate-700">Facturas y respaldos en PDF</label>
+                <label for="campo-pdfs" class="ui-label">Facturas y respaldos en PDF</label>
                 <input id="campo-pdfs" type="file" name="pdfs[]" multiple accept="application/pdf"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100">
+                    class="ui-input">
                 <p class="mt-1 text-xs text-slate-500">Adjunta hasta 10 archivos de 10 MB cada uno. Si el guardado falla, vuelve a adjuntarlos.</p>
             </div>
         </div>
@@ -140,7 +140,7 @@
             </div>
 
             <button type="button" id="btnAddLinea"
-                class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
+                class="ui-btn-secondary">
                 + Agregar línea
             </button>
         </div>
@@ -200,7 +200,7 @@
                             @foreach($pendientes->get($consolidado->id) as $linea)
                                 <label class="items-center justify-between gap-3 text-sm" data-reparto-producto="{{ $linea['codigo'] }}" hidden>
                                     <span>{{ $linea['producto'] }} · {{ $linea['codigo'] }} · {{ $linea['pendiente'] }} pendientes</span>
-                                    <input type="number" min="0" max="{{ $linea['pendiente'] }}" class="w-24 rounded-xl border-slate-300" disabled
+                                    <input type="number" min="0" max="{{ $linea['pendiente'] }}" class="ui-input w-24" disabled
                                         aria-label="Unidades de {{ $linea['codigo'] }} para {{ $consolidado->nombre }}"
                                         name="distribucion[{{ $consolidado->id }}][{{ bin2hex($linea['codigo']) }}]"
                                         value="{{ old('distribucion.'.$consolidado->id.'.'.bin2hex($linea['codigo'])) }}">
@@ -228,7 +228,7 @@
     <tr class="align-top transition hover:bg-slate-50">
         <td class="w-36 px-3 py-3">
             <select name="producto_tipo[]" aria-label="Tipo de producto"
-                class="productoTipo w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                class="productoTipo ui-input"
                 required>
                 <option value="existente">Existente</option>
                 <option value="nuevo">Nuevo</option>
@@ -238,7 +238,7 @@
         <td class="px-3 py-3">
             <div class="wrapExistente">
                 <select name="producto_codigo[]" aria-label="Producto existente" data-searchable="true" data-search-placeholder="Buscar producto por nombre o código"
-                    class="productoCodigo w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
+                    class="productoCodigo ui-input">
                     <option value="">Seleccione...</option>
                     @foreach($productos as $pr)
                         <option value="{{ $pr->codigo }}">{{ $pr->nombre }} ({{ $pr->codigo }})</option>
@@ -249,24 +249,24 @@
             <div class="wrapNuevo space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3" hidden>
                 <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                     <input type="text" name="producto_nombre[]" aria-label="Nombre del producto nuevo" maxlength="150"
-                        class="productoNombre w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                        class="productoNombre ui-input"
                         placeholder="Nombre producto nuevo">
 
                     <input type="text" name="producto_codigo_nuevo[]" aria-label="Código del producto nuevo" maxlength="50"
-                        class="productoCodigoNuevo w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                        class="productoCodigoNuevo ui-input"
                         placeholder="Código nuevo">
 
                     <input type="hidden" name="producto_unidad[]" class="productoUnidad" value="UND">
 
                     <input type="number" min="1" step="1" name="producto_vida_util_meses[]" aria-label="Vida útil en meses" max="1200"
-                        class="productoVidaUtil w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                        class="productoVidaUtil ui-input"
                         placeholder="Vida útil (meses)">
                 </div>
 
                 <div>
                     <input type="text"
                         name="producto_categoria[]" aria-label="Categoría del producto nuevo" maxlength="50"
-                        class="productoCategoria w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                        class="productoCategoria ui-input"
                         list="listaCategorias"
                         placeholder="Categoría: selecciona o escribe una nueva">
                     <p class="mt-1 text-xs text-slate-500">
@@ -275,7 +275,7 @@
                 </div>
 
                 <input type="text" name="producto_descripcion[]" aria-label="Descripción del producto nuevo" maxlength="10000"
-                    class="productoDesc w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                    class="productoDesc ui-input"
                     placeholder="Descripción (opcional)">
                 <x-sistema.campos modulo="productos" prefijo="campos_producto[INDICE_PRODUCTO]" :plantilla="true" />
             </div>
@@ -283,13 +283,13 @@
 
         <td class="w-28 px-3 py-3">
             <input type="number" min="1" value="1" name="cantidad[]" aria-label="Cantidad" max="10000"
-                class="cantidad w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                class="cantidad ui-input"
                 required>
         </td>
 
         <td class="w-32 px-3 py-3">
             <input type="number" min="0" step="0.01" value="0.00" name="precio_unitario[]" aria-label="Precio unitario" max="9999999999.99"
-                class="precio w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                class="precio ui-input"
                 required>
         </td>
 
@@ -297,7 +297,7 @@
 
         <td class="w-12 px-3 py-3 text-center">
             <button type="button" aria-label="Quitar línea"
-                class="btnDel inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-white text-sm font-bold text-rose-600 transition hover:bg-rose-50">
+                class="btnDel ui-btn-secondary">
                 ×
             </button>
         </td>

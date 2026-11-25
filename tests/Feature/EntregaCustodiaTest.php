@@ -301,9 +301,20 @@ class EntregaCustodiaTest extends TestCase
         $this->crearSalida($datos);
         $entrega = EntregaInventario::sole();
         $this->assertCount(2, $entrega->asignaciones);
+        $this->get(route('operador.dashboard'))->assertOk()->assertDontSeeText('Hojas firmadas faltantes');
+        $seguimiento = route('operador.asignaciones.index', ['seguimiento' => 'documentacion']);
+        $respuesta = $this->get($seguimiento)->assertOk();
+        $html = new \DOMDocument;
+        $html->loadHTML($respuesta->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+        $navegacion = new \DOMXPath($html);
+        $this->assertSame('1', trim($navegacion->evaluate(
+            'string(//nav[@aria-label="Seguimiento de entregas"]/a[@aria-current="page"]/span)'
+        )));
         $pdf = UploadedFile::fake()->create('hoja-grupal.pdf', 4, 'application/pdf');
         $this->post(route('operador.asignaciones.documento_entrega', $entrega), ['pdf_firmado' => $pdf])->assertSessionHasNoErrors();
         $this->assertCount(1, $entrega->documentos);
+        $this->get($seguimiento)->assertOk()
+            ->assertViewHas('asignacionesPorColaborador', fn ($grupos) => $grupos->isEmpty());
         $this->get(route('operador.asignaciones.pdf', $entrega->id))->assertOk()
             ->assertViewHas('asignaciones', fn ($filas) => $filas->count() === 2);
 

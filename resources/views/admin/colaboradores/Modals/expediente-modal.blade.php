@@ -6,10 +6,10 @@
 
   <div class="absolute inset-0 bg-black/40" @click="closeModal()"></div>
 
-  <div class="ui-modal relative w-[98vw] max-w-6xl max-h-[96vh] overflow-hidden">
+  <div class="ui-modal relative flex max-h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden">
 
     {{-- HEADER --}}
-    <div class="border-b border-slate-200 bg-white">
+    <div class="shrink-0 border-b border-line bg-white">
       <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between px-4 py-3">
         <div>
           <div class="text-[11px] font-semibold uppercase tracking-wide text-blue-600">
@@ -28,31 +28,31 @@
         <div class="flex flex-wrap items-center gap-2">
           <a x-show="detalle.codigo"
              :href="`/${routePrefix}/colaboradores/${detalle.codigo}/ficha-tecnica`"
-             target="_blank"
-             class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition">
+             target="_blank" rel="noopener noreferrer"
+             class="ui-btn-secondary">
             Descargar Excel
           </a>
 
           <button type="button"
                   @click="closeModal()"
-                  class="rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800">
-            Cerrar ✕
+                  class="ui-btn-secondary" data-foco-dialogo>
+            Cerrar
           </button>
         </div>
       </div>
 
       {{-- PESTAÑAS --}}
-      <div class="flex gap-1 overflow-x-auto border-t border-slate-100 px-4 py-2">
+      <div class="flex flex-wrap gap-2 border-t border-line px-4 py-2" role="group" aria-label="Secciones del expediente">
         <button type="button"
-                class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold"
-                :class="expedienteTab === 'resumen' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                class="flujo-tab"
+                :aria-pressed="expedienteTab === 'resumen'"
                 @click="expedienteTab = 'resumen'">
           Resumen
         </button>
 
         <button type="button"
-                class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold"
-                :class="expedienteTab === 'productos' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                class="flujo-tab"
+                :aria-pressed="expedienteTab === 'productos'"
                 @click="expedienteTab = 'productos'">
           Historial de productos
           <span class="ml-1 rounded-full bg-white/30 px-2 py-0.5" x-text="asignaciones.length"></span>
@@ -60,8 +60,8 @@
 
         @if(config('modulos.vehiculos'))
 <button type="button"
-                class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold"
-                :class="expedienteTab === 'vehiculo' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                class="flujo-tab"
+                :aria-pressed="expedienteTab === 'vehiculo'"
                 @click="expedienteTab = 'vehiculo'">
           Vehículo
           <span class="ml-1 rounded-full bg-white/30 px-2 py-0.5" x-text="productosVehiculo.length"></span>
@@ -69,8 +69,8 @@
 @endif
 
         <button type="button"
-                class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold"
-                :class="expedienteTab === 'incidencias' ? 'bg-rose-700 text-white' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'"
+                class="flujo-tab"
+                :aria-pressed="expedienteTab === 'incidencias'"
                 @click="expedienteTab = 'incidencias'">
           Incidencias
           <span class="ml-1 rounded-full bg-white/30 px-2 py-0.5" x-text="incidencias.length"></span>
@@ -79,7 +79,7 @@
     </div>
 
     {{-- BODY --}}
-    <div class="max-h-[78vh] overflow-y-auto p-3">
+    <div class="min-h-0 overflow-y-auto p-3">
 
       <div x-show="loadingDetalle"
            class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
@@ -128,7 +128,7 @@
 
             <button type="button"
                     @click="expedienteTab = 'incidencias'"
-                    class="text-left rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 hover:bg-rose-100">
+                    class="ui-card px-4 py-3 text-left hover:bg-subtle">
               <div class="text-xs font-semibold text-rose-700">Incidencias</div>
               <div class="mt-1 text-2xl font-bold text-rose-950" x-text="incidencias.length"></div>
             </button>
@@ -237,7 +237,7 @@
                   <template x-if="totalPaginasAsignaciones() > 1">
                     <div class="flex items-center gap-1">
                       <button type="button"
-                              class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                              class="ui-btn-secondary ui-btn-sm"
                               :disabled="asignacionesPage <= 1"
                               @click="cambiarPaginaAsignaciones(asignacionesPage - 1)">
                         ‹
@@ -248,7 +248,7 @@
                       </div>
 
                       <button type="button"
-                              class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                              class="ui-btn-secondary ui-btn-sm"
                               :disabled="asignacionesPage >= totalPaginasAsignaciones()"
                               @click="cambiarPaginaAsignaciones(asignacionesPage + 1)">
                         ›
@@ -334,7 +334,7 @@
 
                         <td class="px-3 py-2 text-right">
                           <button type="button"
-                                  class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                                  class="ui-btn-secondary ui-btn-sm"
                                   @click="vehiculoDetalleOpen = !vehiculoDetalleOpen">
                             <span x-text="vehiculoDetalleOpen ? 'Ocultar artículos' : 'Ver artículos'"></span>
                           </button>
@@ -418,7 +418,7 @@
                           <template x-if="totalPaginasProductosVehiculo() > 1">
                             <div class="flex items-center gap-1">
                               <button type="button"
-                                      class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                                      class="ui-btn-secondary ui-btn-sm"
                                       :disabled="productosVehiculoPage <= 1"
                                       @click="cambiarPaginaProductosVehiculo(productosVehiculoPage - 1)">
                                 ‹
@@ -429,7 +429,7 @@
                               </div>
 
                               <button type="button"
-                                      class="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                                      class="ui-btn-secondary ui-btn-sm"
                                       :disabled="productosVehiculoPage >= totalPaginasProductosVehiculo()"
                                       @click="cambiarPaginaProductosVehiculo(productosVehiculoPage + 1)">
                                 ›

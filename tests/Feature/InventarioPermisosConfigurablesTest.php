@@ -86,6 +86,39 @@ class InventarioPermisosConfigurablesTest extends TestCase
         $this->assertSame($this->coordinador->role_id, $this->coordinador->fresh()->role_id);
     }
 
+    public function test_listado_de_compras_y_panel_muestran_acciones_segun_permiso_efectivo(): void
+    {
+        $this->alistar($this->coordinador, ['compras.consultar'], [$this->central->id]);
+        $listado = route('operador.compras.index');
+        $registro = route('operador.compras.create');
+        $this->actingAs($this->coordinador->fresh())->get(route('coordinacion.dashboard'))
+            ->assertOk()->assertSee($listado, false);
+        $this->get($listado)->assertOk()->assertDontSeeText('Consultar datos')
+            ->assertDontSeeText('Registrar compra')->assertDontSee('id="modalCompra"', false);
+        $this->get($registro)->assertForbidden();
+
+        $this->alistar($this->coordinador, ['compras.crear', 'compras.consultar'], [$this->central->id]);
+        $this->actingAs($this->coordinador->fresh())->get($listado)->assertOk()
+            ->assertSeeText('Registrar compra')->assertSee('id="modalCompra"', false);
+        $this->get($registro)->assertOk();
+    }
+
+    public function test_bodegas_muestra_traslados_solo_para_los_origenes_autorizados(): void
+    {
+        $operador = User::factory()->create(['role_id' => 2, 'bodega_id' => $this->central->id]);
+        $listado = route('operador.bodegas.index');
+        $traslado = fn (Bodega $bodega) => route('operador.operaciones.traslados.create', ['origen' => $bodega->id]);
+        $this->actingAs($operador)->get($listado)->assertOk()
+            ->assertSeeText('Bodega asignada')->assertSeeText('Solo consulta')->assertDontSeeText('Consultar datos')
+            ->assertSee($traslado($this->central), false)
+            ->assertDontSee($traslado($this->regional), false);
+
+        $this->alistar($operador, ['traslados.crear'], [$this->central->id, $this->regional->id]);
+        $this->actingAs($operador->fresh())->get($listado)->assertOk()
+            ->assertSeeText('Acceso operativo')->assertSee($traslado($this->regional), false)
+            ->assertDontSee($traslado($this->otraBodega), false);
+    }
+
     public function test_custodias_se_filtran_por_region_y_bodega_en_formulario_listado_y_lotes(): void
     {
         $this->alistar($this->coordinador, ['asignaciones.crear', 'asignaciones.consultar', 'asignaciones.devolver'], [$this->central->id], [$this->norte->id]);

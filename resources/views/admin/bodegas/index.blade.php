@@ -1,457 +1,88 @@
-@extends(auth()->user()->rolOperativo() == 1 ? 'layouts.admin' : 'layouts.operador')
+@extends('layouts.app')
 
 @section('title', 'Bodegas')
 
 @section('content')
 @php
-    $user = auth()->user();
-
-    $esAdmin = $user->rolOperativo() === 1;
-    $esOperador = $user->rolOperativo() === 2;
-    $bodegaOperadorId = $user->bodega_id;
-
-    $totalBodegas = $bodegas->count();
-    $totalPrincipales = $bodegas->where('tipo', 'Principal')->count();
-    $totalRegionales = $bodegas->where('tipo', 'Regional')->count();
+    $usuario = auth()->user();
+    $permisos = app(\App\Sistema\Permisos::class);
+    $esAdmin = $usuario->rolOperativo() === 1;
+    $prefijo = $esAdmin ? 'admin' : 'operador';
+    $traslados = $prefijo.'.operaciones.traslados';
+    $origenes = $permisos->ruta($usuario, $traslados.'.create')
+        ? app(\App\Services\AccesoInventarioOperativo::class)->bodegasPara($usuario, 'traslados.crear')
+        : [];
+    $puedeEditar = $esAdmin && $permisos->ruta($usuario, 'admin.bodegas.edit');
+    $puedeEliminar = $esAdmin && $permisos->ruta($usuario, 'admin.bodegas.destroy');
+    $puedeAgregarStock = $esAdmin && $permisos->ruta($usuario, 'admin.bodegas.entrada');
 @endphp
 
-<style>
-    .bodega-page {
-        width: 100%;
-        min-height: calc(100vh - 64px);
-        background: var(--ui-bg);
-        padding: 18px 14px;
-    }
+<div class="space-y-4">
+    <x-ui.encabezado titulo="Bodegas" descripcion="Consulta las existencias y las operaciones disponibles por bodega.">
+        <x-ui.exportar-excel modulo="bodegas" />
+        @if($esAdmin && $permisos->ruta($usuario, $traslados.'.index'))
+            <x-ui.accion :href="route($traslados.'.index')" icono="traslado">Revisar traslados</x-ui.accion>
+        @endif
+        @if($esAdmin && $permisos->ruta($usuario, 'admin.bodegas.create'))
+            <x-ui.accion :href="route('admin.bodegas.create')" variante="primaria">Nueva bodega</x-ui.accion>
+        @endif
+    </x-ui.encabezado>
 
-    .bodega-container {
-        width: 100%;
-        max-width: 1080px;
-        margin: 0 auto;
-    }
-
-    .bodega-header {
-        background: #ffffff;
-        border: 1px solid var(--ui-border);
-        border-radius: 14px;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-        padding: 14px 16px;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .bodega-title {
-        margin: 0;
-        font-size: 22px;
-        line-height: 1.1;
-        font-weight: 800;
-        color: var(--ui-text);
-    }
-
-    .bodega-subtitle {
-        margin-top: 5px;
-        font-size: 13px;
-        color: #64748b;
-    }
-
-    .bodega-header-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .metric {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 30px;
-        padding: 0 11px;
-        border-radius: 8px;
-        font-size: 12px;
-        font-weight: 700;
-        border: 1px solid var(--ui-border);
-        background: var(--ui-bg);
-        color: #334155;
-    }
-
-    .metric-green {
-        border-color: #bbf7d0;
-        background: #ecfdf5;
-        color: #047857;
-    }
-
-    .metric-blue {
-        border-color: #bfdbfe;
-        background: #eff6ff;
-        color: var(--ui-primary);
-    }
-
-    .btn-new {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 30px;
-        padding: 0 12px;
-        border-radius: 8px;
-        background: var(--ui-primary) !important;
-        color: #ffffff !important;
-        font-size: 12px;
-        font-weight: 800;
-        text-decoration: none !important;
-        border: 1px solid var(--ui-primary);
-    }
-
-    .btn-new:hover {
-        background: var(--ui-primary) !important;
-    }
-
-    .bodega-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-    }
-
-    .bodega-card {
-        background: #ffffff;
-        border: 1px solid var(--ui-border);
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    }
-
-    .bodega-card-body {
-        padding: 10px 14px;
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-    }
-
-    .bodega-info {
-        display: flex;
-        gap: 10px;
-        min-width: 0;
-    }
-
-    .bodega-letter {
-        width: 28px;
-        height: 28px;
-        border-radius: 7px;
-        background: #f1f5f9;
-        color: var(--ui-text);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: 800;
-        flex-shrink: 0;
-    }
-
-    .bodega-name {
-        margin: 0;
-        font-size: 13px;
-        font-weight: 800;
-        color: var(--ui-text);
-        line-height: 1.15;
-    }
-
-    .bodega-location {
-        margin-top: 2px;
-        font-size: 11px;
-        color: #64748b;
-    }
-
-    .bodega-id {
-        margin-top: 3px;
-        font-size: 12px;
-        color: var(--ui-text);
-    }
-
-    .bodega-badge {
-        height: fit-content;
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 4px 10px;
-        font-size: 12px;
-        font-weight: 800;
-        white-space: nowrap;
-    }
-
-    .badge-principal {
-        background: #ecfdf5;
-        color: #047857;
-    }
-
-    .badge-regional {
-        background: #eff6ff;
-        color: var(--ui-primary);
-    }
-
-    .access-label {
-        margin-top: 6px;
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 3px 9px;
-        font-size: 11px;
-        font-weight: 700;
-    }
-
-    .access-own {
-        background: #ecfdf5;
-        color: #047857;
-    }
-
-    .access-read {
-        background: #f1f5f9;
-        color: #64748b;
-    }
-
-    .bodega-card-actions {
-        border-top: 1px solid #e2e8f0;
-        background: var(--ui-bg);
-        padding: 8px 14px;
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        flex-wrap: wrap;
-    }
-
-    .action-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 28px;
-        padding: 0 11px;
-        border-radius: 7px;
-        font-size: 11px;
-        font-weight: 800;
-        text-decoration: none !important;
-        border: 1px solid transparent;
-        cursor: pointer;
-        line-height: 1;
-    }
-
-    .btn-inventario {
-        background: var(--ui-text) !important;
-        color: #ffffff !important;
-        border-color: var(--ui-text) !important;
-    }
-
-    .btn-trasladar {
-        background: #4f46e5 !important;
-        color: #ffffff !important;
-        border-color: #4f46e5 !important;
-    }
-
-    .btn-aprobacion {
-        background: #0891b2 !important;
-        color: #ffffff !important;
-        border-color: #0891b2 !important;
-    }
-
-    .btn-editar {
-        background: #f59e0b !important;
-        color: #ffffff !important;
-        border-color: #f59e0b !important;
-    }
-
-    .btn-eliminar {
-        background: #e11d48 !important;
-        color: #ffffff !important;
-        border-color: #e11d48 !important;
-    }
-
-    .btn-volver {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        height: 34px;
-        padding: 0 16px;
-        border-radius: 8px;
-        border: 1px solid #cbd5e1;
-        background: #ffffff !important;
-        color: #334155 !important;
-        font-size: 12px;
-        font-weight: 800;
-        text-decoration: none !important;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-    }
-
-    .volver-wrap {
-        margin-top: 14px;
-        display: flex;
-        justify-content: flex-end;
-    }
-
-    .empty-box {
-        grid-column: 1 / -1;
-        border: 1px solid #fde68a;
-        background: #fffbeb;
-        color: #92400e;
-        border-radius: 12px;
-        padding: 18px;
-    }
-
-    @media (max-width: 900px) {
-        .bodega-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .bodega-header {
-            align-items: stretch;
-        }
-
-        .bodega-header-actions {
-            justify-content: flex-start;
-        }
-    }
-</style>
-
-<div class="bodega-page">
-    <div class="bodega-container">
-        <x-internal-navigation :back-url="route('dashboard')" />
-    <x-sistema.enlace-datos modulo="bodegas" />
+    <div class="flex flex-wrap items-center gap-2">
+        <x-sistema.enlace-datos modulo="bodegas" />
+    </div>
     <x-sistema.consulta-campos :tabla="$tablaCampos" />
+    <p class="text-sm">{{ $bodegas->count() }} bodegas · {{ $bodegas->where('tipo', 'Principal')->count() }} principales · {{ $bodegas->where('tipo', 'Regional')->count() }} regionales</p>
 
+    <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+        @forelse($bodegas as $bodega)
+            @php
+                $esPropia = (int) $bodega->id === (int) $usuario->bodega_id;
+                $puedeTrasladar = in_array($bodega->id, $origenes, true);
+                $soloConsulta = !$puedeTrasladar && !$puedeEditar && !$puedeEliminar && !$puedeAgregarStock;
+            @endphp
 
-        <div class="bodega-header">
-            <div>
-                <h1 class="ui-page-title bodega-title">Bodegas</h1>
-                <x-ui.exportar-excel modulo="bodegas" />
-                <div class="bodega-subtitle">
-                    Consulta inventario, traslados y administración de bodegas.
+            <article class="ui-card flex min-w-0 flex-col gap-4 p-4 sm:p-5">
+                <div class="flex items-start gap-3">
+                    <span class="ui-module-icon"><x-ui.icono nombre="bodega" /></span>
+                    <div class="min-w-0">
+                        <h2 class="break-words text-lg font-semibold">{{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}</h2>
+                        <p class="mt-1 break-words text-sm">{{ $bodega->ubicacion ?: 'Sin ubicación registrada' }} · ID {{ $bodega->id }}</p>
+                    </div>
                 </div>
-            </div>
+                <div class="flex flex-wrap gap-2">
+                    <x-ui.estado :variante="$bodega->tipo === 'Principal' ? 'informacion' : 'neutra'">{{ $bodega->tipo ?? 'Sin tipo' }}</x-ui.estado>
+                    @if($esPropia)<x-ui.estado>Bodega asignada</x-ui.estado>@endif
+                    @if(!$esAdmin && !$esPropia && $puedeTrasladar)<x-ui.estado>Acceso operativo</x-ui.estado>@endif
+                    @if($soloConsulta)<x-ui.estado>Solo consulta</x-ui.estado>@endif
+                </div>
+                <dl class="grid grid-cols-2 gap-2 rounded-lg bg-subtle p-3 text-sm">
+                    <div><dt class="text-muted">Productos</dt><dd class="mt-1 font-semibold tabular-nums">{{ number_format($bodega->items_count) }}</dd></div>
+                    <div><dt class="text-muted">Unidades disponibles</dt><dd class="mt-1 font-semibold tabular-nums">{{ number_format($bodega->stock_total) }}</dd></div>
+                </dl>
+                <x-sistema.detalle-campos :tabla="$tablaCampos" :registro="$bodega->id" />
 
-            <div class="bodega-header-actions">
-                <span class="metric">Total: {{ $totalBodegas }}</span>
-                <span class="metric metric-green">Principales: {{ $totalPrincipales }}</span>
-                <span class="metric metric-blue">Regionales: {{ $totalRegionales }}</span>
-
-                @if($esAdmin)
-                    @rutaDisponible('admin.bodegas.create')
-                    <a href="{{ route('admin.bodegas.create') }}" class="btn-new">
-                        + Nueva bodega
-                    </a>
+                <div class="ui-card-actions mt-auto">
+                    @rutaDisponible($prefijo.'.bodegas.show')
+                        <x-ui.accion :href="route($prefijo.'.bodegas.show', $bodega)" icono="caja">Inventario</x-ui.accion>
                     @endrutaDisponible
-                @endif
-            </div>
-        </div>
-
-        <div class="bodega-grid">
-            @forelse($bodegas as $bodega)
-                @php
-                    $esMiBodega = (int) $bodega->id === (int) $bodegaOperadorId;
-                    $isPrincipal = ($bodega->tipo === 'Principal');
-
-                    $rutaInventario = $esOperador
-                        ? route('operador.bodegas.show', $bodega->id)
-                        : route('admin.bodegas.show', $bodega->id);
-                @endphp
-
-                <article class="bodega-card">
-                    <div class="bodega-card-body">
-                        <div>
-                            <div class="bodega-info">
-                                <div class="bodega-letter">
-                                    {{ strtoupper(mb_substr($bodega->nombre ?? 'B', 0, 1)) }}
-                                </div>
-
-                                <div>
-                                    <h2 class="bodega-name">
-                                        {{ $bodega->nombre ?? ('Bodega #'.$bodega->id) }}
-                                    </h2>
-
-                                    <div class="bodega-location">
-                                        {{ $bodega->ubicacion ?? 'Sin ubicación registrada' }}
-                                    </div>
-
-                                    <div class="bodega-id">
-                                        ID: {{ $bodega->id }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            @if($esOperador)
-                                @if($esMiBodega)
-                                    <span class="access-label access-own">Tu bodega asignada</span>
-                                @else
-                                    <span class="access-label access-read">Solo consulta</span>
-                                @endif
-                            @endif
-                        </div>
-
-                        <span class="bodega-badge {{ $isPrincipal ? 'badge-principal' : 'badge-regional' }}">
-                            {{ $bodega->tipo ?? '—' }}
-                        </span>
-                    </div>
-
-                    <x-sistema.detalle-campos :tabla="$tablaCampos" :registro="$bodega->id" />
-
-                    <div class="bodega-card-actions">
-                        <a href="{{ $rutaInventario }}" class="action-btn btn-inventario">
-                            Inventario
-                        </a>
-
-                        @if($esAdmin)
-                            @rutaDisponible('admin.operaciones.traslados.create')
-                            <a href="{{ route('admin.operaciones.traslados.create', ['origen' => $bodega->id]) }}"
-                               class="action-btn btn-trasladar">
-                                Trasladar
-                            </a>
-                            @endrutaDisponible
-
-                            @rutaDisponible('admin.operaciones.traslados.index')
-                            <a href="{{ route('admin.operaciones.traslados.index') }}"
-                               class="action-btn btn-aprobacion">
-                                Aprobación
-                            </a>
-                            @endrutaDisponible
-
-                            @rutaDisponible('admin.bodegas.edit')
-                            <a href="{{ route('admin.bodegas.edit', $bodega->id) }}"
-                               class="action-btn btn-editar">
-                                Editar
-                            </a>
-                            @endrutaDisponible
-
-                            @rutaDisponible('admin.bodegas.destroy')
-                            <form method="POST"
-                                  action="{{ route('admin.bodegas.destroy', $bodega->id) }}"
-                                  onsubmit="return confirm('¿Eliminar esta bodega?')">
-                                @csrf
-                                @method('DELETE')
-
-                                <button type="submit" class="action-btn btn-eliminar">
-                                    Eliminar
-                                </button>
-                            </form>
-                            @endrutaDisponible
-                        @endif
-
-                        @if($esOperador && $esMiBodega)
-                            @rutaDisponible('operador.operaciones.traslados.create')
-                            <a href="{{ route('operador.operaciones.traslados.create', ['origen' => $bodega->id]) }}"
-                               class="action-btn btn-trasladar">
-                                Trasladar
-                            </a>
-                            @endrutaDisponible
-                        @endif
-                    </div>
-                </article>
-            @empty
-                <div class="empty-box">
-                    <div style="font-weight: 800;">No hay bodegas registradas aún.</div>
-                    <div style="margin-top: 4px; font-size: 13px;">Crea una nueva bodega para empezar.</div>
+                    @if($puedeTrasladar)
+                        <x-ui.accion :href="route($traslados.'.create', ['origen' => $bodega->id])" icono="traslado">Trasladar</x-ui.accion>
+                    @endif
+                    @if($puedeEditar)
+                        <x-ui.accion :href="route('admin.bodegas.edit', $bodega)">Editar</x-ui.accion>
+                    @endif
+                    @if($puedeEliminar)
+                        <form method="POST" action="{{ route('admin.bodegas.destroy', $bodega) }}" data-confirmar="¿Eliminar esta bodega?">
+                            @csrf @method('DELETE')
+                            <x-ui.accion variante="riesgo" type="submit">Eliminar</x-ui.accion>
+                        </form>
+                    @endif
                 </div>
-            @endforelse
-        </div>
-
+            </article>
+        @empty
+            <p class="ui-empty-state sm:col-span-full">No hay bodegas con estos filtros.</p>
+        @endforelse
     </div>
 </div>
 @endsection
