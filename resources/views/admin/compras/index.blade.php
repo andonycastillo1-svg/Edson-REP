@@ -1,277 +1,120 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 
 @section('title', 'Compras')
 
 @section('content')
 @php($routePrefix = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user()))
 
-<div class="w-full">
-    <x-internal-navigation :back-url="route('dashboard')" />
-    <x-sistema.enlace-datos modulo="compras" />
-    <x-sistema.consulta-campos :tabla="$tablaCampos" />
-    <x-sistema.enlace-datos modulo="productos" />
+<div class="space-y-4">
+    <x-ui.encabezado titulo="Compras" descripcion="Consulta las facturas que respaldan entradas de inventario.">
+        @rutaDisponible($routePrefix.'.compras.create')
+            <x-ui.accion :href="route($routePrefix.'.compras.create')" variante="primaria">Registrar compra</x-ui.accion>
+        @endrutaDisponible
+    </x-ui.encabezado>
 
-
-    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-
-        {{-- HEADER --}}
-        <div class="border-b border-slate-200 px-6 py-5 bg-slate-50">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
-                <div class="flex items-start gap-4">
-                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-                        <x-ui.icono nombre="compra" class="text-blue-800" />
-                    </div>
-
-                    <div>
-                        <h1 class="ui-page-title tracking-tight text-slate-900 md:">
-                            Compras <span class="font-bold text-blue-700">(Facturas)</span>
-                        </h1>
-                        <p class="mt-1 text-sm text-slate-500">
-                            Registrar facturas y generar entradas automáticas al inventario.
-                        </p>
-                    </div>
-                </div>
-
-                @rutaDisponible($routePrefix.'.compras.create')
-                    <a class="ui-btn-primary" href="{{ route($routePrefix.'.compras.create') }}">Registrar compra</a>
-                @endrutaDisponible
-            </div>
-        </div>
-
-        {{-- BARRA DE HERRAMIENTAS --}}
-        <div class="px-4 py-4 sm:px-6">
-            <div class="rounded-xl border border-slate-200 bg-sky-50/70 px-5 py-4 shadow-sm">
-
-                <div>
-                    <h2 class="text-base font-bold text-slate-900">
-                        Listado de compras
-                    </h2>
-                    <p class="mt-0.5 text-sm text-slate-500">
-                        Busca por ID, factura, proveedor, proyecto, fecha o total.
-                    </p>
-
-                    <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-
-                        <input
-                            id="buscarCompra" maxlength="190"
-                            aria-label="Buscar por factura, proveedor o fecha"
-                            type="text"
-                            placeholder="Buscar compra..."
-                            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 lg:w-[360px]"
-                        >
-
-                        <x-ui.exportar-excel modulo="compras" :campos="['buscar' => 'buscarCompra']" />
-                        <select
-                            id="filasPorPagina"
-                            aria-label="Filas por página"
-                            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 lg:w-36"
-                        >
-                            <option value="10">10 filas</option>
-                            <option value="15">15 filas</option>
-                            <option value="25">25 filas</option>
-                            <option value="50">50 filas</option>
-                        </select>
-
-                        <button onclick="abrirModal()"
-                            type="button" aria-controls="modalCompra" aria-haspopup="dialog"
-                            class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-7 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 lg:w-auto">
-                            <span class="text-lg leading-none">+</span>
-                            Compra rápida
-                        </button>
-
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        {{-- TABLA --}}
-        <div class="px-6 pb-6">
-            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Facturas registradas">
-                    <table class="ui-table min-w-full text-sm" id="tablaCompras">
-                        <thead class="border-b border-slate-200 bg-slate-50">
-                            <tr class="text-left text-xs font-bold uppercase tracking-wide text-slate-600">
-                                <th class="px-4 py-3 whitespace-nowrap">ID</th>
-                                <th class="px-4 py-3 whitespace-nowrap">Fecha de compra</th>
-                                <th class="px-4 py-3 whitespace-nowrap">No. Factura</th>
-                                <th class="px-4 py-3 whitespace-nowrap">Proveedor</th>
-                                <th class="px-4 py-3 whitespace-nowrap">Proyecto</th>
-                                <th class="px-4 py-3 text-right whitespace-nowrap">Total</th>
-                                <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
-                                <th class="px-4 py-3 text-right whitespace-nowrap">Acciones</th>
-                            </tr>
-                        </thead>
-
-                        <tbody class="divide-y divide-slate-100">
-                            @forelse($compras as $c)
-                                <tr class="fila-compra transition hover:bg-sky-50/70"
-                                    data-search="{{ strtolower($c->id . ' ' . $c->fecha_compra . ' ' . $c->no_factura . ' ' . $c->proveedor_nombre . ' ' . ($c->proyecto ?? '') . ' ' . number_format($c->total_factura, 2)) }}">
-
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="inline-flex items-center rounded-xl bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-                                            #{{ $c->id }}
-                                        </span>
-                                    </td>
-
-                                    <td class="px-4 py-3 whitespace-nowrap font-medium text-slate-700">
-                                        {{ $c->fecha_compra }}
-                                    </td>
-
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        <span class="font-bold text-slate-900">
-                                            {{ $c->no_factura }}
-                                        </span>
-                                    </td>
-
-                                    <td class="px-4 py-3">
-                                        <div class="max-w-[330px]">
-                                            <p class="truncate font-bold text-slate-800">
-                                                {{ $c->proveedor_nombre }}
-                                            </p>
-                                        </div>
-                                    </td>
-
-                                    <td class="px-4 py-3 whitespace-nowrap">
-                                        @if($c->proyecto)
-                                            <span class="inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-                                                {{ $c->proyecto }}
-                                            </span>
-                                        @else
-                                            <span class="text-slate-400">—</span>
-                                        @endif
-                                    </td>
-
-                                    <td class="px-4 py-3 text-right whitespace-nowrap">
-                                        <span class="font-bold text-slate-950">
-                                            {{ number_format($c->total_factura, 2) }}
-                                        </span>
-                                    </td>
-
-                                    <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$c->id" />
-                                    <td class="px-4 py-3 text-right whitespace-nowrap">
-                                        <a href="{{ route($routePrefix . '.compras.show', $c->id) }}"
-                                           class="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2 text-xs font-bold text-blue-700 transition hover:border-blue-700 hover:bg-blue-700 hover:text-white">
-                                            Ver
-                                        </a>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr id="sinRegistrosOriginal">
-                                    <td colspan="{{ 7 + $tablaCampos['campos']->count() }}" class="px-4 py-12 text-center">
-                                        <div class="flex flex-col items-center">
-                                            <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-sky-50 text-2xl">
-                                                <x-ui.icono nombre="compra" />
-                                            </div>
-                                            <p class="text-base font-bold text-slate-800">
-                                                No hay compras registradas
-                                            </p>
-                                            <p class="mt-1 text-sm text-slate-500">
-                                                Cuando registres una compra aparecerá en este listado.
-                                            </p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-
-                            <tr id="sinResultados" class="hidden">
-                                <td colspan="{{ 7 + $tablaCampos['campos']->count() }}" class="px-4 py-12 text-center">
-                                    <div class="flex flex-col items-center">
-                                        <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-sky-50 text-2xl">
-                                            <x-ui.icono nombre="lista" />
-                                        </div>
-                                        <p class="text-base font-bold text-slate-800">
-                                            No se encontraron resultados
-                                        </p>
-                                        <p class="mt-1 text-sm text-slate-500">
-                                            Intenta buscar por otro dato de la compra.
-                                        </p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                {{-- FOOTER TABLA / PAGINACIÓN --}}
-                <div class="flex flex-col gap-3 border-t border-slate-200 bg-sky-50/70 px-4 py-3 md:flex-row md:items-center md:justify-between">
-                    <div class="text-sm text-slate-500">
-                        Mostrando
-                        <span id="desdeRegistro" class="font-bold text-slate-800">0</span>
-                        -
-                        <span id="hastaRegistro" class="font-bold text-slate-800">0</span>
-                        de
-                        <span id="totalRegistros" class="font-bold text-slate-800">0</span>
-                        compras
-                    </div>
-
-                    <div class="flex items-center justify-end gap-2">
-                        <button type="button" id="btnAnterior"
-                            class="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">
-                            Anterior
-                        </button>
-
-                        <div id="numerosPagina" class="flex flex-wrap items-center gap-1" aria-label="Páginas de compras"></div>
-
-                        <button type="button" id="btnSiguiente"
-                            class="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">
-                            Siguiente
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+    <div class="flex flex-wrap gap-2">
+        <x-sistema.enlace-datos modulo="compras" />
+        <x-sistema.enlace-datos modulo="productos" />
     </div>
+    <x-sistema.consulta-campos :tabla="$tablaCampos" />
+
+    <div class="ui-filtros sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(7rem,auto)_auto] lg:items-end">
+        <label class="ui-label mb-0">Buscar factura
+            <input type="search" id="buscarCompra" maxlength="190" placeholder="Número, proveedor o fecha" class="ui-input mt-1">
+        </label>
+        <label class="ui-label mb-0">Filas por página
+            <select id="filasPorPagina" class="ui-select mt-1">
+                @foreach([10, 15, 25, 50] as $cantidad)
+                    <option value="{{ $cantidad }}">{{ $cantidad }} filas</option>
+                @endforeach
+            </select>
+        </label>
+        <div class="flex flex-wrap items-center gap-2">
+            <x-ui.exportar-excel modulo="compras" :campos="['buscar' => 'buscarCompra']" />
+            @rutaDisponible($routePrefix.'.compras.create')
+                <x-ui.accion onclick="abrirModal()" aria-controls="modalCompra" aria-haspopup="dialog"
+                    title="Abre el formulario en el listado">Compra rápida</x-ui.accion>
+            @endrutaDisponible
+        </div>
+    </div>
+
+    <x-sistema.panel titulo="Facturas registradas">
+        <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Facturas registradas">
+            <table class="ui-table" id="tablaCompras">
+                <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col" class="whitespace-nowrap">Fecha de compra</th>
+                        <th scope="col" class="whitespace-nowrap">Número de factura</th>
+                        <th scope="col">Proveedor</th>
+                        <th scope="col">Proyecto</th>
+                        <th scope="col" class="text-right">Total</th>
+                        <x-sistema.cabeceras-campos :tabla="$tablaCampos" />
+                        <th scope="col" class="text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($compras as $c)
+                        <tr class="fila-compra" data-search="{{ strtolower($c->id . ' ' . $c->fecha_compra . ' ' . $c->no_factura . ' ' . $c->proveedor_nombre . ' ' . ($c->proyecto ?? '') . ' ' . number_format($c->total_factura, 2)) }}">
+                            <td class="whitespace-nowrap">#{{ $c->id }}</td>
+                            <td class="whitespace-nowrap">{{ $c->fecha_compra }}</td>
+                            <td><strong>{{ $c->no_factura }}</strong></td>
+                            <td>{{ $c->proveedor_nombre }}</td>
+                            <td>{{ $c->proyecto ?: '—' }}</td>
+                            <td class="whitespace-nowrap text-right tabular-nums">Q {{ number_format($c->total_factura, 2) }}</td>
+                            <x-sistema.celdas-campos :tabla="$tablaCampos" :registro="$c->id" />
+                            <td class="whitespace-nowrap text-right">
+                                <x-ui.accion :href="route($routePrefix.'.compras.show', $c->id)" class="ui-btn-sm">Ver factura</x-ui.accion>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr id="sinRegistrosOriginal"><td colspan="{{ 7 + $tablaCampos['campos']->count() }}"><p class="ui-empty-state">No hay compras registradas.</p></td></tr>
+                    @endforelse
+                    <tr id="sinResultados" class="hidden"><td colspan="{{ 7 + $tablaCampos['campos']->count() }}"><p class="ui-empty-state">No hay facturas que coincidan con la búsqueda.</p></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <nav class="ui-paginacion" aria-label="Paginación de compras">
+            <p role="status">Compras <strong id="desdeRegistro">0</strong>–<strong id="hastaRegistro">0</strong> de <strong id="totalRegistros">0</strong></p>
+            <div class="flex flex-wrap items-center gap-1.5">
+                <button class="ui-pagina" type="button" id="btnAnterior">Anterior</button>
+                <div id="numerosPagina" class="flex flex-wrap gap-1.5"></div>
+                <button class="ui-pagina" type="button" id="btnSiguiente">Siguiente</button>
+            </div>
+        </nav>
+    </x-sistema.panel>
 </div>
 
-
-{{-- -------- MODAL NUEVA COMPRA -------- --}}
-<div id="modalCompra" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-compra" data-ui-dialogo>
-
-    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="cerrarModal()"></div>
-
-    <div class="relative mx-auto mt-6 w-[95%] max-w-5xl">
-        <div class="ui-modal overflow-hidden">
-
-            <div class="flex items-center justify-between border-b border-slate-200 bg-sky-50 px-6 py-4">
+@rutaDisponible($routePrefix.'.compras.create')
+    <div id="modalCompra" class="fixed inset-0 z-50 hidden p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-compra" data-ui-dialogo>
+        <div class="absolute inset-0 bg-slate-950/60" onclick="cerrarModal()"></div>
+        <div class="ui-modal relative mx-auto flex max-h-full max-w-5xl flex-col overflow-hidden">
+            <header class="flex shrink-0 items-start justify-between gap-3 border-b border-line p-4 sm:p-5">
                 <div>
-                    <h2 id="titulo-modal-compra" class="text-lg font-bold text-slate-900">
-                        Registrar compra
-                    </h2>
-                    <p class="text-sm text-slate-500">
-                        Ingresa los datos de la factura y productos.
-                    </p>
+                    <h2 id="titulo-modal-compra" class="text-lg font-semibold">Compra rápida</h2>
+                    <p class="mt-1 text-sm">Registra la factura sin salir del listado.</p>
                 </div>
-
-                <button onclick="cerrarModal()"
-                    type="button" aria-label="Cerrar compra rápida" data-foco-dialogo
-                    class="h-10 w-10 rounded-xl border border-slate-200 bg-white text-2xl leading-none text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">
-                    &times;
-                </button>
-            </div>
-
-            <div class="max-h-[80vh] overflow-y-auto bg-white p-6">
+                <x-ui.accion onclick="cerrarModal()" data-foco-dialogo aria-label="Cerrar compra rápida">Cerrar</x-ui.accion>
+            </header>
+            <div class="overflow-y-auto p-4 sm:p-5">
                 @include('admin.compras._form')
             </div>
-
         </div>
     </div>
+@endrutaDisponible
 
-</div>
-
-
-{{-- -------- SCRIPT MODAL + BÚSQUEDA + PAGINACIÓN -------- --}}
 <script>
 function abrirModal() {
     const modal = document.getElementById('modalCompra');
+    if (!modal) return;
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 }
 
 function cerrarModal() {
     const modal = document.getElementById('modalCompra');
+    if (!modal || modal.classList.contains('hidden')) return;
     modal.classList.add('hidden');
     document.body.classList.remove('overflow-hidden');
 }
@@ -361,13 +204,14 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.type = 'button';
             btn.textContent = i;
 
-            btn.className = i === paginaActual
-                ? 'h-9 min-w-9 rounded-xl bg-blue-700 px-3 text-sm font-black text-white shadow-sm'
-                : 'h-9 min-w-9 rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-600 transition hover:bg-slate-100';
-
-            btn.addEventListener('click', function () {
+            btn.className = 'ui-pagina';
+            btn.dataset.pagina = i;
+            if (i === paginaActual) btn.setAttribute('aria-current', 'page');
+            btn.setAttribute('aria-label', 'Ir a la página ' + i);
+            btn.addEventListener('click', () => {
                 paginaActual = i;
                 renderTabla();
+                numerosPagina.querySelector(`[data-pagina="${i}"]`)?.focus();
             });
 
             numerosPagina.appendChild(btn);

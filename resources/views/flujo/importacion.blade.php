@@ -1,5 +1,4 @@
 <x-sistema.pagina :titulo="isset($importacion) && $importacion->confirmada_en ? 'Importación registrada' : 'Vista previa de asignaciones'" :volver="route('flujo.importar.index')">
-    @include('flujo.accesos')
     @php
         $errores = $errores ?? [];
         $prefijo = \App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo());

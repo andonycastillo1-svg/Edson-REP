@@ -4,7 +4,6 @@
             <a class="ui-btn-primary" href="{{ route('flujo.inspecciones.create', ['fecha' => $inspeccion->fecha->toDateString(), 'region' => $inspeccion->region_id]) }}">Nueva inspección</a>
         @endif
     </x-slot:acciones>
-    @include('flujo.accesos')
     <x-sistema.panel titulo="Datos registrados">
         <dl class="flujo-dato">
             <div><dt class="font-bold">Fecha</dt><dd>{{ $inspeccion->fecha->format('d/m/Y') }}</dd></div>

@@ -88,7 +88,7 @@
         </a>
 
         <button type="submit"
-                class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                class="ui-btn-primary">
           Guardar
         </button>
       </div>

@@ -19,7 +19,6 @@
             'plan_compra' => 'Actualizar plan de compra', 'reasignar' => 'Reasignar responsable regional',
         ];
     @endphp
-    @include('flujo.accesos')
     <dl class="flujo-dato">
         <div><dt>Estado</dt><dd>@include('flujo.estado', ['estado' => $consolidado->estado])</dd></div>
         <div><dt>Período</dt><dd>{{ $consolidado->desde->format('d/m/Y') }} – {{ $consolidado->hasta->format('d/m/Y') }}</dd></div>

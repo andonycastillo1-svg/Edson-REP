@@ -185,7 +185,7 @@
             </a>
 
             <button type="submit"
-                    class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-white font-semibold shadow hover:bg-blue-700 transition">
+                    class="ui-btn-primary">
                 Actualizar
             </button>
         </div>

@@ -1,5 +1,4 @@
 <x-sistema.pagina titulo="Nueva inspección" descripcion="Selecciona al colaborador y registra únicamente los productos que necesita." :volver="route('flujo.inspecciones.index')">
-    @include('flujo.accesos')
     @if($regiones->isEmpty())
         <p class="ui-alert-warning">Tu cuenta no tiene regiones activas para inspeccionar. Solicita que Recursos Humanos configure tus regiones.</p>
     @endif

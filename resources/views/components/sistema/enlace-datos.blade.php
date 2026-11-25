@@ -1,10 +1,19 @@
 @props(['modulo', 'registro' => null])
-@if(auth()->check() && app(\App\Sistema\Permisos::class)->instalado() && app(\App\Sistema\Modulos::class)->consultar(auth()->user(), $modulo))
+@php
+    $usuario = auth()->user();
+    $modulos = app(\App\Sistema\Modulos::class);
+    $disponible = $usuario && app(\App\Sistema\Permisos::class)->instalado() && $modulos->consultar($usuario, $modulo);
+    $puedeEditar = $disponible && $modulos->puedeEditarCampos($usuario, $modulo);
+@endphp
+@if(($disponible && $registro !== null) || $puedeEditar)
     <div class="inline-flex flex-wrap gap-2">
-        <a href="{{ $registro === null ? route('sistema.datos.lista', $modulo) : route('sistema.datos.ficha', [$modulo, $registro]) }}"
-           class="ui-btn-secondary ui-btn-sm">{{ $registro === null ? 'Consultar datos' : 'Ver campos' }}</a>
-        @if(app(\App\Sistema\Modulos::class)->puedeEditarCampos(auth()->user(), $modulo))
-            <a href="{{ route('sistema.operacion.campos', $modulo) }}" class="ui-btn-secondary ui-btn-sm">Editar campos operativos</a>
+        @if($registro !== null)
+            <x-ui.accion :href="route('sistema.datos.ficha', [$modulo, $registro])" class="ui-btn-sm">Ver campos</x-ui.accion>
+        @endif
+        @if($puedeEditar)
+            <x-ui.accion :href="route('sistema.operacion.campos', $modulo)" class="ui-btn-sm">
+                Editar campos de {{ mb_strtolower(\App\Sistema\Modulos::definicion($modulo)[0]) }}
+            </x-ui.accion>
         @endif
     </div>
 @endif

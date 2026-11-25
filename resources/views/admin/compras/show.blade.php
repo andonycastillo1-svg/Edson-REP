@@ -4,43 +4,36 @@
 
 @section('content')
 @php($routePrefix = \App\Services\AccesoInventarioOperativo::prefijo(auth()->user()))
-<div class="w-full max-w-6xl bg-white/90 rounded-xl shadow-lg p-8">
-    <x-internal-navigation :back-url="route($routePrefix . '.compras.index')" />
-    <div class="flex items-start justify-between gap-4 mb-6">
-        <div>
-            <h1 class="ui-page-title text-slate-800">Compra #{{ $compra->id }}</h1>
-            <p class="text-slate-500 text-sm">
-                Proveedor: <span class="font-semibold text-slate-700">{{ $compra->proveedor_nombre }}</span> ·
-                Factura: <span class="font-semibold text-slate-700">{{ $compra->no_factura }}</span> ·
-                Fecha de compra: <span class="font-semibold text-slate-700">{{ $compra->fecha_compra }}</span>
-            </p>
-        </div>
-    </div>
+<div class="space-y-4">
+    <x-ui.encabezado :titulo="'Factura '.$compra->no_factura" :descripcion="$compra->proveedor_nombre.' · '.$compra->fecha_compra.' · Compra #'.$compra->id">
+        <x-ui.accion :href="route($routePrefix.'.compras.index')">Volver a compras</x-ui.accion>
+    </x-ui.encabezado>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="p-4 rounded-xl bg-white border border-slate-200">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="ui-card p-4">
             <div class="text-slate-500 text-sm">Proyecto</div>
             <div class="font-semibold text-slate-800">{{ $compra->proyecto ?? '—' }}</div>
         </div>
-        <div class="p-4 rounded-xl bg-white border border-slate-200">
+        <div class="ui-card p-4">
             <div class="text-slate-500 text-sm">Forma de pago</div>
             <div class="font-semibold text-slate-800">{{ $compra->forma_pago ?? '—' }}</div>
         </div>
         @php($autorizacion = app(\App\Sistema\Presentacion::class)->nativos('compras')['autorizado_por'])
         @if($autorizacion['visible'])
-            <div class="p-4 rounded-xl bg-white border border-slate-200">
+            <div class="ui-card p-4">
                 <div class="text-slate-500 text-sm">{{ $autorizacion['etiqueta'] }}</div>
                 <div class="font-semibold text-slate-800">{{ $compra->autorizado_por ?? 'Sin registrar' }}</div>
             </div>
         @endif
-        <div class="p-4 rounded-xl bg-white border border-slate-200">
+        <div class="ui-card p-4">
             <div class="text-slate-500 text-sm">Total factura</div>
             <div class="text-2xl font-bold text-slate-800">{{ number_format($compra->total_factura, 2) }}</div>
         </div>
     </div>
 
-    <div class="rounded-xl border border-slate-200 bg-white overflow-x-auto mb-6">
-        <table class="ui-table min-w-full text-sm">
+    <x-sistema.panel titulo="Productos facturados">
+      <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Productos facturados">
+        <table class="ui-table">
             <thead class="bg-slate-50 text-slate-600">
                 <tr>
                     <th class="px-4 py-3">Código</th>
@@ -66,10 +59,11 @@
                 @endforeach
             </tbody>
         </table>
-    </div>
+      </div>
+    </x-sistema.panel>
 
     @if($consolidados->isNotEmpty())
-        <section class="ui-panel mb-6 space-y-3 p-4">
+        <section class="ui-panel space-y-3 p-4">
             <h2 class="font-bold">Distribución por consolidado</h2>
             @if(!$compra->distribucion_confirmada_en)
                 <p class="ui-alert-warning">Factura histórica pendiente de conciliación. Sus unidades se incorporan al seguimiento cuando se confirme su distribución.</p>
@@ -104,9 +98,9 @@
                                 <legend class="font-semibold">{{ $consolidado->nombre }}</legend>
                                 @forelse($detalles->filter(fn ($d) => ($pendientes->get($consolidado->id.'|'.$d->producto_codigo)['pendiente'] ?? 0) > 0) as $d)
                                     @php($limite = $pendientes->get($consolidado->id.'|'.$d->producto_codigo)['pendiente'])
-                                    <label class="flex items-center gap-3 text-sm">
+                                    <label class="flex flex-wrap items-center gap-3 text-sm">
                                         <span>{{ $d->producto_nombre }} · {{ $d->producto_codigo }} · {{ $d->cantidad }} facturadas · {{ $limite }} pendientes</span>
-                                        <input type="number" min="0" max="{{ min($limite, $d->cantidad) }}" class="w-24 rounded-xl border-slate-300"
+                                        <input type="number" min="0" max="{{ min($limite, $d->cantidad) }}" class="ui-input w-24"
                                             name="distribucion[{{ $consolidado->id }}][{{ $d->id }}]"
                                             value="{{ old('distribucion.'.$consolidado->id.'.'.$d->id) }}"
                                             aria-label="Unidades de {{ $d->producto_codigo }} para {{ $consolidado->nombre }}">
@@ -125,8 +119,7 @@
     @endif
 
     @rutaDisponible(\App\Services\AccesoInventarioOperativo::prefijo(auth()->user()).'.compras.archivo')
-    <div class="rounded-xl border border-slate-200 bg-white p-4">
-        <h2 class="font-bold text-slate-800 mb-2">Archivos (PDF)</h2>
+    <x-sistema.panel titulo="Archivos PDF">
 
         @if($archivos->isEmpty())
             <div class="text-slate-500 text-sm">No hay archivos adjuntos.</div>
@@ -134,7 +127,7 @@
             <ul class="list-disc pl-6 text-sm">
                 @foreach($archivos as $a)
                     <li class="mb-1">
-                        <a class="text-blue-700 font-semibold hover:underline" href="{{ $a->url }}" target="_blank">
+                        <a class="text-blue-700 font-semibold hover:underline" href="{{ $a->url }}" target="_blank" rel="noopener noreferrer">
                             {{ $a->nombre_original ?? $a->ruta }}
                         </a>
                         <span class="text-slate-500">({{ number_format(($a->tamano ?? 0)/1024, 0) }} KB)</span>
@@ -142,7 +135,7 @@
                 @endforeach
             </ul>
         @endif
-    </div>
+    </x-sistema.panel>
     @endrutaDisponible
 
 </div>

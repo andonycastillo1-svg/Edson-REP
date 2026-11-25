@@ -29,12 +29,12 @@
     .veh-title {
         font-size: 28px;
         font-weight: 800;
-        color: #111827;
+        color: var(--ui-text);
         margin: 0;
     }
 
     .veh-subtitle {
-        color: #64748b;
+        color: var(--ui-muted);
         font-size: 14px;
         margin-top: 4px;
     }
@@ -60,18 +60,18 @@
     }
 
     .veh-btn-light {
-        background: #fff;
-        color: #111827;
-        border-color: #cbd5e1;
+        background: var(--ui-surface);
+        color: var(--ui-text);
+        border-color: var(--ui-border);
     }
 
     .veh-btn-light:hover {
-        background: #f1f5f9;
+        background: var(--ui-subtle);
     }
 
     .veh-btn-primary {
         background: var(--ui-primary);
-        color: #fff;
+        color: var(--ui-surface);
         border-color: var(--ui-primary);
     }
 
@@ -80,9 +80,9 @@
     }
 
     .veh-alert-success {
-        border: 1px solid #bbf7d0;
-        background: #f0fdf4;
-        color: #166534;
+        border: 1px solid var(--ui-success-border);
+        background: var(--ui-success-bg);
+        color: var(--ui-success-dark);
         padding: 12px 14px;
         border-radius: 12px;
         margin-bottom: 14px;
@@ -90,9 +90,9 @@
     }
 
     .veh-alert-error {
-        border: 1px solid #fecaca;
-        background: #fef2f2;
-        color: #991b1b;
+        border: 1px solid var(--ui-danger-border);
+        background: var(--ui-danger-bg);
+        color: var(--ui-danger-dark);
         padding: 12px 14px;
         border-radius: 12px;
         margin-bottom: 14px;
@@ -103,8 +103,8 @@
         display: grid;
         grid-template-columns: 1fr 220px;
         gap: 12px;
-        background: #fff;
-        border: 1px solid #e5e7eb;
+        background: var(--ui-surface);
+        border: 1px solid var(--ui-border);
         border-radius: 16px;
         padding: 14px;
         margin-bottom: 14px;
@@ -113,7 +113,7 @@
 
     .filters-card input,
     .filters-card select {
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--ui-border);
         border-radius: 10px;
         padding: 10px 12px;
         min-height: 42px;
@@ -121,15 +121,15 @@
     }
 
     .compact-list {
-        background: #fff;
-        border: 1px solid #e5e7eb;
+        background: var(--ui-surface);
+        border: 1px solid var(--ui-border);
         border-radius: 18px;
         box-shadow: var(--ui-shadow-sm);
         overflow: hidden;
     }
 
     .compact-row {
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--ui-subtle);
     }
 
     .compact-row:last-child {
@@ -151,12 +151,12 @@
     .info-main {
         font-size: 15px;
         font-weight: 800;
-        color: #111827;
+        color: var(--ui-text);
     }
 
     .info-sub {
         font-size: 12px;
-        color: #64748b;
+        color: var(--ui-muted);
         margin-top: 2px;
     }
 
@@ -170,13 +170,13 @@
     }
 
     .badge-active {
-        background: #dcfce7;
-        color: #166534;
+        background: var(--ui-success-bg);
+        color: var(--ui-success-dark);
     }
 
     .badge-closed {
-        background: #e5e7eb;
-        color: #374151;
+        background: var(--ui-border);
+        color: var(--ui-text);
     }
 
     .row-actions,
@@ -191,9 +191,9 @@
     }
 
     .small-btn {
-        border: 1px solid #cbd5e1;
-        background: #fff;
-        color: #111827;
+        border: 1px solid var(--ui-border);
+        background: var(--ui-surface);
+        color: var(--ui-text);
         border-radius: 10px;
         padding: 8px 11px;
         font-weight: 700;
@@ -207,37 +207,37 @@
     }
 
     .small-btn:hover {
-        background: #f1f5f9;
+        background: var(--ui-subtle);
     }
 
     .blue-btn {
-        border-color: #bfdbfe;
-        background: #eff6ff;
+        border-color: var(--ui-info-border);
+        background: var(--ui-info-bg);
         color: var(--ui-primary);
     }
 
     .blue-btn:hover {
-        background: #dbeafe;
+        background: var(--ui-tint);
     }
 
     .green-btn {
-        border-color: #bbf7d0;
-        background: #f0fdf4;
-        color: #166534;
+        border-color: var(--ui-success-border);
+        background: var(--ui-success-bg);
+        color: var(--ui-success-dark);
     }
 
     .green-btn:hover {
-        background: #dcfce7;
+        background: var(--ui-success-bg);
     }
 
     .danger-outline-btn {
-        border-color: #fecaca;
-        background: #fff;
-        color: #dc2626;
+        border-color: var(--ui-danger-border);
+        background: var(--ui-surface);
+        color: var(--ui-danger);
     }
 
     .danger-outline-btn:hover {
-        background: #fef2f2;
+        background: var(--ui-danger-bg);
     }
 
     .detail-area {
@@ -254,14 +254,14 @@
         grid-template-columns: 1fr 1fr;
         gap: 14px;
         background: var(--ui-bg);
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--ui-border);
         border-radius: 14px;
         padding: 14px;
     }
 
     .panel {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: var(--ui-surface);
+        border: 1px solid var(--ui-border);
         border-radius: 14px;
         padding: 14px;
     }
@@ -273,13 +273,13 @@
     .panel-title {
         font-size: 14px;
         font-weight: 800;
-        color: #111827;
+        color: var(--ui-text);
         margin-bottom: 10px;
     }
 
     .panel-description {
         font-size: 12px;
-        color: #64748b;
+        color: var(--ui-muted);
         margin-bottom: 12px;
     }
 
@@ -290,16 +290,16 @@
     }
 
     .document-box {
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--ui-border);
         border-radius: 12px;
         padding: 12px;
-        background: #fff;
+        background: var(--ui-surface);
     }
 
     .document-title {
         font-size: 13px;
         font-weight: 800;
-        color: #111827;
+        color: var(--ui-text);
         margin-bottom: 8px;
     }
 
@@ -312,18 +312,18 @@
     }
 
     .upload-form input[type="file"] {
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--ui-border);
         border-radius: 10px;
         padding: 8px;
-        background: #fff;
+        background: var(--ui-surface);
         width: 100%;
         font-size: 13px;
     }
 
     .upload-btn {
-        border: 1px solid #cbd5e1;
-        background: #fff;
-        color: #111827;
+        border: 1px solid var(--ui-border);
+        background: var(--ui-surface);
+        color: var(--ui-text);
         border-radius: 10px;
         padding: 9px 11px;
         font-weight: 800;
@@ -333,7 +333,7 @@
     }
 
     .upload-btn:hover {
-        background: #f1f5f9;
+        background: var(--ui-subtle);
     }
 
     .close-form {
@@ -344,18 +344,18 @@
     }
 
     .close-form input {
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--ui-border);
         border-radius: 10px;
         padding: 9px 11px;
         min-height: 40px;
         width: 100%;
-        background: #fff;
+        background: var(--ui-surface);
     }
 
     .danger-btn {
-        border: 1px solid #ef4444;
-        background: #fff;
-        color: #dc2626;
+        border: 1px solid var(--ui-danger);
+        background: var(--ui-surface);
+        color: var(--ui-danger);
         border-radius: 10px;
         padding: 9px 12px;
         font-weight: 800;
@@ -364,21 +364,21 @@
     }
 
     .danger-btn:hover {
-        background: #fef2f2;
+        background: var(--ui-danger-bg);
     }
 
     .empty-box {
         text-align: center;
-        color: #64748b;
+        color: var(--ui-muted);
         padding: 38px;
-        background: #fff;
-        border: 1px solid #e5e7eb;
+        background: var(--ui-surface);
+        border: 1px solid var(--ui-border);
         border-radius: 18px;
     }
 
     .muted-line {
         font-size: 12px;
-        color: #64748b;
+        color: var(--ui-muted);
         margin-top: 8px;
         line-height: 1.4;
     }
@@ -391,14 +391,14 @@
 
     .quick-info-item {
         background: var(--ui-bg);
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--ui-border);
         border-radius: 12px;
         padding: 10px;
     }
 
     .quick-info-label {
         font-size: 11px;
-        color: #64748b;
+        color: var(--ui-muted);
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: .04em;
@@ -407,7 +407,7 @@
 
     .quick-info-value {
         font-size: 13px;
-        color: #111827;
+        color: var(--ui-text);
         font-weight: 800;
     }
 

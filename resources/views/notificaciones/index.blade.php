@@ -4,7 +4,7 @@
 <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
     <x-internal-navigation :back-url="route('dashboard')" />
 
-    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+    <div class="overflow-hidden ui-panel shadow-slate-200/60">
         <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-7 bg-slate-50">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Centro de avisos</p>
@@ -64,7 +64,7 @@
 
                         <div class="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
                             @if($urlSegura)
-                                <a href="{{ $url }}" class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-700">
+                                <a href="{{ $url }}" class="ui-btn-secondary">
                                     Abrir
                                 </a>
                             @endif

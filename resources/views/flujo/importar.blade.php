@@ -1,5 +1,4 @@
 <x-sistema.pagina titulo="Importar asignaciones desde Excel" descripcion="Revisa el archivo antes de registrar asignaciones y descontar existencias." :volver="route('dashboard')">
-    @include('flujo.accesos')
     <div class="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <x-sistema.panel>
             <div class="flujo-cabecera-panel">

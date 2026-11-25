@@ -30,13 +30,13 @@
     .veh-title {
         font-size: 28px;
         font-weight: 800;
-        color: #111827;
+        color: var(--ui-text);
         margin: 0;
     }
 
     .veh-subtitle {
         font-size: 14px;
-        color: #64748b;
+        color: var(--ui-muted);
         margin-top: 4px;
     }
 
@@ -62,18 +62,18 @@
     }
 
     .veh-btn-light {
-        background: #ffffff;
-        color: #111827;
-        border-color: #cbd5e1;
+        background: var(--ui-surface);
+        color: var(--ui-text);
+        border-color: var(--ui-border);
     }
 
     .veh-btn-light:hover {
-        background: #f1f5f9;
+        background: var(--ui-subtle);
     }
 
     .veh-btn-primary {
         background: var(--ui-primary);
-        color: #ffffff;
+        color: var(--ui-surface);
         border-color: var(--ui-primary);
     }
 
@@ -81,19 +81,9 @@
         background: var(--ui-primary);
     }
 
-    .veh-btn-success {
-        background: #16a34a;
-        color: #ffffff;
-        border-color: #16a34a;
-    }
-
-    .veh-btn-success:hover {
-        background: #15803d;
-    }
-
     .veh-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: var(--ui-surface);
+        border: 1px solid var(--ui-border);
         border-radius: 18px;
         overflow: hidden;
         box-shadow: var(--ui-shadow-sm);
@@ -117,14 +107,14 @@
         padding: 14px;
         text-align: left;
         font-weight: 800;
-        color: #334155;
-        border-bottom: 1px solid #e5e7eb;
+        color: var(--ui-text);
+        border-bottom: 1px solid var(--ui-border);
         white-space: nowrap;
     }
 
     .veh-table td {
         padding: 14px;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid var(--ui-subtle);
         vertical-align: middle;
     }
 
@@ -134,21 +124,21 @@
 
     .veh-main {
         font-weight: 800;
-        color: #111827;
+        color: var(--ui-text);
     }
 
     .veh-sub {
         font-size: 12px;
-        color: #64748b;
+        color: var(--ui-muted);
         margin-top: 2px;
     }
 
     .veh-plate {
         display: inline-flex;
         align-items: center;
-        border: 1px solid #cbd5e1;
+        border: 1px solid var(--ui-border);
         background: var(--ui-bg);
-        color: #111827;
+        color: var(--ui-text);
         border-radius: 10px;
         padding: 7px 11px;
         font-weight: 800;
@@ -166,23 +156,23 @@
     }
 
     .veh-badge-uso {
-        background: #dbeafe;
+        background: var(--ui-tint);
         color: var(--ui-primary);
     }
 
     .veh-badge-disponible {
-        background: #dcfce7;
-        color: #166534;
+        background: var(--ui-success-bg);
+        color: var(--ui-success-dark);
     }
 
     .veh-badge-mantenimiento {
-        background: #fef3c7;
-        color: #92400e;
+        background: var(--ui-warning-bg);
+        color: var(--ui-warning-dark);
     }
 
     .veh-badge-otro {
-        background: #e5e7eb;
-        color: #374151;
+        background: var(--ui-border);
+        color: var(--ui-text);
     }
 
     .veh-row-actions {
@@ -193,8 +183,8 @@
     }
 
     .veh-btn-edit {
-        border: 1px solid #bfdbfe;
-        background: #eff6ff;
+        border: 1px solid var(--ui-info-border);
+        background: var(--ui-info-bg);
         color: var(--ui-primary);
         border-radius: 10px;
         padding: 8px 11px;
@@ -204,13 +194,13 @@
     }
 
     .veh-btn-edit:hover {
-        background: #dbeafe;
+        background: var(--ui-tint);
     }
 
     .veh-btn-danger {
-        border: 1px solid #fecaca;
-        background: #fff;
-        color: #dc2626;
+        border: 1px solid var(--ui-danger-border);
+        background: var(--ui-surface);
+        color: var(--ui-danger);
         border-radius: 10px;
         padding: 8px 11px;
         font-size: 13px;
@@ -219,13 +209,13 @@
     }
 
     .veh-btn-danger:hover {
-        background: #fef2f2;
+        background: var(--ui-danger-bg);
     }
 
     .veh-empty {
         text-align: center;
         padding: 36px;
-        color: #64748b;
+        color: var(--ui-muted);
     }
 
     @media (max-width: 768px) {
@@ -268,7 +258,7 @@
                 @endrutaDisponible
 
                 @rutaDisponible('admin.vehiculos.create')
-                <a href="{{ route('admin.vehiculos.create') }}" class="veh-btn veh-btn-success">
+                <a href="{{ route('admin.vehiculos.create') }}" class="ui-btn-primary">
                     + Nuevo vehículo
                 </a>
                 @endrutaDisponible
