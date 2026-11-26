@@ -12,8 +12,8 @@
         <div class="ui-acceso-identidad">
             <x-logo-image class="ui-acceso-logo" alt="" />
             <div>
-                <p class="ui-acceso-producto">Sistema de Inventario</p>
-                <p class="ui-acceso-empresa">{{ config('app.empresa') ?: 'Grupo NetSolutions' }}</p>
+                <p class="ui-acceso-producto">{{ app(\App\Sistema\Ajustes::class)->general('nombre', 'Sistema de Inventario') }}</p>
+                <p class="ui-acceso-empresa">{{ app(\App\Sistema\Ajustes::class)->general('empresa', 'Grupo NetSolutions') }}</p>
             </div>
         </div>
         <div class="ui-acceso-contenido">

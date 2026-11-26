@@ -4,8 +4,8 @@
             <a href="{{ route('dashboard') }}" class="ui-brand" aria-label="Inicio de Grupo NetSolutions">
                 <x-logo-image class="ui-brand-logo" alt="" />
                 <span class="ui-brand-copy">
-                    <strong>Sistema de Inventario</strong>
-                    <span>{{ config('app.empresa') ?: 'Grupo NetSolutions' }}</span>
+                    <strong>{{ app(\App\Sistema\Ajustes::class)->general('nombre', 'Sistema de Inventario') }}</strong>
+                    <span>{{ app(\App\Sistema\Ajustes::class)->general('empresa', 'Grupo NetSolutions') }}</span>
                 </span>
             </a>
 
