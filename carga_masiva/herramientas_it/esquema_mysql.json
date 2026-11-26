@@ -1,0 +1,3842 @@
+{
+  "columnas": [
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "estado",
+      "COLUMN_TYPE": "enum('Activa','Devuelta','Dañada','Cerrada')",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": "Activa"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "colaboradores",
+      "COLUMN_NAME": "estado",
+      "COLUMN_TYPE": "enum('Activo','Inactivo')",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": "Activo"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "estado_entrega",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": "buen_estado"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "estado_evidencia",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": "completa"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "tipo_entrega",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": "inicial"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "estado_cobro",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": "no_aplica"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "condicion",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": "nuevo"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "stock_tipo",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": "nuevo"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "stock_tipo",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": "nuevo"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "a_utilizarse",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "aprobado_por",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "autorizado_por",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "ayuda",
+      "COLUMN_TYPE": "varchar(500)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campo_valores",
+      "COLUMN_NAME": "busqueda",
+      "COLUMN_TYPE": "varchar(190)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "productos",
+      "COLUMN_NAME": "categoria",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_ajustes",
+      "COLUMN_NAME": "clave",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "clave",
+      "COLUMN_TYPE": "varchar(60)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "colaboradores",
+      "COLUMN_NAME": "codigo",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "productos",
+      "COLUMN_NAME": "codigo",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "colaborador_codigo",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "productos",
+      "COLUMN_NAME": "descripcion",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "roles",
+      "COLUMN_NAME": "descripcion",
+      "COLUMN_TYPE": "varchar(500)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_estado_historiales",
+      "COLUMN_NAME": "detalle",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "detalle",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "email",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_estado_historiales",
+      "COLUMN_NAME": "estado",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "estado_devolucion",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "estado_devolucion",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "etiqueta",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "forma_pago",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "grupo_asignacion",
+      "COLUMN_TYPE": "varchar(80)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "grupo_devolucion",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "imagen",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "justificacion_reposicion",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "medio_confirmacion",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "medio_solicitud",
+      "COLUMN_TYPE": "enum('WhatsApp','Correo','Requerimiento interno')",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "migrations",
+      "COLUMN_NAME": "migration",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "modalidad",
+      "COLUMN_TYPE": "varchar(15)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "modulo",
+      "COLUMN_TYPE": "varchar(40)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "motivo_administrativo",
+      "COLUMN_TYPE": "varchar(15)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "motivo_devolucion",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "motivo_inventario_nuevo",
+      "COLUMN_TYPE": "varchar(500)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "motivo_registrado",
+      "COLUMN_TYPE": "varchar(120)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "motivo_reposicion",
+      "COLUMN_TYPE": "varchar(40)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "name",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "no_factura",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "bodegas",
+      "COLUMN_NAME": "nombre",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "colaboradores",
+      "COLUMN_NAME": "nombre",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "procesos_inspeccion",
+      "COLUMN_NAME": "nombre",
+      "COLUMN_TYPE": "varchar(120)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "regiones",
+      "COLUMN_NAME": "nombre",
+      "COLUMN_TYPE": "varchar(120)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "productos",
+      "COLUMN_NAME": "nombre",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "proveedores",
+      "COLUMN_NAME": "nombre",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "roles",
+      "COLUMN_NAME": "nombre",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "observaciones",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "observaciones_devolucion",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "password",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "pdf_firmado",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_permisos_usuario",
+      "COLUMN_NAME": "permiso",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "permiso_edicion",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "permiso_lectura",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "producto_codigo",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "producto_codigo",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_detalles",
+      "COLUMN_NAME": "producto_codigo",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "producto_codigo",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "producto_codigo",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "producto_codigo",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "proyecto",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "colaboradores",
+      "COLUMN_NAME": "puesto",
+      "COLUMN_TYPE": "varchar(80)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campo_valores",
+      "COLUMN_NAME": "registro",
+      "COLUMN_TYPE": "varchar(80)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "remember_token",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "solicitado_por",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "solicitado_por",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "stock_tipo",
+      "COLUMN_TYPE": "varchar(10)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "stock_tipo_resultante",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "colaboradores",
+      "COLUMN_NAME": "telefono",
+      "COLUMN_TYPE": "varchar(20)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "tercero",
+      "COLUMN_TYPE": "varchar(180)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "tipo",
+      "COLUMN_TYPE": "enum('Asignacion','Devolucion','Reemplazo')",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "bodegas",
+      "COLUMN_NAME": "tipo",
+      "COLUMN_TYPE": "enum('Principal','Regional')",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "tipo",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "tipo_inventario",
+      "COLUMN_TYPE": "varchar(10)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "tipo_movimiento",
+      "COLUMN_TYPE": "enum('Entrada','Salida','Traslado')",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "bodegas",
+      "COLUMN_NAME": "ubicacion",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "productos",
+      "COLUMN_NAME": "unidad_medida",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "vehiculo_vin",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": "utf8mb4_unicode_ci",
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "cantidad",
+      "COLUMN_TYPE": "int unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "exportacion",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "filtro",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "lotes_inicializados",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "obligatorio",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "bodega_usuario_operativa",
+      "COLUMN_NAME": "opera_inventario",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "bodega_usuario_operativa",
+      "COLUMN_NAME": "opera_requerimientos",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "orden",
+      "COLUMN_TYPE": "smallint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "tabla",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "0"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "total_factura",
+      "COLUMN_TYPE": "decimal(12,2)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "0.00"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "acceso_activo",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "1"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "regiones",
+      "COLUMN_NAME": "activa",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "1"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "procesos_inspeccion",
+      "COLUMN_NAME": "activo",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "1"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "roles",
+      "COLUMN_NAME": "activo",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "1"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "activo",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "1"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "formulario",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "1"
+    },
+    {
+      "EXTRA": "DEFAULT_GENERATED",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "fecha",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP"
+    },
+    {
+      "EXTRA": "DEFAULT_GENERATED",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "fecha",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP"
+    },
+    {
+      "EXTRA": "DEFAULT_GENERATED",
+      "TABLE_NAME": "asignacion_estado_historiales",
+      "COLUMN_NAME": "fecha_evento",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": "CURRENT_TIMESTAMP"
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "almacenista_supervisores",
+      "COLUMN_NAME": "almacenista_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "roles",
+      "COLUMN_NAME": "ambito_operativo",
+      "COLUMN_TYPE": "tinyint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_coordinador_historial",
+      "COLUMN_NAME": "anterior_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "archivado_en",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "asignacion_anterior_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_estado_historiales",
+      "COLUMN_NAME": "asignacion_inventario_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "asignacion_inventario_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "asignacion_inventario_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "asignado_en",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "asignado_por_user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "migrations",
+      "COLUMN_NAME": "batch",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "bodega_destino_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "bodega_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "bodega_usuario_operativa",
+      "COLUMN_NAME": "bodega_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "bodega_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "bodega_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "bodega_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "bodega_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "bodega_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "bodega_origen_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "bodega_origen_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "bodega_retorno_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "bodega_retorno_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campo_valores",
+      "COLUMN_NAME": "campo_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "cantidad",
+      "COLUMN_TYPE": "int unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_detalle_consolidado",
+      "COLUMN_NAME": "cantidad",
+      "COLUMN_TYPE": "int unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_detalles",
+      "COLUMN_NAME": "cantidad",
+      "COLUMN_TYPE": "int unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "cantidad",
+      "COLUMN_TYPE": "int unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "cantidad",
+      "COLUMN_TYPE": "int unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "cantidad_asignada",
+      "COLUMN_TYPE": "int unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "cobro_calculado",
+      "COLUMN_TYPE": "decimal(12,2)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_detalle_consolidado",
+      "COLUMN_NAME": "compra_detalle_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_consolidado",
+      "COLUMN_NAME": "compra_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_detalles",
+      "COLUMN_NAME": "compra_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "confirmada_en",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "confirmada_por",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_consolidado",
+      "COLUMN_NAME": "consolidado_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_detalle_consolidado",
+      "COLUMN_NAME": "consolidado_linea_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_coordinador_historial",
+      "COLUMN_NAME": "coordinador_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "regiones",
+      "COLUMN_NAME": "coordinador_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "coordinador_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "costo_unitario",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "creado_por_user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_coordinador_historial",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "almacenista_supervisores",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_estado_historiales",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "bodegas",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "colaboradores",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_detalles",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "procesos_inspeccion",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "productos",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "proveedores",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_coordinador_operativo",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "regiones",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "roles",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campo_valores",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "created_by",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "devuelto_en",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "devuelto_por_user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "disponible_desde",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "distribucion_confirmada_en",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "email_verified_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "evidencia_calculo",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "fecha_compra",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "fecha_vencimiento",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "almacenista_supervisores",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "asignacion_estado_historiales",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "bodegas",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "compra_detalles",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "procesos_inspeccion",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "proveedores",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "region_coordinador_historial",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "regiones",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "roles",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "sistema_campo_valores",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "auto_increment",
+      "TABLE_NAME": "migrations",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "int unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "ingresado_en",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "ingresado_en",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "inicio_uso_en",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "inventario_existencia_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "lote_operativo_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "motivo_asignacion_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "ocurrio_en",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_permisos_usuario",
+      "COLUMN_NAME": "permitido",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_detalles",
+      "COLUMN_NAME": "precio_unitario",
+      "COLUMN_TYPE": "decimal(12,2)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "predeterminado",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "proveedor_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "recibida_en",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_coordinador_historial",
+      "COLUMN_NAME": "region_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_coordinador_operativo",
+      "COLUMN_NAME": "region_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_usuario_operativa",
+      "COLUMN_NAME": "region_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "colaboradores",
+      "COLUMN_NAME": "region_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "requerimiento_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "retornado_desde_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "reutilizable",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "role_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "salida_en",
+      "COLUMN_TYPE": "datetime",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "almacenista_supervisores",
+      "COLUMN_NAME": "supervisor_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "sustituida_por_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "tiempo_consumido_segundos",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "almacenista_supervisores",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_estado_historiales",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "bodegas",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "colaboradores",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_detalles",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "procesos_inspeccion",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "productos",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "proveedores",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_coordinador_operativo",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "regiones",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "roles",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campo_valores",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campos",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "bodega_usuario_operativa",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_coordinador_historial",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_coordinador_operativo",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "region_usuario_operativa",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_permisos_usuario",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_estado_historiales",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "user_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_ajustes",
+      "COLUMN_NAME": "valor",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "sistema_campo_valores",
+      "COLUMN_NAME": "valor",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "valor_referencia",
+      "COLUMN_TYPE": "decimal(10,2)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "valor_referencia",
+      "COLUMN_TYPE": "decimal(12,2)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "valor_referencia",
+      "COLUMN_TYPE": "decimal(12,2)",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "compra_detalles",
+      "COLUMN_NAME": "valor_total",
+      "COLUMN_TYPE": "decimal(12,2)",
+      "IS_NULLABLE": "NO",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "vehiculo_producto_asignacion_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "vida_original_meses",
+      "COLUMN_TYPE": "int unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "vida_restante_anterior_segundos",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "vida_restante_segundos",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "vida_restante_segundos",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "vida_util_al_asignar_segundos",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "vida_util_consumida_meses",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "vida_util_disponible_segundos",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "vida_util_disponible_segundos",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "vida_util_inicial_segundos",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "productos",
+      "COLUMN_NAME": "vida_util_meses",
+      "COLUMN_TYPE": "smallint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "vida_util_original_meses",
+      "COLUMN_TYPE": "smallint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "vida_util_original_meses",
+      "COLUMN_TYPE": "smallint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "vida_util_restante_meses",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "vida_util_restante_meses",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "vida_util_restante_meses",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "vida_util_restante_segundos",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    },
+    {
+      "EXTRA": "",
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "vida_util_restante_segundos",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "YES",
+      "COLLATION_NAME": null,
+      "COLUMN_DEFAULT": null
+    }
+  ],
+  "unicos": [
+    [
+      "almacenista_supervisores",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "almacenista_supervisores",
+      "UQ",
+      [
+        [
+          "almacenista_id",
+          null
+        ],
+        [
+          "supervisor_id",
+          null
+        ]
+      ]
+    ],
+    [
+      "almacenista_supervisores",
+      "UQ",
+      [
+        [
+          "supervisor_id",
+          null
+        ]
+      ]
+    ],
+    [
+      "asignacion_estado_historiales",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "asignacion_movimientos",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "asignacion_periodos",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "asignacion_periodos",
+      "UQ",
+      [
+        [
+          "inventario_existencia_id",
+          null
+        ],
+        [
+          "asignado_en",
+          null
+        ]
+      ]
+    ],
+    [
+      "asignaciones_inventarios",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "bodega_usuario_operativa",
+      "PK",
+      [
+        [
+          "bodega_id",
+          null
+        ],
+        [
+          "user_id",
+          null
+        ]
+      ]
+    ],
+    [
+      "bodegas",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "colaboradores",
+      "PK",
+      [
+        [
+          "codigo",
+          null
+        ]
+      ]
+    ],
+    [
+      "compra_consolidado",
+      "PK",
+      [
+        [
+          "compra_id",
+          null
+        ],
+        [
+          "consolidado_id",
+          null
+        ]
+      ]
+    ],
+    [
+      "compra_detalle_consolidado",
+      "PK",
+      [
+        [
+          "consolidado_linea_id",
+          null
+        ],
+        [
+          "compra_detalle_id",
+          null
+        ]
+      ]
+    ],
+    [
+      "compra_detalles",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "compra_detalles",
+      "UQ",
+      [
+        [
+          "compra_id",
+          null
+        ],
+        [
+          "producto_codigo",
+          null
+        ]
+      ]
+    ],
+    [
+      "compras",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "compras",
+      "UQ",
+      [
+        [
+          "proveedor_id",
+          null
+        ],
+        [
+          "no_factura",
+          null
+        ]
+      ]
+    ],
+    [
+      "entregas_inventario",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "inventario_existencias",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "inventario_lotes_operativos",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "inventarios",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "inventarios",
+      "UQ",
+      [
+        [
+          "producto_codigo",
+          null
+        ],
+        [
+          "bodega_id",
+          null
+        ],
+        [
+          "stock_tipo",
+          null
+        ]
+      ]
+    ],
+    [
+      "migrations",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "movimientos",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "procesos_inspeccion",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "procesos_inspeccion",
+      "UQ",
+      [
+        [
+          "nombre",
+          null
+        ]
+      ]
+    ],
+    [
+      "productos",
+      "PK",
+      [
+        [
+          "codigo",
+          null
+        ]
+      ]
+    ],
+    [
+      "proveedores",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "proveedores",
+      "UQ",
+      [
+        [
+          "nombre",
+          null
+        ]
+      ]
+    ],
+    [
+      "region_coordinador_historial",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "region_coordinador_operativo",
+      "PK",
+      [
+        [
+          "region_id",
+          null
+        ],
+        [
+          "user_id",
+          null
+        ]
+      ]
+    ],
+    [
+      "region_usuario_operativa",
+      "PK",
+      [
+        [
+          "user_id",
+          null
+        ],
+        [
+          "region_id",
+          null
+        ]
+      ]
+    ],
+    [
+      "regiones",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "regiones",
+      "UQ",
+      [
+        [
+          "nombre",
+          null
+        ]
+      ]
+    ],
+    [
+      "roles",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "roles",
+      "UQ",
+      [
+        [
+          "nombre",
+          null
+        ]
+      ]
+    ],
+    [
+      "sistema_ajustes",
+      "PK",
+      [
+        [
+          "clave",
+          null
+        ]
+      ]
+    ],
+    [
+      "sistema_campo_valores",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "sistema_campo_valores",
+      "UQ",
+      [
+        [
+          "campo_id",
+          null
+        ],
+        [
+          "registro",
+          null
+        ]
+      ]
+    ],
+    [
+      "sistema_campos",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "sistema_campos",
+      "UQ",
+      [
+        [
+          "modulo",
+          null
+        ],
+        [
+          "clave",
+          null
+        ]
+      ]
+    ],
+    [
+      "sistema_permisos_usuario",
+      "PK",
+      [
+        [
+          "user_id",
+          null
+        ],
+        [
+          "permiso",
+          null
+        ]
+      ]
+    ],
+    [
+      "users",
+      "PK",
+      [
+        [
+          "id",
+          null
+        ]
+      ]
+    ],
+    [
+      "users",
+      "UQ",
+      [
+        [
+          "email",
+          null
+        ]
+      ]
+    ]
+  ],
+  "relaciones": [
+    {
+      "TABLE_NAME": "almacenista_supervisores",
+      "COLUMN_NAME": "almacenista_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "CASCADE"
+      ]
+    },
+    {
+      "TABLE_NAME": "region_coordinador_historial",
+      "COLUMN_NAME": "anterior_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "asignacion_anterior_id",
+      "REFERENCED_TABLE_NAME": "asignaciones_inventarios",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_estado_historiales",
+      "COLUMN_NAME": "asignacion_inventario_id",
+      "REFERENCED_TABLE_NAME": "asignaciones_inventarios",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "CASCADE"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "asignacion_inventario_id",
+      "REFERENCED_TABLE_NAME": "asignaciones_inventarios",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "CASCADE"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "asignacion_inventario_id",
+      "REFERENCED_TABLE_NAME": "asignaciones_inventarios",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "asignado_por_user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "bodega_destino_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "bodega_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "CASCADE",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "bodega_usuario_operativa",
+      "COLUMN_NAME": "bodega_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "bodega_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "bodega_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "bodega_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "CASCADE"
+      ]
+    },
+    {
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "bodega_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "CASCADE",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "bodega_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "bodega_origen_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "bodega_origen_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "bodega_retorno_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "bodega_retorno_id",
+      "REFERENCED_TABLE_NAME": "bodegas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "sistema_campo_valores",
+      "COLUMN_NAME": "campo_id",
+      "REFERENCED_TABLE_NAME": "sistema_campos",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "colaborador_codigo",
+      "REFERENCED_TABLE_NAME": "colaboradores",
+      "REFERENCED_COLUMN_NAME": "codigo",
+      "reglas": [
+        "CASCADE",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "compra_detalle_consolidado",
+      "COLUMN_NAME": "compra_detalle_id",
+      "REFERENCED_TABLE_NAME": "compra_detalles",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "compra_consolidado",
+      "COLUMN_NAME": "compra_id",
+      "REFERENCED_TABLE_NAME": "compras",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "compra_detalles",
+      "COLUMN_NAME": "compra_id",
+      "REFERENCED_TABLE_NAME": "compras",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "CASCADE"
+      ]
+    },
+    {
+      "TABLE_NAME": "entregas_inventario",
+      "COLUMN_NAME": "confirmada_por",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "compra_consolidado",
+      "COLUMN_NAME": "consolidado_id",
+      "REFERENCED_TABLE_NAME": "consolidados",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "compra_detalle_consolidado",
+      "COLUMN_NAME": "consolidado_linea_id",
+      "REFERENCED_TABLE_NAME": "consolidado_lineas",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "region_coordinador_historial",
+      "COLUMN_NAME": "coordinador_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "regiones",
+      "COLUMN_NAME": "coordinador_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "coordinador_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "creado_por_user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "created_by",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "devuelto_por_user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_periodos",
+      "COLUMN_NAME": "inventario_existencia_id",
+      "REFERENCED_TABLE_NAME": "inventario_existencias",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "lote_operativo_id",
+      "REFERENCED_TABLE_NAME": "inventario_lotes_operativos",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "motivo_asignacion_id",
+      "REFERENCED_TABLE_NAME": "motivos_asignacion",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "producto_codigo",
+      "REFERENCED_TABLE_NAME": "productos",
+      "REFERENCED_COLUMN_NAME": "codigo",
+      "reglas": [
+        "CASCADE",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "compra_detalles",
+      "COLUMN_NAME": "producto_codigo",
+      "REFERENCED_TABLE_NAME": "productos",
+      "REFERENCED_COLUMN_NAME": "codigo",
+      "reglas": [
+        "NO ACTION",
+        "NO ACTION"
+      ]
+    },
+    {
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "producto_codigo",
+      "REFERENCED_TABLE_NAME": "productos",
+      "REFERENCED_COLUMN_NAME": "codigo",
+      "reglas": [
+        "CASCADE",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "producto_codigo",
+      "REFERENCED_TABLE_NAME": "productos",
+      "REFERENCED_COLUMN_NAME": "codigo",
+      "reglas": [
+        "CASCADE",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "inventarios",
+      "COLUMN_NAME": "producto_codigo",
+      "REFERENCED_TABLE_NAME": "productos",
+      "REFERENCED_COLUMN_NAME": "codigo",
+      "reglas": [
+        "CASCADE",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "producto_codigo",
+      "REFERENCED_TABLE_NAME": "productos",
+      "REFERENCED_COLUMN_NAME": "codigo",
+      "reglas": [
+        "CASCADE",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "compras",
+      "COLUMN_NAME": "proveedor_id",
+      "REFERENCED_TABLE_NAME": "proveedores",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "NO ACTION"
+      ]
+    },
+    {
+      "TABLE_NAME": "colaboradores",
+      "COLUMN_NAME": "region_id",
+      "REFERENCED_TABLE_NAME": "regiones",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "region_coordinador_historial",
+      "COLUMN_NAME": "region_id",
+      "REFERENCED_TABLE_NAME": "regiones",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "region_coordinador_operativo",
+      "COLUMN_NAME": "region_id",
+      "REFERENCED_TABLE_NAME": "regiones",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "region_usuario_operativa",
+      "COLUMN_NAME": "region_id",
+      "REFERENCED_TABLE_NAME": "regiones",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "requerimiento_id",
+      "REFERENCED_TABLE_NAME": "consolidado_necesidades",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "inventario_lotes_operativos",
+      "COLUMN_NAME": "retornado_desde_id",
+      "REFERENCED_TABLE_NAME": "asignaciones_inventarios",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "users",
+      "COLUMN_NAME": "role_id",
+      "REFERENCED_TABLE_NAME": "roles",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "almacenista_supervisores",
+      "COLUMN_NAME": "supervisor_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "CASCADE"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "sustituida_por_id",
+      "REFERENCED_TABLE_NAME": "asignaciones_inventarios",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_estado_historiales",
+      "COLUMN_NAME": "user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignacion_movimientos",
+      "COLUMN_NAME": "user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "asignaciones_inventarios",
+      "COLUMN_NAME": "user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "bodega_usuario_operativa",
+      "COLUMN_NAME": "user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "region_coordinador_historial",
+      "COLUMN_NAME": "user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "region_coordinador_operativo",
+      "COLUMN_NAME": "user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "region_usuario_operativa",
+      "COLUMN_NAME": "user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "RESTRICT"
+      ]
+    },
+    {
+      "TABLE_NAME": "sistema_permisos_usuario",
+      "COLUMN_NAME": "user_id",
+      "REFERENCED_TABLE_NAME": "users",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "CASCADE"
+      ]
+    },
+    {
+      "TABLE_NAME": "inventario_existencias",
+      "COLUMN_NAME": "vehiculo_producto_asignacion_id",
+      "REFERENCED_TABLE_NAME": "vehiculo_producto_asignaciones",
+      "REFERENCED_COLUMN_NAME": "id",
+      "reglas": [
+        "NO ACTION",
+        "SET NULL"
+      ]
+    },
+    {
+      "TABLE_NAME": "movimientos",
+      "COLUMN_NAME": "vehiculo_vin",
+      "REFERENCED_TABLE_NAME": "vehiculos",
+      "REFERENCED_COLUMN_NAME": "vin",
+      "reglas": [
+        "CASCADE",
+        "SET NULL"
+      ]
+    }
+  ],
+  "tablas": [
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "almacenista_supervisores"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "asignacion_estado_historiales"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "asignacion_movimientos"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "asignacion_periodos"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "asignaciones_inventarios"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "bodega_usuario_operativa"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "bodegas"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "colaboradores"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "compra_consolidado"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "compra_detalle_consolidado"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "compra_detalles"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "compras"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "entregas_inventario"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "inventario_existencias"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "inventario_lotes_operativos"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "inventarios"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "migrations"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "movimientos"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "procesos_inspeccion"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "productos"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "proveedores"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "region_coordinador_historial"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "region_coordinador_operativo"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "region_usuario_operativa"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "regiones"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "roles"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "sistema_ajustes"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "sistema_campo_valores"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "sistema_campos"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "sistema_permisos_usuario"
+    },
+    {
+      "ENGINE": "InnoDB",
+      "TABLE_NAME": "users"
+    }
+  ],
+  "disparadores": [],
+  "migraciones": [
+    "0001_01_01_000000_create_users_table",
+    "0001_01_01_000001_create_cache_table",
+    "0001_01_01_000002_create_jobs_table",
+    "2026_02_11_190200_create_roles_table",
+    "2026_02_11_190253_add_role_id_to_users_table",
+    "2026_02_11_190258_create_bodegas_table",
+    "2026_02_11_190304_create_productos_table",
+    "2026_02_11_190309_create_inventarios_table",
+    "2026_02_11_190313_create_colaboradores_table",
+    "2026_02_11_190318_create_vehiculos_table",
+    "2026_02_11_190322_create_asignaciones_vehiculos_table",
+    "2026_02_11_190327_create_asignaciones_inventarios_table",
+    "2026_02_11_190332_create_movimientos_table",
+    "2026_02_16_092900_create_proveedores_table",
+    "2026_02_16_092914_create_compras_table",
+    "2026_02_16_092922_create_compra_detalles_table",
+    "2026_02_16_092933_create_compra_archivos_table",
+    "2026_02_24_145806_add_bodega_id_to_users_table",
+    "2026_02_24_151523_create_operaciones_table",
+    "2026_02_24_151558_create_operacion_detalles_table",
+    "2026_03_03_132524_add_vida_util_y_tipo_to_productos_table",
+    "2026_03_03_133520_add_tipo_to_productos_table",
+    "2026_03_03_134248_change_mes_to_fecha_compra_date_in_compras_table",
+    "2026_03_24_060623_update_asignaciones_inventarios_table",
+    "2026_03_24_064936_add_pdf_firmado_to_asignaciones",
+    "2026_04_10_120000_add_user_id_to_asignaciones_inventarios_table",
+    "2026_04_10_130000_create_asignacion_movimientos_table",
+    "2026_04_17_000001_add_created_by_to_users_table",
+    "2026_04_20_120000_create_alertas_reemplazos_rrhh_table",
+    "2026_04_20_120100_create_asignacion_estado_historiales_table",
+    "2026_04_27_142400_fix_inventory_consistency_constraints",
+    "2026_05_21_134325_add_grupo_asignacion_to_asignaciones_inventarios_table",
+    "2026_05_21_193932_add_grupo_devolucion_to_asignacion_movimientos_table",
+    "2026_05_27_100000_add_tracking_fields_to_asignaciones_vehiculos_table",
+    "2026_05_27_100100_create_vehiculo_producto_asignaciones_table",
+    "2026_05_28_000001_extend_vehiculo_producto_asignaciones_for_separated_flow",
+    "2026_05_28_000002_add_vehicle_damage_context_to_alertas_reemplazos_rrhh",
+    "2026_05_28_175304_create_asignacion_vehiculo_archivos_table",
+    "2026_06_02_000001_rename_tipo_to_categoria_on_productos_table",
+    "2026_06_03_000001_add_excel_attachment_to_operaciones_table",
+    "2026_06_03_000002_create_asignacion_inventario_archivos_table",
+    "2026_06_03_000003_create_vehiculo_producto_archivos_table",
+    "2026_06_03_190203_add_archivo_excel_fields_to_operaciones_table",
+    "2026_06_04_000001_ensure_estado_on_alertas_reemplazos_rrhh_table",
+    "2026_06_09_000001_rename_coordinador_role_to_supervisor",
+    "2026_06_09_000002_create_almacenista_supervisores_table",
+    "2026_06_09_000003_add_estado_evidencia_to_asignaciones_inventarios",
+    "2026_06_09_000004_limit_supervisor_to_one_almacenista",
+    "2026_06_09_120000_create_notifications_table",
+    "2026_07_08_000001_add_reusable_return_stock_fields",
+    "2026_07_09_164427_add_stock_tipo_to_inventarios_table",
+    "2026_07_09_164753_update_unique_index_in_inventarios_for_stock_tipo",
+    "2026_07_09_165540_drop_old_unique_index_from_inventarios_table",
+    "2026_07_29_000001_create_inventario_existencias_and_periodos",
+    "2026_07_29_000002_add_replacement_tracking_to_asignaciones_inventarios",
+    "2026_11_18_000001_track_vehicle_inventory_and_request_keys",
+    "2026_11_18_000002_create_system_configuration",
+    "2026_11_19_000001_create_entregas_and_incidencias",
+    "2026_11_20_000001_add_operational_assignment_tracking",
+    "2026_11_20_000002_create_flujo_operativo",
+    "2026_11_23_000001_track_consolidated_purchases",
+    "2026_11_23_000002_add_internal_purchase_plan_to_consolidados",
+    "2026_11_24_000001_widen_requirement_quantities",
+    "2026_11_24_000002_add_regional_requirement_tracking",
+    "2026_11_24_000003_add_operational_regions_and_internal_request_origin",
+    "2026_11_24_000004_create_requirement_cuts",
+    "2026_11_25_000001_add_operational_access_and_inspection_processes",
+    "2026_11_25_000002_scope_inventory_operations"
+  ]
+}

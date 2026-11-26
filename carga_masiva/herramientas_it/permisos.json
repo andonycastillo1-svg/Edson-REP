@@ -1,0 +1,793 @@
+{
+    "asignaciones.archivos": {
+        "etiqueta": "Asignaciones | Ver los respaldos de entregas y devoluciones",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "asignaciones.campos_editar": {
+        "etiqueta": "Asignaciones | Editar campos de asignaciones",
+        "ambitos": [
+            1,
+            2,
+            3
+        ]
+    },
+    "asignaciones.confirmar_recepcion": {
+        "etiqueta": "Asignaciones | Confirmar la recepción de una entrega",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "asignaciones.consultar": {
+        "etiqueta": "Asignaciones | Consultar custodias y entregas autorizadas",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "asignaciones.crear": {
+        "etiqueta": "Asignaciones | Entregar productos a colaboradores autorizados",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "asignaciones.datos_archivos": {
+        "etiqueta": "Asignaciones | Ver archivos personalizados de asignaciones",
+        "ambitos": [
+            1,
+            2,
+            3
+        ]
+    },
+    "asignaciones.datos_exportar": {
+        "etiqueta": "Asignaciones | Exportar listados de entregas y devoluciones",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "asignaciones.devolver": {
+        "etiqueta": "Asignaciones | Registrar devoluciones de artículos y resolver reemplazos",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "asignaciones.entregar_nuevo": {
+        "etiqueta": "Asignaciones | Entregar existencias nuevas por excepción",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "asignaciones.evidencias": {
+        "etiqueta": "Asignaciones | Adjuntar documentos de entrega y devolución",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "asignaciones.exportar": {
+        "etiqueta": "Asignaciones | Descargar hojas de entrega o devolución",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "asignaciones.vincular": {
+        "etiqueta": "Asignaciones | Vincular la entrega con un requerimiento aprobado",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "bodegas.campos_editar": {
+        "etiqueta": "Bodegas | Editar campos de bodegas",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "bodegas.consultar": {
+        "etiqueta": "Bodegas | Consultar existencias",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "bodegas.crear": {
+        "etiqueta": "Bodegas | Registrar bodegas",
+        "ambitos": [
+            1
+        ]
+    },
+    "bodegas.datos_archivos": {
+        "etiqueta": "Bodegas | Ver archivos personalizados de bodegas",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "bodegas.datos_exportar": {
+        "etiqueta": "Bodegas | Exportar datos de bodegas",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "bodegas.eliminar": {
+        "etiqueta": "Bodegas | Eliminar registros de bodegas",
+        "ambitos": [
+            1
+        ]
+    },
+    "bodegas.exportar": {
+        "etiqueta": "Bodegas | Exportar existencias",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "bodegas.modificar": {
+        "etiqueta": "Bodegas | Editar bodegas",
+        "ambitos": [
+            1
+        ]
+    },
+    "colaboradores.campos_editar": {
+        "etiqueta": "Colaboradores | Editar campos de colaboradores",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "colaboradores.consultar": {
+        "etiqueta": "Colaboradores | Consultar colaboradores",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "colaboradores.crear": {
+        "etiqueta": "Colaboradores | Registrar colaboradores",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "colaboradores.datos_archivos": {
+        "etiqueta": "Colaboradores | Ver archivos personalizados de colaboradores",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "colaboradores.datos_exportar": {
+        "etiqueta": "Colaboradores | Exportar datos de colaboradores",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "colaboradores.exportar": {
+        "etiqueta": "Colaboradores | Exportar documentos de colaboradores",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "colaboradores.modificar": {
+        "etiqueta": "Colaboradores | Editar colaboradores",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "compras.archivos": {
+        "etiqueta": "Compras | Abrir facturas y respaldos",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "compras.campos_editar": {
+        "etiqueta": "Compras | Editar campos de compras",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "compras.conciliar": {
+        "etiqueta": "Compras | Conciliar la distribución de facturas anteriores",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "compras.consultar": {
+        "etiqueta": "Compras | Consultar facturas de la bodega central",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "compras.crear": {
+        "etiqueta": "Compras | Registrar compras e ingresar existencias en central",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "compras.datos_archivos": {
+        "etiqueta": "Compras | Ver archivos personalizados de compras",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "compras.datos_exportar": {
+        "etiqueta": "Compras | Exportar facturas de central",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "compras.vincular": {
+        "etiqueta": "Compras | Distribuir una compra entre requerimientos aprobados",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.agregar_colaboradores": {
+        "etiqueta": "Cortes y consolidados | Agregar colaboradores omitidos",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.ajustar": {
+        "etiqueta": "Cortes y consolidados | Modificar requerimientos",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.aprobar": {
+        "etiqueta": "Cortes y consolidados | Aprobar o devolver consolidados",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.capturar": {
+        "etiqueta": "Inspecciones | Registrar inspecciones",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.cerrar_compras": {
+        "etiqueta": "Compras | Cerrar compras de un consolidado",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.compras": {
+        "etiqueta": "Compras | Consultar necesidades de compra",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.configurar": {
+        "etiqueta": "Catálogos operativos | Administrar catálogos operativos",
+        "ambitos": [
+            1
+        ]
+    },
+    "flujo.configurar_regiones": {
+        "etiqueta": "Catálogos operativos | Configurar regiones",
+        "ambitos": [
+            1
+        ]
+    },
+    "flujo.consolidados": {
+        "etiqueta": "Cortes y consolidados | Consultar consolidados",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.consolidar": {
+        "etiqueta": "Cortes y consolidados | Consolidar requerimientos",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "flujo.constancias": {
+        "etiqueta": "Compras | Administrar constancias de compra",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.cortes": {
+        "etiqueta": "Cortes y consolidados | Preparar cortes",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.crear_consolidados": {
+        "etiqueta": "Cortes y consolidados | Crear consolidados",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.enviar_consolidados": {
+        "etiqueta": "Cortes y consolidados | Enviar y retirar consolidados",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.exportar_compras": {
+        "etiqueta": "Compras | Exportar necesidades de compra",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.exportar_consolidados": {
+        "etiqueta": "Cortes y consolidados | Exportar consolidados",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.exportar_inspecciones": {
+        "etiqueta": "Inspecciones | Exportar inspecciones",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.importar": {
+        "etiqueta": "Asignaciones | Importar entregas por Excel desde central",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.inspecciones": {
+        "etiqueta": "Inspecciones | Consultar inspecciones",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.plan_compras": {
+        "etiqueta": "Compras | Guardar planes de compra",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "flujo.reabrir": {
+        "etiqueta": "Cortes y consolidados | Reabrir aprobaciones",
+        "ambitos": [
+            1
+        ]
+    },
+    "flujo.revisar": {
+        "etiqueta": "Cortes y consolidados | Revisar consolidados",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "inventario.campos_editar": {
+        "etiqueta": "Inventario | Editar campos de inventario",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "inventario.datos_archivos": {
+        "etiqueta": "Inventario | Ver archivos personalizados de inventario",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "inventario.datos_exportar": {
+        "etiqueta": "Inventario | Exportar datos de inventario",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "inventario.entrada": {
+        "etiqueta": "Inventario | Registrar entradas de inventario",
+        "ambitos": [
+            1
+        ]
+    },
+    "inventario.movimientos": {
+        "etiqueta": "Inventario | Consultar movimientos de bodega",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "panel.consultar": {
+        "etiqueta": "Panel principal | Abrir el panel principal",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "productos.campos_editar": {
+        "etiqueta": "Productos | Editar campos de productos",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "productos.datos_archivos": {
+        "etiqueta": "Productos | Ver archivos personalizados de productos",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "productos.datos_exportar": {
+        "etiqueta": "Productos | Exportar datos de productos",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "sistema.auditoria": {
+        "etiqueta": "Configuración del sistema | Consultar la bitácora operativa",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "sistema.campos": {
+        "etiqueta": "Configuración del sistema | Administrar campos personalizados",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "sistema.notificaciones": {
+        "etiqueta": "Configuración del sistema | Administrar notificaciones",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "sistema.parametros": {
+        "etiqueta": "Configuración del sistema | Administrar parámetros generales",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "sistema.presentacion": {
+        "etiqueta": "Configuración del sistema | Administrar formularios y tablas",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "traslados.aprobar": {
+        "etiqueta": "Traslados | Recibir y aprobar traslados en la bodega de destino",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "traslados.archivos": {
+        "etiqueta": "Traslados | Abrir archivos de solicitudes de traslado",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "traslados.campos_editar": {
+        "etiqueta": "Traslados | Editar campos de traslados",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "traslados.consultar": {
+        "etiqueta": "Traslados | Consultar solicitudes de traslado relacionadas",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "traslados.crear": {
+        "etiqueta": "Traslados | Solicitar un traslado desde una bodega autorizada",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "traslados.datos_archivos": {
+        "etiqueta": "Traslados | Ver archivos personalizados de traslados",
+        "ambitos": [
+            1,
+            2
+        ]
+    },
+    "traslados.datos_exportar": {
+        "etiqueta": "Traslados | Exportar el listado de traslados",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "traslados.exportar": {
+        "etiqueta": "Traslados | Descargar la hoja de un traslado",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "traslados.rechazar": {
+        "etiqueta": "Traslados | Rechazar traslados en la bodega de destino",
+        "ambitos": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "usuarios.campos_editar": {
+        "etiqueta": "Usuarios | Editar campos de usuarios",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "usuarios.consultar": {
+        "etiqueta": "Usuarios | Consultar usuarios",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "usuarios.crear": {
+        "etiqueta": "Usuarios | Crear cuentas de usuarios",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "usuarios.datos_archivos": {
+        "etiqueta": "Usuarios | Ver archivos personalizados de usuarios",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "usuarios.datos_exportar": {
+        "etiqueta": "Usuarios | Exportar datos de usuarios",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "usuarios.desactivar": {
+        "etiqueta": "Usuarios | Desactivar cuentas de usuarios",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "usuarios.modificar": {
+        "etiqueta": "Usuarios | Editar usuarios",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "usuarios.relaciones": {
+        "etiqueta": "Usuarios | Configurar relaciones operativas",
+        "ambitos": [
+            1,
+            4
+        ]
+    },
+    "alertas.cerrar": {
+        "etiqueta": "Incidencias para revisión de RR. HH. | Finalizar incidencias de RR. HH.",
+        "ambitos": [
+            4
+        ]
+    },
+    "alertas.consultar": {
+        "etiqueta": "Incidencias para revisión de RR. HH. | Consultar incidencias para revisión de rr. hh.",
+        "ambitos": [
+            4
+        ]
+    },
+    "alertas.exportar": {
+        "etiqueta": "Incidencias para revisión de RR. HH. | Exportar documentos de incidencias para revisión de rr. hh.",
+        "ambitos": [
+            4
+        ]
+    },
+    "alertas.modificar": {
+        "etiqueta": "Incidencias para revisión de RR. HH. | Gestionar incidencias de RR. HH.",
+        "ambitos": [
+            4
+        ]
+    },
+    "alertas.regularizar": {
+        "etiqueta": "Incidencias para revisión de RR. HH. | Regularizar incidencias de RR. HH.",
+        "ambitos": [
+            4
+        ]
+    }
+}
