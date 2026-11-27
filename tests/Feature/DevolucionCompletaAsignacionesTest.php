@@ -91,7 +91,8 @@ class DevolucionCompletaAsignacionesTest extends TestCase
 
         $respuesta = $this->post($ruta, $datos)->assertRedirect();
         $documento = AsignacionInventarioArchivo::sole();
-        $respuesta->assertRedirect(route('devoluciones.pdf', $documento->grupo_devolucion));
+        $vistaPrevia = route('devoluciones.vista_previa', $documento->grupo_devolucion);
+        $respuesta->assertRedirect($vistaPrevia);
         $this->postJson($ruta, $datos)->assertUnprocessable()->assertJsonValidationErrors('solicitud_id');
         $this->postJson($ruta, [...$datos, 'solicitud_id' => (string) Str::uuid()])->assertUnprocessable()->assertJsonValidationErrors('articulos');
         $this->assertDatabaseCount('asignacion_movimientos', 7);
@@ -105,11 +106,27 @@ class DevolucionCompletaAsignacionesTest extends TestCase
         $this->assertDatabaseMissing('inventarios', ['producto_codigo' => 'GUANTES', 'bodega_id' => $this->bodega->id, 'stock_tipo' => 'usado']);
         $this->assertFalse(AsignacionInventario::custodiaAbierta()->exists());
         $this->assertDatabaseHas('colaboradores', ['codigo' => 'EMP-01', 'estado' => 'Activo']);
-        $this->get($expediente.'?seccion=historial')->assertOk()->assertSeeText('Descargar PDF');
-        $this->get(route('devoluciones.pdf', $documento->grupo_devolucion))->assertOk()->assertHeader('content-type', 'application/pdf');
-        $this->assertStringStartsWith('%PDF-', Storage::disk('documentos')->get($documento->ruta));
+        $this->get($expediente.'?seccion=historial')->assertOk()->assertSeeText('Descargar PDF')
+            ->assertSee('href="'.$vistaPrevia.'"', false)->assertSee('target="_blank" rel="noopener"', false);
+
+        $original = Storage::disk('documentos')->get($documento->ruta);
+        $this->assertStringStartsWith('%PDF-', $original);
+        DB::table('documento_formatos')->insert(['tipo' => 'devolucion',
+            'configuracion' => json_encode(['titulo' => 'Formato posterior de prueba']),
+            'publicado_por' => $this->rrhh->id, 'created_at' => now()]);
+        $this->get($vistaPrevia)->assertOk()->assertSeeText('Acta de devolución de artículos')
+            ->assertSeeText('Imprimir / Guardar PDF')->assertSeeText('Andrea de Prueba')
+            ->assertDontSeeText('Formato posterior de prueba');
+        $pdf = route('devoluciones.pdf', $documento->grupo_devolucion);
+        $this->assertSame($original, $this->get($pdf)->assertOk()
+            ->assertHeader('content-type', 'application/pdf')->streamedContent());
+        $this->assertSame($original, $this->get($pdf.'?descargar=1')->assertOk()
+            ->assertDownload($documento->nombre_original)->streamedContent());
+        $this->assertDatabaseCount('asignacion_movimientos', 7);
+        $this->assertDatabaseCount('asignacion_inventario_archivos', 1);
         $ajeno = User::factory()->create(['role_id' => 2, 'bodega_id' => $this->bodega->id]);
-        $this->actingAs($ajeno)->get(route('devoluciones.pdf', $documento->grupo_devolucion))->assertForbidden();
+        $this->actingAs($ajeno)->get($vistaPrevia)->assertForbidden();
+        $this->get($pdf)->assertForbidden();
     }
 
     public function test_fallo_al_guardar_pdf_revierte_toda_la_devolucion(): void

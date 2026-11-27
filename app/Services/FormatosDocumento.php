@@ -55,8 +55,21 @@ class FormatosDocumento
             $version = $consulta->first();
         }
 
-        return $this->fusionar($tipo, DB::table('documento_formatos')->where('id', $version->formato_id)->value('configuracion'))
-            + ['predeterminado' => $version->formato_id === null];
+        return $this->configuracionEmitida($tipo, $version->formato_id);
+    }
+
+    public function emitido(string $tipo, string $registro): array
+    {
+        $id = DB::table('documento_versiones_emitidas')->where(compact('tipo', 'registro'))->value('formato_id');
+
+        return $this->configuracionEmitida($tipo, $id);
+    }
+
+    private function configuracionEmitida(string $tipo, ?int $id): array
+    {
+        $configuracion = $id === null ? null : DB::table('documento_formatos')->where('id', $id)->value('configuracion');
+
+        return $this->fusionar($tipo, $configuracion) + ['predeterminado' => $id === null];
     }
 
     public function preparar(string $tipo, array $datos): array

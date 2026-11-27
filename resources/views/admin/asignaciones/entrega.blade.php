@@ -10,11 +10,11 @@
         @endif
         <div class="mt-4 flex flex-wrap gap-3">
             @rutaDisponible($routePrefix.'.asignaciones.pdf')
-                <a class="ui-btn-download" href="{{ route($routePrefix.'.asignaciones.pdf', $grupo) }}" target="_blank" rel="noopener">Hoja de asignación</a>
+                <x-ui.accion :href="route($routePrefix.'.asignaciones.pdf', $grupo)" target="_blank" rel="noopener" icono="archivo">Hoja de asignación</x-ui.accion>
             @endrutaDisponible
             @if(session('grupo_devolucion'))
                 @rutaDisponible($routePrefix.'.asignaciones.hoja_devolucion')
-                    <a class="ui-btn-download" href="{{ route($routePrefix.'.asignaciones.hoja_devolucion', session('grupo_devolucion')) }}">Hoja de devolución física</a>
+                    <a class="ui-btn-download" href="{{ route('devoluciones.vista_previa', session('grupo_devolucion')) }}" target="_blank" rel="noopener">Hoja de devolución física</a>
                 @endrutaDisponible
             @endif
         </div>

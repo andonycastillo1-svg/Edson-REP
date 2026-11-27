@@ -3,7 +3,7 @@
         <summary class="cursor-pointer font-semibold text-brand">Documentos de devolución</summary>
         <div class="mt-2 min-w-44 space-y-2">
             @if($accesos['exportar'])
-                <a class="block flujo-enlace" href="{{ route('devoluciones.pdf', $grupo) }}" target="_blank" rel="noopener">Hoja de devolución</a>
+                <a class="block flujo-enlace" href="{{ route('devoluciones.vista_previa', $grupo) }}" target="_blank" rel="noopener">Hoja de devolución</a>
             @endif
             @if($accesos['archivos'] && $firmado)
                 <a class="block flujo-enlace" href="{{ route($routePrefix.'.asignaciones.ver_pdf_firmado', $firmado) }}" target="_blank" rel="noopener">Ver hoja firmada</a>

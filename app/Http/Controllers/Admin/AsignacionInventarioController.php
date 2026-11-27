@@ -35,6 +35,7 @@ use Carbon\Carbon;
 use App\Services\ResolverCustodia;
 use App\Services\DevolverCustodiaCompleta;
 use App\Services\HojaDevolucion;
+use App\Services\FormatosDocumento;
 use App\Services\AccesoInventarioOperativo;
 use App\Services\DocumentoPrivado;
 use App\Services\InventarioStockService;
@@ -753,18 +754,25 @@ class AsignacionInventarioController extends Controller
         ]);
         $grupo = $devolucion->registrar($request->user(), $codigo, $datos['solicitud_id'], $datos['articulos']);
 
-        return redirect()->route('devoluciones.pdf', $grupo);
+        return redirect()->route('devoluciones.vista_previa', $grupo);
+    }
+
+    public function vistaPreviaDevolucion(Request $request, string $grupo, DevolverCustodiaCompleta $devolucion, FormatosDocumento $formatos)
+    {
+        $movimientos = $this->movimientosHojaDevolucion($request, $grupo, $devolucion);
+        $formato = $this->archivoHojaDevolucion($grupo)
+            ? $formatos->emitido('devolucion', $grupo)
+            : $formatos->emitir('devolucion', $grupo);
+
+        return response(HojaDevolucion::vista($movimientos, $grupo, $formato)
+            ->with('urlDescarga', route('devoluciones.pdf', [$grupo, 'descargar' => 1])),
+            headers: ['Cache-Control' => 'private, no-store']);
     }
 
     public function descargarDevolucion(Request $request, string $grupo, DevolverCustodiaCompleta $devolucion)
     {
-        $movimientos = HojaDevolucion::movimientos($grupo);
-        abort_if($movimientos->isEmpty(), 404);
-        $alcance = $devolucion->alcanceHoja($request->user(), $movimientos);
-        abort_if($alcance === null, 403);
-        $this->inventario->registrar($alcance, 'asignaciones.consultar_hoja_devolucion', $grupo);
-        $guardado = AsignacionInventarioArchivo::where('grupo_devolucion', $grupo)
-            ->where('tipo_documento', AsignacionInventarioArchivo::DEVOLUCION_GENERADA)->first();
+        $movimientos = $this->movimientosHojaDevolucion($request, $grupo, $devolucion);
+        $guardado = $this->archivoHojaDevolucion($grupo);
         $descargar = $request->boolean('descargar');
         if ($guardado) {
             return DocumentoPrivado::responder($guardado->ruta, $guardado->nombre_original, $descargar);
@@ -776,6 +784,23 @@ class AsignacionInventarioController extends Controller
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
         ]);
+    }
+
+    private function movimientosHojaDevolucion(Request $request, string $grupo, DevolverCustodiaCompleta $devolucion): \Illuminate\Support\Collection
+    {
+        $movimientos = HojaDevolucion::movimientos($grupo);
+        abort_if($movimientos->isEmpty(), 404);
+        $alcance = $devolucion->alcanceHoja($request->user(), $movimientos);
+        abort_if($alcance === null, 403);
+        $this->inventario->registrar($alcance, 'asignaciones.consultar_hoja_devolucion', $grupo);
+
+        return $movimientos;
+    }
+
+    private function archivoHojaDevolucion(string $grupo): ?AsignacionInventarioArchivo
+    {
+        return AsignacionInventarioArchivo::where('grupo_devolucion', $grupo)
+            ->where('tipo_documento', AsignacionInventarioArchivo::DEVOLUCION_GENERADA)->first();
     }
 
     public function hojaDevolucion(Request $request, string $grupo, DevolverCustodiaCompleta $devolucion)
