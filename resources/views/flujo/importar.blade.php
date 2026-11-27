@@ -1,4 +1,4 @@
-<x-sistema.pagina titulo="Importar asignaciones desde Excel" descripcion="Revisa el archivo antes de registrar asignaciones y descontar existencias." :volver="route('dashboard')">
+<x-sistema.pagina titulo="Importar asignaciones desde Excel" descripcion="Revisa el archivo antes de registrar asignaciones y descontar existencias." :volver="route(\App\Services\AccesoInventarioOperativo::prefijo(auth()->user()).'.asignaciones.create', ['modo' => 'elegir'])">
     <div class="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <x-sistema.panel>
             <div class="flujo-cabecera-panel">
@@ -20,6 +20,21 @@
             @if($consolidadosOrigen->isNotEmpty())
                 <a class="ui-btn-primary mb-3" id="descargar-pendientes" hidden href="{{ route('flujo.importar.pendientes') }}">Descargar Excel con entregas pendientes</a>
                 <p class="mb-3 text-sm" id="pendientes-ayuda" role="status">Selecciona un consolidado para descargar sus pendientes.</p>
+            @endif
+            @php($cortes = $consolidadosOrigen->pluck('corte')->filter()->unique('id'))
+            @if($cortes->isNotEmpty())
+                <form method="GET" action="{{ route('flujo.importar.pendientes') }}" class="mb-3 space-y-2 border-t border-slate-200 pt-2">
+                    <label class="ui-label block">Corte completo
+                        <select class="ui-input mt-1" name="corte_id" required>
+                            <option value="">Selecciona un corte</option>
+                            @foreach($cortes as $corte)<option value="{{ $corte->id }}">{{ $corte->nombre }}</option>@endforeach
+                        </select>
+                    </label>
+                    <label class="ui-label block">Parte del archivo
+                        <input class="ui-input mt-1 w-24" type="number" min="1" step="1" name="parte" value="1">
+                    </label>
+                    <button class="ui-btn-secondary">Descargar Excel del corte</button>
+                </form>
             @endif
             <a class="ui-btn-secondary" href="{{ route('flujo.importar.plantilla') }}">Descargar plantilla Excel</a>
         </x-sistema.panel>

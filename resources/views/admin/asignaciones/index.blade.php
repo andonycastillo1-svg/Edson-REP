@@ -8,7 +8,7 @@
             <x-ui.accion :href="route($routePrefix.'.asignaciones.historial')">Historial de movimientos</x-ui.accion>
         @endif
         @if($puedeCrearAsignaciones)
-            <x-ui.accion :href="route($routePrefix.'.asignaciones.create')" variante="primaria">Nueva asignación</x-ui.accion>
+            <x-ui.accion :href="route($routePrefix.'.asignaciones.create', ['modo' => 'elegir'])" variante="primaria">Nueva asignación</x-ui.accion>
         @endif
     </x-ui.encabezado>
     <x-sistema.enlace-datos modulo="asignaciones" />
@@ -18,23 +18,46 @@
            @unless($seguimiento) aria-current="page" @endunless>Asignaciones</a>
         <a class="flujo-tab gap-2" href="{{ route($routePrefix.'.asignaciones.index', request()->only(['q', 'campo', 'por_pagina']) + ['seguimiento' => 'documentacion']) }}"
            @if($seguimiento) aria-current="page" @endif>
-            Hojas firmadas faltantes
+            Hojas firmadas
             @if($faltantes > 0)<x-ui.estado variante="pendiente">{{ $faltantes }}</x-ui.estado>@endif
         </a>
     </nav>
 
-    <form method="GET" class="ui-filtros sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+    <form method="GET" class="ui-filtros {{ $seguimiento ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-[minmax(0,1fr)_auto_auto]' }} sm:items-end">
         @if($seguimiento)<input type="hidden" name="seguimiento" value="documentacion">@endif
         <x-sistema.conservar-filtros-campos :tabla="$tablaCampos" />
         <label class="ui-label mb-0">Buscar colaborador
             <input class="ui-input mt-1" name="q" type="search" maxlength="190" value="{{ request('q') }}" placeholder="Nombre o código">
         </label>
+        @if($seguimiento)
+            <label class="ui-label mb-0">Región
+                <select name="region_id" class="ui-input mt-1">
+                    <option value="">Todas</option>
+                    @foreach($regionesDocumentales as $region)
+                        <option value="{{ $region->id }}" @selected((string) $region->id === request('region_id'))>{{ $region->nombre }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="ui-label mb-0">Estado documental
+                <select name="estado_documental" class="ui-input mt-1">
+                    <option value="pendiente" @selected(request('estado_documental', 'pendiente') === 'pendiente')>Pendiente de firma</option>
+                    <option value="completa" @selected(request('estado_documental') === 'completa')>Hoja recibida</option>
+                    <option value="todos" @selected(request('estado_documental') === 'todos')>Todos</option>
+                </select>
+            </label>
+            <label class="ui-label mb-0">Entregada desde
+                <input class="ui-input mt-1" name="desde" type="date" value="{{ request('desde') }}">
+            </label>
+            <label class="ui-label mb-0">Entregada hasta
+                <input class="ui-input mt-1" name="hasta" type="date" value="{{ request('hasta') }}">
+            </label>
+        @endif
         @include('admin.asignaciones.tamano-pagina', ['tamano' => $porPagina])
         <x-ui.accion type="submit" variante="primaria">Buscar</x-ui.accion>
     </form>
-    <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['q', 'seguimiento', 'por_pagina']" />
+    <x-sistema.consulta-campos :tabla="$tablaCampos" :conservar="['q', 'seguimiento', 'por_pagina', 'region_id', 'estado_documental', 'desde', 'hasta']" />
 
-    <x-sistema.panel :titulo="$seguimiento ? 'Entregas pendientes de firma' : 'Colaboradores con asignaciones'">
+    <x-sistema.panel :titulo="$seguimiento ? 'Seguimiento de hojas firmadas' : 'Colaboradores con asignaciones'">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm">{{ $seguimiento
                 ? trans_choice('{1} :count entrega|[0,*] :count entregas', $entregas->total())
@@ -52,7 +75,7 @@
                         @forelse($colaboradores as $persona)
                             <tr>
                                 <td>
-                                    <strong class="text-ink">{{ $persona->nombre }}</strong><p>{{ $persona->codigo }}</p>
+                                    <strong class="text-ink">{{ $persona->nombre }}</strong> <span>— {{ $persona->codigo }}</span>
                                 </td>
                                 <td>{{ $persona->cantidad_activa }}</td>
                                 <td>{{ $persona->asignaciones_count }}</td>

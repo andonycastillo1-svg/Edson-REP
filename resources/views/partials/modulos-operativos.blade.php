@@ -13,7 +13,7 @@
             'Inventario' => [
                 ["$prefijo.bodegas.index", "$prefijo.bodegas.*", 'Bodegas e inventario', 'bodega', $permisos->ruta($usuario, "$prefijo.bodegas.index")],
                 ["$operativo.compras.$compras", ['admin.compras.*', 'operador.compras.*'], 'Compras', 'compra', $permisos->ruta($usuario, "$operativo.compras.$compras")],
-                ["$operativo.asignaciones.$asignaciones", ['admin.asignaciones.*', 'operador.asignaciones.*', 'supervisor.asignaciones.*'], 'Asignaciones y devoluciones', 'caja', $permisos->ruta($usuario, "$operativo.asignaciones.$asignaciones")],
+                ["$operativo.asignaciones.$asignaciones", ['admin.asignaciones.*', 'operador.asignaciones.*', 'supervisor.asignaciones.*', 'flujo.importar.*'], 'Asignaciones y devoluciones', 'caja', $permisos->ruta($usuario, "$operativo.asignaciones.$asignaciones")],
                 ["$operativo.operaciones.traslados.$traslados", '*.operaciones.traslados.*', 'Traslados', 'traslado', $permisos->ruta($usuario, "$operativo.operaciones.traslados.$traslados")],
             ],
             'Requerimientos y compras' => [
@@ -24,7 +24,6 @@
                 ['flujo.inspecciones.index', ['flujo.inspecciones.*', 'flujo.cortes.*'], 'Inspecciones', 'lista', $flujo->puede($usuario, 'inspecciones')],
                 ['flujo.consolidados.index', 'flujo.consolidados.*', 'Consolidados', 'capas', $flujo->puede($usuario, 'consolidados')],
                 ['flujo.compras.index', 'flujo.compras.*', 'Necesidades de compra', 'compra', $flujo->puede($usuario, 'compras')],
-                ['flujo.importar.index', 'flujo.importar.*', 'Asignaciones por Excel', 'archivo', $flujo->puede($usuario, 'importar')],
                 ['flujo.catalogos', 'flujo.catalogos*', 'Catálogos operativos', 'lista', $flujo->puede($usuario, 'configurar')],
             ],
             'Personal' => [

@@ -1,4 +1,5 @@
 @php($recuperar = (int) old('participante_id') === $persona->id)
+@php($pendiente = $persona->necesidades->sum(fn ($fila) => max(0, $fila->cantidad - $fila->asignaciones_count)))
 @php($aprobado = in_array($consolidado->estado, ['aprobado', 'cerrado'], true))
 <details class="flujo-lectura" @if($loop->first || $recuperar) open @endif>
     <summary>
@@ -6,7 +7,7 @@
         <span class="font-normal">{{ $persona->region?->nombre }}</span>
         @if($persona->agregado_por)<span class="ui-badge ui-badge-info">Incorporado por coordinación</span>@endif
     </summary>
-    <form class="space-y-3 p-4" method="POST" action="{{ route('flujo.consolidados.transicion', [$consolidado, 'ajustar']) }}">
+    <form class="space-y-2 p-3" method="POST" action="{{ route('flujo.consolidados.transicion', [$consolidado, 'ajustar']) }}">
         @if($editar)
             @csrf
             <input type="hidden" name="version" value="{{ $version }}">
@@ -17,7 +18,10 @@
                 @if($inspeccion->observaciones)<span class="block whitespace-pre-wrap break-words">{{ $inspeccion->observaciones }}</span>@endif
             </p>
         @endforeach
-        @if($aprobado && app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'compras'))
+        @if($aprobado && $pendiente === 0 && $persona->necesidades->sum('cantidad') > 0)
+            <x-ui.estado variante="exito">Entrega completada</x-ui.estado>
+        @endif
+        @if($aprobado && $pendiente > 0 && app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'compras'))
             @php($rutaAsignar = \App\Sistema\CatalogoPermisos::prefijo(auth()->user()->rolOperativo()).'.asignaciones.create')
             @rutaDisponible($rutaAsignar)
                 <a class="ui-btn-secondary" href="{{ route($rutaAsignar, ['consolidado_id' => $consolidado->id, 'colaborador_codigo' => $persona->colaborador_codigo]) }}">Registrar entrega</a>
@@ -25,7 +29,7 @@
         @endif
         <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Productos de {{ $persona->colaborador?->nombre }}">
             <table class="ui-table min-w-[380px]">
-                <thead><tr><th>Producto</th><th>Original</th><th>{{ $aprobado ? 'Aprobado' : 'Propuesto' }}</th><th>Diferencia</th>@if($aprobado)<th>Asignado</th>@endif</tr></thead>
+                <thead><tr><th>Producto</th><th>Original</th><th>{{ $aprobado ? 'Aprobado' : 'Propuesto' }}</th><th>Diferencia</th>@if($aprobado)<th>Entregado</th><th>Pendiente</th>@endif</tr></thead>
                 <tbody>
                     @forelse($persona->necesidades as $necesidad)
                         <tr>
@@ -42,10 +46,10 @@
                                 {{ $necesidad->cantidad }}
                             @endif</td>
                             <td>{{ sprintf('%+d', $necesidad->cantidad - $necesidad->original) }}</td>
-                            @if($aprobado)<td>{{ $necesidad->asignaciones_count }}</td>@endif
+                            @if($aprobado)<td>{{ $necesidad->asignaciones_count }}</td><td>{{ max(0, $necesidad->cantidad - $necesidad->asignaciones_count) }}</td>@endif
                         </tr>
                     @empty
-                        <tr><td colspan="{{ $aprobado ? 5 : 4 }}">Sin productos registrados.</td></tr>
+                        <tr><td colspan="{{ $aprobado ? 6 : 4 }}">Sin productos registrados.</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -38,7 +38,7 @@ class ImportarAsignacionController extends Controller
         $importaciones->setCollection($importaciones->getCollection()->filter(fn ($lote) =>
             $this->acceso->buscar($request->user(), 'flujo.importar', [(int) $bodega->id], $this->regiones($lote->filas)) !== null)->values());
 
-        $consolidadosOrigen = $requerimientos->disponibles($request->user(), 'flujo.importar')->latest('id')->get(['id', 'nombre']);
+        $consolidadosOrigen = $requerimientos->conPendientes($request->user(), 'flujo.importar')->with('corte:id,nombre', 'coordinador:id,name')->latest('id')->get(['id', 'nombre', 'corte_id', 'coordinador_id']);
 
         return view('flujo.importar', compact('bodega', 'importaciones', 'consolidadosOrigen'));
     }
@@ -54,16 +54,71 @@ class ImportarAsignacionController extends Controller
     public function pendientes(Request $request, RequerimientosAsignacion $requerimientos)
     {
         $this->bodega($request);
-        $datos = $request->validate(['consolidado_id' => ['required', 'integer'], 'parte' => ['nullable', 'integer', 'min:1']]);
-        $consolidado = $requerimientos->verificar($request->user(), $datos['consolidado_id'], permiso: 'flujo.importar');
-        $pendientes = $requerimientos->pendientes($consolidado, usuario: $request->user(), permiso: 'flujo.importar')->values()->forPage($datos['parte'] ?? 1, 500);
+        $datos = $request->validate([
+            'consolidado_id' => ['required_without:corte_id', 'prohibits:corte_id', 'nullable', 'integer'],
+            'corte_id' => ['required_without:consolidado_id', 'nullable', 'integer'],
+            'parte' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
+        ]);
+        $usuario = $request->user();
+        $parte = $datos['parte'] ?? 1;
+        if (!empty($datos['corte_id'])) {
+            $origenes = $requerimientos->conPendientes($usuario, 'flujo.importar')->where('corte_id', $datos['corte_id'])
+                ->orderBy('id')->get();
+            $pendientes = $origenes->flatMap(fn ($origen) => $requerimientos->pendientes($origen, usuario: $usuario, permiso: 'flujo.importar')
+                ->each(fn ($detalle) => $detalle->participante->setRelation('consolidado', $origen)));
+            $pendientes = $this->partePendiente($pendientes, (int) $parte);
+            $consolidado = null;
+            $nombre = 'corte-'.$datos['corte_id'];
+        } else {
+            $consolidado = $requerimientos->verificar($usuario, $datos['consolidado_id'], permiso: 'flujo.importar');
+            $pendientes = $requerimientos->pendientes($consolidado, usuario: $usuario, permiso: 'flujo.importar')->values()->forPage($parte, 500);
+            $nombre = (string) $consolidado->id;
+        }
         if ($pendientes->isEmpty()) {
-            throw ValidationException::withMessages(['consolidado_id' => 'Esta selección no tiene entregas pendientes.']);
+            throw ValidationException::withMessages(['consolidado_id' => 'Esta selección no tiene entregas pendientes en la parte elegida.']);
         }
 
-        return response()->streamDownload(fn () => $this->excel->plantilla($consolidado, $pendientes)->save('php://output'),
-            'entregas-pendientes-'.$consolidado->id.'-'.($datos['parte'] ?? 1).'.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        return response()->streamDownload(fn () => $this->excel->plantilla($consolidado, $pendientes, porCorte: $consolidado === null)->save('php://output'),
+            'entregas-pendientes-'.$nombre.'-'.$parte.'.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'Cache-Control' => 'private, no-store']);
+    }
+
+    private function partePendiente(\Illuminate\Support\Collection $pendientes, int $parte): \Illuminate\Support\Collection
+    {
+        $restante = RegistrarAsignaciones::MAX_UNIDADES;
+        $omitir = ($parte - 1) * $restante;
+        $filas = collect();
+        foreach ($pendientes as $fila) {
+            $cantidad = $fila->cantidad - $fila->asignaciones_count;
+            if ($omitir >= $cantidad) {
+                $omitir -= $cantidad;
+                continue;
+            }
+
+            $tomadas = min($cantidad - $omitir, $restante);
+            $filas->push((clone $fila)->forceFill([
+                'cantidad_en_archivo' => $tomadas,
+                'asignadas_antes_de_tramo' => $fila->asignaciones_count + $omitir,
+            ]));
+            $omitir = 0;
+            $restante -= $tomadas;
+            if ($restante === 0) {
+                break;
+            }
+        }
+
+        return $filas;
+    }
+
+    private function personas(array $filas): \Illuminate\Support\Collection
+    {
+        return Colaborador::whereKey(array_values(array_unique(array_column($filas, 'colaborador_codigo'))))->pluck('nombre', 'codigo');
+    }
+
+    private function origenesPorFila(\App\Models\User $usuario, array $filas, RequerimientosAsignacion $requerimientos, bool $bloquear = false): \Illuminate\Support\Collection
+    {
+        return collect($filas)->pluck('consolidado_id')->filter()->unique()->sort()->mapWithKeys(fn ($id) =>
+            [$id => $requerimientos->verificar($usuario, (int) $id, bloquear: $bloquear, permiso: 'flujo.importar')]);
     }
 
     public function previsualizar(Request $request, RequerimientosAsignacion $requerimientos)
@@ -71,16 +126,18 @@ class ImportarAsignacionController extends Controller
         $bodega = $this->bodega($request);
         $datos = $request->validate(['excel' => ['required', 'file', 'mimes:xlsx', 'max:4096'], 'consolidado_id' => ['nullable', 'integer']]);
         $archivo = $datos['excel'];
-        [$filas, $errores, $origen] = $this->excel->leer($archivo->getRealPath());
+        [$filas, $errores, $origen, $porCorte] = $this->excel->leer($archivo->getRealPath());
         $alcance = $this->autorizarFilas($request->user(), $bodega, $filas);
-        if ($origen && isset($datos['consolidado_id']) && $origen !== (int) $datos['consolidado_id']) {
+        if (isset($datos['consolidado_id']) && ($porCorte || ($origen && $origen !== (int) $datos['consolidado_id']))) {
             throw ValidationException::withMessages(['consolidado_id' => 'El archivo descargado corresponde a otro consolidado.']);
         }
         $id = $origen ?? $datos['consolidado_id'] ?? null;
         $consolidado = $id ? $requerimientos->verificar($request->user(), (int) $id, permiso: 'flujo.importar') : null;
-        [$filas, $errores] = $this->excel->validar($filas, $bodega, $request->user(), $errores, $consolidado);
+        $origenes = $porCorte && $errores === [] ? $this->origenesPorFila($request->user(), $filas, $requerimientos) : null;
+        [$filas, $errores] = $this->excel->validar($filas, $bodega, $request->user(), $errores, $consolidado, $origenes);
         if ($errores !== []) {
-            return response()->view('flujo.importacion', compact('filas', 'errores', 'bodega', 'consolidado'), 422);
+            $personas = $this->personas($filas);
+            return response()->view('flujo.importacion', compact('filas', 'errores', 'bodega', 'consolidado', 'personas'), 422);
         }
 
         $importacion = ImportacionAsignacion::create([
@@ -107,7 +164,9 @@ class ImportarAsignacionController extends Controller
         $consolidadosConciliacion = $haySinOrigen ? $requerimientos->disponibles($request->user(), 'flujo.importar')
             ->when($importacion->consolidado_id, fn ($q, $id) => $q->whereKey($id))->latest('id')->get(['id', 'nombre']) : collect();
 
-        return view('flujo.importacion', compact('importacion', 'filas', 'bodega', 'consolidadosConciliacion'));
+        $personas = $this->personas($filas);
+
+        return view('flujo.importacion', compact('importacion', 'filas', 'bodega', 'consolidadosConciliacion', 'personas'));
     }
 
     public function conciliar(Request $request, string $importacion, ConciliarImportacionAsignaciones $conciliacion)
@@ -142,9 +201,11 @@ class ImportarAsignacionController extends Controller
                     return;
                 }
                 $consolidado = $lote->consolidado_id ? $requerimientos->verificar($usuario, (int) $lote->consolidado_id, bloquear: true, permiso: 'flujo.importar') : null;
+                $porCorte = $filas->first()['consolidado_id'] ?? null;
+                $origenes = $porCorte ? $this->origenesPorFila($usuario, $lote->filas, $requerimientos, bloquear: true) : null;
                 Producto::whereKey($filas->pluck('producto_codigo')->unique()->values()->all())->orderBy('codigo')->lockForUpdate()->get();
                 $this->registrarHuella($lote, $lote->filas);
-                [$filas, $errores] = $this->excel->validar($lote->filas, $bodega, $usuario, consolidado: $consolidado);
+                [$filas, $errores] = $this->excel->validar($lote->filas, $bodega, $usuario, consolidado: $consolidado, porCorte: $origenes);
                 if ($errores !== []) {
                     throw ValidationException::withMessages(collect($errores)->mapWithKeys(fn ($lista, $fila) =>
                         ['fila_'.$fila => array_map(fn ($mensaje) => 'Fila '.$fila.' · '.$mensaje, $lista)])->all());
@@ -152,16 +213,17 @@ class ImportarAsignacionController extends Controller
                 $ordenadas = collect($filas)->sortBy(['colaborador_codigo', 'producto_codigo'])->values();
                 $valores = $campos->predeterminadosAutomaticos('asignaciones');
                 $entregas = [];
-                foreach ($ordenadas->groupBy('colaborador_codigo') as $codigo => $grupo) {
+                foreach ($ordenadas->groupBy(fn ($fila) => ($fila['consolidado_id'] ?? 0).'|'.$fila['colaborador_codigo']) as $grupo) {
+                    $codigo = $grupo->first()['colaborador_codigo'];
                     $fecha = $this->excel->salida($grupo->first()['fecha']);
-                    $datos = ['colaborador_codigo' => (string) $codigo, 'fecha' => $fecha->toDateTimeString(), 'consolidado_id' => $lote->consolidado_id];
+                    $datos = ['colaborador_codigo' => (string) $codigo, 'fecha' => $fecha->toDateTimeString(), 'consolidado_id' => $grupo->first()['consolidado_id'] ?? $lote->consolidado_id];
                     $items = $grupo->map(fn ($item) => $item + ['bodega_id' => $bodega->id]);
                     $entrega = $registro->registrar($usuario, $datos, $items, $valores, permiso: 'flujo.importar');
                     $entregas[] = ['codigo' => (string) $codigo, 'grupo' => $entrega->id, 'productos' => $grupo->count()];
                 }
                 $lote->update(['entregas' => $entregas, 'confirmada_en' => now()]);
                 $this->acceso->registrar($alcance, 'flujo.importar', $lote->id);
-                app(Auditoria::class)->registrar('flujo', 'confirmar_importacion', $lote->id, null, ['entregas' => count($entregas), 'consolidado_id' => $lote->consolidado_id, 'unidades' => collect($filas)->sum('cantidad')]);
+                app(Auditoria::class)->registrar('flujo', 'confirmar_importacion', $lote->id, null, ['entregas' => count($entregas), 'consolidado_id' => $lote->consolidado_id, 'consolidados' => $origenes?->keys()->all(), 'unidades' => collect($filas)->sum('cantidad')]);
             }, 3);
         } catch (UniqueConstraintViolationException $e) {
             if (str_contains($e->getMessage(), 'huella_confirmada') || str_contains($e->getMessage(), 'huella_operativa')) {
@@ -183,7 +245,7 @@ class ImportarAsignacionController extends Controller
                 throw ValidationException::withMessages(['excel' => 'Estas entregas ya se registraron. Abre el lote confirmado para verificar su vinculación.']);
             }
         }
-        $contenido = collect($filas)->sortBy(['colaborador_codigo', 'producto_codigo'])->values();
+        $contenido = collect($filas)->sortBy(['colaborador_codigo', 'producto_codigo', 'consolidado_id', 'asignadas_antes_de_tramo'])->values();
         $lote->update(['huella_confirmada' => hash('sha256', $lote->bodega_id.'|'.$contenido->toJson()), 'huella_operativa' => $huella]);
     }
 

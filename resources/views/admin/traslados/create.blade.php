@@ -1,4 +1,6 @@
-  @extends('layouts.admin')
+  @extends('layouts.app')
+
+  @section('title', 'Nueva solicitud de traslado')
 
   @section('content')
   @php
@@ -7,27 +9,24 @@
     $origenSeleccionado = old('bodega_origen_id', $origenId);
   @endphp
 
-  <div class="max-w-4xl mx-auto">
-    <div>
-      <x-internal-navigation :back-url="route($routePrefix . '.operaciones.traslados.index')" :back-route="$routePrefix.'.operaciones.traslados.index'" />
-
-      <div class="mb-6">
-        <h1 class="ui-page-title text-slate-900 mt-2">Nueva solicitud de traslado</h1>
-        <p class="text-sm text-slate-600">La persona encargada de la bodega de destino debe aprobar o rechazar la solicitud.</p>
-      </div>
+  <div class="mx-auto max-w-6xl space-y-4">
+    <div class="space-y-4">
+      <x-ui.encabezado titulo="Nueva solicitud de traslado"
+          descripcion="La bodega de destino revisa esta solicitud y decide si se hace el traslado.">
+        <x-ui.accion :href="route($routePrefix.'.operaciones.traslados.index')">Volver a traslados</x-ui.accion>
+      </x-ui.encabezado>
 
       <form method="POST" action="{{ route($routePrefix . '.operaciones.traslados.store') }}"
             enctype="multipart/form-data"
-            class="rounded-xl bg-white shadow-sm border border-slate-200 overflow-hidden">
+            class="ui-panel">
         @csrf
             <input type="hidden" name="solicitud_id" value="{{ old('solicitud_id', (string) \Illuminate\Support\Str::uuid()) }}">
 
-        <div class="px-6 py-4 border-b border-slate-100">
+        <div class="px-4 py-3 sm:px-5 border-b border-slate-100">
           <div class="text-sm font-semibold text-slate-800">Origen y destino</div>
-          <div class="text-xs text-slate-500">Tip: si entraste desde bodegas, el origen viene precargado.</div>
         </div>
 
-        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             @if($origenFijo)<p class="text-sm font-semibold">Bodega de origen</p>
             @else<label for="bodega_origen" class="text-sm font-semibold">Bodega de origen</label>@endif
@@ -75,7 +74,7 @@
           </p>
         </div>
 
-        <div class="px-6 py-4 border-t border-b border-slate-100 flex items-center justify-between">
+        <div class="px-4 py-3 sm:px-5 border-t border-b border-slate-100 flex items-center justify-between">
           <div>
             <div class="text-sm font-semibold text-slate-800">Productos</div>
             <div class="text-xs text-slate-500">Agrega una o varias líneas.</div>
@@ -149,7 +148,7 @@
 
         <x-sistema.campos modulo="traslados" />
 
-        <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+        <div class="px-4 py-3 sm:px-5 border-t border-slate-100 flex items-center justify-end gap-2">
           <a href="{{ route($routePrefix . '.operaciones.traslados.index') }}"
             class="ui-btn-secondary">
             Cancelar
@@ -172,7 +171,7 @@
             </select>
           </td>
           <td class="px-3 py-3">
-            <input type="number" min="1" value="1" required class="ui-input"/>
+            <input type="number" min="1" value="1" required class="ui-input" aria-label="Cantidad a trasladar"/>
           </td>
           <td class="px-3 py-3 text-right">
             <button type="button" class="btnRemove ui-btn-secondary" aria-label="Quitar línea">

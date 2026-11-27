@@ -231,6 +231,7 @@ Route::middleware(['auth', 'auto.logout', 'role:1'])
         |--------------------------------------------------------------------------
         */
         Route::get('asignaciones/contexto', [AsignacionInventarioController::class, 'contexto'])->name('asignaciones.contexto');
+        Route::get('asignaciones/participantes', [AsignacionInventarioController::class, 'participantes'])->name('asignaciones.participantes');
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 
@@ -309,6 +310,7 @@ Route::middleware(['auth', 'auto.logout', 'role:2'])
             ->whereNumber('compra')->name('compras.conciliar');
 
         Route::get('asignaciones/contexto', [AsignacionInventarioController::class, 'contexto'])->name('asignaciones.contexto');
+        Route::get('asignaciones/participantes', [AsignacionInventarioController::class, 'participantes'])->name('asignaciones.participantes');
         Route::get('asignaciones/create', [AsignacionInventarioController::class, 'create'])
             ->name('asignaciones.create');
 

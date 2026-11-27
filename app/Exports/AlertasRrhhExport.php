@@ -2,49 +2,23 @@
 
 namespace App\Exports;
 
+use App\Models\AlertaReemplazo;
 use Illuminate\Support\Collection;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
-class AlertasRrhhExport extends FormattedExcelExport
+class AlertasRrhhExport implements WithMultipleSheets
 {
-    public function __construct(
-        protected Collection $alertas,
-        string $generatedBy,
-        array $filters = [],
-    ) {
-        parent::__construct('Incidencias para revisión de RR. HH.', $generatedBy, $filters);
-    }
+    public function __construct(private Collection $alertas, private string $generatedBy, private array $filters = []) {}
 
-    protected function headings(): array
+    public function sheets(): array
     {
+        $resumen = collect(AlertaReemplazo::ESTADOS)->map(fn ($estado, $clave) => [
+            $estado, $this->alertas->where('estado', $clave)->count(),
+        ])->values()->all();
+
         return [
-            'Motivo', 'Código colaborador', 'Colaborador', 'Código producto', 'Producto / refacción',
-            'Cantidad', 'Bodega', 'Vehículo VIN', 'Fecha de asignación', 'Fecha del incidente',
-            'Vida al ocurrir', 'Estado', 'Registrado por', 'Observaciones', 'Nueva salida', 'Custodia anterior',
+            new ResumenIncidenciasExport($resumen, $this->alertas->count(), $this->generatedBy, $this->filters),
+            new DetalleIncidenciasExport($this->alertas, $this->generatedBy, $this->filters),
         ];
-    }
-
-    protected function rows(): array
-    {
-        return $this->alertas->map(fn ($alerta) => [
-            $alerta->motivo_etiqueta, $alerta->colaborador_codigo, $alerta->colaborador?->nombre,
-            $alerta->producto_codigo, $alerta->producto?->nombre, $alerta->cantidad,
-            $alerta->bodega_nombre, $alerta->vehiculo_vin,
-            $alerta->fecha_asignacion_anterior ? Date::dateTimeToExcel($alerta->fecha_asignacion_anterior) : null,
-            $alerta->fecha_incidente ? Date::dateTimeToExcel($alerta->fecha_incidente) : null,
-            $alerta->vida_etiqueta, $alerta->estado_etiqueta, $alerta->registrador?->name, $alerta->detalle,
-            $alerta->asignacionNueva ? Date::dateTimeToExcel($alerta->asignacionNueva->entrega?->salida_en ?? $alerta->asignacionNueva->fecha) : null,
-            $alerta->asignacionAnterior?->custodia_etiqueta,
-        ])->all();
-    }
-
-    protected function totals(): array
-    {
-        return [['TOTAL DE INCIDENCIAS', $this->alertas->count()]];
-    }
-
-    protected function numberFormats(): array
-    {
-        return ['I' => 'dd/mm/yyyy', 'J' => 'dd/mm/yyyy hh:mm', 'O' => 'dd/mm/yyyy hh:mm'];
     }
 }

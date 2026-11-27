@@ -11,7 +11,7 @@ class HojaAsignacion
 
     public function vista(User $usuario, string $grupo, bool $portatil = false): \Illuminate\Contracts\View\View
     {
-        $asignaciones = AsignacionInventario::with(['producto', 'bodega', 'colaborador', 'user.bodega', 'movimientoInicial', 'movimientos', 'incidencias'])
+        $asignaciones = AsignacionInventario::with(['producto', 'bodega', 'colaborador.region', 'entrega', 'user.bodega', 'movimientoInicial', 'movimientos', 'incidencias'])
             ->where('grupo_asignacion', $grupo)
             ->get();
 
@@ -41,7 +41,10 @@ class HojaAsignacion
             ?? optional($asignaciones->first()?->bodega)->nombre
             ?? 'No definida';
 
+        $formato = app(FormatosDocumento::class)->emitir('asignacion', $grupo);
+
         return view('admin.asignaciones.pdf', compact(
+            'formato',
             'colaborador',
             'asignaciones',
             'total',

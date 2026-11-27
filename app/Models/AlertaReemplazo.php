@@ -34,6 +34,7 @@ class AlertaReemplazo extends Model
         'vida_util_meses',
         'meses_restantes',
         'motivo_revision',
+        'politica_motivo',
         'referencia_proporcional',
         'vida_restante_segundos',
         'descuento_aplicable',

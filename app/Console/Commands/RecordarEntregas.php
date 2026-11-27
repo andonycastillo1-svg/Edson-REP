@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Notifications\AsignacionPendienteNotification;
 use App\Services\AccesoCustodia;
 use App\Sistema\Ajustes;
-use App\Sistema\CatalogoPermisos;
 use App\Sistema\Permisos;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +39,7 @@ class RecordarEntregas extends Command
 
                     $primera = $filas->first();
                     $autor = $primera->user;
-                    $usuarios = collect([$autor]);
+                    $usuarios = collect([$autor])->merge($acceso->responsablesRegionales($primera, 'asignaciones.evidencias'));
                     if ($autor?->rolOperativo() === 2) {
                         $usuarios = $usuarios->merge($autor->supervisoresAsignados()->deAmbito(3)->with('role')->get());
                     }
@@ -50,7 +49,7 @@ class RecordarEntregas extends Command
 
                     $enviados = 0;
                     foreach ($usuarios->filter()->unique('id') as $usuario) {
-                        $ruta = CatalogoPermisos::prefijo($usuario->rolOperativo()).'.asignaciones.entrega';
+                        $ruta = AccesoCustodia::rutaEntrega($usuario);
                         if (!$permisos->ruta($usuario, $ruta) || !$filas->every(fn ($fila) => $acceso->puedeVer($usuario, $fila))) {
                             continue;
                         }

@@ -6,6 +6,8 @@
     @php($origen = $importacion->consolidado ?? $consolidado ?? null)
     @if($origen)
         <p class="ui-alert ui-alert-info">Requerimiento interno · {{ $origen->nombre }} · #{{ $origen->id }}</p>
+    @elseif(collect($filas)->pluck('consolidado_id')->filter()->isNotEmpty())
+        <p class="ui-alert ui-alert-info">Cada fila conserva el consolidado de origen.</p>
     @elseif(isset($importacion) && !$importacion->confirmada_en)
         <p class="ui-alert-warning">Asignación independiente. Para aplicar estas entregas a un consolidado, vuelve a cargar el archivo con el requerimiento seleccionado.</p>
     @endif
@@ -17,7 +19,7 @@
             <ul class="divide-y divide-slate-200 text-sm">
                 @foreach($importacion->entregas as $entrega)
                     <li class="flex flex-wrap items-center gap-3 py-3">
-                        <span class="font-semibold">{{ $entrega['codigo'] }} · {{ $entrega['productos'] }} productos</span>
+                        <span class="font-semibold">{{ $personas->get($entrega['codigo'], $entrega['codigo']) }} — {{ $entrega['codigo'] }} · {{ $entrega['productos'] }} productos</span>
                         @rutaDisponible($prefijo.'.asignaciones.pdf')
                             <a class="ui-btn-secondary" target="_blank" rel="noopener" href="{{ route($prefijo.'.asignaciones.pdf', $entrega['grupo']) }}">Imprimir hoja</a>
                         @endrutaDisponible
@@ -65,7 +67,7 @@
                     <div><dt>Filas válidas</dt><dd>{{ count($filas) }}</dd></div>
                     <div><dt>Colaboradores</dt><dd>{{ collect($filas)->pluck('colaborador_codigo')->unique()->count() }}</dd></div>
                 </dl>
-                <p class="mb-3 text-sm">Al confirmar se registra una asignación por colaborador y se descuenta el inventario.</p>
+                <p class="mb-3 text-sm">Al confirmar se registra una hoja por colaborador y consolidado y se descuenta el inventario.</p>
                 <form method="POST" action="{{ route('flujo.importar.confirmar', $importacion) }}"
                       data-confirmar="¿Registrar estas asignaciones y descontar las cantidades del inventario de central?">
                     @csrf
@@ -77,11 +79,11 @@
     <x-sistema.panel titulo="Filas de la hoja Asignaciones">
         <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Filas de asignación">
             <table class="ui-table min-w-[580px]">
-                <thead class="bg-slate-50"><tr><th class="p-3">Fila</th><th class="p-3">Colaborador</th><th class="p-3">Producto</th><th class="p-3">Cantidad</th><th class="p-3">Fecha</th><th class="p-3">Medio de solicitud</th><th class="p-3">Motivo</th>@if($errores)<th class="p-3">Corrección necesaria</th>@endif</tr></thead>
+                <thead class="bg-slate-50"><tr><th class="p-3">Fila</th><th class="p-3">Colaborador</th><th class="p-3">Producto</th><th class="p-3">Consolidado</th><th class="p-3">Cantidad</th><th class="p-3">Fecha</th><th class="p-3">Medio de solicitud</th><th class="p-3">Motivo</th>@if($errores)<th class="p-3">Corrección necesaria</th>@endif</tr></thead>
                 <tbody class="divide-y divide-slate-200">
                     @foreach($filas as $numero => $fila)
                         <tr>
-                            <td class="p-3">{{ $numero }}</td><td class="p-3">{{ $fila['colaborador_codigo'] }}</td><td class="p-3">{{ $fila['producto_codigo'] }}</td>
+                            <td class="p-3">{{ $numero }}</td><td class="p-3">{{ $personas->get($fila['colaborador_codigo'], $fila['colaborador_codigo']) }} — {{ $fila['colaborador_codigo'] }}</td><td class="p-3">{{ $fila['producto_codigo'] }}</td><td class="p-3">{{ $fila['consolidado_id'] ?? $origen?->id ?? '—' }}</td>
                             <td class="p-3">{{ $fila['cantidad'] }}</td><td class="p-3">{{ $fila['fecha'] }}</td><td class="p-3">{{ $fila['medio_solicitud'] ?? '—' }}</td><td class="p-3">{{ $fila['motivo_asignacion'] }}</td>
                             @if($errores)<td class="p-3 text-rose-800">{{ implode(' ', $errores[$numero] ?? []) }}</td>@endif
                         </tr>

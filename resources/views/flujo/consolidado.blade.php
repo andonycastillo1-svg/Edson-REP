@@ -1,5 +1,13 @@
 <x-sistema.pagina :titulo="$consolidado->nombre" :volver="route('flujo.consolidados.index')">
     <x-slot:acciones>
+        @if($acciones->contains('aprobar'))
+            <form action="{{ route('flujo.consolidados.transicion', [$consolidado, 'aprobar']) }}" method="POST"
+                  data-confirmar="¿Aprobar este consolidado con las cantidades guardadas?">
+                @csrf
+                <input type="hidden" name="version" value="{{ $consolidado->eventos->max('id') }}">
+                <x-ui.accion type="submit" variante="primaria">Aprobar consolidado</x-ui.accion>
+            </form>
+        @endif
         @if($seguimiento && $consolidado->detalle_individual && app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'importar')
             && app(\App\Sistema\Permisos::class)->permite(auth()->user(), 'asignaciones.crear'))
             <a class="ui-btn-secondary" href="{{ route('flujo.importar.index', ['consolidado_id' => $consolidado->id]) }}">Preparar asignaciones en Excel</a>
@@ -71,7 +79,7 @@
         @if($puedeAgregar)
             <details class="flujo-lectura" @if(old('busqueda_colaborador') || old('colaborador_codigo')) open @endif>
                 <summary>Agregar colaborador</summary>
-                <form method="POST" action="{{ route('flujo.consolidados.transicion', [$consolidado, 'ajustar']) }}" class="grid gap-3 p-4 sm:grid-cols-2" data-buscar-colaborador="{{ route('flujo.consolidados.colaboradores', $consolidado) }}">
+                <form method="POST" action="{{ route('flujo.consolidados.transicion', [$consolidado, 'ajustar']) }}" class="grid gap-2 p-3 sm:grid-cols-2" data-buscar-colaborador="{{ route('flujo.consolidados.colaboradores', $consolidado) }}">
                     @csrf
                     <input type="hidden" name="version" value="{{ $version }}">
                     <label class="ui-label">Buscar por nombre o código
@@ -79,7 +87,7 @@
                     </label>
                     <label class="ui-label">Colaborador
                         <select name="colaborador_codigo" data-colaborador-anterior="{{ old('colaborador_codigo') }}" class="ui-select mt-1" required>
-                            <option value="">Escribe al menos dos caracteres</option>
+                            <option value="">Selecciona un colaborador</option>
                         </select>
                     </label>
                     <p class="text-sm sm:col-span-2" role="status" data-colaborador-estado></p>
@@ -91,20 +99,15 @@
                 </form>
             </details>
         @endif
-        @if($editar)
-            <datalist id="catalogo-productos">
-                @foreach($productos as $producto)<option value="{{ $producto->codigo }}">{{ $producto->nombre }}</option>@endforeach
-            </datalist>
-        @endif
     @endif
 
-    @if($acciones->diff(['ajustar'])->isNotEmpty())
+    @if($acciones->diff(['ajustar', 'aprobar'])->isNotEmpty())
         <x-sistema.panel titulo="Acciones del consolidado">
             <div class="grid gap-3 sm:grid-cols-2">
-                @foreach($acciones->diff(['ajustar']) as $accion)
+                @foreach($acciones->diff(['ajustar', 'aprobar']) as $accion)
                     @continue($accion === 'preparar_detalle' && $consolidado->detalle_individual)
                     <form action="{{ route('flujo.consolidados.transicion', [$consolidado, $accion]) }}" method="POST"
-                        class="flujo-card" @if(in_array($accion, ['aprobar', 'reasignar', 'cerrar', 'enviar'])) data-confirmar="¿{{ $etiquetas[$accion] }}?" @endif>
+                        class="space-y-2 border-t border-slate-200 pt-2" @if(in_array($accion, ['reasignar', 'cerrar', 'enviar'])) data-confirmar="¿{{ $etiquetas[$accion] }}?" @endif>
                         @csrf
                         <input type="hidden" name="version" value="{{ $version }}">
                         @if(in_array($accion, ['devolver', 'retirar', 'reabrir', 'reasignar']))
@@ -127,7 +130,7 @@
                         @if($accion === 'cerrar')
                             <p class="mb-2 text-sm">{{ $puedeCerrarCompra ? 'La cobertura está completa. Las entregas se registran por separado.' : 'Completa la cobertura y concilia las facturas para cerrar las compras.' }}</p>
                         @endif
-                        <button class="{{ $accion === 'aprobar' ? 'ui-btn-primary' : 'ui-btn-secondary' }}" @disabled($accion === 'cerrar' && !$puedeCerrarCompra)>{{ $etiquetas[$accion] }}</button>
+                        <button class="ui-btn-secondary" @disabled($accion === 'cerrar' && !$puedeCerrarCompra)>{{ $etiquetas[$accion] }}</button>
                     </form>
                 @endforeach
             </div>

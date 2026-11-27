@@ -19,9 +19,10 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
                 <label for="campo-fecha-compra" class="ui-label">Fecha de compra</label>
-                <input id="campo-fecha-compra" type="date" name="fecha_compra" value="{{ old('fecha_compra') }}"
+                <input id="campo-fecha-compra" type="date" name="fecha_compra" value="{{ old('fecha_compra') }}" min="{{ today()->subDays(7)->toDateString() }}" max="{{ today()->toDateString() }}"
                     class="ui-input"
                     required>
+                <p class="mt-1 text-xs text-slate-600">Hasta 7 días anteriores, incluida la fecha de hoy.</p>
             </div>
 
             <div>
@@ -56,7 +57,7 @@
 
             <div id="wrap_existente" class="md:col-span-2">
                 <label for="proveedor_id" class="ui-label">Seleccionar proveedor</label>
-                <select name="proveedor_id" id="proveedor_id"
+                <select name="proveedor_id" id="proveedor_id" data-searchable="true" data-search-placeholder="Buscar proveedor"
                     class="ui-input">
                     <option value="">Seleccione...</option>
                     @foreach($proveedores as $p)
@@ -65,9 +66,7 @@
                         </option>
                     @endforeach
                 </select>
-                <p class="mt-1 text-xs text-slate-500">
-                    Para agregar proveedor nuevo, selecciona “Nuevo”.
-                </p>
+
             </div>
 
             <div id="wrap_nuevo" class="hidden md:col-span-2">
@@ -92,7 +91,7 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
             <label class="text-sm font-semibold">
                 Fecha real de ingreso (si se registró después)
-                <input type="datetime-local" name="fecha_ingreso" value="{{ old('fecha_ingreso') }}"
+                <input type="datetime-local" name="fecha_ingreso" value="{{ old('fecha_ingreso') }}" max="{{ now()->format('Y-m-d\TH:i') }}"
                        class="ui-input mt-1">
             </label>
             <div class="md:col-span-2">

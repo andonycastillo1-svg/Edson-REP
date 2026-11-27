@@ -123,6 +123,7 @@ class PlanCompras
             return [
                 'codigo' => $codigo, 'producto' => $filas->first()['producto'],
                 'aprobada' => (int) $filas->sum('aprobada'), 'central' => $saldo !== null ? (int) $saldo->get($codigo, 0) : null,
+                'considerada' => $filas->contains(fn ($fila) => $fila['considerada'] !== null) ? (int) $filas->sum('considerada') : null,
                 'compra_total' => $pendiente !== null ? $comprada + $pendiente : null,
                 'comprada' => $comprada, 'pendiente' => $pendiente, 'sin_cobertura' => $filas->sum('sin_cobertura'),
                 'facturas' => $facturadas->map(fn ($grupo, $id) => [

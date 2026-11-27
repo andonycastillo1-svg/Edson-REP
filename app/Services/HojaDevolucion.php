@@ -19,9 +19,10 @@ class HojaDevolucion
     public static function pdf(Collection $movimientos, string $grupo): string
     {
         $primerMovimiento = $movimientos->first();
+        $formato = app(FormatosDocumento::class)->emitir('devolucion', $grupo);
         $pdf = new Dompdf(['isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans']);
         $pdf->setPaper('letter');
-        $pdf->loadHtml(view('admin.asignaciones.hoja_devolucion', compact('movimientos', 'grupo', 'primerMovimiento'))->render());
+        $pdf->loadHtml(view('admin.asignaciones.hoja_devolucion', compact('movimientos', 'grupo', 'primerMovimiento', 'formato'))->render());
         $pdf->render();
 
         return $pdf->output();

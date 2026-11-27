@@ -466,8 +466,7 @@ function conectarBusquedaColaborador(formulario) {
         const anterior = destino.value || destino.dataset.colaboradorAnterior;
         const texto = campo.value.trim();
         destino.replaceChildren(new Option('Selecciona un colaborador', ''));
-        estado.textContent = texto.length < 2 ? 'Escribe al menos dos caracteres.' : 'Buscando colaboradores…';
-        if (texto.length < 2) return;
+        estado.textContent = 'Buscando colaboradores…';
         espera = setTimeout(async () => {
             consulta = new AbortController();
             const url = new URL(formulario.dataset.buscarColaborador, window.location.href);
@@ -485,7 +484,7 @@ function conectarBusquedaColaborador(formulario) {
         }, 250);
     }
     campo.addEventListener('input', programar);
-    if (campo.value) programar();
+    programar();
 }
 
 function conectarFiltrosExcel(enlace) {
@@ -525,4 +524,22 @@ document.addEventListener('submit', event => {
     if (event.defaultPrevented) return;
     const mensaje = event.submitter?.dataset.confirmar || event.target.dataset.confirmar;
     if (mensaje && !window.confirm(mensaje)) event.preventDefault();
+});
+
+
+document.querySelectorAll('[data-plan-compras]').forEach((formulario) => {
+    const lineas = formulario.querySelectorAll('[data-plan-linea]');
+    const aviso = formulario.querySelector('[data-plan-aviso]');
+    formulario.addEventListener('input', () => {
+        let supera = false;
+        lineas.forEach((linea) => {
+            const existencia = linea.querySelector('[data-plan-existencia]').valueAsNumber;
+            const compra = linea.querySelector('[data-plan-compra]').valueAsNumber;
+            const pendiente = linea.querySelector('[data-plan-pendiente]');
+            pendiente.textContent = Number.isFinite(compra) ? Math.max(0, compra - Number(linea.dataset.planRecibido)) : '—';
+            supera ||= existencia > Number(linea.dataset.planStock);
+        });
+        aviso.hidden = !supera;
+    });
+    formulario.dispatchEvent(new Event('input'));
 });
