@@ -334,6 +334,98 @@ class EntregaCustodiaTest extends TestCase
         $this->assertDatabaseCount('entregas_inventario', 1);
     }
 
+    public function test_documentacion_regional_autoriza_evidencia_y_filtro_sin_acceso_a_central(): void
+    {
+        $zona = \App\Models\Region::create(['nombre' => 'Norte QA', 'activa' => true]);
+        $ajena = \App\Models\Region::create(['nombre' => 'Sur QA', 'activa' => true]);
+        Colaborador::findOrFail('C01')->update(['region_id' => $zona->id]);
+        $operador = User::factory()->create(['role_id' => 2, 'bodega_id' => $this->central->id]);
+        $this->almacenista->regionesOperativas()->attach($zona);
+        $this->agregarStock($this->central, 1);
+        $datos = $this->datosSalida();
+        $datos['items'][0]['bodega_id'] = $this->central->id;
+        $this->actingAs($operador)->crearSalida($datos);
+        $grupo = EntregaInventario::sole();
+        $enlace = route('operador.asignaciones.entrega', $grupo);
+        $this->actingAs($this->almacenista)->get($enlace)->assertForbidden();
+        DB::table('sistema_permisos_usuario')->insert(['user_id' => $this->almacenista->id,
+            'permiso' => 'asignaciones.documentacion_regional', 'permitido' => true]);
+        $this->actingAs($this->almacenista->fresh())->get($enlace)->assertOk();
+        $this->get(route('operador.asignaciones.pdf', $grupo->id))->assertOk();
+        $filtros = ['seguimiento' => 'documentacion', 'q' => 'C01', 'region_id' => $zona->id];
+        $this->get(route('operador.asignaciones.index', $filtros))->assertOk()->assertSeeText('Persona destinataria')->assertSeeText('Pendiente de firma');
+        $this->get(route('operador.asignaciones.index', array_replace($filtros, ['region_id' => $ajena->id])))
+            ->assertOk()->assertDontSeeText('Persona destinataria');
+        $this->post(route('operador.asignaciones.documento_entrega', $grupo), [
+            'pdf_firmado' => UploadedFile::fake()->create('firmada-regional.pdf', 2, 'application/pdf'),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame($this->almacenista->id, $grupo->documentos()->sole()->subido_por_user_id);
+        $this->get(route('operador.asignaciones.index', $filtros + ['estado_documental' => 'completa']))
+            ->assertOk()->assertSeeText('Hoja recibida')->assertSeeText('Persona destinataria');
+        $this->assertContains('hoja_firmada_recibida', $operador->notifications()->get()->pluck('data.tipo')->all());
+        $this->assertFalse(app(\App\Services\AccesoInventarioOperativo::class)->alcances($this->almacenista, 'asignaciones.crear')
+            ->contains(fn ($alcance) => in_array($this->central->id, $alcance->bodegas ?? [], true)));
+        $this->assertDatabaseCount('asignacion_movimientos', 1);
+
+        $this->almacenista->regionesOperativas()->sync([$ajena->id]);
+        $this->actingAs($this->almacenista->fresh())->get($enlace)->assertForbidden();
+    }
+
+    public function test_excel_de_rrhh_respeta_region_y_conserva_referencia_y_datos_desconocidos(): void
+    {
+        $zona = \App\Models\Region::create(['nombre' => 'Norte QA', 'activa' => true]);
+        $ajena = \App\Models\Region::create(['nombre' => 'Sur QA', 'activa' => true]);
+        $this->rrhh->regionesOperativas()->attach($zona);
+        Colaborador::findOrFail('C01')->update(['region_id' => $zona->id]);
+        Colaborador::create(['codigo' => 'C02', 'nombre' => 'Fuera de alcance', 'region_id' => $ajena->id, 'estado' => 'Activo', 'puesto' => 'QA']);
+        $this->crearSalida($this->datosSalida());
+        $anterior = AsignacionInventario::sole();
+        $base = ['producto_codigo' => 'P01', 'cantidad' => 1, 'estado' => 'pendiente', 'fecha_dano_reemplazo' => now(), 'registrado_por_user_id' => $this->almacenista->id];
+        AlertaReemplazo::create($base + ['colaborador_codigo' => 'C01', 'asignacion_anterior_id' => $anterior->id,
+            'vida_util_meses' => 2, 'vida_restante_segundos' => 30 * 86400, 'referencia_proporcional' => 32.50,
+            'politica_motivo' => 'proporcional']);
+        AlertaReemplazo::create($base + ['colaborador_codigo' => 'C01']);
+        $fuera = AlertaReemplazo::create($base + ['colaborador_codigo' => 'C02']);
+        $ruta = route('rrhh.alertas.export', ['region' => $zona->id, 'q' => 'C01']);
+        $this->actingAs($this->rrhh->fresh())->get(route('rrhh.alertas.show', $fuera))->assertForbidden();
+        $this->get(route('rrhh.alertas.export', ['region' => $ajena->id]))->assertNotFound();
+        $archivo = $this->get($ruta)->assertOk()->baseResponse->getFile()->getPathname();
+        try {
+            $libro = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo);
+            $this->assertSame(['Resumen', 'Detalle de incidencias'], $libro->getSheetNames());
+            $hoja = $libro->getSheet(1);
+            $this->assertSame('A7:AJ9', $hoja->getAutoFilter()->getRange());
+            $this->assertSame('C01', $hoja->getCell('B8')->getValue());
+            $this->assertEqualsCanonicalizing([null, 32.5], [$hoja->getCell('Z8')->getValue(), $hoja->getCell('Z9')->getValue()]);
+            $this->assertContains('No calculable', [$hoja->getCell('AA8')->getValue(), $hoja->getCell('AA9')->getValue()]);
+        } finally {
+            unlink($archivo);
+        }
+    }
+
+    public function test_plantillas_solo_superadmin_muestra_pdf_y_fija_version_de_hoja(): void
+    {
+        $this->crearSalida($this->datosSalida());
+        $grupo = EntregaInventario::sole()->id;
+        $hoja = route('operador.asignaciones.pdf', $grupo);
+        $this->get($hoja)->assertOk()->assertSee('Formato de entrega de equipos y herramientas');
+        $vista = route('sistema.documentos.vista_previa', 'asignacion');
+        $datos = ['empresa' => 'Grupo Demo', 'titulo' => 'Versión corporativa QA', 'firma_1' => 'Entrega', 'firma_2' => 'Recibe',
+            'distribucion' => 'compacta', 'ancho_logo' => 60, 'campos' => ['region', 'vida'], 'current_password' => 'password'];
+        $this->postJson($vista, $datos)->assertForbidden();
+        $admin = User::factory()->create(['role_id' => 1]);
+        DB::table('sistema_superadministradores')->insert(['user_id' => $admin->id, 'activo' => true, 'created_at' => now(), 'updated_at' => now()]);
+        $this->actingAs($admin)->get(route('sistema.documentos'))->assertOk();
+        $muestra = $this->post($vista, $datos + ['pdf' => 1])->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $muestra->getContent());
+        $this->assertDatabaseCount('documento_formatos', 0);
+        $this->post(route('sistema.documentos.publicar', 'asignacion'), $datos)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('documento_formatos', 1);
+        $this->actingAs($this->almacenista)->get($hoja)->assertOk()->assertDontSee('Versión corporativa QA');
+        $nuevo = app(\App\Services\FormatosDocumento::class)->emitir('asignacion', (string) Str::uuid());
+        $this->assertSame('Versión corporativa QA', $nuevo['titulo']);
+    }
+
     public function test_stock_agregado_conserva_vida_conocida_al_reutilizar_una_unidad(): void
     {
         config(['inventario.seguimiento_unidades' => false]);

@@ -17,25 +17,28 @@
         ];
     })->values();
 @endphp
-<div class="mx-auto max-w-4xl px-4 py-8">
+<div class="mx-auto max-w-7xl px-4 py-4">
     <x-internal-navigation :back-url="route($routePrefix.'.asignaciones.index')" />
     <form action="{{ route($routePrefix.'.asignaciones.store') }}" method="POST" class="ui-form space-y-4">
         @csrf
         <input type="hidden" name="solicitud_id" value="{{ old('solicitud_id', (string) \Illuminate\Support\Str::uuid()) }}">
-        <section class="rounded-xl border border-slate-200 bg-white p-5">
+        <section class="rounded-xl border border-slate-200 bg-white p-4">
             <h1 class="ui-page-title text-slate-900">Nueva asignación</h1>
-            <label for="colaborador-codigo" class="mb-1 mt-4 block text-sm font-bold">Colaborador</label>
+            <div class="mt-3 grid gap-3 lg:grid-cols-3">
+                <x-flujo.consolidado-origen :consolidados="$consolidadosOrigen" />
+                <div>
+            <label for="colaborador-codigo" class="ui-label mb-0 block">Colaborador</label>
             <select id="colaborador-codigo" name="colaborador_codigo" data-searchable="true" data-search-placeholder="Buscar colaborador"
-                    class="w-full rounded-xl border-slate-300" required>
+                    class="ui-input mt-1" required>
                 <option value="">Selecciona al colaborador</option>
                 @foreach($colaboradores as $colaborador)
                     <option value="{{ $colaborador->codigo }}" @selected(old('colaborador_codigo', request('colaborador_codigo')) === $colaborador->codigo)>
-                        {{ $colaborador->nombre }} · {{ $colaborador->codigo }}
+                        {{ $colaborador->nombre }} — {{ $colaborador->codigo }}
                     </option>
                 @endforeach
             </select>
-            <div class="mt-4"><x-flujo.consolidado-origen :consolidados="$consolidadosOrigen" /></div>
-            <label class="ui-label mt-4 block">Medio de solicitud
+                </div>
+            <label class="ui-label block">Medio de solicitud
                 <select name="medio_solicitud" class="ui-input mt-1">
                     <option value="">Sin especificar</option>
                     @foreach(['Correo', 'WhatsApp'] as $medio)
@@ -44,9 +47,10 @@
                     <option value="{{ \App\Services\RegistrarAsignaciones::MEDIO_INTERNO }}" disabled>Requerimiento interno</option>
                 </select>
             </label>
+            </div>
         </section>
 
-        <section class="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+        <section class="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
             <h2 class="text-lg font-bold" id="titulo-productos">Productos</h2>
             @if($bodegas->count() === 1)
                 <p class="text-sm text-slate-600">Bodega de salida <strong>{{ $bodegas->sole()->nombre }}</strong></p>
@@ -109,7 +113,7 @@
             </template>
         </section>
 
-        <details class="rounded-xl border border-slate-200 bg-white p-5" @if(old('modalidad') === 'tercero') open @endif>
+        <details class="rounded-xl border border-slate-200 bg-white p-4" @if(old('modalidad') === 'tercero') open @endif>
             <summary class="cursor-pointer font-bold">Salida por medio de un tercero</summary>
             <label class="mt-3 block text-sm font-semibold">
                 <input type="checkbox" name="modalidad" value="tercero" @checked(old('modalidad') === 'tercero')}>
@@ -143,6 +147,37 @@
     const pendientes = document.getElementById('productos-pendientes');
     const guardar = forma.querySelector('button[type=submit]');
     let consulta;
+    let consultaPersonas;
+    const opcionesIndependientes = [...colaborador.options].slice(1).map(option => [option.text, option.value]);
+    async function cargarPersonas(codigo = '') {
+        consultaPersonas?.abort();
+        consultaPersonas = new AbortController();
+        const actual = consultaPersonas;
+        colaborador.replaceChildren(new Option('Selecciona al colaborador', ''));
+        if (!origen?.value) {
+            opcionesIndependientes.forEach(([nombre, valor]) => colaborador.add(new Option(nombre, valor)));
+            colaborador.disabled = false;
+        } else {
+            const url = new URL(@js(route($routePrefix.'.asignaciones.participantes')));
+            url.searchParams.set('consolidado_id', origen.value);
+            colaborador.disabled = true;
+            try {
+                const respuesta = await fetch(url, {signal: actual.signal, headers: {Accept: 'application/json'}});
+                if (!respuesta.ok) throw new Error();
+                const personas = await respuesta.json();
+                if (actual.signal.aborted) return false;
+                personas.forEach(persona => colaborador.add(new Option(persona.nombre + ' — ' + persona.codigo, persona.codigo)));
+            } catch (error) {
+                if (error.name !== 'AbortError') estado.textContent = 'No se pudo cargar el listado de colaboradores.';
+                return false;
+            } finally {
+                if (!actual.signal.aborted) colaborador.disabled = false;
+            }
+        }
+        if ([...colaborador.options].some(option => option.value === codigo)) colaborador.value = codigo;
+        colaborador.dispatchEvent(new Event('options:updated'));
+        return true;
+    }
     let contexto = {productos: [], custodias: [], bodegas: null};
     let medioIndependiente = medio.value;
 
@@ -215,7 +250,7 @@
             const custodias = contexto.custodias.filter(item => item.producto_codigo === producto.value);
             const anterior = reemplazo.value || (sugerir ? '' : datos.sustituir_asignacion_id ?? '');
             reemplazo.replaceChildren(new Option('Entrega sin sustitución', ''), ...custodias.map(item =>
-                new Option(`Asignación #${item.id} · ${item.fecha.slice(0, 10)} · ${item.vida_restante === 0 ? 'Vida vencida' : (item.vida_restante === null ? 'Vida sin definir' : 'Vida vigente')}`, item.id)));
+                new Option(`Asignación #${item.id} · ${item.fecha.slice(0, 10)} · ${item.vida_restante === 0 ? 'Vida vencida' : (item.vida_restante === null ? 'Vida desconocida · verifica la recepción y duración' : 'Vida vigente')}`, item.id)));
             reemplazo.value = anterior;
             reemplazo.closest('label').hidden = reemplazo.disabled = custodias.length === 0;
             motivo.closest('label').hidden = motivo.disabled = !reemplazo.value;
@@ -331,13 +366,17 @@
         cargarContexto(anteriores);
     });
     medio.addEventListener('change', () => medioIndependiente = medio.value);
-    origen?.addEventListener('change', () => {
+    origen?.addEventListener('change', async () => {
         actualizarMedio();
-        cargarContexto();
+        consulta?.abort();
+        filas.replaceChildren();
+        pendientes.replaceChildren();
+        pintar();
+        if (await cargarPersonas()) cargarContexto();
     });
     agregarOtro.addEventListener('click', () => agregar());
     actualizarMedio();
-    cargarContexto(Object.values(@js(old('items', []))));
+    cargarPersonas(colaborador.value).then(ok => { if (ok) cargarContexto(Object.values(@js(old('items', [])))); });
     const tercero = forma.elements.modalidad;
     const datosTercero = forma.elements.tercero;
     function mostrarTercero() {

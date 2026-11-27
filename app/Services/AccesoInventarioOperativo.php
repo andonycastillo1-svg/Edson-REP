@@ -77,6 +77,12 @@ class AccesoInventarioOperativo
             $alcances->push(new AlcanceInventario($propias, $regiones));
         }
 
+        if ($central !== null && $regiones && in_array($permiso, ['asignaciones.consultar', 'asignaciones.archivos',
+            'asignaciones.evidencias', 'asignaciones.exportar', 'asignaciones.datos_exportar'], true)
+            && $this->permisos->permite($usuario, 'asignaciones.documentacion_regional')) {
+            $alcances->push(new AlcanceInventario([(int) $central], $regiones));
+        }
+
         // Se conservan los ámbitos operativos con los que se crearon las custodias y facturas anteriores.
         $ambito = $usuario->rolOperativo();
         if ($ambito === 1 && !$decidir) {

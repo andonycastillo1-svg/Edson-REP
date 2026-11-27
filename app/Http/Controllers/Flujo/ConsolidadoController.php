@@ -95,7 +95,7 @@ class ConsolidadoController extends Controller
             'lineas.producto', 'eventos.user'])->findOrFail($consolidado);
         $acciones = collect(self::TRANSICIONES)->filter(fn ($regla) => in_array($consolidado->estado, $regla[1], true)
             && $this->acceso->puede($usuario, $regla[0])
-            && $this->acceso->consolidados($usuario, $regla[0])->whereKey($consolidado->id)->exists())->keys();
+            && $this->acceso->consolidados($usuario, $regla[0])->whereKey($consolidado->id)->exists())->keys()->diff(['revisar', 'devolver']);
         $puedeAgregar = $acciones->contains('ajustar');
         $puedeAgregar = $puedeAgregar && $this->acceso->puede($usuario, 'agregar_colaboradores')
             && $this->acceso->consolidados($usuario, 'agregar_colaboradores')->whereKey($consolidado->id)->exists();
@@ -130,7 +130,7 @@ class ConsolidadoController extends Controller
         $usuario = $request->user();
         $fila = $this->acceso->consolidados($usuario, 'agregar_colaboradores')->findOrFail($consolidado);
         abort_unless(in_array($fila->estado, ['enviado', 'revision'], true), 404);
-        $q = $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']])['q'];
+        $q = $request->validate(['q' => ['nullable', 'string', 'max:100']])['q'] ?? '';
 
         return response()->json(Colaborador::with('region')->whereIn('region_id', $this->acceso->regionesRevision($usuario, $fila, 'agregar_colaboradores'))
             ->where('estado', 'Activo')->where(fn ($consulta) => $consulta->where('nombre', 'like', '%'.$q.'%')->orWhere('codigo', 'like', '%'.$q.'%'))

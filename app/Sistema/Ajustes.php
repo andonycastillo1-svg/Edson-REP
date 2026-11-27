@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\DB;
 class Ajustes
 {
     public const EVENTOS = [
+        'consolidado_enviado' => 'Consolidado enviado a coordinación',
+        'consolidado_aprobado' => 'Consolidado aprobado',
+        'consolidado_devuelto' => 'Consolidado devuelto',
+        'compra_vinculada' => 'Compra vinculada a un consolidado',
+        'entrega_por_preparar' => 'Compras cerradas para preparar las entregas',
+        'hoja_firmada_recibida' => 'Hoja de asignación firmada recibida',
         'asignacion_creada' => 'Nueva asignación (inventario, vehículos o refacciones)',
         'asignacion_pendiente' => 'Seguimiento de hoja firmada',
         'asignacion_estado' => 'Cambios en asignaciones y devoluciones',

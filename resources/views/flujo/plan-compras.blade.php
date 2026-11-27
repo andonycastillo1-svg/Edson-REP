@@ -73,39 +73,26 @@
                     <div><dt>Con compra pendiente</dt><dd>{{ $bodega ? $resumen->where('pendiente', '>', 0)->count() : '—' }}</dd></div>
                     <div><dt>Facturas vinculadas</dt><dd>{{ $facturas->collapse()->unique('id')->count() }}</dd></div>
                 </dl>
-                <div class="grid gap-3">
-                    @foreach($resumen as $fila)
-                        <article class="flujo-card">
-                            <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-                                <h3 class="break-words text-base font-bold">{{ $fila['producto'] }}</h3>
-                                <span class="text-xs font-semibold text-slate-600">{{ $fila['codigo'] }}</span>
-                                @if($fila['sin_cobertura'] > 0)
-                                    <span class="ui-badge ui-badge-warning">{{ $fila['sin_cobertura'] }} sin plan de cobertura</span>
-                                @endif
-                            </div>
-                            <dl class="flujo-cifras">
-                                <div><dt>Requerimiento aprobado</dt><dd>{{ $fila['aprobada'] }}</dd></div>
-                                <div><dt>Saldo central actual</dt><dd>{{ $fila['central'] ?? '—' }}</dd></div>
-                                <div><dt>Compra total prevista</dt><dd>{{ $fila['compra_total'] ?? '—' }}</dd></div>
-                                <div><dt>Comprado y recibido</dt><dd>{{ $fila['comprada'] }}</dd></div>
-                                <div @class(['flujo-pendiente' => $fila['pendiente'] > 0])><dt>Pendiente de compra</dt><dd>{{ $fila['pendiente'] ?? '—' }}</dd></div>
-                            </dl>
-                            @if($fila['facturas']->isNotEmpty())
-                                <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm" aria-label="Facturas de {{ $fila['producto'] }}">
-                                    @foreach($fila['facturas'] as $reparto)
-                                        <li>
-                                            @rutaDisponible($prefijo.'.compras.show')
-                                                <a class="flujo-enlace" href="{{ route($prefijo.'.compras.show', $reparto['factura']->id) }}">Factura {{ $reparto['factura']->no_factura }}</a>
-                                            @else
-                                                <strong>Factura {{ $reparto['factura']->no_factura }}</strong>
-                                            @endrutaDisponible
-                                            <span class="text-slate-600"> · {{ $reparto['factura']->proveedor }} · {{ $reparto['cantidad'] }} u.</span>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @endif
-                        </article>
-                    @endforeach
+                <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Resumen por producto">
+                    <table class="ui-table min-w-[700px]">
+                        <thead><tr><th>Producto</th><th>Aprobado</th><th>Saldo central actual</th><th>Stock del plan</th><th>Compra total prevista</th><th>Recibido</th><th>Pendiente de compra</th></tr></thead>
+                        <tbody>
+                            @foreach($resumen as $fila)
+                                <tr>
+                                    <th scope="row">
+                                        {{ $fila['producto'] }} <span class="text-xs text-slate-600">· {{ $fila['codigo'] }}</span>
+                                        @if($fila['sin_cobertura'] > 0)
+                                            <span class="block text-sm text-amber-800">{{ $fila['sin_cobertura'] }} sin plan de cobertura</span>
+                                        @endif
+                                    </th>
+                                    <td>{{ $fila['aprobada'] }}</td><td>{{ $fila['central'] ?? '—' }}</td>
+                                    <td>{{ $fila['considerada'] ?? '—' }}</td><td>{{ $fila['compra_total'] ?? '—' }}</td>
+                                    <td>{{ $fila['comprada'] }}</td>
+                                    <td class="{{ $fila['pendiente'] > 0 ? 'font-semibold text-amber-800' : '' }}">{{ $fila['pendiente'] ?? '—' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
             @else
                 <p class="text-sm">Los consolidados seleccionados no tienen productos.</p>
@@ -160,30 +147,32 @@
         @if(app(\App\Services\FlujoAcceso::class)->puede(auth()->user(), 'plan_compras') && $estado === 'aprobado' && $bodega && $lineasPlan->isNotEmpty())
             <details class="flujo-lectura" @if($errors->has('propuestas') || $errors->has('propuestas.*')) open @endif>
                 <summary>Ajustar plan de compra</summary>
-                <form method="POST" action="{{ route('flujo.compras.plan') }}" class="space-y-4 p-4">
+                <form method="POST" action="{{ route('flujo.compras.plan') }}" class="space-y-4 p-4" data-plan-compras>
                     @csrf
                     @foreach($planificables as $fila)<input type="hidden" name="consolidados[]" value="{{ $fila->id }}">@endforeach
                     <p class="text-sm">Guarda el plan si quieres fijar el saldo que se usará y la compra total. Registra la autorización de Gerencia en la factura de compra.</p>
                     <div class="ui-table-scroll" tabindex="0" role="region" aria-label="Líneas del plan">
                         <table class="ui-table min-w-[530px]">
-                            <thead><tr><th>Consolidado y producto</th><th>Aprobado</th><th>Recibido</th><th>Stock a usar</th><th>Compra total</th></tr></thead>
+                            <thead><tr><th>Consolidado y producto</th><th>Aprobado</th><th>Recibido</th><th>Stock central</th><th>Stock a usar</th><th>Compra total</th><th>Pendiente</th></tr></thead>
                             <tbody>
                                 @foreach($lineasPlan as $fila)
                                     @php($nombre = $seleccion->find($fila['consolidado_id'])->nombre)
-                                    <tr>
+                                    <tr data-plan-linea data-plan-stock="{{ $fila['central'] }}" data-plan-recibido="{{ $fila['comprada'] }}">
                                         <th scope="row">{{ $fila['producto'] }} · {{ $fila['codigo'] }}<span class="block text-xs text-slate-600">{{ $nombre }}</span></th>
-                                        <td>{{ $fila['aprobada'] }}</td><td>{{ $fila['comprada'] }}</td>
+                                        <td>{{ $fila['aprobada'] }}</td><td>{{ $fila['comprada'] }}</td><td>{{ $fila['central'] }}</td>
                                         <td><input type="number" min="0" max="{{ $fila['aprobada'] - $fila['comprada'] }}" required class="ui-input w-24"
-                                            aria-label="Stock a usar para {{ $fila['codigo'] }} en {{ $nombre }}" name="propuestas[{{ $fila['id'] }}][existencia]"
+                                            data-plan-existencia aria-label="Stock a usar para {{ $fila['codigo'] }} en {{ $nombre }}" name="propuestas[{{ $fila['id'] }}][existencia]"
                                             value="{{ old('propuestas.'.$fila['id'].'.existencia', $fila['considerada_sugerida']) }}"></td>
                                         <td><input type="number" min="{{ $fila['comprada'] }}" max="{{ $fila['aprobada'] }}" required class="ui-input w-24"
-                                            aria-label="Compra total para {{ $fila['codigo'] }} en {{ $nombre }}" name="propuestas[{{ $fila['id'] }}][compra]"
+                                            data-plan-compra aria-label="Compra total para {{ $fila['codigo'] }} en {{ $nombre }}" name="propuestas[{{ $fila['id'] }}][compra]"
                                             value="{{ old('propuestas.'.$fila['id'].'.compra', $fila['comprada'] + $fila['sugerida']) }}"></td>
+                                        <td data-plan-pendiente>{{ $fila['sugerida'] }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
+                    <p class="ui-alert-warning" data-plan-aviso hidden role="status">Una línea supera el stock central actual. Revisa las cantidades antes de guardar.</p>
                     <button class="ui-btn-secondary">Guardar plan de compra</button>
                 </form>
             </details>

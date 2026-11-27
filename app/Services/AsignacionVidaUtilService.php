@@ -73,6 +73,10 @@ class AsignacionVidaUtilService
             return null;
         }
 
+        if ($asignacion->vida_util_disponible_segundos !== null) {
+            return max(0, $asignacion->vida_util_disponible_segundos - (int) $recibida->diffInSeconds($fechaCorte));
+        }
+
         return $vencimiento === null ? null : max(0, (int) $fechaCorte->diffInSeconds($vencimiento));
     }
 

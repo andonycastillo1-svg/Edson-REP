@@ -41,6 +41,19 @@ class RequerimientosAsignacion
                 $q->whereIn('region_id', $regiones)->whereHas('colaborador', fn ($q) => $q->whereIn('region_id', $regiones))));
     }
 
+    public function conPendientes(User $usuario, string $permiso = 'asignaciones.crear'): Builder
+    {
+        $regiones = $this->regiones($usuario, $permiso);
+
+        return $this->disponibles($usuario, $permiso)
+            ->whereHas('participantes', fn ($p) => $p
+                ->when($regiones !== null, fn ($q) => $q->whereIn('region_id', $regiones))
+                ->whereHas('colaborador', fn ($q) => $q->where('estado', 'Activo')
+                    ->when($regiones !== null, fn ($q) => $q->whereIn('region_id', $regiones)))
+                ->whereHas('necesidades', fn ($q) => $q->where('cantidad', '>', 0)
+                    ->whereRaw('consolidado_necesidades.cantidad > (select count(*) from asignaciones_inventarios where requerimiento_id = consolidado_necesidades.id)')));
+    }
+
     public function verificar(User $usuario, int $id, bool $bloquear = false, string $permiso = 'asignaciones.crear'): Consolidado
     {
         abort_if($this->regiones($usuario, $permiso) === [], 403);

@@ -6,11 +6,15 @@ use App\Models\AlertaReemplazo;
 use App\Models\AsignacionInventario;
 use App\Models\AsignacionVehiculo;
 use App\Models\Bodega;
+use App\Models\Consolidado;
+use App\Models\ConsolidadoEvento;
+use App\Models\EntregaInventario;
 use App\Models\Inventario;
 use App\Models\Operacion;
 use App\Models\User;
 use App\Models\VehiculoProductoAsignacion;
 use App\Notifications\AlertaGeneralNotification;
+use App\Notifications\EventoOperativoNotification;
 use App\Notifications\AlertaRrhhNotification;
 use App\Notifications\CambioEstadoAsignacionNotification;
 use App\Notifications\MovimientoInventarioNotification;
@@ -32,6 +36,69 @@ class NotificacionService
             $callback($this);
         } catch (Throwable $e) {
             report($e);
+        }
+    }
+
+    public function notificarConsolidado(ConsolidadoEvento $evento): void
+    {
+        $consolidado = $evento->consolidado;
+        $actor = $evento->user;
+        if (!$consolidado || !$actor) {
+            return;
+        }
+        $enviar = in_array($evento->accion, ['enviar', 'reasignar'], true);
+        [$tipo, $titulo] = match ($evento->accion) {
+            'enviar', 'reasignar' => ['consolidado_enviado', 'Consolidado para revisar'],
+            'aprobar' => ['consolidado_aprobado', 'Consolidado aprobado'],
+            'devolver' => ['consolidado_devuelto', 'Consolidado devuelto'],
+            'cerrar' => ['entrega_por_preparar', 'Compras cerradas para preparar entregas'],
+        };
+        $id = $enviar ? $consolidado->coordinador_id : $consolidado->operador_id;
+        $cuenta = User::find($id);
+        if (!$cuenta || !$this->puedeConsultarConsolidado($cuenta, $consolidado)) {
+            return;
+        }
+        $mensaje = $consolidado->nombre.($evento->accion === 'cerrar' ? '. Consulta el saldo y las entregas pendientes.' : '');
+        $this->eventoOperativo($cuenta, $tipo, 'consolidado-evento-'.$evento->id,
+            $this->payload($titulo, $mensaje, $consolidado, $actor) + ['url' => route('flujo.consolidados.show', $consolidado)]);
+    }
+
+    public function notificarCompraVinculada(Consolidado $consolidado, User $actor, int $factura): void
+    {
+        foreach (User::whereKey([$consolidado->operador_id, $consolidado->coordinador_id])->whereKeyNot($actor->id)->get() as $cuenta) {
+            if ($this->puedeConsultarConsolidado($cuenta, $consolidado)) {
+                $this->eventoOperativo($cuenta, 'compra_vinculada', "factura-{$factura}-{$consolidado->id}",
+                    $this->payload('Compra vinculada', 'Se registró una compra para '.$consolidado->nombre.'.', $consolidado, $actor)
+                    + ['url' => route('flujo.consolidados.show', $consolidado)]);
+            }
+        }
+    }
+
+    public function notificarHojaFirmada(EntregaInventario $entrega, User $actor): void
+    {
+        $filas = $entrega->asignaciones()->with('user', 'colaborador')->orderBy('id')->get();
+        $autor = $filas->first()?->user;
+        if ($autor && $autor->isNot($actor)
+            && app(AccesoInventarioOperativo::class)->buscarCustodias($autor, 'asignaciones.consultar', $filas)) {
+            $this->eventoOperativo($autor, 'hoja_firmada_recibida', 'hoja-firmada-'.$entrega->id,
+                $this->payload('Hoja firmada recibida', 'Ya está disponible la hoja firmada de '.$filas->first()->colaborador?->nombre.'.', $entrega, $actor)
+                + ['url' => route(AccesoCustodia::rutaEntrega($autor), $entrega)]);
+        }
+    }
+
+    private function puedeConsultarConsolidado(User $cuenta, Consolidado $consolidado): bool
+    {
+        $flujo = app(FlujoAcceso::class);
+
+        return $flujo->puede($cuenta, 'consolidados') && $flujo->consolidados($cuenta)->whereKey($consolidado->id)->exists();
+    }
+
+    private function eventoOperativo(User $cuenta, string $tipo, string $clave, array $datos): void
+    {
+        $notificacion = new EventoOperativoNotification(['tipo' => $tipo] + $datos);
+        $notificacion->id = \Ramsey\Uuid\Uuid::uuid5(\Ramsey\Uuid\Uuid::NAMESPACE_URL, 'edson:'.$cuenta->id.':'.$clave)->toString();
+        if (!$cuenta->notifications()->whereKey($notificacion->id)->exists()) {
+            $this->safeNotify([$cuenta], $notificacion);
         }
     }
 
@@ -87,6 +154,18 @@ class NotificacionService
                 $creador,
                 new NuevaAsignacionNotification($base + ['mensaje' => $mensajeSupervisor])
             );
+        }
+
+        if ($grupoInventario) {
+            $supervisores = $creador->rolOperativo() === 2 ? $creador->supervisoresAsignados()->pluck('users.id')->all() : [];
+            foreach (app(AccesoCustodia::class)->responsablesRegionales($asignacion) as $cuenta) {
+                if ($cuenta->is($creador) || $cuenta->rolOperativo() === 1 || in_array($cuenta->id, $supervisores, true)) {
+                    continue;
+                }
+                $this->eventoOperativo($cuenta, 'asignacion_creada', 'entrega-regional-'.$entidadId,
+                    array_replace($base, ['mensaje' => 'Entrega de central para '.$colaboradorNombre.'.',
+                        'url' => route(AccesoCustodia::rutaEntrega($cuenta), $entidadId)]));
+            }
         }
     }
 
@@ -207,6 +286,9 @@ class NotificacionService
 
         $rrhh = User::query()
             ->deAmbito(4)
+            ->where(fn ($q) => $q->whereDoesntHave('regionesOperativas')
+                ->orWhereHas('regionesOperativas', fn ($region) => $region->where('regiones.activa', true)
+                    ->where('regiones.id', $alerta->colaborador?->region_id)))
             ->when($creador, fn ($query) => $query->where('id', '!=', $creador->id))
             ->get();
 

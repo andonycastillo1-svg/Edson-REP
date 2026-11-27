@@ -662,7 +662,7 @@ class FlujoOperativoTest extends TestCase
     }
 
     #[DataProvider('motivos')]
-    public function test_motivo_manual_conserva_custodia_y_solo_robo_injustificado_calcula_referencia(string $codigo, ?string $referencia): void
+    public function test_motivo_manual_conserva_custodia_y_calcula_referencia_segun_politica(string $codigo, ?string $referencia): void
     {
         $this->stock('P-001', 2, 60);
         $this->travelTo(now()->startOfDay()->addHours(8));
@@ -676,7 +676,7 @@ class FlujoOperativoTest extends TestCase
         $this->assertSame(0, $this->saldo('P-001'));
         $this->assertCount(1, AsignacionInventario::custodiaActiva()->get());
         $this->assertDatabaseCount('asignacion_movimientos', 2);
-        if ($codigo === 'desgaste') {
+        if (in_array($codigo, ['desgaste', 'cambio_por_energuate'], true)) {
             $this->assertDatabaseCount('alertas_reemplazos_rrhh', 0);
         } else {
             $alerta = AlertaReemplazo::sole();
@@ -704,6 +704,8 @@ class FlujoOperativoTest extends TestCase
         return [
             'desgaste' => ['desgaste', null], 'robo' => ['robo', null],
             'robo injustificado' => ['robo_injustificado', '30.00'],
+            'cambio por daño' => ['cambio_por_dano', '30.00'],
+            'Energuate' => ['cambio_por_energuate', null],
         ];
     }
 
@@ -1151,6 +1153,85 @@ class FlujoOperativoTest extends TestCase
         config(['modulos.vehiculos' => true]);
         $this->actingAs($this->admin)->get(route('admin.vehiculos.index'))->assertOk()->assertSee('QA-VIN-01');
         $this->assertDatabaseHas('vehiculos', ['vin' => $vehiculo->vin]);
+    }
+
+    public function test_notifica_envio_y_aprobacion_al_responsable_una_sola_vez(): void
+    {
+        $this->actingAs($this->supervisor)->post(route('flujo.inspecciones.store'), $this->datosInspeccion(2))
+            ->assertSessionHasNoErrors();
+        $origen = $this->consolidar(Inspeccion::pluck('id')->all(), 'Dotación con avisos');
+        $servicio = app(\App\Services\NotificacionService::class);
+        $servicio->notificarConsolidado($origen->eventos()->where('accion', 'enviar')->sole());
+        $this->assertSame(['consolidado_enviado'], $this->coordinador->notifications()->get()->pluck('data.tipo')->all());
+        $this->assertSame(0, $this->ajeno->notifications()->count());
+        $this->actingAs($this->coordinador)->get(route('flujo.consolidados.show', $origen))->assertOk()
+            ->assertDontSee('Iniciar revisión')->assertDontSee('Devolver para corrección');
+        $this->estado($origen, 'aprobar');
+        $servicio->notificarConsolidado($origen->eventos()->where('accion', 'aprobar')->sole());
+        $this->assertSame(['consolidado_aprobado'], $this->central->notifications()->get()->pluck('data.tipo')->all());
+        $this->assertDatabaseCount('inventarios', 0);
+    }
+
+    public function test_excel_por_corte_conserva_origenes_y_excluye_entregas_completas(): void
+    {
+        $this->stock('P-001', 6);
+        $corte = \App\Models\CorteRequerimiento::create(['nombre' => 'Corte QA', 'operador_id' => $this->central->id,
+            'desde' => today(), 'hasta' => today(), 'estado' => 'confirmado']);
+        $origenes = collect();
+        foreach ([['COL-001', $this->norte, $this->coordinador], ['COL-002', $this->sur, $this->ajeno]] as [$codigo, $region, $coordinador]) {
+            $origen = $this->aprobado('Lote '.$codigo, 2);
+            $origen->forceFill(['coordinador_id' => $coordinador->id, 'corte_id' => $corte->id, 'detalle_individual' => true])->save();
+            $origen->participantes()->create(['colaborador_codigo' => $codigo, 'region_id' => $region->id])
+                ->necesidades()->create(['producto_codigo' => 'P-001', 'original' => 2, 'cantidad' => 2]);
+            $origenes->put($codigo, $origen);
+        }
+        $this->actingAs($this->central);
+        $consulta = route('operador.asignaciones.participantes', ['consolidado_id' => $origenes['COL-001']->id]);
+        $this->getJson($consulta)->assertOk()->assertSee('COL-001')->assertDontSee('COL-002');
+        $descarga = route('flujo.importar.pendientes', ['corte_id' => $corte]);
+        $libro = $this->libroDescargado($this->get($descarga)->assertOk()->streamedContent());
+        $previsualizar = route('flujo.importar.preview');
+        $hoja = $libro->getSheetByName('Asignaciones');
+        $this->assertSame('COL-001', $hoja->getCell('A2')->getValue());
+        $this->assertSame('COL-002', $hoja->getCell('A3')->getValue());
+
+        $original = $hoja->getCell('M2')->getValue();
+        $hoja->setCellValue('M2', $hoja->getCell('M3')->getValue());
+        $this->post($previsualizar, ['excel' => $this->subirLibro($libro)])->assertUnprocessable();
+        $hoja->setCellValue('M2', $original);
+        $hoja->setCellValue('C2', 1)->setCellValue('C3', 1);
+        $archivo = $this->subirLibro($libro);
+        $this->post($previsualizar, ['excel' => $archivo])->assertRedirect()->assertSessionHasNoErrors();
+        $lote = ImportacionAsignacion::sole();
+        $this->get(route('flujo.importar.show', $lote))->assertOk()->assertSee('Técnica norte — COL-001');
+        for ($i = 0; $i < 2; $i++) {
+            $this->post(route('flujo.importar.confirmar', $lote))->assertRedirect()->assertSessionHasNoErrors();
+        }
+        $this->post($previsualizar, ['excel' => $archivo])->assertUnprocessable()->assertSee('Cambió el avance');
+        $this->assertDatabaseCount('asignacion_movimientos', 2);
+        $nuevo = $this->libroDescargado($this->get($descarga)->assertOk()->streamedContent());
+        $registro = $this->post($previsualizar, ['excel' => $this->subirLibro($nuevo)])->assertRedirect()->assertSessionHasNoErrors();
+        $actualizada = ImportacionAsignacion::whereKeyNot($lote->id)->sole();
+        $registro->assertRedirect(route('flujo.importar.show', $actualizada));
+        $this->post(route('flujo.importar.confirmar', $actualizada))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('asignacion_movimientos', 4);
+        $this->assertSame(2, $this->saldo('P-001'));
+        foreach ($origenes as $codigo => $origen) {
+            $necesidad = $origen->participantes()->where('colaborador_codigo', $codigo)->sole()->necesidades()->sole();
+            $this->assertSame(2, $necesidad->asignaciones()->count());
+        }
+        $this->getJson($descarga)->assertUnprocessable();
+        $this->assertCount(0, app(\App\Services\RequerimientosAsignacion::class)->conPendientes($this->central)->get());
+    }
+
+    public function test_compra_rechaza_factura_o_recepcion_futura_antes_de_mover_existencias(): void
+    {
+        $ruta = route('operador.compras.store');
+        $this->actingAs($this->central)->postJson($ruta, $this->datosCompra('FUTURA', ['P-001'], [2], [
+            'fecha_compra' => today()->addDay()->toDateString(), 'fecha_ingreso' => now()->addDay()->toDateTimeString(),
+        ]))->assertUnprocessable()->assertJsonValidationErrors(['fecha_compra', 'fecha_ingreso']);
+        $this->assertDatabaseCount('compras', 0);
+        $this->assertDatabaseCount('inventarios', 0);
     }
 
     private function operacionAprobada(int $cantidadNorte, int $cantidadSur): Consolidado

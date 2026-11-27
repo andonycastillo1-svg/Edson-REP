@@ -8,12 +8,13 @@
         'presentacion' => ['Formularios y tablas', 'Organiza los campos y columnas para todas las cuentas.', ['sistema.presentacion*']],
         'parametros' => ['Parámetros generales', 'Configura identidad, inventario y opciones de sesión.', ['sistema.parametros*']],
         'notificaciones' => ['Notificaciones', 'Elige qué avisos se envían y a quién.', ['sistema.notificaciones*']],
+        'documentos' => ['Plantillas de documentos', 'Configura y publica formatos de asignación, traslado y devolución.', ['sistema.documentos*']],
         'auditoria' => ['Bitácora', 'Consulta quién realizó un cambio y cuándo.', ['sistema.auditoria']],
     ];
 @endphp
 <nav aria-label="Apartados de configuración" @class(['grid gap-3 sm:grid-cols-2 lg:grid-cols-3' => $inicio, 'sistema-pestanas' => !$inicio])>
     @foreach($apartados as $seccion => [$titulo, $descripcion, $rutas])
-        @if($seccion === 'seguridad' ? $acceso->esSuperadministrador($usuario) : $acceso->permite($usuario, 'sistema.'.$seccion))
+        @if(in_array($seccion, ['seguridad', 'documentos']) ? $acceso->esSuperadministrador($usuario) : $acceso->permite($usuario, 'sistema.'.$seccion))
             <a href="{{ route('sistema.'.$seccion) }}" @if(request()->routeIs(...$rutas)) aria-current="page" @endif
                @class(['dashboard-card flex min-h-20 items-center justify-between gap-3' => $inicio])>
                 <span>

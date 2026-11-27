@@ -127,7 +127,7 @@ class CompraController extends Controller
         $this->inventario->autorizar($request->user(), 'compras.crear', [(int) $bodega->id]);
 
         $data = $request->validate([
-            'fecha_compra' => ['required', 'date_format:Y-m-d', 'after_or_equal:' . today()->subDays(7)->toDateString(), 'before_or_equal:' . today()->addDays(7)->toDateString()],
+            'fecha_compra' => ['required', 'date_format:Y-m-d', 'after_or_equal:' . today()->subDays(7)->toDateString(), 'before_or_equal:' . today()->toDateString()],
             'consolidados' => ['nullable', 'array', 'max:200'],
             'consolidados.*' => ['required', 'integer', 'distinct'],
             'fecha_ingreso' => ['nullable', 'date', 'before_or_equal:now'],
@@ -288,6 +288,11 @@ class CompraController extends Controller
                 $campos->guardar('compras', $compraId, $valores);
                 $this->inventario->registrar($alcance, $permiso, $compraId);
                 app(Auditoria::class)->registrar('compras', 'registrar', $compraId, null, ['bodega_id' => $bodega->id, 'lineas' => count($lineas)]);
+                if ($consolidados->isNotEmpty()) {
+                    DB::afterCommit(fn () => $consolidados->each(fn ($consolidado) => app(NotificacionService::class)->safeAction(
+                        fn ($servicio) => $servicio->notificarCompraVinculada($consolidado, $request->user(), $compraId)
+                    )));
+                }
                 return $compraId;
             }, 3);
         } catch (UniqueConstraintViolationException $e) {

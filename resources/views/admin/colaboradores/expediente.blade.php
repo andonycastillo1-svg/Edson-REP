@@ -5,6 +5,7 @@
 @php
     $enlace = fn ($destino) => route($ruta.'.expediente', [$colaborador, 'seccion' => $destino]);
     $pestanas = ['resumen' => 'Resumen', 'productos' => 'Productos asignados', 'incidencias' => 'Incidencias'];
+    if ($puedeHistorial) $pestanas['historial'] = 'Historial';
     if (config('modulos.vehiculos')) $pestanas['vehiculo'] = 'Vehículo';
 @endphp
 <div class="space-y-4">
@@ -30,7 +31,7 @@
     <nav class="ui-status-tabs" aria-label="Secciones del expediente">
         @foreach($pestanas as $clave => $titulo)
             <a href="{{ $enlace($clave) }}" class="flujo-tab"
-               @if($seccion === $clave || ($clave === 'productos' && $seccion === 'historial')) aria-current="page" @endif>{{ $titulo }}</a>
+               @if($seccion === $clave) aria-current="page" @endif>{{ $titulo }}</a>
         @endforeach
     </nav>
 
@@ -38,7 +39,7 @@
         <x-sistema.panel titulo="Resumen de custodia">
             <dl class="grid gap-3 divide-y divide-line text-sm sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                 <div class="py-2 sm:pr-3"><dt>Unidades bajo custodia</dt><dd class="mt-1 text-lg font-semibold tabular-nums">{{ $ficha['total_custodia'] }}</dd></div>
-                <div class="py-2 sm:px-3"><dt>Incidencias registradas</dt><dd class="mt-1 text-lg font-semibold tabular-nums">{{ $ficha['incidencias']->count() }}</dd></div>
+                <div class="py-2 sm:px-3"><dt>Incidencias registradas</dt><dd class="mt-1 text-lg font-semibold tabular-nums">{{ $ficha['total_incidencias'] }}</dd></div>
                 <div class="py-2 sm:pl-3"><dt>Valor del equipo registrado</dt><dd class="mt-1 text-lg font-semibold tabular-nums">Q {{ number_format($ficha['total_general'], 2) }}</dd></div>
             </dl>
         </x-sistema.panel>
@@ -46,11 +47,7 @@
         <x-sistema.panel :titulo="$seccion === 'historial' ? 'Historial de productos' : 'Productos bajo custodia'">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <p class="text-sm">{{ trans_choice('{1} :count asignación|[0,*] :count asignaciones', $ficha['paginador']->total()) }}</p>
-                @if($seccion === 'historial')
-                    <x-ui.accion :href="$enlace('productos')">Ver custodia actual</x-ui.accion>
-                @elseif($puedeHistorial)
-                    <x-ui.accion :href="$enlace('historial')">Ver historial de productos</x-ui.accion>
-                @endif
+
             </div>
             <ul class="divide-y divide-line">
                 @forelse($ficha['asignaciones'] as $fila)
@@ -127,6 +124,7 @@
                     <li class="ui-empty-state">No hay incidencias disponibles.</li>
                 @endforelse
             </ul>
+            {{ $ficha['pagina_incidencias']->links() }}
         </x-sistema.panel>
     @elseif($seccion === 'vehiculo')
         <x-sistema.panel titulo="Vehículo y productos asociados">

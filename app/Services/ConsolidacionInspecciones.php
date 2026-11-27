@@ -52,5 +52,10 @@ class ConsolidacionInspecciones
     {
         $evento = $consolidado->eventos()->create(['user_id' => $usuario->id, 'accion' => $accion, 'nota' => $nota, 'cambios' => $cambios]);
         $this->auditoria->registrar('flujo', $accion.'_consolidado', $consolidado->id, null, ['evento' => $evento->id] + $cambios);
+        if (in_array($accion, ['enviar', 'reasignar', 'aprobar', 'devolver', 'cerrar'], true)) {
+            DB::afterCommit(fn () => app(NotificacionService::class)->safeAction(
+                fn ($servicio) => $servicio->notificarConsolidado($evento)
+            ));
+        }
     }
 }

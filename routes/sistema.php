@@ -3,6 +3,7 @@
 use App\Http\Controllers\Sistema\CampoController;
 use App\Http\Controllers\Sistema\ConfiguracionController;
 use App\Http\Controllers\Sistema\DatosController;
+use App\Http\Controllers\Sistema\FormatoDocumentoController;
 use App\Http\Controllers\Sistema\DelegacionController;
 use App\Http\Controllers\Sistema\SeguridadController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,11 @@ Route::name('sistema.')->middleware(['auth', 'auto.logout'])->group(function () 
 
     Route::prefix('admin/configuracion')->group(function () {
         Route::get('/', [ConfiguracionController::class, 'index'])->middleware('sistema.permiso:configuracion')->name('configuracion');
+        Route::controller(FormatoDocumentoController::class)->prefix('plantillas-documentos')->group(function () {
+            Route::get('/', 'index')->name('documentos');
+            Route::post('{tipo}/vista-previa', 'vistaPrevia')->middleware('throttle:20,1')->name('documentos.vista_previa');
+            Route::post('{tipo}', 'publicar')->middleware('throttle:20,1')->name('documentos.publicar');
+        });
         Route::controller(SeguridadController::class)->middleware('sistema.permiso:seguridad')->group(function () {
             Route::get('seguridad', 'index')->name('seguridad');
             Route::get('roles/{rol}', 'rol')->name('rol');

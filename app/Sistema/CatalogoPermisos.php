@@ -47,6 +47,7 @@ class CatalogoPermisos
     }
 
     public const ACCIONES_OPERATIVAS = [
+        'asignaciones.documentacion_regional' => ['Consultar y documentar entregas de central en regiones autorizadas', null],
         'bodegas.consultar' => ['Consultar existencias', null],
         'bodegas.exportar' => ['Exportar existencias', null],
         'inventario.movimientos' => ['Consultar movimientos de bodega', null],
@@ -146,6 +147,9 @@ class CatalogoPermisos
         if (isset((self::ACCIONES_OPERATIVAS + self::ACCIONES_RESTRINGIDAS)[$permiso])) {
             $titulo = (self::ACCIONES_OPERATIVAS + self::ACCIONES_RESTRINGIDAS)[$permiso][0];
         }
+        if ($permiso === 'asignaciones.documentacion_regional') {
+            $descripcion = 'Amplía la consulta, descarga y carga de evidencias a entregas de central en las regiones activas de la cuenta. Requiere el permiso de cada acción documental.';
+        }
         if ($modulo === 'flujo') {
             $grupo = match ($permiso) {
                 'flujo.inspecciones', 'flujo.capturar', 'flujo.exportar_inspecciones' => 'Inspecciones',
@@ -166,7 +170,7 @@ class CatalogoPermisos
         }
         $categoria = $modulo === 'sistema' ? 'Administración del sistema' : match ($accion) {
             'consultar' => 'Consulta',
-            'archivos', 'evidencias', 'datos_archivos', 'exportar', 'datos_exportar' => 'Documentos y reportes',
+            'archivos', 'evidencias', 'datos_archivos', 'exportar', 'datos_exportar', 'documentacion_regional' => 'Documentos y reportes',
             default => 'Operaciones',
         };
 
@@ -180,7 +184,7 @@ class CatalogoPermisos
             'edit' => 'modificar', 'update' => 'modificar', 'destroy' => 'eliminar',
         ];
         $asignaciones = [
-            'index' => 'consultar', 'create' => 'crear', 'store' => 'crear', 'contexto' => 'crear',
+            'index' => 'consultar', 'create' => 'crear', 'store' => 'crear', 'contexto' => 'crear', 'participantes' => 'crear',
             'pdf' => 'exportar', 'hoja_devolucion' => 'exportar', 'upload_pdf_firmado' => 'evidencias',
             'upload_pdf_devolucion_firmado' => 'evidencias', 'ver_pdf_firmado' => 'archivos',
             'entrega' => 'consultar', 'documento_entrega' => 'evidencias', 'confirmar_recepcion' => 'confirmar_recepcion',

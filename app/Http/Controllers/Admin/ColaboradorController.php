@@ -312,11 +312,36 @@ class ColaboradorController extends Controller
         }
 
         $incidencias = collect();
-        if (in_array($seccion, [null, 'resumen', 'incidencias'], true) && ($puedeRevisar || $usuario->rolOperativo() === 1)) {
-            $incidencias = AlertaReemplazo::with([...AlertaReemplazo::RELACIONES_LISTADO, 'actuaciones'])
-                ->where('colaborador_codigo', $colaborador->codigo)
-                ->when(!config('modulos.vehiculos'), fn ($q) => $q->whereNull('vehiculo_producto_asignacion_id')->whereNull('vehiculo_vin'))->latest()->get()
+        $paginaIncidencias = null;
+        $totalIncidencias = 0;
+        $puedeVerAlertas = $puedeRevisar || $usuario->rolOperativo() === 1;
+        $puedeVerOtras = $usuario->rolOperativo() === 1 && $puedeConsultarInventario;
+        $alertas = AlertaReemplazo::where('colaborador_codigo', $colaborador->codigo)
+            ->when(!$puedeVerAlertas, fn ($q) => $q->whereRaw('1 = 0'))
+            ->when($usuario->regionesOperativas()->exists(), fn ($q) => $q->whereHas('colaborador', fn ($persona) =>
+                $persona->whereIn('region_id', $usuario->regionesOperativas()->where('regiones.activa', true)->select('regiones.id'))))
+            ->when(!config('modulos.vehiculos'), fn ($q) => $q->whereNull('vehiculo_producto_asignacion_id')->whereNull('vehiculo_vin'));
+        $otras = IncidenciaInventario::whereDoesntHave('alerta')
+            ->when(!$puedeVerOtras, fn ($q) => $q->whereRaw('1 = 0'))
+            ->whereHas('asignacion', fn ($q) => $q->where('colaborador_codigo', $colaborador->codigo));
+        if ($seccion === 'resumen') {
+            $totalIncidencias = $alertas->count() + $otras->count();
+        }
+
+        if ($seccion === 'incidencias') {
+            $ids = (clone $alertas)->selectRaw("id, created_at, 'rrhh' AS origen")->toBase()
+                ->unionAll((clone $otras)->selectRaw("id, created_at, 'inventario' AS origen")->toBase());
+            $paginaIncidencias = DB::query()->fromSub($ids, 'incidencias')
+                ->orderByDesc('created_at')->orderBy('origen')->orderByDesc('id')->paginate(10)->withQueryString();
+            $referencias = $paginaIncidencias->getCollection()->groupBy('origen');
+            $alertas->whereKey($referencias->get('rrhh', collect())->pluck('id')->all());
+            $otras->whereKey($referencias->get('inventario', collect())->pluck('id')->all());
+        }
+
+        if (in_array($seccion, [null, 'incidencias'], true) && $puedeVerAlertas) {
+            $incidencias = $alertas->with([...AlertaReemplazo::RELACIONES_LISTADO, 'actuaciones'])->latest()->get()
                 ->map(fn (AlertaReemplazo $alerta) => [
+                    'id' => $alerta->id,
                     'producto_codigo' => $alerta->producto_codigo,
                     'producto' => $alerta->producto?->nombre ?? $alerta->producto_codigo,
                     'bodega' => $alerta->bodega_nombre,
@@ -330,12 +355,11 @@ class ColaboradorController extends Controller
                     'detalle' => $alerta->detalle,
                     'resolucion' => $alerta->actuaciones->where('estado', AlertaReemplazo::ESTADO_FINALIZADO)->sortByDesc('id')->first()?->nota,
                     'url' => $puedeRevisar ? route('rrhh.alertas.show', $alerta) : null,
-                ]);
+                ])->keyBy(fn ($fila) => 'rrhh:'.$fila['id']);
         }
-        if (in_array($seccion, [null, 'resumen', 'incidencias'], true) && $usuario->rolOperativo() === 1 && $puedeConsultarInventario) {
-            $sinAlerta = IncidenciaInventario::with('asignacion.bodega', 'asignacion.producto', 'registrador')
-                ->whereDoesntHave('alerta')->whereHas('asignacion', fn ($q) => $q->where('colaborador_codigo', $colaborador->codigo))
-                ->latest()->get()->map(fn (IncidenciaInventario $incidencia) => [
+        if (in_array($seccion, [null, 'incidencias'], true) && $puedeVerOtras) {
+            $sinAlerta = $otras->with('asignacion.bodega', 'asignacion.producto', 'registrador')->latest()->get()->map(fn (IncidenciaInventario $incidencia) => [
+                    'id' => $incidencia->id,
                     'producto_codigo' => $incidencia->asignacion->producto_codigo,
                     'producto' => $incidencia->asignacion->producto?->nombre,
                     'bodega' => $incidencia->asignacion->bodega?->nombre,
@@ -349,8 +373,13 @@ class ColaboradorController extends Controller
                     'detalle' => $incidencia->observaciones,
                     'resolucion' => \App\Services\ResolverCustodia::RESULTADOS_OTRA[$incidencia->resultado_stock] ?? $incidencia->resultado_stock,
                     'url' => route('admin.asignaciones.incidencia', $incidencia),
-                ]);
-            $incidencias = $incidencias->concat($sinAlerta);
+                ])->keyBy(fn ($fila) => 'inventario:'.$fila['id']);
+            $incidencias = $incidencias->merge($sinAlerta);
+        }
+        if ($paginaIncidencias) {
+            $incidencias = $paginaIncidencias->getCollection()->map(fn ($fila) => $incidencias->get($fila->origen.':'.$fila->id))->filter();
+        } else {
+            $incidencias = $incidencias->values();
         }
 
         return [
@@ -373,6 +402,8 @@ class ColaboradorController extends Controller
 
             'incidencias' => $incidencias,
             'paginador' => $paginador,
+            'total_incidencias' => $totalIncidencias,
+            'pagina_incidencias' => $paginaIncidencias,
             'total_custodia' => $totalEnCustodia,
             'puede_historial' => $puedeHistorial,
         ];

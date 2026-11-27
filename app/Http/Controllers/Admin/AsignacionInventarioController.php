@@ -55,6 +55,10 @@ class AsignacionInventarioController extends Controller
             'q' => ['nullable', 'string', 'max:190'],
             'por_pagina' => ['nullable', Rule::in([10, 25, 50])],
             'seguimiento' => ['nullable', Rule::in(['documentacion'])],
+            'region_id' => ['nullable', 'integer', 'min:1'],
+            'desde' => ['nullable', 'date_format:Y-m-d'],
+            'hasta' => ['nullable', 'date_format:Y-m-d', ...($request->filled('desde') ? ['after_or_equal:desde'] : [])],
+            'estado_documental' => ['nullable', Rule::in(['pendiente', 'completa', 'todos'])],
         ]);
         $usuario = $request->user();
         $routePrefix = $this->asignacionesRoutePrefix();
@@ -64,14 +68,33 @@ class AsignacionInventarioController extends Controller
         $consulta->whereHas('colaborador', fn ($q) => $campos->buscar($q, $filtros['q'] ?? null, ['nombre', 'codigo']));
         $campos->filtrar($consulta, $request, 'asignaciones');
 
-        $pendientes = EntregaInventario::query()
-            ->whereDoesntHave('documentos', fn ($q) => $q->where('tipo_documento', 'asignacion_firmada'))
-            ->whereHas('asignaciones', fn ($q) => $q->whereIn('asignaciones_inventarios.id', (clone $consulta)->select('asignaciones_inventarios.id')));
+        $hojaFirmada = fn ($q) => $q->where('tipo_documento', 'asignacion_firmada');
         $seguimiento = ($filtros['seguimiento'] ?? null) === 'documentacion';
+        $regionesDocumentales = collect();
+        $documentacion = EntregaInventario::query()
+            ->whereHas('asignaciones', fn ($q) => $q->whereIn('asignaciones_inventarios.id', (clone $consulta)->select('asignaciones_inventarios.id')));
+        $faltantes = (clone $documentacion)->whereDoesntHave('documentos', $hojaFirmada)->count();
+
+        if ($seguimiento) {
+            $regionesDocumentales = \App\Models\Region::whereIn('id', Colaborador::whereIn('codigo',
+                (clone $consulta)->select('asignaciones_inventarios.colaborador_codigo'))->select('region_id'))
+                ->orderBy('nombre')->get(['id', 'nombre']);
+            $documentacion
+                ->when($filtros['region_id'] ?? null, fn ($q, $id) => $q->whereHas('asignaciones.colaborador', fn ($p) => $p->where('region_id', $id)))
+                ->when($filtros['desde'] ?? null, fn ($q, $fecha) => $q->where('salida_en', '>=', Carbon::parse($fecha)->startOfDay()))
+                ->when($filtros['hasta'] ?? null, fn ($q, $fecha) => $q->where('salida_en', '<', Carbon::parse($fecha)->addDay()->startOfDay()));
+            $estado = $filtros['estado_documental'] ?? 'pendiente';
+            if ($estado === 'pendiente') {
+                $documentacion->whereDoesntHave('documentos', $hojaFirmada);
+            } elseif ($estado === 'completa') {
+                $documentacion->whereHas('documentos', $hojaFirmada);
+            }
+        }
+
         if ($request->boolean('xlsx')) {
             $this->inventario->alcances($usuario, $permiso)->each(fn ($alcance) => $this->inventario->registrar($alcance, $permiso, 'asignaciones'));
             if ($seguimiento) {
-                $consulta->whereIn('grupo_asignacion', $pendientes->select('entregas_inventario.id'));
+                $consulta->whereIn('grupo_asignacion', $documentacion->select('entregas_inventario.id'));
             }
 
             $exportar = app(ExportacionesOperativas::class);
@@ -79,8 +102,6 @@ class AsignacionInventarioController extends Controller
             return $request->boolean('devoluciones') ? $exportar->devoluciones($consulta) : $exportar->asignaciones($consulta);
         }
 
-        // Cuenta las entregas, aunque contengan varias asignaciones.
-        $faltantes = (clone $pendientes)->count();
         $porPagina = (int) ($filtros['por_pagina'] ?? 10);
         $tablaCampos = app(Presentacion::class)->operativa('asignaciones', $usuario, collect());
         $permisos = app(Permisos::class);
@@ -91,9 +112,9 @@ class AsignacionInventarioController extends Controller
         $colaboradores = null;
 
         if ($seguimiento) {
-            $entregas = $pendientes->with(['asignaciones' => fn ($q) => $q
+            $entregas = $documentacion->withExists(['documentos as hoja_firmada' => $hojaFirmada])->with(['asignaciones' => fn ($q) => $q
                 ->whereIn('asignaciones_inventarios.id', (clone $consulta)->select('asignaciones_inventarios.id'))
-                ->with('colaborador')->orderBy('id')])
+                ->with(['colaborador.region', 'user'])->orderBy('id')])
                 ->latest('salida_en')->orderBy('id')->paginate($porPagina)->withQueryString();
             $entregasConsultables = AsignacionInventario::whereIn('grupo_asignacion', $entregas->getCollection()->modelKeys())
                 ->get()->groupBy('grupo_asignacion')->filter(fn ($filas) =>
@@ -109,7 +130,7 @@ class AsignacionInventarioController extends Controller
         }
 
         return view('admin.asignaciones.index', compact('colaboradores', 'entregas', 'routePrefix', 'faltantes',
-            'puedeCrearAsignaciones', 'puedeVerMovimientos', 'tablaCampos', 'seguimiento', 'porPagina', 'entregasConsultables'));
+            'puedeCrearAsignaciones', 'puedeVerMovimientos', 'tablaCampos', 'seguimiento', 'porPagina', 'entregasConsultables', 'regionesDocumentales'));
     }
 
     public function colaborador(Request $request, string $codigo)
@@ -221,6 +242,12 @@ class AsignacionInventarioController extends Controller
 
     public function create(Request $request, RequerimientosAsignacion $requerimientos)
     {
+        if ($request->query('modo') === 'elegir') {
+            return view('admin.asignaciones.modo', [
+                'prefijo' => $this->asignacionesRoutePrefix(),
+                'puedeImportar' => $this->inventario->tiene($request->user(), 'flujo.importar'),
+            ]);
+        }
         $inventariosQuery = Inventario::with('producto', 'bodega')
             ->whereIn('stock_tipo', ['nuevo', 'usado'])->where('cantidad', '>', 0);
         $bodegasQuery = Bodega::query();
@@ -235,13 +262,24 @@ class AsignacionInventarioController extends Controller
             ->get();
         $bodegas = $bodegasQuery->whereKey($ids)->get();
         $motivos = MotivoAsignacion::where('activo', true)->orderBy('id')->get();
-        $consolidadosOrigen = $requerimientos->disponibles($request->user())->latest('id')->get(['id', 'nombre']);
+        $consolidadosOrigen = $requerimientos->conPendientes($usuario)->with('corte:id,nombre', 'coordinador:id,name')->latest('id')->get(['id', 'nombre', 'corte_id', 'coordinador_id']);
 
         return view('admin.asignaciones.create', compact(
             'inventarios',
             'colaboradores',
             'bodegas', 'motivos', 'consolidadosOrigen'
         ));
+    }
+
+    public function participantes(Request $request, RequerimientosAsignacion $requerimientos)
+    {
+        $datos = $request->validate(['consolidado_id' => ['required', 'integer']]);
+        $consolidado = $requerimientos->verificar($request->user(), $datos['consolidado_id']);
+        $personas = $requerimientos->pendientes($consolidado, usuario: $request->user())
+            ->map(fn ($necesidad) => $necesidad->participante->colaborador)->filter()
+            ->unique('codigo')->sortBy('nombre')->values()->map->only(['codigo', 'nombre']);
+
+        return response()->json($personas)->header('Cache-Control', 'private, no-store');
     }
 
     public function contexto(Request $request, RequerimientosAsignacion $requerimientos)
@@ -257,13 +295,12 @@ class AsignacionInventarioController extends Controller
         $consulta = AsignacionInventario::custodiaActiva()->where('colaborador_codigo', $datos['colaborador_codigo']);
         $this->inventario->limitarAsignaciones($consulta, $usuario, 'asignaciones.consultar', [$colaborador->region_id]);
         $vida = app(AsignacionVidaUtilService::class);
-        $resolubles = (clone $consulta)->get()->filter(fn ($fila) => $this->acceso->puedeResolver($usuario, $fila))->modelKeys();
-        $custodias = $consulta->with('entrega')
+        $custodias = $consulta->with('entrega', 'colaborador')
             ->when(config('inventario.seguimiento_unidades'), fn ($q) => $q->with('periodosActivos'))
             ->orderByDesc('id')->get()->map(fn ($fila) => [
                 'id' => $fila->id, 'producto_codigo' => $fila->producto_codigo, 'fecha' => $fila->fecha,
                 'cantidad_asignada' => $fila->cantidad_asignada, 'vida_restante' => $vida->restante($fila, now(), 1),
-                'puede_resolver' => in_array($fila->id, $resolubles, true),
+                'puede_resolver' => $this->acceso->puedeResolver($usuario, $fila),
             ]);
         $pendientes = isset($datos['consolidado_id'])
             ? $requerimientos->pendientes($requerimientos->verificar($usuario, $datos['consolidado_id']), $datos['colaborador_codigo'], $usuario)
@@ -438,7 +475,14 @@ class AsignacionInventarioController extends Controller
             DB::transaction(function () use ($entrega, $archivos) {
                 $bloqueada = EntregaInventario::whereKey($entrega->id)->lockForUpdate()->firstOrFail();
                 $this->filasDelGrupo($bloqueada->id, 'asignaciones.evidencias', bloquear: true);
+                $primeraHoja = collect($archivos)->contains('tipo_documento', 'asignacion_firmada') && $bloqueada->faltaHojaFirmada();
                 $bloqueada->documentos()->createMany($archivos);
+                if ($primeraHoja) {
+                    $actor = auth()->user();
+                    DB::afterCommit(fn () => app(NotificacionService::class)->safeAction(
+                        fn ($servicio) => $servicio->notificarHojaFirmada($bloqueada, $actor)
+                    ));
+                }
                 app(Auditoria::class)->registrar('asignaciones', 'documentar_entrega', $bloqueada->id, null,
                     ['documentos' => array_column($archivos, 'tipo_documento')]);
             }, 3);

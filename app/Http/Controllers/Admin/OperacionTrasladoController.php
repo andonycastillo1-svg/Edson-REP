@@ -348,12 +348,14 @@ class OperacionTrasladoController extends Controller
         $operacion->load([
             'bodegaOrigen',
             'bodegaDestino',
-            'creador',
+            'creador', 'aprobador',
             'detalles.producto',
         ]);
 
         $this->autorizarVerOperacion($operacion, 'traslados.exportar');
 
-        return view('admin.traslados.hoja', compact('operacion'));
+        $formato = app(\App\Services\FormatosDocumento::class)->emitir('traslado', (string) $operacion->id);
+
+        return view('admin.traslados.hoja', compact('operacion', 'formato'));
     }
 }

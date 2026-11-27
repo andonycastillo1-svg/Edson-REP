@@ -61,11 +61,12 @@ class DetectarReemplazos
             'vida_restante_segundos' => $restante,
             'motivo_revision' => $motivo ? 'motivo_asignacion'
                 : ($restante === null ? AlertaReemplazo::REEMPLAZO_SIN_DATOS : AlertaReemplazo::REEMPLAZO_ANTICIPADO),
+            'politica_motivo' => $motivo?->politica,
             'referencia_proporcional' => $referencia,
             'descuento_aplicable' => false,
             'estado' => AlertaReemplazo::ESTADO_PENDIENTE,
             'registrado_por_user_id' => $nueva->user_id,
-            'cantidad' => $anterior?->cantidad_asignada ?? 1,
+            'cantidad' => $nueva->cantidad_asignada,
             'detalle' => $motivo ? 'Motivo declarado: '.$motivo->nombre.'. Su revisión es independiente de la salida.'
                 : 'Nueva salida del mismo código con custodia anterior sin retorno confirmado.',
         ]);
