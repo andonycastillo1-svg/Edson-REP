@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\AsignacionPendienteNotification;
 use App\Services\AccesoCustodia;
 use App\Sistema\Ajustes;
+use App\Sistema\CatalogoPermisos;
 use App\Sistema\Permisos;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
