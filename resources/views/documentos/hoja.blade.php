@@ -58,6 +58,26 @@
         .firmas td + td { padding-right: 0; padding-left: 8pt; }
         .firma { border-top: 1px solid #52647a; padding-top: 4pt; word-wrap: break-word; }
         .firma p { margin-top: 2pt; }
+        .firmas-asignacion { margin-top: 6pt; }
+        .firmas-asignacion > tbody > tr > td { padding: 0 4pt 0 0; }
+        .firmas-asignacion > tbody > tr > td + td { padding: 0 0 0 4pt; }
+        .firma-detalle {
+            padding: 4pt 6pt;
+            border: 1px solid #d8e1ec;
+            font-size: .92em;
+            line-height: 1.18;
+            overflow-wrap: anywhere;
+            word-wrap: break-word;
+        }
+        .firma-detalle > strong { display: block; margin-bottom: 2pt; }
+        .firma-campos { width: 100%; table-layout: fixed; border-collapse: collapse; }
+        .firma-campos .col-etiqueta { width: 40pt; }
+        .firma-campos .col-fecha { width: 52pt; }
+        .firma-campos th { padding-right: 3pt; text-align: left; vertical-align: bottom; }
+        .firma-campos .etiqueta-trazo { padding-left: 6pt; white-space: nowrap; }
+        .firmas .firma-campos td { width: auto; padding: 1pt 0 0; vertical-align: bottom; }
+        .firma-campos span { display: block; border-bottom: 1px solid #52647a; }
+        .firma-campos .trazo-firma { min-height: 15pt; }
         .pie { padding-top: 5pt; border-top: 1px solid #d8e1ec; }
 
         .visor { display: none; }
@@ -164,6 +184,9 @@
                 font-size: 12px;
                 font-weight: 700;
             }
+            .firmas-asignacion, .firmas-asignacion > tbody, .firmas-asignacion > tbody > tr { display: block; }
+            .firmas-asignacion > tbody > tr > td,
+            .firmas-asignacion > tbody > tr > td + td { display: block; width: 100%; padding: 0 0 6pt; }
         }
 
         @media print {
@@ -172,6 +195,13 @@
             .cabecera, h2 { page-break-after: avoid; }
             .contenedor-tabla { overflow: visible; page-break-after: avoid; }
             .visor { display: none !important; }
+            .firmas-asignacion { margin-top: 1pt; }
+            .firma-detalle { padding: 1pt 5pt; font-size: 9pt; line-height: 1; }
+            .firma-detalle > strong { margin-bottom: 0; }
+            .firmas .firma-campos td { padding: 0; }
+            .firma-campos span { border-bottom-width: .5pt; }
+            .firma-campos .trazo-firma { min-height: 12pt; }
+            .firmas-asignacion + .pie { margin: 4pt 0 0; }
         }
     </style>
 </head>
@@ -244,12 +274,51 @@
         </div>
         @if($formato['condiciones'])<p class="texto condiciones">{{ $formato['condiciones'] }}</p>@endif
         @if($formato['aceptacion'])<p class="texto"><strong>{{ $formato['aceptacion'] }}</strong></p>@endif
-        <table class="firmas" role="presentation">
-            <tr>
-                @foreach($firmantes as $indice => $firmante)
-                    <td><div class="firma"><strong>{{ $formato['firma_'.($indice + 1)] }}</strong><p>{{ $firmante ?? '' }}</p></div></td>
-                @endforeach
-            </tr>
+        <table @class(['firmas', 'firmas-asignacion' => isset($puestosFirmantes)]) role="presentation">
+            <tbody>
+                <tr>
+                    @foreach($firmantes as $indice => $firmante)
+                        <td>
+                            @isset($puestosFirmantes)
+                                @php
+                                    $camposFirma = [
+                                        'Nombre' => $firmante,
+                                        'Puesto' => $puestosFirmantes[$indice] ?? null,
+                                        'DPI' => null,
+                                    ];
+                                @endphp
+                                <div class="firma-detalle">
+                                    <strong>{{ $formato['firma_'.($indice + 1)] }}</strong>
+                                    <table class="firma-campos" role="presentation">
+                                        <colgroup>
+                                            <col class="col-etiqueta">
+                                            <col class="col-fecha">
+                                            <col class="col-etiqueta">
+                                            <col>
+                                        </colgroup>
+                                        <tbody>
+                                            <tr>
+                                                <th>Fecha</th>
+                                                <td><span>&nbsp;</span></td>
+                                                <th class="etiqueta-trazo">Firma</th>
+                                                <td><span class="trazo-firma">&nbsp;</span></td>
+                                            </tr>
+                                            @foreach($camposFirma as $campo => $valor)
+                                                <tr>
+                                                    <th>{{ $campo }}</th>
+                                                    <td colspan="3"><span>{{ filled($valor) ? $valor : "\u{00A0}" }}</span></td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="firma"><strong>{{ $formato['firma_'.($indice + 1)] }}</strong><p>{{ $firmante ?? '' }}</p></div>
+                            @endisset
+                        </td>
+                    @endforeach
+                </tr>
+            </tbody>
         </table>
         @if($formato['pie'])<p class="meta texto pie">{{ $formato['pie'] }}</p>@endif
     </main>

@@ -28,4 +28,5 @@
 @include('documentos.hoja', [
     'referencia' => 'Asignación · '.$grupo,
     'firmantes' => [$asignadorNombre, $colaborador->nombre],
+    'puestosFirmantes' => [null, in_array('puesto', $visible, true) ? $colaborador->puesto : null],
 ])

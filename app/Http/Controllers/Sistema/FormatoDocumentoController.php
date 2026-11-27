@@ -61,6 +61,7 @@ class FormatoDocumentoController extends Controller
             'formato' => $formato, 'referencia' => 'Muestra · Datos ficticios',
             'datos' => $datosMuestra, 'columnas' => $columnas, 'filas' => [$articulo],
             'firmantes' => ['Responsable Demo', 'Ana Campo Demo'],
+            'puestosFirmantes' => $tipo === 'asignacion' ? [null, $datosMuestra['Puesto'] ?? null] : null,
             'pdfServidor' => $request->boolean('pdf'),
         ]);
         if (!$request->boolean('pdf')) {
