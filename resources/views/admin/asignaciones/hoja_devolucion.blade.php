@@ -18,5 +18,4 @@
         $fila->condicion_devolucion ?? $fila->detalle, $fila->cantidad,
     ]),
     'firmantes' => [$primerMovimiento->user?->name, $colaborador?->nombre],
-    'pdfServidor' => true,
 ])

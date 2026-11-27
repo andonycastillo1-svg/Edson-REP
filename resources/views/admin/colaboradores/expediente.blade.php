@@ -99,7 +99,10 @@
                     @foreach($hojasDevolucion as $hoja)
                         <li class="flex flex-wrap items-center justify-between gap-2 py-2">
                             <span>{{ \Illuminate\Support\Carbon::parse($hoja->fecha)->format('d/m/Y H:i') }}</span>
-                            <x-ui.accion :href="route('devoluciones.pdf', [$hoja->grupo_devolucion, 'descargar' => 1])" icono="archivo">Descargar PDF</x-ui.accion>
+                            <div class="flex flex-wrap gap-2">
+                                <x-ui.accion :href="route('devoluciones.vista_previa', $hoja->grupo_devolucion)" target="_blank" rel="noopener" icono="archivo">Ver hoja de devolución</x-ui.accion>
+                                <x-ui.accion :href="route('devoluciones.pdf', [$hoja->grupo_devolucion, 'descargar' => 1])">Descargar PDF</x-ui.accion>
+                            </div>
                         </li>
                     @endforeach
                 </ul>

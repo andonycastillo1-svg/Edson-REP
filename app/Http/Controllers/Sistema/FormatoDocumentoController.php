@@ -61,11 +61,12 @@ class FormatoDocumentoController extends Controller
             'formato' => $formato, 'referencia' => 'Muestra · Datos ficticios',
             'datos' => $datosMuestra, 'columnas' => $columnas, 'filas' => [$articulo],
             'firmantes' => ['Responsable Demo', 'Ana Campo Demo'],
+            'pdfServidor' => $request->boolean('pdf'),
         ]);
         if (!$request->boolean('pdf')) {
             return $muestra;
         }
-        $pdf = new Dompdf(['isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans']);
+        $pdf = new Dompdf(['isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans', 'defaultMediaType' => 'print']);
         $pdf->setPaper('letter');
         $pdf->loadHtml($muestra->render());
         $pdf->render();

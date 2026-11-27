@@ -483,6 +483,8 @@ Route::middleware(['auth', 'auto.logout', 'role:4'])
 Route::middleware(['auth', 'auto.logout'])->prefix('devoluciones')->name('devoluciones.')->group(function () {
     Route::get('colaborador/{codigo}', [AsignacionInventarioController::class, 'formularioDevolucion'])->name('formulario');
     Route::post('colaborador/{codigo}', [AsignacionInventarioController::class, 'registrarDevolucionCompleta'])->name('registrar');
+    Route::get('hoja/{grupo}/vista-previa', [AsignacionInventarioController::class, 'vistaPreviaDevolucion'])
+        ->whereUuid('grupo')->name('vista_previa');
     Route::get('hoja/{grupo}', [AsignacionInventarioController::class, 'descargarDevolucion'])->whereUuid('grupo')->name('pdf');
 });
 

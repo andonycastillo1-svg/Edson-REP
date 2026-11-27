@@ -408,7 +408,10 @@ class EntregaCustodiaTest extends TestCase
         $this->crearSalida($this->datosSalida());
         $grupo = EntregaInventario::sole()->id;
         $hoja = route('operador.asignaciones.pdf', $grupo);
-        $this->get($hoja)->assertOk()->assertSee('Formato de entrega de equipos y herramientas');
+        $this->get(route('operador.asignaciones.entrega', $grupo))->assertOk()
+            ->assertSee('href="'.$hoja.'"', false)->assertSee('target="_blank" rel="noopener"', false);
+        $this->get($hoja)->assertOk()->assertSee('Formato de entrega de equipos y herramientas')
+            ->assertSeeText('Imprimir / Guardar PDF');
         $vista = route('sistema.documentos.vista_previa', 'asignacion');
         $datos = ['empresa' => 'Grupo Demo', 'titulo' => 'Versión corporativa QA', 'firma_1' => 'Entrega', 'firma_2' => 'Recibe',
             'distribucion' => 'compacta', 'ancho_logo' => 60, 'campos' => ['region', 'vida'], 'current_password' => 'password'];
@@ -416,6 +419,7 @@ class EntregaCustodiaTest extends TestCase
         $admin = User::factory()->create(['role_id' => 1]);
         DB::table('sistema_superadministradores')->insert(['user_id' => $admin->id, 'activo' => true, 'created_at' => now(), 'updated_at' => now()]);
         $this->actingAs($admin)->get(route('sistema.documentos'))->assertOk();
+        $this->post($vista, $datos)->assertOk()->assertSeeText('Versión corporativa QA')->assertSeeText('Imprimir / Guardar PDF');
         $muestra = $this->post($vista, $datos + ['pdf' => 1])->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $this->assertStringStartsWith('%PDF', $muestra->getContent());
         $this->assertDatabaseCount('documento_formatos', 0);

@@ -150,7 +150,7 @@ class InventarioPermisosConfigurablesTest extends TestCase
 
     public function test_traslado_exige_origen_y_destino_autorizados_y_solo_destino_puede_decidir(): void
     {
-        $this->alistar($this->coordinador, ['traslados.crear', 'traslados.consultar', 'traslados.aprobar'], [$this->central->id, $this->regional->id]);
+        $this->alistar($this->coordinador, ['traslados.crear', 'traslados.consultar', 'traslados.exportar', 'traslados.aprobar'], [$this->central->id, $this->regional->id]);
         $this->alistar($this->rrhh, ['traslados.consultar', 'traslados.aprobar', 'traslados.rechazar'], [$this->otraBodega->id]);
         $ruta = route('operador.operaciones.traslados.store');
         $this->actingAs($this->coordinador->fresh())->postJson($ruta, $this->traslado($this->otraBodega))->assertForbidden();
@@ -158,6 +158,11 @@ class InventarioPermisosConfigurablesTest extends TestCase
         $fila = Operacion::sole();
         $this->assertSame($this->coordinador->id, $fila->creado_por);
         $this->assertSame(10, $this->stock($this->central));
+        $hoja = route('operador.operaciones.traslados.hoja', $fila);
+        $this->get(route('operador.operaciones.traslados.show', $fila))->assertOk()
+            ->assertSee('href="'.$hoja.'"', false)->assertSee('target="_blank" rel="noopener"', false);
+        $this->get($hoja)->assertOk()->assertSeeText('Hoja de traslado')
+            ->assertSeeText('Imprimir / Guardar PDF');
         $aprobar = route('operador.operaciones.traslados.aprobar', $fila);
         $this->postJson($aprobar)->assertForbidden();
         $this->actingAs($this->rrhh->fresh())->postJson($aprobar)->assertForbidden();

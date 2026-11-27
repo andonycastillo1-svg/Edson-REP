@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AsignacionInventarioArchivo;
 use App\Models\AsignacionMovimiento;
 use Dompdf\Dompdf;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,13 +17,20 @@ class HojaDevolucion
             ->where('grupo_devolucion', $grupo)->conHojaDevolucion()->orderBy('id')->get();
     }
 
+    public static function vista(Collection $movimientos, string $grupo, array $formato): View
+    {
+        return view('admin.asignaciones.hoja_devolucion', [
+            'movimientos' => $movimientos, 'grupo' => $grupo,
+            'primerMovimiento' => $movimientos->first(), 'formato' => $formato,
+        ]);
+    }
+
     public static function pdf(Collection $movimientos, string $grupo): string
     {
-        $primerMovimiento = $movimientos->first();
         $formato = app(FormatosDocumento::class)->emitir('devolucion', $grupo);
-        $pdf = new Dompdf(['isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans']);
+        $pdf = new Dompdf(['isRemoteEnabled' => false, 'defaultFont' => 'DejaVu Sans', 'defaultMediaType' => 'print']);
         $pdf->setPaper('letter');
-        $pdf->loadHtml(view('admin.asignaciones.hoja_devolucion', compact('movimientos', 'grupo', 'primerMovimiento', 'formato'))->render());
+        $pdf->loadHtml(self::vista($movimientos, $grupo, $formato)->with('pdfServidor', true)->render());
         $pdf->render();
 
         return $pdf->output();

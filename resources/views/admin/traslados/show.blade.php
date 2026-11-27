@@ -9,7 +9,7 @@
     <x-ui.encabezado :titulo="'Solicitud de traslado #'.$operacion->id" :descripcion="$operacion->created_at->format('d/m/Y H:i')">
         <x-ui.accion :href="route($ruta.'.index')">Volver a traslados</x-ui.accion>
         @rutaDisponible($ruta.'.hoja')
-            <x-ui.accion :href="route($ruta.'.hoja', $operacion)" icono="archivo">Hoja de traslado</x-ui.accion>
+            <x-ui.accion :href="route($ruta.'.hoja', $operacion)" target="_blank" rel="noopener" icono="archivo">Hoja de traslado</x-ui.accion>
         @endrutaDisponible
         @if($operacion->archivo_excel_path)
             @rutaDisponible($ruta.'.archivo')

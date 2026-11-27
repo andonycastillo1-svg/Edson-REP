@@ -11,6 +11,20 @@
 | Producto/refacción de vehículo | `admin.vehiculos.productos.pdf_asignacion` / `pdf_devolucion` | `VehiculoProductoController` | `admin/vehiculos/productos/pdf.blade.php` |
 | Hoja de traslado | `*.operaciones.traslados.hoja` | `OperacionTrasladoController@hoja` | `admin/traslados/hoja.blade.php` |
 
+## Vista previa de impresión
+
+Las hojas de asignación, traslado y devolución se abren en una pestaña nueva desde sus enlaces en el sistema. En la vista previa, **Imprimir / Guardar PDF** abre el diálogo del navegador con el documento en tamaño carta.
+
+La vista previa de devolución usa la versión asociada a la operación. Para los PDF anteriores al versionado, la vista usa el formato base. **Descargar PDF** entrega el archivo original de la devolución cuando quedó archivado. Las rutas anteriores de descarga siguen disponibles.
+
+| Hoja | Pantalla | Móvil | Impresión |
+| --- | --- | --- | --- |
+| Asignación | [Escritorio](capturas/vista-previa-documentos/asignacion-pantalla.jpg) | [Móvil](capturas/vista-previa-documentos/asignacion-movil.jpg) | [Carta](capturas/vista-previa-documentos/asignacion-impresion.jpg) |
+| Traslado | [Escritorio](capturas/vista-previa-documentos/traslado-pantalla.jpg) | [Móvil](capturas/vista-previa-documentos/traslado-movil.jpg) | [Carta](capturas/vista-previa-documentos/traslado-impresion.jpg) |
+| Devolución | [Escritorio](capturas/vista-previa-documentos/devolucion-pantalla.jpg) | [Móvil](capturas/vista-previa-documentos/devolucion-movil.jpg) | [Carta](capturas/vista-previa-documentos/devolucion-impresion.jpg) |
+
+Las capturas usan datos ficticios. Las imágenes de impresión se obtuvieron del PDF generado por Chromium.
+
 ## Archivos firmados
 
 ### Inventario
